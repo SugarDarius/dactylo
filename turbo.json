@@ -1,0 +1,30 @@
+{
+    "$schema": "https://turbo.build/schema.json",
+    "ui": "tui",
+    "envMode": "loose",
+    "tasks": {
+      "dev": {
+        "dependsOn": ["^build"],
+        "cache": false,
+        "persistent": true
+      },
+      "build": {
+        "description": "Build every packages in all workspaces",
+        "dependsOn": ["^build"],
+        "outputs": ["dist/**", ".next/**", "!.next/cache/**", "!.next/dev/**"]
+      },
+      "lint": {
+        "description": "Lint every packages in all workspaces",
+        "cache": false
+      },
+      "test": {
+        "description": "Run tests for every packages in all workspaces",
+        "cache": false
+      },
+      "typecheck": {
+        "description": "Run typechecks for every packages in all workspaces",
+        "cache": false
+      }
+    }
+  }
+  

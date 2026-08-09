@@ -1,0 +1,30 @@
+{
+  "name": "@sugardarius/dactylo-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "postinstall": "syncpack lint",
+    "check": "ultracite check",
+    "fix": "ultracite fix"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "syncpack": "catalog:",
+    "tsup": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:",
+    "ultracite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=24.x"
+  },
+  "packageManager": "pnpm@11.17.0"
+}
