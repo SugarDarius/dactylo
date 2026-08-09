@@ -1,0 +1,56 @@
+{
+  "name": "@sugardarius/dactylo",
+  "version": "1.0.0-alpha.1",
+  "description": "A block-based rich-text markdown editor.",
+  "keywords": [
+    "block-based",
+    "editor",
+    "markdown",
+    "rich-text"
+  ],
+  "bugs": {
+    "url": "https://github.com/SugarDarius/dactylo/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Aurélien Dupays Dexemple",
+    "url": "https://aureliendupaysdexemple.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SugarDarius/dactylo",
+    "directory": "packages/dactylo"
+  },
+  "files": [
+    "dist/**",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "module": "./dist/index.js",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}
