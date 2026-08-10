@@ -6,7 +6,6 @@ export interface DactyloProps {
   placeholder?: string
 }
 
-// oxlint-disable-next-line typescript/no-extraneous-class
 export class Dactylo {
   /** Placeholder text for the editor when no content is written. */
   readonly #placeholder: string
