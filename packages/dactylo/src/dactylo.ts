@@ -1,4 +1,4 @@
-import { DEFAULT_PLACEHOLDER } from './constants'
+import { DEFAULT_PLACEHOLDER } from './internals/constants'
 
 /** Options for constructing a {@link Dactylo} instance. */
 export interface DactyloProps {
