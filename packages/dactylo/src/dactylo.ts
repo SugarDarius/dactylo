@@ -8,14 +8,9 @@ export interface DactyloProps {
 
 export class Dactylo {
   /** Placeholder text for the editor when no content is written. */
-  readonly #placeholder: string
+  readonly placeholder: string
 
   constructor(options: DactyloProps) {
-    this.#placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
-  }
-
-  /** Get the placeholder text for the editor. */
-  get placeholder() {
-    return this.#placeholder
+    this.placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
   }
 }
