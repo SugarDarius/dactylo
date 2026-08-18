@@ -1,4 +1,16 @@
 /**
+ * Brand type
+ *
+ * @example
+ * ```ts
+ * type BlockId = Brand<`blk_${string}`, 'BlockId'>
+ * const blockId: BlockId = 'blk_1234567890'
+ * ```
+ */
+declare const brand: unique symbol
+export type Brand<T, TBrand extends string> = T & { [brand]: TBrand }
+
+/**
  * Allow for an operation to return either
  * a value or a promise of a value.
  */
