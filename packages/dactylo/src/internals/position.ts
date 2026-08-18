@@ -121,13 +121,9 @@ export function before(pos: PosKey): PosKey {
  * Given any position value, computes the canonical position "after" it.
  *
  * Uses "viewport-based allocation" (V=2+3) to bound position length growth
- * when repeatedly insert blocks. Instead of always incrementing the last digit
+ * when repeatedly inserting blocks. Instead of always incrementing the last digit
  * (which leads to O(n/94) length growth), we treat positions as fixed-width
  * numbers within a "viewport" of V digits.
- *
- * - V=2: positions stay ≤2 chars for first ~8,900 insertions
- * - V=5: positions stay ≤5 chars for next ~848k insertions
- * - V=8, V=11, ...: each +3 adds capacity for ~848k more insertions
  *
  * This keeps position lengths dramatically smaller for typical usage while
  * remaining backward compatible with all existing position strings.
@@ -142,3 +138,58 @@ export function before(pos: PosKey): PosKey {
  */
 export const VIEWPORT_START = 2
 export const VIEWPORT_STEP = 3
+
+/**
+ * Increment within fixed viewport width. Returns null on overflow (all digits max).
+ * Pads shorter positions with zero digits on the right, increments with carry,
+ * strips trailing zeros from result.
+ */
+export function incrementWithinViewport(
+  pos: PosKey,
+  viewport: number,
+): PosKey | null {
+  const digits: number[] = []
+
+  for (let i = 0; i < viewport; i += 1) {
+    if (i < pos.length) {
+      digits.push(pos.charCodeAt(i) - MIN_CODE)
+    } else {
+      // pad with zero digits
+      digits.push(0)
+    }
+  }
+
+  // Increment right-to-left with carry
+  let carry = 1
+  for (let i = viewport - 1; i >= 0 && carry; i -= 1) {
+    // @ts-expect-error: digits is guaranteed to be an array of numbers
+    const sum = digits[i] + carry
+    if (sum >= NUM_DIGITS) {
+      digits[i] = 0
+      carry = 1
+    } else {
+      digits[i] = sum
+      carry = 0
+    }
+  }
+
+  // viewport overflow
+  if (carry) {
+    return null
+  }
+
+  let result = ''
+  for (const d of digits) {
+    result += String.fromCharCode(d + MIN_CODE)
+  }
+
+  // Strip trailing zero digits
+  while (
+    result.length > 1 &&
+    result.charCodeAt(result.length - 1) === MIN_CODE
+  ) {
+    result = result.slice(0, -1)
+  }
+
+  return result as PosKey
+}
