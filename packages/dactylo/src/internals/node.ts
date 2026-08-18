@@ -4,6 +4,34 @@
 
 import type { Brand, Relax } from './types'
 
+/** Available marks decorating a text node. */
+export interface Marks {
+  /**
+   * Whether the text  is bold
+   */
+  readonly bold?: boolean
+
+  /**
+   * Whether the text  is italic
+   */
+  readonly italic?: boolean
+
+  /**
+   * Whether the text  is strikethrough
+   */
+  readonly strikethrough?: boolean
+
+  /**
+   * Whether the text  is underlined
+   */
+  readonly underline?: boolean
+
+  /**
+   * Whether the text  is code
+   */
+  readonly code?: boolean
+}
+
 /**
  * Brand type for node unique IDs.
  *
@@ -45,32 +73,7 @@ export interface TextNode extends INode {
   /**
    * Marks decorating the text content
    */
-  readonly marks: {
-    /**
-     * Whether the text content is bold
-     */
-    readonly bold?: boolean
-
-    /**
-     * Whether the text content is italic
-     */
-    readonly italic?: boolean
-
-    /**
-     * Whether the text content is strikethrough
-     */
-    readonly strikethrough?: boolean
-
-    /**
-     * Whether the text content is underlined
-     */
-    readonly underline?: boolean
-
-    /**
-     * Whether the text content is code
-     */
-    readonly code?: boolean
-  }
+  readonly marks: Marks
 }
 
 /** Node representing a link */
