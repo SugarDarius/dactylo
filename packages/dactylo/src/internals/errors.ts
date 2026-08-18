@@ -11,7 +11,9 @@ export function isDactyloError(err: unknown): err is DactyloError {
  */
 export type DactyloErrorCode =
   /** Unexpected failure; default when {@link DactyloError.wrap} receives a non-`DactyloError`. */
-  'UNKNOWN'
+  | 'UNKNOWN'
+  /** Unexpected fractional position error when computing a position key */
+  | 'FRACTIONAL_POSITION'
 
 /**
  * Typed error for Dactylo operations.
