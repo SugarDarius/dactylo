@@ -11,6 +11,8 @@ export default defineConfig({
     'eslint/func-style': 'off',
     'eslint/max-classes-per-file': 'off',
     'eslint/no-await-in-loop': 'off',
+    'eslint/no-bitwise': 'off',
+    'eslint/no-nested-ternary': 'off',
     'eslint/no-warning-comments': 'off',
     'jsx-a11y/click-events-have-key-events': 'off',
     'jsx-a11y/no-noninteractive-element-interactions': 'off',
@@ -18,6 +20,8 @@ export default defineConfig({
     'typescript/consistent-type-definitions': 'off',
     'typescript/no-invalid-void-type': 'off',
     'unicorn/catch-error-name': 'off',
+    'unicorn/no-nested-ternary': 'off',
+    'unicorn/prefer-at': 'off',
     'unicorn/prefer-code-point': 'off',
   },
 })

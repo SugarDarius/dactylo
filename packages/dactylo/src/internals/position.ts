@@ -49,11 +49,11 @@ export const MIN_CODE = 32
 /** ASCII code of the highest alphabet char --digit 94 (e.g. '~') */
 export const MAX_CODE = 126
 
-/**
- * Number of valid digits in the alphabet (95)
- * Last character >= this
- */
+/** Number of valid digits in the alphabet (95) */
 export const NUM_DIGITS = MAX_CODE - MIN_CODE + 1
+
+/** Last character >= this */
+export const MIN_NON_ZERO_CODE = MIN_CODE + 1
 
 /**
  * Returns the `PosKey`` value for the nth digit in the alphabet.
@@ -192,4 +192,182 @@ export function incrementWithinViewport(
   }
 
   return result as PosKey
+}
+
+/**
+ * Canonical position strictly after `pos`.
+ *
+ * Decimal analogies:
+ *   after(.1)  → .11   (within V=2 viewport)
+ *   after(.11) → .12
+ *   after(.99) → .99001 (overflow V=2, extend to V=5)
+ */
+export function after(pos: PosKey): PosKey {
+  // Invalid chars in input — append ONE to guarantee result > pos
+  for (let i = 0; i < pos.length; i += 1) {
+    const code = pos.charCodeAt(i)
+    if (code < MIN_CODE || code > MAX_CODE) {
+      return (pos + ONE) as PosKey
+    }
+  }
+
+  // Strip trailing zero digits (canonical form)
+  while (pos.length > 1 && pos.charCodeAt(pos.length - 1) === MIN_CODE) {
+    // oxlint-disable-next-line no-param-reassign
+    pos = pos.slice(0, -1) as PosKey
+  }
+
+  if (pos.length === 0 || pos === ZERO) {
+    return ONE
+  }
+
+  // Viewport: V=2, then 5, 8, 11, …
+  let viewport = VIEWPORT_START
+  if (pos.length > VIEWPORT_START) {
+    viewport =
+      VIEWPORT_START +
+      Math.ceil((pos.length - VIEWPORT_START) / VIEWPORT_STEP) * VIEWPORT_STEP
+  }
+
+  const result = incrementWithinViewport(pos, viewport)
+  if (result !== null) {
+    return result
+  }
+
+  // Overflow current viewport — extend and retry
+  viewport += VIEWPORT_STEP
+  const extended = incrementWithinViewport(pos, viewport)
+  if (extended !== null) {
+    return extended
+  }
+
+  // Rare fallback
+  return (pos + ONE) as PosKey
+}
+
+/** Prefix of pos padded to length n with zero digits */
+export function takeN(pos: string, n: number): string {
+  return n < pos.length ? pos.slice(0, n) : pos + ZERO.repeat(n - pos.length)
+}
+
+/** Guaranteed lo < hi — recursive for adjacent digits */
+export function $between(lo: PosKey, hi: PosKey | ''): PosKey {
+  let index = 0
+
+  const loLength = lo.length
+  const hiLength = hi.length
+
+  while (true) {
+    const loCode = index < loLength ? lo.charCodeAt(index) : MIN_CODE
+    const hiCode = index < hiLength ? hi.charCodeAt(index) : MAX_CODE
+
+    if (loCode === hiCode) {
+      index += 1
+      continue
+    }
+
+    if (hiCode - loCode === 1) {
+      // Adjacent digits — resolve in next position (recursive)
+      const size = index + 1
+      let prefix = lo.slice(0, size)
+
+      if (prefix.length < size) {
+        prefix += ZERO.repeat(size - prefix.length)
+      }
+
+      const suffix = lo.slice(size) as PosKey
+      return (prefix + $between(suffix, '')) as PosKey
+    }
+
+    // Gap >= 2 - take midpoint digit and finish
+    return (takeN(lo, index) +
+      String.fromCharCode((hiCode + loCode) >> 1)) as PosKey
+  }
+}
+
+/** Returns key strictly between lo and hi (lo < result < hi) */
+export function between(lo: PosKey, hi: PosKey): PosKey {
+  if (lo < hi) {
+    return $between(lo, hi)
+  }
+  if (lo > hi) {
+    return $between(hi, lo)
+  }
+  throw DactyloError.from({
+    code: 'FRACTIONAL_POSITION',
+    message: 'Cannot compute value between two equal positions',
+    payload: {
+      bounds: {
+        lower: lo,
+        upper: hi,
+      },
+    },
+  })
+}
+
+/**
+ * Unified key generator
+ *
+ * @param lo  Lower bound (generate key AFTER this)
+ * @param hi  Upper bound (generate key BEFORE this)
+ *
+ * makePosition()       → ONE ('!')     first block in empty doc
+ * makePosition(lo)     → after(lo)     append after last block
+ * makePosition(undefined, hi) → before(hi)  prepend before first block
+ * makePosition(lo, hi) → between(lo, hi)  insert between two blocks
+ */
+export function makePosition(lo?: PosKey, hi?: PosKey): PosKey {
+  if (lo !== undefined && hi !== undefined) {
+    return between(lo, hi)
+  }
+  if (lo !== undefined) {
+    return after(lo)
+  }
+  if (hi !== undefined) {
+    return before(hi)
+  }
+  return ONE
+}
+
+/** Checks whether a given string is a valid `PosKey` value. */
+export function isPosKey(str: string): str is PosKey {
+  if (str.length === 0) {
+    return false
+  }
+
+  // Last char must not be zero digit (no trailing spaces)
+  const lastIdx = str.length - 1
+  const last = str.charCodeAt(lastIdx)
+  if (last < MIN_NON_ZERO_CODE || last > MAX_CODE) {
+    return false
+  }
+
+  // All chars must be in the alphabet
+  for (let i = 0; i < lastIdx; i += 1) {
+    const code = str.charCodeAt(i)
+    if (code < MIN_CODE || code > MAX_CODE) {
+      return false
+    }
+  }
+
+  return true
+}
+
+/** Clamp invalid input to nearest valid key */
+export function asPosKey(str: string): PosKey {
+  if (isPosKey(str)) {
+    return str
+  }
+
+  const codes: number[] = []
+  for (let i = 0; i < str.length; i += 1) {
+    const code = str.charCodeAt(i)
+    codes.push(code < MIN_CODE ? MIN_CODE : code > MAX_CODE ? MAX_CODE : code)
+  }
+
+  while (codes.length > 0 && codes[codes.length - 1] === MIN_CODE) {
+    codes.length -= 1
+  }
+
+  return codes.length > 0 ? (String.fromCodePoint(...codes) as PosKey) : ONE
 }

@@ -14,10 +14,10 @@ import type { Brand, Relax } from './types'
  *
  * @example
  * ```txt
- * blk_1234567890
+ * bl_1234567890
  * ```
  */
-export type BlockId = Brand<`blk_${string}`, 'BlockId'>
+export type BlockId = Brand<`bl_${string}`, 'BlockId'>
 
 /**
  * Base interface to implement by all
