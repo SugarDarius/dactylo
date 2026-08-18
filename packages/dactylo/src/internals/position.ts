@@ -7,7 +7,7 @@
  * Array indices are not enough and fail all three constraints: inserting at position `k`
  * is an O(n) complexity for re-indexing and is unstable in concurrent edits.
  *
- * Dactylo adopts the same fractional indexing system used by Liveblocks.
+ * Dactylo adopts the same fractional indexing system used by Liveblocks 🚀.
  * 👉🏻 Blog post: https://liveblocks.io/blog/how-crdts-and-sync-engines-keep-realtime-lists-ordered-with-fractional-indexing#a-new-character-set
  *
  * Each blocks in the document carries a `PosKey`, a variable-length string encoding a

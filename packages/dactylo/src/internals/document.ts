@@ -8,7 +8,7 @@ import type { Block, BlockId } from './blocks'
  * It's the authoritative source of truth (data) that all of of thins are derived from.
  *
  * ┌─────────────────────────────────────────────────────────┐
- * │  DocState ← THE source of truth (in memory/RAMy)             │
+ * │  DocState ← THE source of truth (in memory/RAMy)        │
  * └─────────────────────────────────────────────────────────┘
  * ┌─────────────────────────────────────────────────--------┐
  * │  │ Block "blk_1"  key: "a0"  type: heading         │    │
