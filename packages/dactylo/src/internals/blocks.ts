@@ -48,6 +48,12 @@ export interface IBlock {
 
   /** When the block was last updated. */
   updatedAt: Date | null
+
+  /**
+   * Custom metadata defined by developers.
+   * Useful to store data inside a block to use outside Dactylo itself.
+   */
+  metadata: Record<string, string | number | boolean | null | undefined>
 }
 
 /** Block representing a heading with markdown level (1-6). */

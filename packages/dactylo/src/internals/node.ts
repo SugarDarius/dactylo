@@ -24,6 +24,12 @@ export interface INode {
 
   /** When the node was last updated. */
   updatedAt: Date | null
+
+  /**
+   * Custom metadata defined by developers.
+   * Useful to store data inside a node to use outside Dactylo itself.
+   */
+  metadata: Record<string, string | number | boolean | null | undefined>
 }
 
 /** Node representing a text -- default node type. */
