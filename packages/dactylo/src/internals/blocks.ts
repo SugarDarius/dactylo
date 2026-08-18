@@ -7,6 +7,8 @@
  * that are typed inline nodes.
  */
 
+import type { Node } from './node'
+import type { PosKey } from './position'
 import type { Brand, Relax } from './types'
 
 /**
@@ -26,14 +28,39 @@ export type BlockId = Brand<`bl_${string}`, 'BlockId'>
 export interface IBlock {
   /** Unique identifier for the block. */
   readonly id: BlockId
+
+  /** Position key of the block. */
+  readonly posKey: PosKey
+
+  /**
+   * Parent block identifier with nested blocks
+   * like list or quotes.
+   *
+   * `null` for root blocks.
+   */
+  parentId: BlockId | null
+
+  /** Inline content tree for the block. */
+  content: Node[]
+
+  /** When the block was created.  */
+  createdAt: Date
+
+  /** When the block was last updated. */
+  updatedAt: Date | null
 }
 
-/** Block representing a heading. */
+/** Block representing a heading with markdown level (1-6). */
 export interface HeadingBlock extends IBlock {
-  readonly type: 'heading'
+  readonly __type: 'heading'
   /** Level of the heading. */
-  readonly level: 1 | 2 | 3 | 4 | 5 | 6
+  level: 1 | 2 | 3 | 4 | 5 | 6
+}
+
+/** Block representing a paragraph (plain text) -- default block type. */
+export interface ParagraphBlock extends IBlock {
+  readonly __type: 'paragraph'
 }
 
 /** Discriminated union of all existing blocks in Dactylo. */
-export type Block = Relax<HeadingBlock>
+export type Block = Relax<HeadingBlock | ParagraphBlock>
