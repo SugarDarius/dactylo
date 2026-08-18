@@ -35,5 +35,5 @@ export interface HeadingBlock extends IBlock {
   readonly level: 1 | 2 | 3 | 4 | 5 | 6
 }
 
-/** Union type of all existing blocks in Dactylo. */
+/** Discriminated union of all existing blocks in Dactylo. */
 export type Block = Relax<HeadingBlock>

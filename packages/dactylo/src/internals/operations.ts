@@ -35,5 +35,5 @@ export interface InsertBlockOp {
   readonly afterBlockId: BlockId | null
 }
 
-/** Union type of all operations supported by Dactylo. */
+/** Discriminated union of all operations supported by Dactylo. */
 export type Operation = Relax<InsertBlockOp>
