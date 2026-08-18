@@ -20,16 +20,19 @@ export interface INode {
   readonly id: NodeId
 
   /** When the node was created.  */
-  createdAt: Date
+  readonly createdAt: Date
 
   /** When the node was last updated. */
-  updatedAt: Date | null
+  readonly updatedAt: Date | null
 
   /**
    * Custom metadata defined by developers.
    * Useful to store data inside a node to use outside Dactylo itself.
    */
-  metadata: Record<string, string | number | boolean | null | undefined>
+  readonly metadata: Record<
+    string,
+    string | number | boolean | null | undefined
+  >
 }
 
 /** Node representing a text -- default node type. */
@@ -37,7 +40,7 @@ export interface TextNode extends INode {
   readonly __type: 'text'
 
   /** Text content of the node. */
-  text: string
+  readonly text: string
 
   /**
    * Marks decorating the text content
@@ -46,27 +49,27 @@ export interface TextNode extends INode {
     /**
      * Whether the text content is bold
      */
-    bold?: boolean
+    readonly bold?: boolean
 
     /**
      * Whether the text content is italic
      */
-    italic?: boolean
+    readonly italic?: boolean
 
     /**
      * Whether the text content is strikethrough
      */
-    strikethrough?: boolean
+    readonly strikethrough?: boolean
 
     /**
      * Whether the text content is underlined
      */
-    underline?: boolean
+    readonly underline?: boolean
 
     /**
      * Whether the text content is code
      */
-    code?: boolean
+    readonly code?: boolean
   }
 }
 
@@ -77,14 +80,14 @@ export interface LinkNode extends INode {
   /** URL of the link */
   readonly url: {
     /** Href of the link */
-    href: string
+    readonly href: string
 
     /** Title of the link */
-    title?: string
+    readonly title?: string
   }
 
   /** Text Node representing the link text */
-  textNode: TextNode
+  readonly textNode: TextNode
 }
 
 /** Node representing a mention */
@@ -105,4 +108,6 @@ export interface LineBreakNode extends INode {
 }
 
 /** Discriminated union of all existing nodes in Dactylo. */
-export type Node = Relax<TextNode | LinkNode | MentionNode | LineBreakNode>
+export type InlineNode = Relax<
+  TextNode | LinkNode | MentionNode | LineBreakNode
+>

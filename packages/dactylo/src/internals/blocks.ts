@@ -7,7 +7,7 @@
  * that are typed inline nodes.
  */
 
-import type { Node } from './node'
+import type { InlineNode } from './node'
 import type { PosKey } from './position'
 import type { Brand, Relax } from './types'
 
@@ -38,29 +38,37 @@ export interface IBlock {
    *
    * `null` for root blocks.
    */
-  parentId: BlockId | null
+  readonly parentId: BlockId | null
 
-  /** Inline content tree for the block. */
-  content: Node[]
+  /**
+   * Inline content tree for the block.
+   * By design, this array is kept lightweight as an inline sequence
+   * with coalesced text nodes to give better mutation performances
+   * while staying memory-conscious.
+   * */
+  readonly content: readonly InlineNode[]
 
   /** When the block was created.  */
-  createdAt: Date
+  readonly createdAt: Date
 
   /** When the block was last updated. */
-  updatedAt: Date | null
+  readonly updatedAt: Date | null
 
   /**
    * Custom metadata defined by developers.
    * Useful to store data inside a block to use outside Dactylo itself.
    */
-  metadata: Record<string, string | number | boolean | null | undefined>
+  readonly metadata: Record<
+    string,
+    string | number | boolean | null | undefined
+  >
 }
 
 /** Block representing a heading with markdown level (1-6). */
 export interface HeadingBlock extends IBlock {
   readonly __type: 'heading'
   /** Level of the heading. */
-  level: 1 | 2 | 3 | 4 | 5 | 6
+  readonly level: 1 | 2 | 3 | 4 | 5 | 6
 }
 
 /** Block representing a paragraph (plain text) -- default block type. */
@@ -68,5 +76,12 @@ export interface ParagraphBlock extends IBlock {
   readonly __type: 'paragraph'
 }
 
+/** Block representing a divider */
+export interface DividerBlock extends IBlock {
+  readonly __type: 'divider'
+  /** Empty content array, no inline nodes allowed */
+  readonly content: readonly []
+}
+
 /** Discriminated union of all existing blocks in Dactylo. */
-export type Block = Relax<HeadingBlock | ParagraphBlock>
+export type Block = Relax<HeadingBlock | ParagraphBlock | DividerBlock>
