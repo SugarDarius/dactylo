@@ -91,7 +91,7 @@ export class Dactylo {
   /** Placeholder text for the editor when no content is written. */
   readonly placeholder: string
 
-  /** Current editor context */
+  /** Current editor context snapshot */
   #context: DactyloContext
 
   constructor(options: DactyloOptions) {
@@ -110,5 +110,10 @@ export class Dactylo {
      *  - from markdown string
      */
     this.#context = createInitialDactyloContext(this.placeholder)
+  }
+
+  /** Returns the current editor context snapshot. */
+  getContextSnapshot(): DactyloContext {
+    return this.#context
   }
 }
