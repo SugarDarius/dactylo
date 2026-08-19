@@ -8,7 +8,9 @@
  */
 import { nanoid } from 'nanoid'
 
+import { createPlaceholderTextNode } from './node'
 import type { InlineNode } from './node'
+import { makeInitialPosition } from './position'
 import type { PosKey } from './position'
 import type { Brand, Relax, Metadata } from './types'
 
@@ -87,4 +89,30 @@ export type Block = Relax<HeadingBlock | ParagraphBlock | DividerBlock>
 /** Generates a 24 characters long unique block ID */
 export function generateBlockId(): BlockId {
   return `bl_${nanoid(21)}` as BlockId
+}
+
+/** Creates a paragraph block */
+export function createParagraphBlock(opts: {
+  content: InlineNode[]
+  metadata?: Metadata
+  posKey: PosKey
+}): ParagraphBlock {
+  return {
+    __type: 'paragraph',
+    content: opts.content,
+    createdAt: new Date(),
+    id: generateBlockId(),
+    metadata: opts.metadata ?? {},
+    parentId: null,
+    posKey: opts.posKey,
+    updatedAt: null,
+  }
+}
+
+/** Creates an initial placeholder block (paragraph) for an empty document */
+export function createInitialPlaceholderBlock(text: string): ParagraphBlock {
+  return createParagraphBlock({
+    content: [createPlaceholderTextNode(text)],
+    posKey: makeInitialPosition(),
+  })
 }

@@ -142,6 +142,6 @@ export function createTextNode(opts: {
 }
 
 /** Creates a placeholder text node */
-export function createPlaceholderTextNode(placeholder: string): TextNode {
-  return createTextNode({ metadata: { placeholder: true }, text: placeholder })
+export function createPlaceholderTextNode(text: string): TextNode {
+  return createTextNode({ metadata: { placeholder: true }, text })
 }
