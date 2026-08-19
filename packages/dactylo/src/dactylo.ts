@@ -2,12 +2,6 @@ import { DEFAULT_PLACEHOLDER } from './internals/constants'
 import { createInitialEmptyDocumentState } from './internals/document'
 import type { DocumentState } from './internals/document'
 
-/** Options for constructing a {@link Dactylo} instance. */
-export interface DactyloProps {
-  /** Placeholder text for the editor when no content is written. */
-  placeholder?: string
-}
-
 /**
  * `DactyloContext` answers the question: what is the full editing context right now?
  *
@@ -57,6 +51,12 @@ export function createInitialDactyloContext(
   }
 }
 
+/** Options for constructing a {@link Dactylo} instance. */
+export interface DactyloOptions {
+  /** Placeholder text for the editor when no content is written. */
+  placeholder?: string
+}
+
 /**
  * Dactylo is a block-based rich-text markdown editor whose runtime model is a structured document (blocks + inline nodes),
  * not a plain text buffer with regex parsing on every keystroke.
@@ -76,7 +76,7 @@ export function createInitialDactyloContext(
  * │ (input/AI)  │   │ (ops batch)  │   │ (schema)  │   │ (pure)     │   │ (effects) │
  * └─────────────┘   └──────────────┘   └───────────┘   └────────────┘   └──────────-┘
  *                                          ↓ fail
- *                                       Reject + error
+ *                              Reject (state unchanged) + error
  *
  * @example
  * ```ts
@@ -94,7 +94,7 @@ export class Dactylo {
   /** Current editor context */
   #context: DactyloContext
 
-  constructor(options: DactyloProps) {
+  constructor(options: DactyloOptions) {
     this.placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
     /**
      * Initialize the document state.

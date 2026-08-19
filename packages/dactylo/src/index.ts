@@ -1,1 +1,1 @@
-export { Dactylo, type DactyloProps } from './dactylo'
+export { Dactylo, type DactyloOptions } from './dactylo'
