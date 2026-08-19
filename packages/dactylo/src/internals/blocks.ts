@@ -10,7 +10,7 @@ import { nanoid } from 'nanoid'
 
 import type { InlineNode } from './node'
 import type { PosKey } from './position'
-import type { Brand, Relax } from './types'
+import type { Brand, Relax, Metadata } from './types'
 
 /**
  * Brand type for block unique IDs.
@@ -59,10 +59,7 @@ export interface IBlock {
    * Custom metadata defined by developers.
    * Useful to store data inside a block to use outside Dactylo itself.
    */
-  readonly metadata: Record<
-    string,
-    string | number | boolean | null | undefined
-  >
+  readonly metadata: Metadata
 }
 
 /** Block representing a heading with markdown level (1-6). */

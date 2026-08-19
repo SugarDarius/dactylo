@@ -9,7 +9,7 @@
  */
 import { nanoid } from 'nanoid'
 
-import type { Brand, Relax } from './types'
+import type { Brand, Relax, Metadata } from './types'
 
 /** Available marks decorating a text node. */
 export interface Marks {
@@ -64,10 +64,7 @@ export interface INode {
    * Custom metadata defined by developers.
    * Useful to store data inside a node to use outside Dactylo itself.
    */
-  readonly metadata: Record<
-    string,
-    string | number | boolean | null | undefined
-  >
+  readonly metadata: Metadata
 }
 
 /** Node representing a text -- default node type. */
@@ -125,4 +122,26 @@ export type InlineNode = Relax<
 /** Generates a 24 characters long unique node ID */
 export function generateNodeId(): NodeId {
   return `nd_${nanoid(21)}` as NodeId
+}
+
+/** Creates a text node */
+export function createTextNode(opts: {
+  text: string
+  metadata?: Metadata
+  marks?: Marks
+}): TextNode {
+  return {
+    __type: 'text',
+    createdAt: new Date(),
+    id: generateNodeId(),
+    marks: opts.marks ?? {},
+    metadata: opts.metadata ?? {},
+    text: opts.text,
+    updatedAt: null,
+  }
+}
+
+/** Creates a placeholder text node */
+export function createPlaceholderTextNode(placeholder: string): TextNode {
+  return createTextNode({ metadata: { placeholder: true }, text: placeholder })
 }

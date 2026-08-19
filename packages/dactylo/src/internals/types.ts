@@ -52,3 +52,9 @@ export type Relax<T> = DistributiveRelax<T, T extends any ? keyof T : never>
 export type Autocomplete<U extends T, T = string> =
   | U
   | (T & Record<never, never>)
+
+/** Metadata type to store custom data */
+export type Metadata = Record<
+  string,
+  string | number | boolean | null | undefined
+>
