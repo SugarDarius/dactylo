@@ -77,6 +77,15 @@ export function createInitialDactyloContext(
  * └─────────────┘   └──────────────┘   └───────────┘   └────────────┘   └──────────-┘
  *                                          ↓ fail
  *                                       Reject + error
+ *
+ * @example
+ * ```ts
+ * import { Dactylo } from '@sugardarius/dactylo'
+ *
+ * const editor = new Dactylo({
+ *  placeholder: 'Write something...',
+ * })
+ * ```
  */
 export class Dactylo {
   /** Placeholder text for the editor when no content is written. */
