@@ -96,6 +96,7 @@ export function createParagraphBlock(opts: {
   content: InlineNode[]
   metadata?: Metadata
   posKey: PosKey
+  parentId?: BlockId | null
 }): ParagraphBlock {
   return {
     __type: 'paragraph',
@@ -103,7 +104,7 @@ export function createParagraphBlock(opts: {
     createdAt: new Date(),
     id: generateBlockId(),
     metadata: opts.metadata ?? {},
-    parentId: null,
+    parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
   }
