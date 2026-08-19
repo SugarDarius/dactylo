@@ -1,3 +1,4 @@
+import { createInitialPlaceholderBlock } from './blocks'
 import type { Block, BlockId } from './blocks'
 
 /**
@@ -8,7 +9,7 @@ import type { Block, BlockId } from './blocks'
  * It's the authoritative source of truth (data) that all of of thins are derived from.
  *
  * ┌─────────────────────────────────────────────────────────┐
- * │  DocState ← THE source of truth (in memory/RAMy)        │
+ * │  DocState ← THE source of truth (in memory/RAM)         │
  * └─────────────────────────────────────────────────────────┘
  * ┌─────────────────────────────────────────────────--------┐
  * │  │ Block "blk_1"  key: "a0"  type: heading         │    │
@@ -24,7 +25,7 @@ import type { Block, BlockId } from './blocks'
  *
  * When the user types a character, Dactylo does not edit a string at all.
  * Instead it:
- *  1. Takes the current `DcoState`
+ *  1. Takes the current `DocState`
  *  2. Applies an operation (`insert_block`, `insert_text`, ...)
  *  3. Produces a new predictable and immutable snapshot
  *
@@ -42,14 +43,12 @@ import type { Block, BlockId } from './blocks'
  * | AI edits             | "Change paragraph 3" is vague                     | Stable block IDs (`blk_abc`)             |
  * | Performance          | Full re-parse on every key                        | Small structural patches                 |
  *
- * `DocState` is the structured representation that makes fast edits, reliable undo,
- * and AI-safe mutations possible.
+ * `DocState` is the structured representation that makes fast edits, reliable undo/redo,
+ * exports, and AI-safe mutations possible.
  */
 export interface DocState {
-  /** Format version for migrations. Evolving without breaking old saves. */
-  readonly version: 1
   /**
-   * Schema version for indicating which blocks, nodes, marks, etc. are supported.
+   * Schema version for indicating which blocks, nodes, marks, etc. are currently supported.
    * Evolving without breaking old saves
    */
   readonly schemaVersion: 1
@@ -68,4 +67,17 @@ export interface DocState {
    * It acts as a cached sort of those keys.
    */
   readonly blockOrderById: readonly BlockId[]
+}
+
+/**
+ * Creates an initial empty doc state for empty document.
+ * It contains a single placeholder paragraph block with the given text.
+ */
+export function createInitialEmptyDocState(placeholder: string): DocState {
+  const block = createInitialPlaceholderBlock(placeholder)
+  return {
+    blockOrderById: [block.id],
+    blocks: new Map([[block.id, block]]),
+    schemaVersion: 1,
+  }
 }
