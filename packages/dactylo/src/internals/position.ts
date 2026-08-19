@@ -329,6 +329,15 @@ export function makePosition(lo?: PosKey, hi?: PosKey): PosKey {
   return ONE
 }
 
+/**
+ * Alias for making the initial position:
+ * first block in an empty document
+ */
+export function makeInitialPosition(): PosKey {
+  // returns ONE = '!'
+  return makePosition()
+}
+
 /** Checks whether a given string is a valid `PosKey` value. */
 export function isPosKey(str: string): str is PosKey {
   if (str.length === 0) {
