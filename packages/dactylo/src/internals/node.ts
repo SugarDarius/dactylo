@@ -16,27 +16,27 @@ export interface Marks {
   /**
    * Whether the text  is bold
    */
-  readonly bold?: boolean
+  bold?: boolean
 
   /**
    * Whether the text  is italic
    */
-  readonly italic?: boolean
+  italic?: boolean
 
   /**
    * Whether the text  is strikethrough
    */
-  readonly strikethrough?: boolean
+  strikethrough?: boolean
 
   /**
    * Whether the text  is underlined
    */
-  readonly underline?: boolean
+  underline?: boolean
 
   /**
    * Whether the text  is code
    */
-  readonly code?: boolean
+  code?: boolean
 }
 
 /**
@@ -80,7 +80,7 @@ export interface TextNode extends INode {
   /**
    * Marks decorating the text content
    */
-  readonly marks: Marks
+  readonly marks: Readonly<Marks>
 }
 
 /** Node representing a link */
