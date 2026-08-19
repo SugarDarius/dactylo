@@ -1,6 +1,6 @@
 import { DEFAULT_PLACEHOLDER } from './internals/constants'
-import { createInitialEmptyDocState } from './internals/document'
-import type { DocState } from './internals/document'
+import { createInitialEmptyDocumentState } from './internals/document'
+import type { DocumentState } from './internals/document'
 
 /** Options for constructing a {@link Dactylo} instance. */
 export interface DactyloProps {
@@ -34,7 +34,7 @@ export class Dactylo {
   readonly placeholder: string
 
   /** Current document state */
-  #state: DocState
+  #state: DocumentState
 
   constructor(options: DactyloProps) {
     this.placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
@@ -51,6 +51,6 @@ export class Dactylo {
      *  - from JSON
      *  - from markdown string
      */
-    this.#state = createInitialEmptyDocState(this.placeholder)
+    this.#state = createInitialEmptyDocumentState(this.placeholder)
   }
 }

@@ -9,7 +9,7 @@ import type { Block, BlockId } from './blocks'
  * It's the authoritative source of truth (data) that all of of thins are derived from.
  *
  * ┌─────────────────────────────────────────────────────────┐
- * │  DocState ← THE source of truth (in memory/RAM)         │
+ * │  DocumentState ← THE source of truth (in memory/RAM)    │
  * └─────────────────────────────────────────────────────────┘
  * ┌─────────────────────────────────────────────────--------┐
  * │  │ Block "blk_1"  key: "a0"  type: heading         │    │
@@ -25,17 +25,17 @@ import type { Block, BlockId } from './blocks'
  *
  * When the user types a character, Dactylo does not edit a string at all.
  * Instead it:
- *  1. Takes the current `DocState`
+ *  1. Takes the current `DocumentState`
  *  2. Applies an operation (`insert_block`, `insert_text`, ...)
  *  3. Produces a new predictable and immutable snapshot
  *
  * The new snapshot is what the UI re-renders from.
  *
  * Why does it exist?
- * 👉🏻 Without `DocState`, we would store content as a markdown string and re-parse it
+ * 👉🏻 Without `DocumentState`, we would store content as a markdown string and re-parse it
  * on every keystroke. That breaks down quickly:
  *
- * | Problem              | Why a string fails                                | How `DocState` solves it                 |
+ * | Problem              | Why a string fails                                | How `DocumentState` solves it            |
  * |----------------------|---------------------------------------------------|------------------------------------------|
  * | Enter vs Shift+Enter | Hard to know if `\n` is a new block or soft break | Blocks + `line_break` nodes are explicit |
  * | Bold / links         | Offset math on raw markdown is fragile            | Marks live on typed `TextNode`s          |
@@ -43,10 +43,10 @@ import type { Block, BlockId } from './blocks'
  * | AI edits             | "Change paragraph 3" is vague                     | Stable block IDs (`blk_abc`)             |
  * | Performance          | Full re-parse on every key                        | Small structural patches                 |
  *
- * `DocState` is the structured representation that makes fast edits, reliable undo/redo,
+ * `DocumentState` is the structured representation that makes fast edits, reliable undo/redo,
  * exports, and AI-safe mutations possible.
  */
-export interface DocState {
+export interface DocumentState {
   /**
    * Schema version for indicating which blocks, nodes, marks, etc. are currently supported.
    * Evolving without breaking old saves
@@ -73,7 +73,9 @@ export interface DocState {
  * Creates an initial empty doc state for empty document.
  * It contains a single placeholder paragraph block with the given text.
  */
-export function createInitialEmptyDocState(placeholder: string): DocState {
+export function createInitialEmptyDocumentState(
+  placeholder: string,
+): DocumentState {
   const block = createInitialPlaceholderBlock(placeholder)
   return {
     blockOrderById: [block.id],
