@@ -52,5 +52,8 @@
   },
   "devDependencies": {
     "typescript": "catalog:"
+  },
+  "dependencies": {
+    "nanoid": "^6.0.1"
   }
 }

@@ -6,6 +6,7 @@
  * Text is stored in text nodes: structural inline elements (soft line breaks, inline code spans, ...)
  * that are typed inline nodes.
  */
+import { nanoid } from 'nanoid'
 
 import type { InlineNode } from './node'
 import type { PosKey } from './position'
@@ -85,3 +86,8 @@ export interface DividerBlock extends IBlock {
 
 /** Discriminated union of all existing blocks in Dactylo. */
 export type Block = Relax<HeadingBlock | ParagraphBlock | DividerBlock>
+
+/** Generates a 24 characters long unique block ID */
+export function generateBlockId(): BlockId {
+  return `bl_${nanoid(21)}` as BlockId
+}

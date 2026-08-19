@@ -1,6 +1,13 @@
 /**
  * Catalog of all nodes supported by Dactylo.
+ *
+ * Nodes are the inline content tree (not a flat string with offsets) of a block.
+ * Text is stored in text nodes: structural inline elements (soft line breaks, inline code spans, ...)
+ *
+ * By design, this content tree is kept lightweight as an inline sequence
+ * with coalesced text nodes to give better mutation performances while staying memory-conscious.
  */
+import { nanoid } from 'nanoid'
 
 import type { Brand, Relax } from './types'
 
@@ -114,3 +121,8 @@ export interface LineBreakNode extends INode {
 export type InlineNode = Relax<
   TextNode | LinkNode | MentionNode | LineBreakNode
 >
+
+/** Generates a 24 characters long unique node ID */
+export function generateNodeId(): NodeId {
+  return `nd_${nanoid(21)}` as NodeId
+}
