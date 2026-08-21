@@ -52,10 +52,13 @@ export interface BatchOptions {
  *  2. `batchMaxSize: Infinity` in options — single undo for huge paste; higher memory peak
  *  3. `flush()` at end of paste handler — one explicit commit; `maxSize` only guards runaway loops
  *
+ *  Max size override:
+ *  Without {@link Batch#maxSizeOverride}, you would have to create a second `Batch` instance for paste,
+ * or permanently raise the global limit and lose memory protection for normal edits.
  */
 export class Batch {
   /** Max operations held before auto-flush. */
-  #maxSize: number
+  readonly #maxSize: number
 
   /** Callback to invoke when the batch is flushed. */
   readonly #onFlush: BatchFlushCallback
@@ -68,6 +71,9 @@ export class Batch {
 
   /** Policy for the batch. */
   #policy?: TransactionPolicy
+
+  /** Temporary override for the current `run()` scope only (e.g. paste). */
+  #maxSizeOverride: number | undefined
 
   constructor(options: BatchOptions) {
     this.#maxSize = options.maxSize ?? DEFAULT_BATCH_MAX_SIZE
@@ -97,6 +103,11 @@ export class Batch {
     return this.#queue.length > 0
   }
 
+  /** Effective limit: override during `run(..., { maxSize })`, else instance default. */
+  #effectiveMaxSize(): number {
+    return this.#maxSizeOverride ?? this.#maxSize
+  }
+
   /**
    * Commit queued ops now. Clears queue; does not exit batch scope.
    * No-op if queue is empty.
@@ -122,7 +133,7 @@ export class Batch {
     }
 
     for (const op of ops) {
-      if (this.#queue.length >= this.#maxSize) {
+      if (this.#queue.length >= this.#effectiveMaxSize()) {
         this.flush()
       }
 
@@ -144,7 +155,10 @@ export class Batch {
     fn: () => T,
     opts: { maxSize?: number; policy?: TransactionPolicy } = {},
   ): T {
-    const maxSize = opts.maxSize ?? this.#maxSize
+    const prevMaxSizeOverride = this.#maxSizeOverride
+    if (opts?.maxSize !== undefined) {
+      this.#maxSizeOverride = opts.maxSize
+    }
     this.#depth += 1
 
     if (opts.policy !== undefined) {
@@ -158,7 +172,7 @@ export class Batch {
       throw err
     } finally {
       this.#depth -= 1
-      this.#maxSize = maxSize
+      this.#maxSizeOverride = prevMaxSizeOverride
 
       if (this.#depth === 0 && this.#queue.length > 0) {
         this.flush({ description: 'batch' })
