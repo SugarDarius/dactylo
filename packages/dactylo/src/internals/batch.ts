@@ -13,13 +13,13 @@ export interface BatchOptions {
 /**
  * A dedicated `Batch` class for efficiency and control.
  *
- * | Concern | Inline arrays | `Batch` class |
- * |---------|---------------|---------------|
- * | Memory on large paste | Unbounded queue until batch ends | `maxSize` auto-flush chunks the queue |
- * | Mid-batch commit | Not possible | `flush()` commits now, batch stays open |
- * | Error recovery | Manual queue cleanup | `discard()` drops pending ops safely |
- * | Testing | Requires full `Dactylo` instance | Test queue/flush in isolation |
- * | Observability | No metrics | `pendingCount`, `depth` exposed |
+ * | Concern               | Inline arrays                    | `Batch` class                           |
+ * |-----------------------|----------------------------------|-----------------------------------------|
+ * | Memory on large paste | Unbounded queue until batch ends | `maxSize` auto-flush chunks the queue   |
+ * | Mid-batch commit      | Not possible                     | `flush()` commits now, batch stays open |
+ * | Error recovery        | Manual queue cleanup             | `discard()` drops pending ops safely    |
+ * | Testing               | Requires full `Dactylo` instance | Test queue/flush in isolation           |
+ * | Observability         | No metrics                       | `pendingCount`, `depth` exposed         |
  *
  * Semantics:
  *
