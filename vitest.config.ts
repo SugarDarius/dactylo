@@ -11,7 +11,7 @@ export default defineConfig({
         test: {
           environment: 'happy-dom',
           include: ['tests/**/*.browser.test.{ts,tsx}'],
-          name: { label: 'dactylo/browser', color: 'blue' },
+          name: { color: 'blue', label: 'dactylo/browser' },
         },
       },
     ],

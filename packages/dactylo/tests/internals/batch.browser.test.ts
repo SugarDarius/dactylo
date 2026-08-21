@@ -13,17 +13,17 @@ describe('Batch', () => {
       batch.enqueue([
         {
           __type: 'insert_block',
+          afterBlockId: null,
           block: {
-            id: 'bl_0001' as BlockId,
-            parentId: null,
-            posKey: '!' as PosKey,
             __type: 'paragraph',
             content: [],
-            updatedAt: null,
             createdAt: new Date(),
+            id: 'bl_0001' as BlockId,
             metadata: {},
+            parentId: null,
+            posKey: '!' as PosKey,
+            updatedAt: null,
           },
-          afterBlockId: null,
         },
       ])
       expect(flush).not.toHaveBeenCalled()
