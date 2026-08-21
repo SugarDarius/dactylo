@@ -24,7 +24,7 @@ import type { Relax } from './types'
  * position (fractional index).
  */
 export interface InsertBlockOp {
-  readonly type: 'insert_block'
+  readonly __type: 'insert_block'
   /** Block to insert. */
   readonly block: Block
   /**

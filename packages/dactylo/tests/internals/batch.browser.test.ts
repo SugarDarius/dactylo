@@ -12,7 +12,7 @@ describe('Batch', () => {
     batch.run(() => {
       batch.enqueue([
         {
-          type: 'insert_block',
+          __type: 'insert_block',
           block: {
             id: 'bl_0001' as BlockId,
             parentId: null,
