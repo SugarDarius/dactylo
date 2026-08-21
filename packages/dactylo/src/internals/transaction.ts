@@ -2,9 +2,9 @@
  * Transaction pipeline
  *
  * The pipeline enforces ordering:
- * Transaction { ops, meta } → validateOps → applyOps → commitEffects
- *                                ↓ fail
- *                        reject (state unchanged)
+ * Transaction { ops, policy } → validateOps → applyOps → commitEffects
+ *                                 ↓ fail
+ *                         reject (state unchanged)
  *
  * Commit effects (side effects, not pure):
  *  1. Push to history stack (unless we don't want too)
@@ -19,13 +19,13 @@
  *
  * The pipeline is is built around three cooperating types:
  *  1. {@link Operation} describing what's change
- *  2. {@link Transaction} bundles operations with metadata: {@link TransactionMeta}
+ *  2. {@link Transaction} bundles operations with metadata: {@link TransactionPolicy}
  *  3. {@link DactyloContext} as the before/after snapshot
  *
  * ┌─────────────────────────────────────────────────────────────────────────┐
  * │                           Transaction                                   │
  * │  ┌─────────────────────────────┐   ┌─────────────────────────────────┐  │
- * │  │ ops: Operation[]            │   │ meta?: TransactionMeta          │  │
+ * │  │ ops: Operation[]            │   │ policy?: TransactionPolicy      │  │
  * │  │ (the structural mutations)  │   │ (how commit should behave)      │  │
  * │  └─────────────────────────────┘   └─────────────────────────────────┘  │
  * └─────────────────────────────────────────────────────────────────────────┘
@@ -34,18 +34,18 @@
  *    DactyloContext ──────────────► DactyloContext
  *       (prev)                         (next)
  *
- * | Type              | Mutable?      | Serialized to disk?   | Role                             |
- * |-------------------|---------------|-----------------------|----------------------------------|
- * | `Operation`       | No (readonly) | Yes (history, logs)   | Atomic mutation step             |
- * | `TransactionMeta` | No            | Optional (debug logs) | Commit-time policy               |
- * | `Transaction`     | No            | Yes                   | Unit dispatched through pipeline |
- * | `DactyloContext`  | No            | `doc` only via export | Full editing snapshot            |
+ * | Type                | Mutable?      | Serialized to disk?   | Role                             |
+ * |---------------------|---------------|-----------------------|----------------------------------|
+ * | `Operation`         | No (readonly) | Yes (history, logs)   | Atomic mutation step             |
+ * | `TransactionPolicy` | No            | Optional (debug logs) | Commit-time policy               |
+ * | `Transaction`       | No            | Yes                   | Unit dispatched through pipeline |
+ * | `DactyloContext`    | No            | `doc` only via export | Full editing snapshot            |
  */
 
 import type { Operation } from './operations'
 
 /**
- * The metadata about a {@link Transaction} not about individual operations.
+ * The policy layer as metadata about a {@link Transaction} not about individual operations.
  * It tells the commit phase how to treat an otherwise normal operation
  * without polluting the operations themselves or branching the apply engines.
  *
@@ -59,9 +59,8 @@ import type { Operation } from './operations'
  *  - Leak commit policy in the apply stage logic
  *  - Break the rule than operations describe document changes only
  *
- * `TransactionMeta` is the policy layer.
  */
-export interface TransactionMeta {
+export interface TransactionPolicy {
   /**
    * Human-readable description of the transaction
    * for debugging, DevTools, Ai tracing, ...
@@ -98,11 +97,14 @@ export interface TransactionMeta {
   coalesce?: boolean
 }
 
-/** A bundle of operations with metadata about how to commit them through the pipeline */
+/**
+ * A bundle of operations with policy metadata about
+ * how to commit them through the pipeline
+ */
 export interface Transaction {
   /** The operations to apply in the transaction */
   readonly ops: readonly Operation[]
 
-  /** The metadata about the transaction */
-  readonly meta?: TransactionMeta
+  /** The policy metadata about the transaction */
+  readonly policy?: TransactionPolicy
 }
