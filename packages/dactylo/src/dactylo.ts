@@ -114,6 +114,6 @@ export class Dactylo {
 
   /** Returns the current editor context snapshot. */
   getContextSnapshot(): DactyloContext {
-    return this.#context
+    return { ...this.#context }
   }
 }
