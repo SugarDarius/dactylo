@@ -8,6 +8,7 @@ allowBuilds:
 autoInstallPeers: true
 catalog:
   '@types/node': ^26.1.1
+  happy-dom: ^20.11.6
   oxfmt: ^0.63.0
   oxlint: ^1.78.0
   syncpack: ^15.3.3
@@ -15,6 +16,6 @@ catalog:
   turbo: ^2.10.10
   typescript: ^7.0.2
   ultracite: ^7.10.5
-  vitest: ^4.1.10
+  vitest: ^4.1.11
 cleanupUnusedCatalogs: true
 engineStrict: true

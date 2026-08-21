@@ -48,12 +48,13 @@
   },
   "scripts": {
     "build": "tsup",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "typescript": "catalog:"
   },
   "dependencies": {
     "nanoid": "^6.0.1"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
   }
 }
