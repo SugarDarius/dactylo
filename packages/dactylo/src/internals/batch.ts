@@ -1,5 +1,14 @@
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
 import type { Operation } from './operations'
+import type { TransactionPolicy } from './transaction'
+
+/** Callback to invoke when the batch is flushed. */
+export type BatchFlushCallback = (
+  /** The operations that were flushed. */
+  ops: readonly Operation[],
+  /** The policy that was used for the flush. */
+  policy?: TransactionPolicy,
+) => void
 
 /** Options for constructing a {@link Batch} instance. */
 export interface BatchOptions {
@@ -8,6 +17,9 @@ export interface BatchOptions {
    * defaults to 512
    */
   maxSize?: number
+
+  /** Callback to invoke when the batch is flushed. */
+  onFlush: BatchFlushCallback
 }
 
 /**
@@ -43,7 +55,10 @@ export interface BatchOptions {
  */
 export class Batch {
   /** Max operations held before auto-flush. */
-  readonly #maxSize: number
+  #maxSize: number
+
+  /** Callback to invoke when the batch is flushed. */
+  readonly #onFlush: BatchFlushCallback
 
   /** Queue of operations. */
   #queue: Operation[]
@@ -51,8 +66,12 @@ export class Batch {
   /** Depth of the batch. */
   #depth: number
 
+  /** Policy for the batch. */
+  #policy?: TransactionPolicy
+
   constructor(options: BatchOptions) {
     this.#maxSize = options.maxSize ?? DEFAULT_BATCH_MAX_SIZE
+    this.#onFlush = options.onFlush
 
     this.#queue = []
     this.#depth = 0
@@ -76,5 +95,74 @@ export class Batch {
   /** True when queue has ops (inside or outside batch). */
   get hasPending(): boolean {
     return this.#queue.length > 0
+  }
+
+  /**
+   * Commit queued ops now. Clears queue; does not exit batch scope.
+   * No-op if queue is empty.
+   */
+  flush(policy?: TransactionPolicy): void {
+    if (this.#queue.length === 0) {
+      return
+    }
+
+    const queue = [...this.#queue]
+    this.#queue = []
+
+    const mergedPolicy = { ...this.#policy, ...policy }
+    this.#policy = undefined
+
+    this.#onFlush(queue, mergedPolicy)
+  }
+
+  /** Add ops to the queue. Auto-flushes when queue would exceed maxSize. */
+  enqueue(ops: Operation[], policy?: TransactionPolicy): void {
+    if (policy !== undefined) {
+      this.#policy = { ...this.#policy, ...policy }
+    }
+
+    for (const op of ops) {
+      if (this.#queue.length >= this.#maxSize) {
+        this.flush()
+      }
+
+      this.#queue.push(op)
+    }
+  }
+
+  /** Drop queued ops without committing. Does not exit batch scope. */
+  discard(): void {
+    this.#queue = []
+    this.#policy = undefined
+  }
+
+  /**
+   * Run fn inside a batch scope. Flushes remaining queue when outermost scope ends.
+   * Pass `{ maxSize: Infinity }` for unbounded queue (large paste).
+   */
+  run<T>(
+    fn: () => T,
+    opts: { maxSize?: number; policy?: TransactionPolicy } = {},
+  ): T {
+    const maxSize = opts.maxSize ?? this.#maxSize
+    this.#depth += 1
+
+    if (opts.policy !== undefined) {
+      this.#policy = { ...this.#policy, ...opts.policy }
+    }
+
+    try {
+      return fn()
+    } catch (err) {
+      this.discard()
+      throw err
+    } finally {
+      this.#depth -= 1
+      this.#maxSize = maxSize
+
+      if (this.#depth === 0 && this.#queue.length > 0) {
+        this.flush({ description: 'batch' })
+      }
+    }
   }
 }
