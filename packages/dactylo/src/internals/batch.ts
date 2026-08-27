@@ -175,7 +175,7 @@ export class Batch {
       this.#maxSizeOverride = prevMaxSizeOverride
 
       if (this.#depth === 0 && this.#queue.length > 0) {
-        this.flush({ description: 'batch' })
+        this.flush({ label: 'batch' })
       }
     }
   }

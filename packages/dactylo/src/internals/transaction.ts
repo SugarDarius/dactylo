@@ -1,47 +1,4 @@
-/**
- * Transaction pipeline
- *
- * The pipeline enforces ordering:
- * Transaction { ops, policy } → validateOps → applyOps → commitEffects
- *                                 ↓ fail
- *                         reject (state unchanged)
- *
- * Commit effects (side effects, not pure):
- *  1. Push to history stack (unless we don't want too)
- *  2. Dispatch hooks and plugins
- *  3. Notify subscribers (UI)
- *
- * Keeping commit separate from apply stage means undo action
- * applies inverted operations through the same apply stage path
- * without re-firing history.
- *
- * Core:
- *
- * The pipeline is is built around three cooperating types:
- *  1. {@link Operation} describing what's change
- *  2. {@link Transaction} bundles operations with metadata: {@link TransactionPolicy}
- *  3. {@link DactyloContext} as the before/after snapshot
- *
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │                           Transaction                                   │
- * │  ┌─────────────────────────────┐   ┌─────────────────────────────────┐  │
- * │  │ ops: Operation[]            │   │ policy?: TransactionPolicy      │  │
- * │  │ (the structural mutations)  │   │ (how commit should behave)      │  │
- * │  └─────────────────────────────┘   └─────────────────────────────────┘  │
- * └─────────────────────────────────────────────────────────────────────────┘
- *          │ validate + apply on                    │ read at commit only
- *          ▼                                        ▼
- *    DactyloContext ──────────────► DactyloContext
- *       (prev)                         (next)
- *
- * | Type                | Mutable?      | Serialized to disk?   | Role                             |
- * |---------------------|---------------|-----------------------|----------------------------------|
- * | `Operation`         | No (readonly) | Yes (history, logs)   | Atomic mutation step             |
- * | `TransactionPolicy` | No            | Optional (debug logs) | Commit-time policy               |
- * | `Transaction`       | No            | Yes                   | Unit dispatched through pipeline |
- * | `DactyloContext`    | No            | `doc` only via export | Full editing snapshot            |
- */
-
+import type { Batch } from './batch'
 import type { Operation } from './operations'
 
 /**
@@ -62,10 +19,10 @@ import type { Operation } from './operations'
  */
 export interface TransactionPolicy {
   /**
-   * Human-readable description of the transaction
+   * Human-readable label of the transaction
    * for debugging, DevTools, Ai tracing, ...
    */
-  description?: string
+  label?: string
 
   /**
    * Whether to push this transaction to the history stack.
@@ -107,4 +64,70 @@ export interface Transaction {
 
   /** The policy metadata about the transaction */
   readonly policy?: TransactionPolicy
+}
+
+/** Options for constructing a {@link TransactionPipeline} instance. */
+export interface TransactionPipelineOptions {
+  /** The batch to use for the transaction pipeline */
+  readonly batch: Batch
+}
+
+/**
+ * Transaction pipeline
+ *
+ * The pipeline enforces ordering:
+ * Transaction { ops, policy } → validateOps → applyOps → commitEffects
+ *                                 ↓ fail
+ *                         reject (state unchanged)
+ *
+ * Commit effects (side effects, not pure):
+ *  1. Push to history stack (unless we don't want too)
+ *  2. Dispatch hooks and plugins
+ *  3. Notify subscribers (UI)
+ *
+ * Keeping commit separate from apply stage means undo action
+ * applies inverted operations through the same apply stage path
+ * without re-firing history.
+ *
+ * Core:
+ *
+ * The pipeline is is built around three cooperating types:
+ *  1. {@link Operation} describing what's change
+ *  2. {@link Transaction} bundles operations with metadata: {@link TransactionPolicy}
+ *  3. {@link EditorContext} as the before/after snapshot
+ *
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                           Transaction                                   │
+ * │  ┌─────────────────────────────┐   ┌─────────────────────────────────┐  │
+ * │  │ ops: Operation[]            │   │ policy?: TransactionPolicy      │  │
+ * │  │ (the structural mutations)  │   │ (how commit should behave)      │  │
+ * │  └─────────────────────────────┘   └─────────────────────────────────┘  │
+ * └─────────────────────────────────────────────────────────────────────────┘
+ *          │ validate + apply on                    │ read at commit only
+ *          ▼                                        ▼
+ *    EditorContext ──────────────► EditorContext
+ *       (prev)                         (next)
+ *
+ * | Type                | Mutable?      | Serialized to disk?   | Role                             |
+ * |---------------------|---------------|-----------------------|----------------------------------|
+ * | `Operation`         | No (readonly) | Yes (history, logs)   | Atomic mutation step             |
+ * | `TransactionPolicy` | No            | Optional (debug logs) | Commit-time policy               |
+ * | `Transaction`       | No            | Yes                   | Unit dispatched through pipeline |
+ * | `EditorContext`     | No            | `doc` only via export | Full editing snapshot            |
+ */
+export class TransactionPipeline {
+  /** The batch to use for the transaction pipeline */
+  #batch: Batch
+
+  constructor(options: TransactionPipelineOptions) {
+    this.#batch = options.batch
+  }
+
+  /**
+   * Commit pending batch ops immediately.
+   * Batch scope stays open if inside `batch()`.
+   */
+  flushBatch(policy?: TransactionPolicy): void {
+    this.#batch.flush(policy)
+  }
 }

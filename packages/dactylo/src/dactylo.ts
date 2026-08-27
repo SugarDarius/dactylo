@@ -1,55 +1,8 @@
 import { DEFAULT_PLACEHOLDER } from './internals/constants'
-import { createInitialEmptyDocumentState } from './internals/document'
-import type { DocumentState } from './internals/document'
-
-/**
- * `DactyloContext` answers the question: what is the full editing context right now?
- *
- * It's the single immutable snapshot that the transaction pipeline reads and produces
- * on every mutation.
- * 
- * What lives where:
- * ┌────────────────────────────────────────────────────────────────---─┐
- * │                        DactyloContext                              │
- * |  ┌─────────────────────---┐  ┌──────────────────────────────────┐  │
- * |  │  state: DocumentState  │  │ selection: Selection | null      │  │
- * |  │  (the written content) │  │ (where the user is editing)      │  │
- * |  └─────────────────────---┘  └──────────────────────────────────┘  │
- * |  ┌─────────────────────────────────────────────────────────────-┐  │
- * |  │    isPlaceholder: boolean (ephemeral empty-doc semantics)    │  │
- * |  └─────────────────────────────────────────────────────────────-┘  │
- * └─────────────────────────────────────────────────────────────────---┘
-         │                              │
-         ▼                              ▼
-    toMarkdown(), exports          caret render, handleKeyDown(),
-    AI reads blocks                 copy/paste, onSelectionChanged
- */
-export interface DactyloContext {
-  /**
-   * Current document state ala the manuscript
-   * 👉🏻 What is written
-   */
-  readonly state: DocumentState
-
-  // @todo: add selection state
-
-  /**
-   * Whether the document is a placeholder (empty)
-   * 👉🏻 Session flag: `true` while the empty-document is showing
-   * and the user has not typed real content yet.
-   */
-  readonly isPlaceholder: boolean
-}
-
-/** Creates the initial context for an empty editor with a placeholder */
-export function createInitialDactyloContext(
-  placeholder: string,
-): DactyloContext {
-  return {
-    isPlaceholder: true,
-    state: createInitialEmptyDocumentState(placeholder),
-  }
-}
+import {
+  createInitialEditorContext,
+  type EditorContext,
+} from './internals/editor-context'
 
 /** Options for constructing a {@link Dactylo} instance. */
 export interface DactyloOptions {
@@ -91,8 +44,8 @@ export class Dactylo {
   /** Placeholder text for the editor when no content is written. */
   readonly placeholder: string
 
-  /** Current editor context snapshot */
-  #context: DactyloContext
+  /** Current editor context */
+  #context: EditorContext
 
   constructor(options: DactyloOptions) {
     this.placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
@@ -109,11 +62,11 @@ export class Dactylo {
      *  - from JSON
      *  - from markdown string
      */
-    this.#context = createInitialDactyloContext(this.placeholder)
+    this.#context = createInitialEditorContext(this.placeholder)
   }
 
   /** Returns the current editor context snapshot. */
-  getContextSnapshot(): DactyloContext {
+  getContextSnapshot(): EditorContext {
     return { ...this.#context }
   }
 }
