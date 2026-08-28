@@ -1,4 +1,12 @@
+import { sortBlockOrder } from './blocks'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
+import { insertBlockIntoDocument } from './document'
+import {
+  withDocumentState,
+  withPlaceholderFlag,
+  type EditorContext,
+} from './editor-context'
+import { DactyloError } from './errors'
 import type { Operation } from './operations'
 
 /**
@@ -234,6 +242,82 @@ export class Batch {
 }
 
 /**
+ * Validate a batch of operations against current state.
+ * Throws on failure.
+ */
+export function validateOps(
+  context: EditorContext,
+  ops: readonly Operation[],
+): void {
+  for (const op of ops) {
+    switch (op.__type) {
+      case 'insert_block': {
+        if (context.state.blocks.has(op.block.id)) {
+          throw DactyloError.from({
+            code: 'VALIDATE_TRANSACTION_OPERATION',
+            message: `Block ${op.block.id} already exists`,
+            hint: 'TransactionPipeline/#validateOps',
+            payload: { op },
+          })
+        }
+        break
+      }
+      default: {
+        throw DactyloError.from({
+          code: 'VALIDATE_TRANSACTION_OPERATION',
+          message: `Unknown operation: ${op.__type}`,
+          hint: 'TransactionPipeline/#validateOps',
+          payload: { op },
+        })
+      }
+    }
+  }
+}
+
+/**
+ * Apply a single operation. Pure — no hooks, no history.
+ * Throws on undefined operations
+ */
+export function applyOp(context: EditorContext, op: Operation): EditorContext {
+  switch (op.__type) {
+    case 'insert_block': {
+      let state = insertBlockIntoDocument(context.state, op.block)
+      state = { ...state, blockOrderById: sortBlockOrder(state.blocks) }
+      return withPlaceholderFlag(withDocumentState(context, state), false)
+    }
+    default: {
+      throw DactyloError.from({
+        code: 'APPLY_TRANSACTION_OPERATION',
+        message: `Unknown operation: ${op.__type}`,
+        hint: 'TransactionPipeline/#applyOp',
+        payload: { op },
+      })
+    }
+  }
+}
+
+/** Returns the inverse operation for undo. */
+export function invertOp(op: Operation): Operation {
+  switch (op.__type) {
+    case 'insert_block': {
+      return {
+        __type: 'delete_block',
+        afterBlockId: op.afterBlockId,
+        blockId: op.block.id,
+        snapshot: op.block,
+      }
+    }
+    default:
+      throw new Error(`Cannot invert operation: ${op.__type}`)
+  }
+}
+
+/** Inverts a batch of operations in reverse application order to restore the prior context. */
+export function invertOps(ops: readonly Operation[]): Operation[] {
+  return ops.toReversed().map(invertOp)
+}
+
+/**
  * A bundle of operations with policy metadata about
  * how to commit them through the pipeline
  */
@@ -245,13 +329,24 @@ export interface Transaction {
   readonly policy?: TransactionPolicy
 }
 
+/** Result of a transaction */
+export interface TransactionResult {
+  /** The output editor context after the transaction was applied */
+  readonly context: EditorContext
+
+  /** The transaction that was committed */
+  readonly transaction: Transaction
+
+  /** The inverse operations that were applied to the context */
+  readonly inverseOps: Operation[]
+}
+
 /** Options for constructing a {@link TransactionPipeline} instance. */
 export interface TransactionPipelineOptions {
+  /** initial context to use for the pipeline */
+  context: EditorContext
   /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
   batchMaxSize?: number
-
-  /** Callback to invoke when the batch is flushed. */
-  batchOnFlush: BatchFlushCallback
 }
 
 /**
@@ -301,18 +396,76 @@ export class TransactionPipeline {
   /** The batch to use for the transaction pipeline */
   #batch: Batch
 
+  /** Current editor context */
+  #context: EditorContext
+
   constructor(options: TransactionPipelineOptions) {
+    this.#context = options.context
     this.#batch = new Batch({
       maxSize: options.batchMaxSize,
-      onFlush: options.batchOnFlush,
+      onFlush: (ops, policy) =>
+        this.dispatch({
+          ops: ops,
+          policy: { source: 'editor', ...policy },
+        }),
     })
   }
 
+  /** Returns the current editor context */
+  get context(): EditorContext {
+    return this.#context
+  }
+
+  /** Apply operations in order, left to right. */
+  #applyOps(ops: readonly Operation[]): EditorContext {
+    let next = this.#context
+    for (const op of ops) {
+      next = applyOp(next, op)
+    }
+
+    return next
+  }
+
   /**
-   * Commit pending batch ops immediately.
-   * Batch scope stays open if inside `batch()`.
+   * Run the full pipeline: validate → apply → commit.
+   * Returns new context. Does NOT mutate inputs.
    */
-  flushBatch(policy?: TransactionPolicy): void {
-    this.#batch.flush(policy)
+  #run(transaction: Transaction): TransactionResult {
+    const { ops } = transaction
+
+    if (ops.length === 0) {
+      return { context: this.#context, transaction, inverseOps: [] }
+    }
+
+    try {
+      validateOps(this.#context, ops)
+    } catch (err) {
+      throw DactyloError.wrap(err)
+    }
+
+    const next = this.#applyOps(ops)
+    const inverseOps = invertOps(ops)
+
+    // @todo: add commit-time side-effects (history, hooks)
+
+    return { context: next, transaction, inverseOps }
+  }
+
+  /** Runs the transaction pipeline and updates internal context. */
+  dispatch(transaction: Transaction): void {
+    this.#run(transaction)
+  }
+
+  /** Enqueues or immediately dispatches operations depending on batch state. */
+  commit(ops: Operation[], policy?: TransactionPolicy): void {
+    if (this.#batch.active) {
+      this.#batch.enqueue(ops, policy)
+      return
+    }
+
+    this.dispatch({
+      policy: { source: 'editor', ...policy },
+      ops,
+    })
   }
 }

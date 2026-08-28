@@ -46,3 +46,25 @@ export function createInitialEditorContext(placeholder: string): EditorContext {
     state: createInitialEmptyDocumentState(placeholder),
   }
 }
+
+/** Returns a copy of the context with an updated placeholder flag. */
+export function withPlaceholderFlag(
+  context: EditorContext,
+  isPlaceholder: boolean,
+): EditorContext {
+  return {
+    ...context,
+    isPlaceholder,
+  }
+}
+
+/** Returns a copy of the context with an updated document state. */
+export function withDocumentState(
+  context: EditorContext,
+  state: DocumentState,
+): EditorContext {
+  return {
+    ...context,
+    state,
+  }
+}

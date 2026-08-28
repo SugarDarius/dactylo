@@ -14,6 +14,10 @@ export type DactyloErrorCode =
   | 'UNKNOWN'
   /** Unexpected fractional position error when computing a position key */
   | 'FRACTIONAL_POSITION'
+  /** Failed to validate a transaction operation */
+  | 'VALIDATE_TRANSACTION_OPERATION'
+  /** Failed to apply a transaction operation */
+  | 'APPLY_TRANSACTION_OPERATION'
 
 /**
  * Typed error for Dactylo operations.

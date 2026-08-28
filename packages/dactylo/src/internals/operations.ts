@@ -35,5 +35,22 @@ export interface InsertBlockOp {
   readonly afterBlockId: BlockId | null
 }
 
+/**
+ * Operation to delete a block at the given
+ * position (fractional index).
+ */
+export interface DeleteBlockOp {
+  readonly __type: 'delete_block'
+  /** ID of the block to delete. */
+  readonly blockId: BlockId
+  /** Snapshot for undo - full block as it was before deletion. */
+  readonly snapshot: Block
+  /**
+   * Position where the block is deleted for undo re-insertion.     * If set to `null`, then the block is deleted
+   * directly at the beginning of the document.
+   */
+  readonly afterBlockId: BlockId | null
+}
+
 /** Discriminated union of all operations supported by Dactylo. */
-export type Operation = Relax<InsertBlockOp>
+export type Operation = Relax<InsertBlockOp | DeleteBlockOp>

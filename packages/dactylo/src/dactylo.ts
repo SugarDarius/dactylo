@@ -3,11 +3,26 @@ import {
   createInitialEditorContext,
   type EditorContext,
 } from './internals/editor-context'
+import type { Operation } from './internals/operations'
+import {
+  TransactionPipeline,
+  type Transaction,
+  type TransactionPolicy,
+} from './internals/transaction'
 
 /** Options for constructing a {@link Dactylo} instance. */
 export interface DactyloOptions {
   /** Placeholder text for the editor when no content is written. */
   placeholder?: string
+
+  /** Config options to use for the internal components of the editor. */
+  config?: {
+    /** Configuration for the transaction pipeline */
+    pipeline?: {
+      /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
+      batchMaxSize?: number
+    }
+  }
 }
 
 /**
@@ -44,29 +59,32 @@ export class Dactylo {
   /** Placeholder text for the editor when no content is written. */
   readonly placeholder: string
 
-  /** Current editor context */
-  #context: EditorContext
+  /** Transaction pipeline to use for the editor */
+  readonly #transactionPipeline: TransactionPipeline
 
   constructor(options: DactyloOptions) {
     this.placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
-    /**
-     * Initialize the document state.
-     * If no initial content is provided, it creates an empty document
-     * with a placeholder.
-     *
-     * Otherwise initial document state is provider from either:
-     *  - a JSON object (validated against the current schema version)
-     *  - a markdown string
-     *
-     * TODO: handle initial content from props
-     *  - from JSON
-     *  - from markdown string
-     */
-    this.#context = createInitialEditorContext(this.placeholder)
+    this.#transactionPipeline = new TransactionPipeline({
+      /**
+       * Initialize the editor context
+       * If no initial content is provided, it creates an empty document
+       * with a placeholder.
+       *
+       * Otherwise initial document state is provider from either:
+       *  - a JSON object (validated against the current schema version)
+       *  - a markdown string
+       *
+       * TODO: handle initial content from props
+       *  - from JSON
+       *  - from markdown string
+       */
+      context: createInitialEditorContext(this.placeholder),
+      batchMaxSize: options.config?.pipeline?.batchMaxSize,
+    })
   }
 
-  /** Returns the current editor context snapshot. */
+  /** Returns the current editor context snapshot from the transaction pipeline. */
   getContextSnapshot(): EditorContext {
-    return { ...this.#context }
+    return { ...this.#transactionPipeline.context }
   }
 }

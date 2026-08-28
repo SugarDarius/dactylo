@@ -83,3 +83,17 @@ export function createInitialEmptyDocumentState(
     schemaVersion: 1,
   }
 }
+
+/** Immutable update: add a block and refresh cached order. */
+export function insertBlockIntoDocument(
+  state: DocumentState,
+  block: Block,
+): DocumentState {
+  const blocks = new Map(state.blocks)
+  blocks.set(block.id, block)
+  return {
+    ...state,
+    blocks,
+    blockOrderById: [...state.blockOrderById, block.id],
+  }
+}
