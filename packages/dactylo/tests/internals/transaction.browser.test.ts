@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 
-import { Batch } from '../../src/internals/batch'
 import type { BlockId } from '../../src/internals/blocks'
+import { Batch } from '../../src/internals/transaction'
 import { createEmptyParagraphBlock } from './utils/blocks'
 import { createInsertBlockOperation } from './utils/operations'
 
