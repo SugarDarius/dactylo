@@ -1,5 +1,10 @@
 import { createInitialPlaceholderBlock } from './blocks'
 import type { Block, BlockId } from './blocks'
+import { DactyloError } from './errors'
+import type { InsertBlockOpPosition } from './operations'
+import { after, before, between, makePosition } from './position'
+import type { PosKey } from './position'
+import { assertNever } from './utils'
 
 /**
  * The brain of Dactylo. It's the single in-memory snapshot
@@ -95,5 +100,188 @@ export function insertBlockIntoDocument(
     ...state,
     blockOrderById: [...state.blockOrderById, block.id],
     blocks,
+  }
+}
+
+/**
+ * Returns adjacent block IDs in document order.
+ *
+ * @param state - Current document state.
+ * @param blockId - ID of the reference block.
+ * @returns Previous and next block IDs, or `null` when absent.
+ */
+export function getBlockNeighborsInDocument(
+  state: DocumentState,
+  blockId: BlockId,
+): { prev: BlockId | null; next: BlockId | null } {
+  const idx = state.blockOrderById.indexOf(blockId)
+  if (idx === -1) {
+    return { next: null, prev: null }
+  }
+
+  let next: BlockId | null = null
+  let prev: BlockId | null = null
+
+  if (idx < state.blockOrderById.length - 1) {
+    next = state.blockOrderById[idx + 1] ?? null
+  }
+
+  if (idx > 0) {
+    prev = state.blockOrderById[idx - 1] ?? null
+  }
+
+  return {
+    next,
+    prev,
+  }
+}
+
+/**
+ * Computes the position key (fractional index) where to insert a block
+ * from a `InsertBlockOpPosition` in the document.
+ */
+export function computeInsertBlockPosKeyInDocument(
+  state: DocumentState,
+  pos: InsertBlockOpPosition,
+): PosKey {
+  switch (pos.type) {
+    case 'start': {
+      const [firstBlockId] = state.blockOrderById
+      if (!firstBlockId) {
+        return makePosition()
+      }
+
+      const block = state.blocks.get(firstBlockId)
+      if (!block) {
+        throw DactyloError.from({
+          code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
+          hint: 'DocumentState/#computeInsertBlockPosKeyInDocument',
+          message: `Block ${firstBlockId} not found in document`,
+        })
+      }
+      return makePosition(undefined, block.posKey)
+    }
+    case 'end': {
+      const lastBlockId = state.blockOrderById.at(-1)
+      if (!lastBlockId) {
+        return makePosition()
+      }
+
+      const block = state.blocks.get(lastBlockId)
+      if (!block) {
+        throw DactyloError.from({
+          code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
+          hint: 'DocumentState/#computeInsertBlockPosKeyInDocument',
+          message: `Block ${lastBlockId} not found in document`,
+        })
+      }
+      return makePosition(block.posKey)
+    }
+    case 'after': {
+      const block = state.blocks.get(pos.blockId)
+      if (!block) {
+        throw DactyloError.from({
+          code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
+          hint: 'DocumentState/#computeInsertBlockPosKeyInDocument',
+          message: `Block ${pos.blockId} not found in document`,
+        })
+      }
+
+      const { next } = getBlockNeighborsInDocument(state, pos.blockId)
+      if (!next) {
+        return after(block.posKey)
+      }
+
+      const nextBlock = state.blocks.get(next)
+      if (!nextBlock) {
+        throw DactyloError.from({
+          code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
+          hint: 'DocumentState/#computeInsertBlockPosKeyInDocument',
+          message: `Block ${next} not found in document`,
+        })
+      }
+
+      return between(block.posKey, nextBlock.posKey)
+    }
+    case 'before': {
+      const block = state.blocks.get(pos.blockId)
+      if (!block) {
+        throw DactyloError.from({
+          code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
+          hint: 'DocumentState/#computeInsertBlockPosKeyInDocument',
+          message: `Block ${pos.blockId} not found in document`,
+        })
+      }
+
+      const { prev } = getBlockNeighborsInDocument(state, pos.blockId)
+      if (!prev) {
+        return before(block.posKey)
+      }
+
+      const prevBlock = state.blocks.get(prev)
+      if (!prevBlock) {
+        throw DactyloError.from({
+          code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
+          hint: 'DocumentState/#computeInsertBlockPosKeyInDocument',
+          message: `Block ${prev} not found in document`,
+        })
+      }
+
+      return between(prevBlock.posKey, block.posKey)
+    }
+    case 'between': {
+      const loBlock = state.blocks.get(pos.afterBlockId)
+      if (!loBlock) {
+        throw DactyloError.from({
+          code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
+          hint: 'DocumentState/#computeInsertBlockPosKeyInDocument',
+          message: `Block ${pos.afterBlockId} not found in document`,
+        })
+      }
+
+      const hiBlock = state.blocks.get(pos.beforeBlockId)
+      if (!hiBlock) {
+        throw DactyloError.from({
+          code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
+          hint: 'DocumentState/#computeInsertBlockPosKeyInDocument',
+          message: `Block ${pos.beforeBlockId} not found in document`,
+        })
+      }
+      return between(loBlock.posKey, hiBlock.posKey)
+    }
+    default: {
+      assertNever(pos, 'Unknown insert block position type')
+    }
+  }
+}
+
+/**
+ * Resolves the position where to insert a block from
+ * a `InsertBlockOpPosition` in the document.
+ */
+export function resolveInsertAfterBlockIdInDocument(
+  state: DocumentState,
+  pos: InsertBlockOpPosition,
+): BlockId | null {
+  switch (pos.type) {
+    case 'start': {
+      return null
+    }
+    case 'end': {
+      return state.blockOrderById.at(-1) ?? null
+    }
+    case 'after': {
+      return pos.blockId
+    }
+    case 'before': {
+      const { prev } = getBlockNeighborsInDocument(state, pos.blockId)
+      return prev
+    }
+    case 'between': {
+      return pos.afterBlockId
+    }
+    default: {
+      assertNever(pos, 'Unknown insert block position type')
+    }
   }
 }

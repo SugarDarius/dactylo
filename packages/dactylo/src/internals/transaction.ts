@@ -1,10 +1,15 @@
 import { sortBlockOrder } from './blocks'
+import type { BlockWithoutPosKey } from './blocks'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
-import { insertBlockIntoDocument } from './document'
+import {
+  computeInsertBlockPosKeyInDocument,
+  insertBlockIntoDocument,
+  resolveInsertAfterBlockIdInDocument,
+} from './document'
 import { withDocumentState, withPlaceholderFlag } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
-import type { Operation } from './operations'
+import type { Operation, InsertBlockOpPosition } from './operations'
 
 /**
  * The policy layer as metadata about a {@link Transaction} not about individual operations.
@@ -402,7 +407,7 @@ export class TransactionPipeline {
     this.#batch = new Batch({
       maxSize: options.batchMaxSize,
       onFlush: (ops, policy) =>
-        this.dispatch({
+        this.#dispatch({
           ops,
           policy: { source: 'editor', ...policy },
         }),
@@ -450,7 +455,7 @@ export class TransactionPipeline {
   }
 
   /** Runs the transaction pipeline and updates editor context. */
-  dispatch(transaction: Transaction): void {
+  #dispatch(transaction: Transaction): void {
     const { context } = this.#run(transaction)
 
     this.#context = context
@@ -459,22 +464,24 @@ export class TransactionPipeline {
   }
 
   /** Enqueues or immediately dispatches operations depending on batch state. */
-  commit(ops: Operation[], policy?: TransactionPolicy): void {
+  #commit(ops: Operation[], policy?: TransactionPolicy): void {
     if (this.#batch.active) {
       this.#batch.enqueue(ops, policy)
       return
     }
 
-    this.dispatch({
+    this.#dispatch({
       ops,
       policy: { source: 'editor', ...policy },
     })
   }
 
+  // ─── Batching ─────────────────────────────────────────────────────
+
   /**
    * Groups multiple mutations into one transaction and one history entry.
    * @param fn - Callback that enqueues ops via API methods or `#batch.enqueue`.
-   * @param meta - Optional transaction metadata merged into the batch commit.
+   * @param policy - Optional transaction policy merged into the batch commit.
    * @param options - Optional per-scope batch settings (e.g. `maxSize: Infinity` for paste).
    */
   batch(
@@ -485,10 +492,7 @@ export class TransactionPipeline {
     this.#batch.run(fn, { maxSize: options?.maxSize, policy })
   }
 
-  /**
-   * Commits pending batch ops immediately without exiting batch scope.
-   * @param meta - Optional metadata merged into the flush transaction.
-   */
+  /** Commits pending batch ops immediately without exiting batch scope. */
   flushBatch(policy?: TransactionPolicy): void {
     this.#batch.flush(policy)
   }
@@ -496,5 +500,34 @@ export class TransactionPipeline {
   /** Drops pending batch ops without applying them. */
   discardBatch(): void {
     this.#batch.discard()
+  }
+
+  // ─── Block mutations ──────────────────────────────────────────────
+
+  /** Inserts a block at the given document position.  */
+  insertBlock(
+    blockWithOutPosKey: BlockWithoutPosKey,
+    pos: InsertBlockOpPosition,
+    policy?: TransactionPolicy,
+  ): void {
+    this.#commit(
+      [
+        {
+          __type: 'insert_block',
+          afterBlockId: resolveInsertAfterBlockIdInDocument(
+            this.#context.state,
+            pos,
+          ),
+          block: {
+            ...blockWithOutPosKey,
+            posKey: computeInsertBlockPosKeyInDocument(
+              this.#context.state,
+              pos,
+            ),
+          },
+        },
+      ],
+      policy,
+    )
   }
 }

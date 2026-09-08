@@ -36,6 +36,36 @@ export interface InsertBlockOp {
 }
 
 /**
+ * Describes where a new block should be inserted
+ * relative to existing blocks. */
+export type InsertBlockOpPosition = Relax<
+  | {
+      /** Insert at document start. */
+      type: 'start'
+    }
+  | {
+      /** Insert at document end. */
+      type: 'end'
+    }
+  | {
+      /** Insert immediately after an existing block. */
+      type: 'after'
+      blockId: BlockId
+    }
+  | {
+      /** Insert immediately before an existing block. */
+      type: 'before'
+      blockId: BlockId
+    }
+  | {
+      /** Insert strictly between two existing blocks. */
+      type: 'between'
+      afterBlockId: BlockId
+      beforeBlockId: BlockId
+    }
+>
+
+/**
  * Operation to delete a block at the given
  * position (fractional index).
  */

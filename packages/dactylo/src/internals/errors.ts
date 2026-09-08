@@ -18,6 +18,8 @@ export type DactyloErrorCode =
   | 'VALIDATE_TRANSACTION_OPERATION'
   /** Failed to apply a transaction operation */
   | 'APPLY_TRANSACTION_OPERATION'
+  /** Failed to resolve a block in the document */
+  | 'UNKNOWN_BLOCK_IN_DOCUMENT'
 
 /**
  * Typed error for Dactylo operations.

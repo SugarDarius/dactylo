@@ -85,6 +85,12 @@ export interface DividerBlock extends IBlock {
 
 /** Discriminated union of all existing blocks in Dactylo. */
 export type Block = Relax<HeadingBlock | ParagraphBlock | DividerBlock>
+/** Discriminated union of all existing blocks without `posKey` in Dactylo. */
+export type BlockWithoutPosKey = Relax<
+  | Omit<HeadingBlock, 'posKey'>
+  | Omit<ParagraphBlock, 'posKey'>
+  | Omit<DividerBlock, 'posKey'>
+>
 
 /** Generates a 24 characters long unique block ID */
 export function generateBlockId(): BlockId {
