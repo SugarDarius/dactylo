@@ -8,7 +8,7 @@ allowBuilds:
 autoInstallPeers: true
 catalog:
   '@types/node': ^26.4.1
-  happy-dom: ^20.11.6
+  happy-dom: ^20.14.0
   oxfmt: ^0.65.0
   oxlint: ^1.80.0
   syncpack: ^15.3.3
