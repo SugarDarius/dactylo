@@ -1,11 +1,8 @@
 import { sortBlockOrder } from './blocks'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
 import { insertBlockIntoDocument } from './document'
-import {
-  withDocumentState,
-  withPlaceholderFlag,
-  type EditorContext,
-} from './editor-context'
+import { withDocumentState, withPlaceholderFlag } from './editor-context'
+import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import type { Operation } from './operations'
 
@@ -255,8 +252,8 @@ export function validateOps(
         if (context.state.blocks.has(op.block.id)) {
           throw DactyloError.from({
             code: 'VALIDATE_TRANSACTION_OPERATION',
-            message: `Block ${op.block.id} already exists`,
             hint: 'TransactionPipeline/#validateOps',
+            message: `Block ${op.block.id} already exists`,
             payload: { op },
           })
         }
@@ -265,8 +262,8 @@ export function validateOps(
       default: {
         throw DactyloError.from({
           code: 'VALIDATE_TRANSACTION_OPERATION',
-          message: `Unknown operation: ${op.__type}`,
           hint: 'TransactionPipeline/#validateOps',
+          message: `Unknown operation: ${op.__type}`,
           payload: { op },
         })
       }
@@ -288,8 +285,8 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
     default: {
       throw DactyloError.from({
         code: 'APPLY_TRANSACTION_OPERATION',
-        message: `Unknown operation: ${op.__type}`,
         hint: 'TransactionPipeline/#applyOp',
+        message: `Unknown operation: ${op.__type}`,
         payload: { op },
       })
     }
@@ -307,8 +304,9 @@ export function invertOp(op: Operation): Operation {
         snapshot: op.block,
       }
     }
-    default:
+    default: {
       throw new Error(`Cannot invert operation: ${op.__type}`)
+    }
   }
 }
 
@@ -405,7 +403,7 @@ export class TransactionPipeline {
       maxSize: options.batchMaxSize,
       onFlush: (ops, policy) =>
         this.dispatch({
-          ops: ops,
+          ops,
           policy: { source: 'editor', ...policy },
         }),
     })
@@ -434,7 +432,7 @@ export class TransactionPipeline {
     const { ops } = transaction
 
     if (ops.length === 0) {
-      return { context: this.#context, transaction, inverseOps: [] }
+      return { context: this.#context, inverseOps: [], transaction }
     }
 
     try {
@@ -448,7 +446,7 @@ export class TransactionPipeline {
 
     // @todo: add commit-time side-effects (history, hooks)
 
-    return { context: next, transaction, inverseOps }
+    return { context: next, inverseOps, transaction }
   }
 
   /** Runs the transaction pipeline and updates internal context. */
@@ -464,8 +462,8 @@ export class TransactionPipeline {
     }
 
     this.dispatch({
-      policy: { source: 'editor', ...policy },
       ops,
+      policy: { source: 'editor', ...policy },
     })
   }
 }

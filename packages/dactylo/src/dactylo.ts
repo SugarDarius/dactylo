@@ -1,14 +1,7 @@
 import { DEFAULT_PLACEHOLDER } from './internals/constants'
-import {
-  createInitialEditorContext,
-  type EditorContext,
-} from './internals/editor-context'
-import type { Operation } from './internals/operations'
-import {
-  TransactionPipeline,
-  type Transaction,
-  type TransactionPolicy,
-} from './internals/transaction'
+import { createInitialEditorContext } from './internals/editor-context'
+import type { EditorContext } from './internals/editor-context'
+import { TransactionPipeline } from './internals/transaction'
 
 /** Options for constructing a {@link Dactylo} instance. */
 export interface DactyloOptions {
@@ -65,6 +58,7 @@ export class Dactylo {
   constructor(options: DactyloOptions) {
     this.placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
     this.#transactionPipeline = new TransactionPipeline({
+      batchMaxSize: options.config?.pipeline?.batchMaxSize,
       /**
        * Initialize the editor context
        * If no initial content is provided, it creates an empty document
@@ -79,7 +73,6 @@ export class Dactylo {
        *  - from markdown string
        */
       context: createInitialEditorContext(this.placeholder),
-      batchMaxSize: options.config?.pipeline?.batchMaxSize,
     })
   }
 
