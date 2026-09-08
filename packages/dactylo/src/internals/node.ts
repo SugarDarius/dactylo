@@ -1,3 +1,7 @@
+import { nanoid } from 'nanoid'
+
+import type { Brand, Relax, Metadata } from './types'
+
 /**
  * Catalog of all nodes supported by Dactylo.
  *
@@ -7,9 +11,6 @@
  * By design, this content tree is kept lightweight as an inline sequence
  * with coalesced text nodes to give better mutation performances while staying memory-conscious.
  */
-import { nanoid } from 'nanoid'
-
-import type { Brand, Relax, Metadata } from './types'
 
 /** Available marks decorating a text node. */
 export interface Marks {

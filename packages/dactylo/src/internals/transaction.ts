@@ -395,6 +395,9 @@ export interface TransactionPipelineOptions {
  * | `TransactionPolicy` | No            | Optional (debug logs) | Commit-time policy               |
  * | `Transaction`       | No            | Yes                   | Unit dispatched through pipeline |
  * | `EditorContext`     | No            | `doc` only via export | Full editing snapshot            |
+ *
+ * The transaction pipeline never asks "what changed in the doc?" alone. It asks "What is the next complete editing snapshot?".
+ * That answer is always an {@link EditorContext}.
  */
 export class TransactionPipeline {
   /** The batch to use for the transaction pipeline */
@@ -535,6 +538,7 @@ export class TransactionPipeline {
     }
 
     const idx = this.#context.state.blockOrderById.indexOf(blockId)
+
     let afterBlockId: BlockId | null = null
     if (idx > 0) {
       afterBlockId = this.#context.state.blockOrderById[idx - 1] ?? null

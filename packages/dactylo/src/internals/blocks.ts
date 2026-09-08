@@ -1,3 +1,11 @@
+import { nanoid } from 'nanoid'
+
+import { createPlaceholderTextNode } from './node'
+import type { InlineNode } from './node'
+import { makeInitialPosition } from './position'
+import type { PosKey } from './position'
+import type { Brand, Relax, Metadata } from './types'
+
 /**
  * Catalog of all blocks supported by Dactylo.
  *
@@ -6,13 +14,6 @@
  * Text is stored in text nodes: structural inline elements (soft line breaks, inline code spans, ...)
  * that are typed inline nodes.
  */
-import { nanoid } from 'nanoid'
-
-import { createPlaceholderTextNode } from './node'
-import type { InlineNode } from './node'
-import { makeInitialPosition } from './position'
-import type { PosKey } from './position'
-import type { Brand, Relax, Metadata } from './types'
 
 /**
  * Brand type for block unique IDs.
@@ -85,6 +86,7 @@ export interface DividerBlock extends IBlock {
 
 /** Discriminated union of all existing blocks in Dactylo. */
 export type Block = Relax<HeadingBlock | ParagraphBlock | DividerBlock>
+
 /** Discriminated union of all existing blocks without `posKey` in Dactylo. */
 export type BlockWithoutPosKey = Relax<
   | Omit<HeadingBlock, 'posKey'>
