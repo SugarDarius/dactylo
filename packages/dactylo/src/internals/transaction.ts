@@ -454,6 +454,8 @@ export class TransactionPipeline {
     const { context } = this.#run(transaction)
 
     this.#context = context
+
+    // @todo: add notification to subscribers
   }
 
   /** Enqueues or immediately dispatches operations depending on batch state. */
@@ -467,5 +469,32 @@ export class TransactionPipeline {
       ops,
       policy: { source: 'editor', ...policy },
     })
+  }
+
+  /**
+   * Groups multiple mutations into one transaction and one history entry.
+   * @param fn - Callback that enqueues ops via API methods or `#batch.enqueue`.
+   * @param meta - Optional transaction metadata merged into the batch commit.
+   * @param options - Optional per-scope batch settings (e.g. `maxSize: Infinity` for paste).
+   */
+  batch(
+    fn: () => void,
+    policy?: TransactionPolicy,
+    options?: { maxSize?: number },
+  ): void {
+    this.#batch.run(fn, { maxSize: options?.maxSize, policy })
+  }
+
+  /**
+   * Commits pending batch ops immediately without exiting batch scope.
+   * @param meta - Optional metadata merged into the flush transaction.
+   */
+  flushBatch(policy?: TransactionPolicy): void {
+    this.#batch.flush(policy)
+  }
+
+  /** Drops pending batch ops without applying them. */
+  discardBatch(): void {
+    this.#batch.discard()
   }
 }
