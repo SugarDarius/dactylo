@@ -124,6 +124,22 @@ export function createInitialPlaceholderBlock(text: string): ParagraphBlock {
   })
 }
 
+/** Whether the block is the placeholder empty paragraph shown in an empty editor. */
+export function isPlaceholderBlock(block: Block): boolean {
+  if (block.__type !== 'paragraph') {
+    return false
+  }
+
+  if (block.content.length !== 1) {
+    return false
+  }
+
+  const [firstNode] = block.content
+  return (
+    firstNode?.__type === 'text' && firstNode.metadata.isPlaceholder === true
+  )
+}
+
 /** Rebuilds block order from a blocks map (after posKey changes). */
 export function sortBlockOrder(blocks: ReadonlyMap<BlockId, Block>): BlockId[] {
   return [...blocks.values()]
