@@ -30,8 +30,8 @@ describe('Batch', () => {
 
     const op1 = createInsertBlockOperation({ block: block1 })
     const op2 = createInsertBlockOperation({
-      block: block2,
       afterBlockId: block1.id,
+      block: block2,
     })
 
     batch.run(() => {
@@ -48,7 +48,7 @@ describe('Batch', () => {
 
   test('auto-flushes when `maxSize` exceeded', () => {
     const flush = vi.fn()
-    const batch = new Batch({ onFlush: flush, maxSize: 2 })
+    const batch = new Batch({ maxSize: 2, onFlush: flush })
 
     const block1 = createEmptyParagraphBlock({ id: 'bl_0001' as BlockId })
     const block2 = createEmptyParagraphBlock({ id: 'bl_0002' as BlockId })
@@ -56,12 +56,12 @@ describe('Batch', () => {
 
     const op1 = createInsertBlockOperation({ block: block1 })
     const op2 = createInsertBlockOperation({
-      block: block2,
       afterBlockId: block1.id,
+      block: block2,
     })
     const op3 = createInsertBlockOperation({
-      block: block3,
       afterBlockId: block2.id,
+      block: block3,
     })
 
     batch.enqueue([op1, op2, op3])
@@ -93,8 +93,8 @@ describe('Batch', () => {
 
     const op1 = createInsertBlockOperation({ block: block1 })
     const op2 = createInsertBlockOperation({
-      block: block2,
       afterBlockId: block1.id,
+      block: block2,
     })
 
     batch.run(() => {

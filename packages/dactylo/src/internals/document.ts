@@ -89,11 +89,11 @@ export function insertBlockIntoDocument(
   state: DocumentState,
   block: Block,
 ): DocumentState {
-  const blocks = new Map(state.blocks)
-  blocks.set(block.id, block)
+  const blocks = new Map([...state.blocks, [block.id, block]])
+
   return {
     ...state,
-    blocks,
     blockOrderById: [...state.blockOrderById, block.id],
+    blocks,
   }
 }

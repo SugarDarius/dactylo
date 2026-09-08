@@ -121,6 +121,8 @@ export function createInitialPlaceholderBlock(text: string): ParagraphBlock {
 /** Rebuilds block order from a blocks map (after posKey changes). */
 export function sortBlockOrder(blocks: ReadonlyMap<BlockId, Block>): BlockId[] {
   return [...blocks.values()]
-    .sort((a, b) => (a.posKey < b.posKey ? -1 : a.posKey > b.posKey ? 1 : 0))
+    .toSorted((a, b) =>
+      a.posKey < b.posKey ? -1 : a.posKey > b.posKey ? 1 : 0,
+    )
     .map((b) => b.id)
 }

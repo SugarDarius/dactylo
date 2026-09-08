@@ -1,4 +1,5 @@
-import { createInitialEmptyDocumentState, type DocumentState } from './document'
+import { createInitialEmptyDocumentState } from './document'
+import type { DocumentState } from './document'
 
 /**
  * `EditorContext` answers the question: what is the full editing context right now?
