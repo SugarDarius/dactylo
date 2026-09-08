@@ -476,32 +476,6 @@ export class TransactionPipeline {
     })
   }
 
-  // ─── Batching ─────────────────────────────────────────────────────
-
-  /**
-   * Groups multiple mutations into one transaction and one history entry.
-   * @param fn - Callback that enqueues ops via API methods or `#batch.enqueue`.
-   * @param policy - Optional transaction policy merged into the batch commit.
-   * @param options - Optional per-scope batch settings (e.g. `maxSize: Infinity` for paste).
-   */
-  batch(
-    fn: () => void,
-    policy?: TransactionPolicy,
-    options?: { maxSize?: number },
-  ): void {
-    this.#batch.run(fn, { maxSize: options?.maxSize, policy })
-  }
-
-  /** Commits pending batch ops immediately without exiting batch scope. */
-  flushBatch(policy?: TransactionPolicy): void {
-    this.#batch.flush(policy)
-  }
-
-  /** Drops pending batch ops without applying them. */
-  discardBatch(): void {
-    this.#batch.discard()
-  }
-
   // ─── Block mutations ──────────────────────────────────────────────
 
   /** Inserts a block at the given document position.  */
