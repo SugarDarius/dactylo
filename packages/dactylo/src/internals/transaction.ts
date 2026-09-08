@@ -449,9 +449,11 @@ export class TransactionPipeline {
     return { context: next, inverseOps, transaction }
   }
 
-  /** Runs the transaction pipeline and updates internal context. */
+  /** Runs the transaction pipeline and updates editor context. */
   dispatch(transaction: Transaction): void {
-    this.#run(transaction)
+    const { context } = this.#run(transaction)
+
+    this.#context = context
   }
 
   /** Enqueues or immediately dispatches operations depending on batch state. */
