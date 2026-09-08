@@ -77,7 +77,7 @@ export class Dactylo {
   }
 
   /** Returns the current editor context snapshot from the transaction pipeline. */
-  getContextSnapshot(): EditorContext {
+  getEditorContextSnapshot(): EditorContext {
     return { ...this.#transactionPipeline.context }
   }
 }
