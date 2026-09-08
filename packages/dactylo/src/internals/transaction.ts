@@ -1,5 +1,5 @@
 import { sortBlockOrder } from './blocks'
-import type { BlockWithoutPosKey } from './blocks'
+import type { BlockId, BlockWithoutPosKey } from './blocks'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
 import {
   computeInsertBlockPosKeyInDocument,
@@ -501,6 +501,29 @@ export class TransactionPipeline {
           },
         },
       ],
+      policy,
+    )
+  }
+
+  /** Removes a block by ID. */
+  deleteBlock(blockId: BlockId, policy?: TransactionPolicy): void {
+    const block = this.#context.state.blocks.get(blockId)
+    if (!block) {
+      throw DactyloError.from({
+        code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
+        hint: 'TransactionPipeline/#deleteBlock',
+        message: `Block ${blockId} not found in document`,
+      })
+    }
+
+    const idx = this.#context.state.blockOrderById.indexOf(blockId)
+    let afterBlockId: BlockId | null = null
+    if (idx > 0) {
+      afterBlockId = this.#context.state.blockOrderById[idx - 1] ?? null
+    }
+
+    this.#commit(
+      [{ __type: 'delete_block', afterBlockId, blockId, snapshot: block }],
       policy,
     )
   }
