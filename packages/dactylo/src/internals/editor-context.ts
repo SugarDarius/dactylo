@@ -40,6 +40,9 @@ export interface EditorContext {
   readonly isPlaceholder: boolean
 }
 
+/** Callback invoked after each editor context update with the latest context. */
+export type EditorContextListener = (context: EditorContext) => void
+
 /** Creates the initial context for an empty editor with a placeholder */
 export function createInitialEditorContext(placeholder: string): EditorContext {
   return {

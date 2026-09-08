@@ -1,7 +1,11 @@
 import { DEFAULT_PLACEHOLDER } from './internals/constants'
 import { createInitialEditorContext } from './internals/editor-context'
-import type { EditorContext } from './internals/editor-context'
+import type {
+  EditorContext,
+  EditorContextListener,
+} from './internals/editor-context'
 import { TransactionPipeline } from './internals/transaction'
+import type { Unsubscriber } from './internals/types'
 
 /** Options for constructing a {@link Dactylo} instance. */
 export interface DactyloOptions {
@@ -76,8 +80,31 @@ export class Dactylo {
     })
   }
 
-  /** Returns the current editor context snapshot from the transaction pipeline. */
+  /**
+   * Returns the current editor context snapshot from the transaction pipeline.
+   *
+   * @example
+   * ```tsx
+   * const context = editor.getEditorContextSnapshot()
+   * console.log(context.state.blocks)
+   * ```
+   */
   getEditorContextSnapshot(): EditorContext {
     return { ...this.#transactionPipeline.context }
+  }
+
+  /**
+   * Subscribes to the editor context and invokes the listener after each context update.
+   * Returns a function to unsubscribe from the listener.
+   *
+   * @example
+   * ```tsx
+   * editor.subscribe((context) => {
+   *  render(context.state.blocks)
+   * })
+   * ```
+   */
+  subscribe(listener: EditorContextListener): Unsubscriber {
+    return this.#transactionPipeline.addSubscriber(listener)
   }
 }

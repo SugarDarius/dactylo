@@ -7,9 +7,10 @@ import {
   resolveInsertAfterBlockIdInDocument,
 } from './document'
 import { withDocumentState, withPlaceholderFlag } from './editor-context'
-import type { EditorContext } from './editor-context'
+import type { EditorContext, EditorContextListener } from './editor-context'
 import { DactyloError } from './errors'
 import type { Operation, InsertBlockOpPosition } from './operations'
+import type { Unsubscriber } from './types'
 
 /**
  * The policy layer as metadata about a {@link Transaction} not about individual operations.
@@ -402,6 +403,9 @@ export class TransactionPipeline {
   /** Current editor context */
   #context: EditorContext
 
+  /** Subscribers notified after each committed transaction. */
+  #listeners = new Set<EditorContextListener>()
+
   constructor(options: TransactionPipelineOptions) {
     this.#context = options.context
     this.#batch = new Batch({
@@ -454,13 +458,19 @@ export class TransactionPipeline {
     return { context: next, inverseOps, transaction }
   }
 
+  /** Notifies all subscribers with the latest context. */
+  #notify(): void {
+    for (const listener of this.#listeners) {
+      listener(this.#context)
+    }
+  }
+
   /** Runs the transaction pipeline and updates editor context. */
   #dispatch(transaction: Transaction): void {
     const { context } = this.#run(transaction)
 
     this.#context = context
-
-    // @todo: add notification to subscribers
+    this.#notify()
   }
 
   /** Enqueues or immediately dispatches operations depending on batch state. */
@@ -474,6 +484,14 @@ export class TransactionPipeline {
       ops,
       policy: { source: 'editor', ...policy },
     })
+  }
+
+  // ─── Listeners ──────────────────────────────────────────────────────
+
+  /** Subscribes to the transaction pipeline and invokes the listener after each committed transaction. */
+  addSubscriber(listener: EditorContextListener): Unsubscriber {
+    this.#listeners.add(listener)
+    return () => this.#listeners.delete(listener)
   }
 
   // ─── Block mutations ──────────────────────────────────────────────
