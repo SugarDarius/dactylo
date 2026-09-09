@@ -121,7 +121,18 @@ export interface DeleteTextOp {
   }
 }
 
+/** Updates active typing marks without mutating document content. */
+export interface SetActiveMarksOp {
+  readonly __type: 'set_active_marks'
+
+  /** Active marks before the change (for invert). */
+  readonly prevActiveMarks: Marks
+
+  /** Active marks after the change. */
+  readonly activeMarks: Marks
+}
+
 /** Discriminated union of all operations supported by Dactylo. */
 export type Operation = Relax<
-  InsertBlockOp | DeleteBlockOp | InsertTextOp | DeleteTextOp
+  InsertBlockOp | DeleteBlockOp | InsertTextOp | DeleteTextOp | SetActiveMarksOp
 >

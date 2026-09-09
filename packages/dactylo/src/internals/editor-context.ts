@@ -182,3 +182,14 @@ export function withDocumentState(
     state,
   }
 }
+
+/** Returns a copy of the context with updated active marks. */
+export function withActiveMarks(
+  context: EditorContext,
+  activeMarks: Marks,
+): EditorContext {
+  return {
+    ...context,
+    activeMarks,
+  }
+}

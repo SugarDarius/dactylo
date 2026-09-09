@@ -6,10 +6,15 @@ import {
   insertBlockIntoDocument,
   resolveInsertAfterBlockIdInDocument,
 } from './document'
-import { withDocumentState, withPlaceholderFlag } from './editor-context'
+import {
+  withActiveMarks,
+  withDocumentState,
+  withPlaceholderFlag,
+} from './editor-context'
 import type { EditorContext, EditorContextListener } from './editor-context'
 import { DactyloError } from './errors'
 import { HistoryStack } from './history'
+import type { Marks } from './marks'
 import type { Operation, InsertBlockOpPosition } from './operations'
 import type { Unsubscriber } from './types'
 
@@ -289,10 +294,13 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
       state = { ...state, blockOrderById: sortBlockOrder(state.blocks) }
       return withPlaceholderFlag(withDocumentState(context, state), false)
     }
+    case 'set_active_marks': {
+      return withActiveMarks(context, op.activeMarks)
+    }
     default: {
       throw DactyloError.from({
         code: 'APPLY_TRANSACTION_OPERATION',
-        hint: 'TransactionPipeline/#applyOp',
+        hint: 'TransactionPipeline/#applyOps',
         message: `Unknown operation: ${op.__type}`,
         payload: { op },
       })
@@ -311,8 +319,20 @@ export function invertOp(op: Operation): Operation {
         snapshot: op.block,
       }
     }
+    case 'set_active_marks': {
+      return {
+        __type: 'set_active_marks',
+        activeMarks: op.prevActiveMarks,
+        prevActiveMarks: op.activeMarks,
+      }
+    }
     default: {
-      throw new Error(`Cannot invert operation: ${op.__type}`)
+      throw DactyloError.from({
+        code: 'APPLY_TRANSACTION_OPERATION',
+        hint: 'TransactionPipeline/#invertOp',
+        message: `Unknown operation: ${op.__type}`,
+        payload: { op },
+      })
     }
   }
 }
@@ -478,7 +498,8 @@ export class TransactionPipeline {
     if (!skipHistoryPush(transaction.policy)) {
       this.#history.push(
         { inverseOps, ops: [...ops] },
-        transaction.policy?.source === 'user',
+        transaction.policy?.coalesce === true &&
+          transaction.policy?.source === 'user',
       )
     }
 
@@ -513,7 +534,7 @@ export class TransactionPipeline {
     })
   }
 
-  // ─── Listeners ──────────────────────────────────────────────────────
+  // ─── Listeners ───────────────────────────────────────────────────-
 
   /** Subscribes to the transaction pipeline and invokes the listener after each committed transaction. */
   addSubscriber(listener: EditorContextListener): Unsubscriber {
@@ -555,6 +576,26 @@ export class TransactionPipeline {
       ops: [...entry.ops],
       policy: { label: 'redo', pushToHistory: false, source: 'redo' },
     })
+  }
+
+  // ─── Marks ──────────────────────────────────────────────────────--
+
+  /** Updates active typing marks without mutating document content. */
+  setActiveMarks(activeMarks: Marks, policy?: TransactionPolicy): void {
+    this.#commit(
+      [
+        {
+          __type: 'set_active_marks',
+          activeMarks,
+          prevActiveMarks: this.#context.activeMarks,
+        },
+      ],
+      {
+        ...policy,
+        label: 'set_active_marks',
+        pushToHistory: false,
+      },
+    )
   }
 
   // ─── Block mutations ──────────────────────────────────────────────
