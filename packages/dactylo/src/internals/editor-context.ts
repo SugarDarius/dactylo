@@ -1,5 +1,7 @@
 import { createInitialEmptyDocumentState } from './document'
 import type { DocumentState } from './document'
+import { createInitialActiveMarks } from './marks'
+import type { Marks } from './marks'
 import type { Selection } from './selection'
 
 /**
@@ -13,7 +15,8 @@ import type { Selection } from './selection'
  * │                        EditorContext                               │
  * |  ┌─────────────────────---┐  ┌──────────────────────────────────┐  │
  * |  │  state: DocumentState  │  │ selection: Selection | null      │  │
- * |  │  (the written content) │  │ (where the user is editing)      │  │
+ * |  |  activeMarks: Marks    |  | (where the user is editing)      |  |
+ * |  │  (the written content) │  │                                  │  │
  * |  └─────────────────────---┘  └──────────────────────────────────┘  │
  * |  ┌─────────────────────────────────────────────────────────────-┐  │
  * |  │    isPlaceholder: boolean (ephemeral empty-doc semantics)    │  │
@@ -21,7 +24,7 @@ import type { Selection } from './selection'
  * └─────────────────────────────────────────────────────────────────---┘
  *         │                              │
  *         ▼                              ▼
- *  toMarkdown(), exports          caret render, handleKeyDown(),
+ *  toMarkdown(), exports          caret render, keydown handlers(),
  *  AI reads blocks                copy/paste, onSelectionChanged
  *
  * Why {@link Selection} is a first-class field (not external)?
@@ -43,7 +46,26 @@ import type { Selection } from './selection'
  * Keyboard handlers check this first before handling key events.
  * Without an explicit `null`, we would need a sentinel cursor or risk applying edits to a stale position.
  *
- * Why `isPlaceholder` lives in {@link EditorContext}?
+ * Why `activeMarks: Marks` lives in {@link EditorContext}?
+ *
+ * Active marks are note a second copy of document marks. It holds pending format for the next keystroke
+ * when the caret is collapsed and nothing has been inserted yet:
+ *
+ * | Concern                   | `TextNode.marks`                        | `EditorContext.activeMarks`                        |
+ * |---------------------------|-----------------------------------------|----------------------------------------------------|
+ * | Scope                     | Characters already in the document      | Next `insert_text` from the keyboard               |
+ * | In `DocumentState`        | Yes                                     | No                                                 |
+ * | Exported in JSON/Markdown | Yes (on text nodes only)                | No                                                 |
+ * | Undo/redo                 | Via `set_marks` / `insert_text` history | Intentionally no history: `pushToHistory` is false |
+ *
+ * It lives on {@link EditorContext} (alongside `selection`) so the pipeline and subscribers expose one snapshot (caret position,
+ * placeholder flag, document can current typing mode for the toolbar) without mixing pending typing mode
+ * into {@link DocumentState} before any characters are written.
+ *
+ * Do not think marks are "not document content". Only the pre-keystroke typing button is excluded from export;
+ * applied marks first-class document content.
+ *
+ * Why `isPlaceholder: boolean` lives in {@link EditorContext}?
  *
  * The placeholder is a **UX state**, not document content. When the user sees "Write something...",
  * the document technically contains one paragraph with placeholder metadata - but the user
@@ -102,6 +124,15 @@ export interface EditorContext {
   readonly state: DocumentState
 
   /**
+   * Marks for the next keyboard `insert_text` when the caret is collapsed.
+   * Pending typing mode only — applied marks live on {@link TextNode}
+   * in {@link DocumentState} and are exported via JSON / Markdown.
+   *
+   * 👉🏻 What is the current typing mode
+   */
+  readonly activeMarks: Marks
+
+  /**
    * Active cursor, range, or block selection; `null` when unfocused.
    * Commits together with document changes so undo/redo restores both.
    *
@@ -123,6 +154,7 @@ export type EditorContextListener = (context: EditorContext) => void
 /** Creates the initial context for an empty editor with a placeholder */
 export function createInitialEditorContext(placeholder: string): EditorContext {
   return {
+    activeMarks: createInitialActiveMarks(),
     isPlaceholder: true,
     selection: null,
     state: createInitialEmptyDocumentState(placeholder),
