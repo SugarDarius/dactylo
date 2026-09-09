@@ -75,13 +75,13 @@ export interface DactyloOptions {
  */
 export class Dactylo {
   /** Placeholder text for the editor when no content is written. */
-  readonly placeholder: string
+  readonly #placeholder: string
 
   /** Transaction pipeline to use for the editor */
   readonly #transactionPipeline: TransactionPipeline
 
   constructor(options: DactyloOptions) {
-    this.placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
+    this.#placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
     this.#transactionPipeline = new TransactionPipeline({
       batchMaxSize: options.config?.pipeline?.batchMaxSize,
       /**
@@ -97,7 +97,7 @@ export class Dactylo {
        *  - from JSON
        *  - from markdown string
        */
-      context: createInitialEditorContext(this.placeholder),
+      context: createInitialEditorContext(this.#placeholder),
       historyMaxDepth: options.config?.pipeline?.historyMaxDepth,
     })
   }
