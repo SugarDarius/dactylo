@@ -250,6 +250,16 @@ export class Batch {
   }
 }
 
+/** Throws a validation {@link DactyloError} for a failed op check. */
+export function validationError(message: string, op: Operation): never {
+  throw DactyloError.from({
+    code: 'VALIDATE_TRANSACTION_OPERATION',
+    hint: 'TransactionPipeline/#validateOps',
+    message,
+    payload: { op },
+  })
+}
+
 /**
  * Validate a batch of operations against current state.
  * Throws on failure.
@@ -262,25 +272,35 @@ export function validateOps(
     switch (op.__type) {
       case 'insert_block': {
         if (context.state.blocks.has(op.block.id)) {
-          throw DactyloError.from({
-            code: 'VALIDATE_TRANSACTION_OPERATION',
-            hint: 'TransactionPipeline/#validateOps',
-            message: `Block ${op.block.id} already exists`,
-            payload: { op },
-          })
+          validationError(`Block ${op.block.id} already exists in document`, op)
+        }
+
+        if (
+          op.afterBlockId !== null &&
+          !context.state.blocks.has(op.afterBlockId)
+        ) {
+          validationError(`Unknown block: ${op.afterBlockId}`, op)
         }
         break
       }
+      case 'set_active_marks': {
+        break
+      }
       default: {
-        throw DactyloError.from({
-          code: 'VALIDATE_TRANSACTION_OPERATION',
-          hint: 'TransactionPipeline/#validateOps',
-          message: `Unknown operation: ${op.__type}`,
-          payload: { op },
-        })
+        validationError(`Unknown operation: ${op.__type}`, op)
       }
     }
   }
+}
+
+/** Throws an apply {@link DactyloError} for a failed op check. */
+export function applyError(message: string, op: Operation): never {
+  throw DactyloError.from({
+    code: 'APPLY_TRANSACTION_OPERATION',
+    hint: 'TransactionPipeline/#applyOps',
+    message,
+    payload: { op },
+  })
 }
 
 /**
@@ -298,14 +318,18 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
       return withActiveMarks(context, op.activeMarks)
     }
     default: {
-      throw DactyloError.from({
-        code: 'APPLY_TRANSACTION_OPERATION',
-        hint: 'TransactionPipeline/#applyOps',
-        message: `Unknown operation: ${op.__type}`,
-        payload: { op },
-      })
+      applyError(`Unknown operation: ${op.__type}`, op)
     }
   }
+}
+
+export function invertError(message: string, op: Operation): never {
+  throw DactyloError.from({
+    code: 'INVERT_TRANSACTION_OPERATION',
+    hint: 'TransactionPipeline/#invertOp',
+    message,
+    payload: { op },
+  })
 }
 
 /** Returns the inverse operation for undo. */
@@ -327,12 +351,7 @@ export function invertOp(op: Operation): Operation {
       }
     }
     default: {
-      throw DactyloError.from({
-        code: 'APPLY_TRANSACTION_OPERATION',
-        hint: 'TransactionPipeline/#invertOp',
-        message: `Unknown operation: ${op.__type}`,
-        payload: { op },
-      })
+      invertError(`Unknown operation: ${op.__type}`, op)
     }
   }
 }
