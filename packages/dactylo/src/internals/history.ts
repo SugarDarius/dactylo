@@ -62,7 +62,7 @@ export class HistoryStack {
   /** Redo stack. */
   #redoStack: HistoryEntry[]
 
-  constructor(options: HistoryStackOptions) {
+  constructor(options: HistoryStackOptions = {}) {
     this.#maxDepth = options.maxDepth ?? DEFAULT_HISTORY_STACK_MAX_DEPTH
 
     this.#undoStack = []
@@ -132,7 +132,7 @@ export class HistoryStack {
   }
 
   /** Number of undo entries (oldest first). Read-only view for debugging. */
-  getUndoDepth(): number {
+  get undoDepth(): number {
     return this.#undoStack.length
   }
 
