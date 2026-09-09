@@ -127,11 +127,11 @@ export class Dactylo {
    *
    * @example
    * ```ts
-   * const context = editor.getEditorContextSnapshot()
+   * const context = editor.getContextSnapshot()
    * console.log(context.state.blocks)
    * ```
    */
-  getEditorContextSnapshot(): EditorContext {
+  getContextSnapshot(): EditorContext {
     return { ...this.#transactionPipeline.context }
   }
 

@@ -30,7 +30,7 @@ import type { Selection } from './selection'
  * - `insertText` reads the current selection with no extra parameter on every call from the UI.
  * - Undo/redo restores exactly where the user was (via `set_selection` in the op batch)
  * - Subscribers give UI libraries one context to derive both block list and caret from
- * - Tests assert on a single `getEditorContextSnapshot()` return value
+ * - Tests assert on a single `getContextSnapshot()` return value
  *
  * Why `selection: null` is meaningful?
  *
@@ -72,9 +72,9 @@ import type { Selection } from './selection'
  * TransactionPipeline.#run() → applyOps() → new EditorContext
  *        |
  *        ▼
- * Dactylo.getEditorContextSnapshot()   → next content
- * subscribe listeners (context)        → UI libraries re-renders blocks and caret
- * on selection changed hooks           → floating toolbar, etc.
+ * Dactylo.getContextSnapshot()     → next content
+ * subscribe listeners (context)    → UI libraries re-renders blocks and caret
+ * on selection changed hooks       → floating toolbar, etc.
  * ```
  *
  * The pattern is trying to be intentionally simple and predictable for UI libraries like React:
@@ -84,7 +84,7 @@ import type { Selection } from './selection'
  *
  * export function EditableDocument() {
  *   // 👉🏻 One object drives everything: the document, the selection, the placeholder flag.
- *   const context = useSyncExternalStore(editor.subscribe, editor.getEditorContextSnapshot)
+ *   const context = useSyncExternalStore((listener) => editor.subscribe(() => listener()), editor.getContextSnapshot)
  *
  *   return <>...</>
  * }
