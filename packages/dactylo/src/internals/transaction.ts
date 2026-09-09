@@ -9,6 +9,7 @@ import {
 import { withDocumentState, withPlaceholderFlag } from './editor-context'
 import type { EditorContext, EditorContextListener } from './editor-context'
 import { DactyloError } from './errors'
+import { HistoryStack } from './history'
 import type { Operation, InsertBlockOpPosition } from './operations'
 import type { Unsubscriber } from './types'
 
@@ -321,6 +322,14 @@ export function invertOps(ops: readonly Operation[]): Operation[] {
   return ops.toReversed().map(invertOp)
 }
 
+export function skipHistoryPush(policy?: TransactionPolicy): boolean {
+  return (
+    policy?.pushToHistory === false ||
+    policy?.source === 'undo' ||
+    policy?.source === 'redo'
+  )
+}
+
 /**
  * A bundle of operations with policy metadata about
  * how to commit them through the pipeline
@@ -349,8 +358,12 @@ export interface TransactionResult {
 export interface TransactionPipelineOptions {
   /** initial context to use for the pipeline */
   context: EditorContext
+
   /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
   batchMaxSize?: number
+
+  /** Max undo entries retained by {@link HistoryStack}. */
+  historyMaxDepth?: number
 }
 
 /**
@@ -406,6 +419,9 @@ export class TransactionPipeline {
   /** Current editor context */
   #context: EditorContext
 
+  /** The history stack to use for the transaction pipeline */
+  #history: HistoryStack
+
   /** Subscribers notified after each committed transaction. */
   #listeners = new Set<EditorContextListener>()
 
@@ -418,6 +434,9 @@ export class TransactionPipeline {
           ops,
           policy: { source: 'editor', ...policy },
         }),
+    })
+    this.#history = new HistoryStack({
+      maxDepth: options.historyMaxDepth,
     })
   }
 
@@ -456,7 +475,12 @@ export class TransactionPipeline {
     const next = this.#applyOps(ops)
     const inverseOps = invertOps(ops)
 
-    // @todo: add commit-time side-effects (history, hooks)
+    if (!skipHistoryPush(transaction.policy)) {
+      this.#history.push(
+        { inverseOps, ops: [...ops] },
+        transaction.policy?.source === 'user',
+      )
+    }
 
     return { context: next, inverseOps, transaction }
   }
@@ -495,6 +519,42 @@ export class TransactionPipeline {
   addSubscriber(listener: EditorContextListener): Unsubscriber {
     this.#listeners.add(listener)
     return () => this.#listeners.delete(listener)
+  }
+
+  // ─── History ──────────────────────────────────────────────────────
+
+  /** Whether at least one undo entry is available. */
+  canUndo(): boolean {
+    return this.#history.canUndo()
+  }
+
+  /** Whether at least one redo entry is available. */
+  canRedo(): boolean {
+    return this.#history.canRedo()
+  }
+
+  /** Applies the newest undo entry's inverse operations. */
+  undo(): void {
+    const entry = this.#history.popUndo()
+    if (!entry) {
+      return
+    }
+    this.#dispatch({
+      ops: [...entry.inverseOps],
+      policy: { label: 'undo', pushToHistory: false, source: 'undo' },
+    })
+  }
+
+  /** Re-applies the newest redo entry's forward operations. */
+  redo(): void {
+    const entry = this.#history.popRedo()
+    if (!entry) {
+      return
+    }
+    this.#dispatch({
+      ops: [...entry.ops],
+      policy: { label: 'redo', pushToHistory: false, source: 'redo' },
+    })
   }
 
   // ─── Block mutations ──────────────────────────────────────────────

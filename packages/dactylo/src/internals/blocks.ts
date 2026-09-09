@@ -1,11 +1,3 @@
-import { nanoid } from 'nanoid'
-
-import { createPlaceholderTextNode } from './node'
-import type { InlineNode } from './node'
-import { makeInitialPosition } from './position'
-import type { PosKey } from './position'
-import type { Brand, Relax, Metadata } from './types'
-
 /**
  * Catalog of all blocks supported by Dactylo.
  *
@@ -14,6 +6,14 @@ import type { Brand, Relax, Metadata } from './types'
  * Text is stored in text nodes: structural inline elements (soft line breaks, inline code spans, ...)
  * that are typed inline nodes.
  */
+
+import { nanoid } from 'nanoid'
+
+import { createPlaceholderTextNode } from './node'
+import type { InlineNode } from './node'
+import { makeInitialPosition } from './position'
+import type { PosKey } from './position'
+import type { Brand, Relax, Metadata } from './types'
 
 /**
  * Brand type for block unique IDs.

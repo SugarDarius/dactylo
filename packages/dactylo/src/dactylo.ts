@@ -7,19 +7,40 @@ import type {
 import { TransactionPipeline } from './internals/transaction'
 import type { Unsubscriber } from './internals/types'
 
+/** API to interact with the history of the editor. */
+export interface DactyloHistoryApi {
+  /** Whether at least one undo entry is available. */
+  readonly canUndo: () => boolean
+
+  /** Whether at least one redo entry is available. */
+  readonly canRedo: () => boolean
+
+  /** Applies the newest undo entry via the pipeline. */
+  readonly undo: () => void
+
+  /** Re-applies the newest redo entry via the pipeline. */
+  readonly redo: () => void
+}
+
+/** Config options to use for the internal components and delegates of the editor. */
+export interface DactyloConfig {
+  /** Configuration for the transaction pipeline */
+  pipeline?: {
+    /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
+    batchMaxSize?: number
+
+    /** Max undo entries retained. */
+    historyMaxDepth?: number
+  }
+}
+
 /** Options for constructing a {@link Dactylo} instance. */
 export interface DactyloOptions {
   /** Placeholder text for the editor when no content is written. */
   placeholder?: string
 
-  /** Config options to use for the internal components of the editor. */
-  config?: {
-    /** Configuration for the transaction pipeline */
-    pipeline?: {
-      /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
-      batchMaxSize?: number
-    }
-  }
+  /** Config options to use for the internal components and delegates of the editor. */
+  config?: DactyloConfig
 }
 
 /**
@@ -77,14 +98,35 @@ export class Dactylo {
        *  - from markdown string
        */
       context: createInitialEditorContext(this.placeholder),
+      historyMaxDepth: options.config?.pipeline?.historyMaxDepth,
     })
+  }
+
+  /**
+   * Returns the API to interact with the history of the editor.
+   *
+   * @example
+   * ```ts
+   * const canUndo = editor.history.canUndo()
+   * if (canUndo) {
+   *  editor.history.undo()
+   * }
+   * ```
+   */
+  get history(): DactyloHistoryApi {
+    return {
+      canRedo: () => this.#transactionPipeline.canRedo(),
+      canUndo: () => this.#transactionPipeline.canUndo(),
+      redo: () => this.#transactionPipeline.redo(),
+      undo: () => this.#transactionPipeline.undo(),
+    }
   }
 
   /**
    * Returns the current editor context snapshot from the transaction pipeline.
    *
    * @example
-   * ```tsx
+   * ```ts
    * const context = editor.getEditorContextSnapshot()
    * console.log(context.state.blocks)
    * ```
@@ -98,7 +140,7 @@ export class Dactylo {
    * Returns a function to unsubscribe from the listener.
    *
    * @example
-   * ```tsx
+   * ```ts
    * editor.subscribe((context) => {
    *  render(context.state.blocks)
    * })

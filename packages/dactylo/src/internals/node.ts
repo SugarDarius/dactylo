@@ -1,7 +1,3 @@
-import { nanoid } from 'nanoid'
-
-import type { Brand, Relax, Metadata } from './types'
-
 /**
  * Catalog of all nodes supported by Dactylo.
  *
@@ -12,33 +8,10 @@ import type { Brand, Relax, Metadata } from './types'
  * with coalesced text nodes to give better mutation performances while staying memory-conscious.
  */
 
-/** Available marks decorating a text node. */
-export interface Marks {
-  /**
-   * Whether the text  is bold
-   */
-  bold?: boolean
+import { nanoid } from 'nanoid'
 
-  /**
-   * Whether the text  is italic
-   */
-  italic?: boolean
-
-  /**
-   * Whether the text  is strikethrough
-   */
-  strikethrough?: boolean
-
-  /**
-   * Whether the text  is underlined
-   */
-  underline?: boolean
-
-  /**
-   * Whether the text  is code
-   */
-  code?: boolean
-}
+import type { Marks } from './marks'
+import type { Brand, Relax, Metadata } from './types'
 
 /**
  * Brand type for node unique IDs.

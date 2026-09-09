@@ -17,12 +17,11 @@
  */
 
 import type { Block, BlockId } from './blocks'
+import type { Marks } from './marks'
+import type { NodeId } from './node'
 import type { Relax } from './types'
 
-/**
- * Operation to insert a block at the given
- * position (fractional index).
- */
+/** Operation to insert a block at the given position (fractional index). */
 export interface InsertBlockOp {
   readonly __type: 'insert_block'
   /** Block to insert. */
@@ -35,9 +34,7 @@ export interface InsertBlockOp {
   readonly afterBlockId: BlockId | null
 }
 
-/**
- * Describes where a new block should be inserted
- * relative to existing blocks. */
+/** Describes where a new block should be inserted relative to existing blocks. */
 export type InsertBlockOpPosition = Relax<
   | {
       /** Insert at document start. */
@@ -65,10 +62,7 @@ export type InsertBlockOpPosition = Relax<
     }
 >
 
-/**
- * Operation to delete a block at the given
- * position (fractional index).
- */
+/** Operation to delete a block at the given position (fractional index). */
 export interface DeleteBlockOp {
   readonly __type: 'delete_block'
   /** ID of the block to delete. */
@@ -82,5 +76,52 @@ export interface DeleteBlockOp {
   readonly afterBlockId: BlockId | null
 }
 
+/** Operation to insert text into an existing text node at a character offset.  */
+export interface InsertTextOp {
+  readonly __type: 'insert_text'
+
+  /** Block containing the target text node. */
+  readonly blockId: BlockId
+
+  /** Text node receiving the insertion. */
+  readonly nodeId: NodeId
+
+  /** Character offset within the text node. */
+  readonly offset: number
+
+  /** Text string to insert. */
+  readonly text: string
+
+  /** Optional marks applied to inserted text (defaults to node marks). */
+  readonly marks?: Marks
+}
+
+/** Operation to delete a run of characters from a text node. */
+export interface DeleteTextOp {
+  readonly __type: 'delete_text'
+
+  /** Block containing the target text node. */
+  readonly blockId: BlockId
+
+  /** Text node from which text is removed. */
+  readonly nodeId: NodeId
+
+  /** Character offset where removal starts. */
+  readonly offset: number
+
+  /** Number of characters to remove. */
+  readonly length: number
+
+  /** Removed text and marks stored for undo. */
+  readonly snapshot: {
+    /** Substring removed from the text node. */
+    readonly text: string
+    /** Marks applied to the removed run. */
+    readonly marks: Marks
+  }
+}
+
 /** Discriminated union of all operations supported by Dactylo. */
-export type Operation = Relax<InsertBlockOp | DeleteBlockOp>
+export type Operation = Relax<
+  InsertBlockOp | DeleteBlockOp | InsertTextOp | DeleteTextOp
+>
