@@ -1,5 +1,5 @@
 import type { BlockId } from './blocks'
-import type { NodeId } from './node'
+import type { InlineNode, NodeId } from './node'
 import type { Relax } from './types'
 
 /**
@@ -119,6 +119,60 @@ export interface BlockSelection {
 
 /** Discriminated union of all supported selection shapes in Dactylo. */
 export type Selection = Relax<CursorSelection | RangeSelection | BlockSelection>
+
+/** A contiguous `[from, to)` slice inside one text node, part of a larger range. */
+export interface TextSpanInRange {
+  /** Block containing the text node. */
+  readonly blockId: BlockId
+
+  /** Text node ID. */
+  readonly nodeId: NodeId
+
+  /** Start offset (inclusive) within the text node. */
+  readonly from: number
+
+  /** End offset (exclusive) within the text node. */
+  readonly to: number
+}
+
+/**
+ * Appends partial or full text-node slices from one block's inline content.
+ * Returns an accumulator for output slices.
+ */
+export function appendTextSpansInRangeFromBlock(
+  /** Incoming spans. */
+  incomingSpans: TextSpanInRange[],
+  /** Block being scanned. */
+  blockId: BlockId,
+  /** Inline content array (not mutated). */
+  content: readonly InlineNode[],
+  /** First content index to visit (inclusive). */
+  fromNi: number,
+  /** Last content index to visit (inclusive). */
+  toNi: number,
+  /** Start offset when `fromNi` is the anchor node; otherwise ignored. */
+  fromBound: number,
+  /** End offset when `toNi` is the focus node; `undefined` means node end. */
+  toBound?: number,
+): TextSpanInRange[] {
+  const outgoingSpans = [...incomingSpans]
+
+  for (let ni = fromNi; ni <= toNi; ni += 1) {
+    const node = content[ni]
+    if (!node || node.__type !== 'text') {
+      continue
+    }
+
+    const from = ni === fromNi ? fromBound : 0
+    const to = ni === toNi ? (toBound ?? node.text.length) : node.text.length
+
+    if (from < to) {
+      outgoingSpans.push({ blockId, from, nodeId: node.id, to })
+    }
+  }
+
+  return outgoingSpans
+}
 
 /** Creates a range selection from anchor and focus cursors. */
 export function createRange(

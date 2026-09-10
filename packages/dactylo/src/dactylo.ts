@@ -43,7 +43,7 @@ export interface DactyloMarksApi {
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
-export interface DactyloConfig {
+export interface DactyloConfigOptions {
   /** Configuration for the transaction pipeline */
   pipeline?: {
     /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
@@ -60,7 +60,7 @@ export interface DactyloOptions {
   placeholder?: string
 
   /** Config options to use for the internal components and delegates of the editor. */
-  config?: DactyloConfig
+  config?: DactyloConfigOptions
 }
 
 /**
@@ -167,7 +167,7 @@ export class Dactylo {
        * 👉🏻  A toolbar button for a mark that should appear pressed or not.
        *
        * This is a pure function that does not mutate the editor context.
-       * To check is a mark is active or not you need to call this function with
+       * To check if a mark is active or not you need to call this function with
        * the current editor context after each updates.
        */
       isActive: (markKey: MarkKey, context: EditorContext) =>

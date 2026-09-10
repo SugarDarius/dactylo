@@ -4,6 +4,8 @@ import { DactyloError } from './errors'
 import type { InsertBlockOpPosition } from './operations'
 import { after, before, between, makePosition } from './position'
 import type { PosKey } from './position'
+import { appendTextSpansInRangeFromBlock, createRange } from './selection'
+import type { RangeSelection, TextCursor, TextSpanInRange } from './selection'
 import { assertNever } from './utils'
 
 /**
@@ -277,4 +279,176 @@ export function resolveInsertAfterBlockIdInDocument(
       assertNever(pos, 'Unknown insert block position type')
     }
   }
+}
+
+/**
+ * Compares two text cursors in full document order.
+ * Order: block `posKey` (via `blockOrderById`) → inline content index → text offset.
+ *
+ * Returns negative when `a` is before `b`, zero when equal, positive when after.
+ */
+export function compareTextCursorsInDocument(
+  state: DocumentState,
+  a: TextCursor,
+  b: TextCursor,
+): number {
+  if (a.blockId === b.blockId && a.nodeId === b.nodeId) {
+    return a.offset - b.offset
+  }
+
+  const order = state.blockOrderById
+
+  const aBlockIdx = order.indexOf(a.blockId)
+  const bBlockIdx = order.indexOf(b.blockId)
+
+  if (aBlockIdx !== bBlockIdx) {
+    return aBlockIdx - bBlockIdx
+  }
+
+  const block = state.blocks.get(a.blockId)
+  if (!block) {
+    return 0
+  }
+
+  const aNodeIdx = block.content.findIndex((n) => n.id === a.nodeId)
+  const bNodeIdx = block.content.findIndex((n) => n.id === b.nodeId)
+
+  if (aNodeIdx !== bNodeIdx) {
+    return aNodeIdx - bNodeIdx
+  }
+
+  return a.offset - b.offset
+}
+
+/**
+ * Decomposes a range into per-text-node `[from, to)` slices in document order.
+ *
+ * Skips non-text inline nodes (`line_break`, `link`, …). Used by mark toggling,
+ * future cross-block delete, and copy extraction.
+ *
+ * Efficiency:
+ *
+ * A naive block loop × content loop revisits every inline node between two endpoints
+ * and repeats `findIndex` on each block iteration - `O(B x N)` in the worst case
+ * (range spans `B` blocks with `N` inline nodes each).
+ *
+ * Selection ranges are usually short, so that cost is often negligible.
+ * For a clearer bound we use a three-phase walk instead:
+ *
+ * 1. Tail of the start block (anchor → end of block)
+ * 2. Each middle block in full (one linear scan per block, no nested block index math)
+ * 3. Head oif the end block (start → focus)
+ *
+ * Endpoint node indices are resolved only once. Total work is `O(K)` when `K` is
+ * the number of inline nodes the range actually crosses (typically it's equals to
+ * the number of output spans), not the product of block count times max nodes per block.
+ *
+ * Returns non-empty text spans; empty when the range is collapsed.
+ */
+export function collectTextSpansInRangeInDocument(
+  state: DocumentState,
+  range: RangeSelection,
+): TextSpanInRange[] {
+  const { anchor, focus } = range
+
+  if (compareTextCursorsInDocument(state, anchor, focus) >= 0) {
+    return []
+  }
+
+  if (anchor.blockId === focus.blockId && anchor.nodeId === focus.nodeId) {
+    return [
+      {
+        blockId: anchor.blockId,
+        from: anchor.offset,
+        nodeId: anchor.nodeId,
+        to: focus.offset,
+      },
+    ]
+  }
+
+  const order = state.blockOrderById
+
+  const startBi = order.indexOf(anchor.blockId)
+  const endBi = order.indexOf(focus.blockId)
+
+  if (startBi === -1 || endBi === -1) {
+    return []
+  }
+
+  const startBlock = state.blocks.get(anchor.blockId)
+  const endBlock = state.blocks.get(focus.blockId)
+
+  if (!startBlock || !endBlock) {
+    return []
+  }
+
+  const anchorNi = startBlock.content.findIndex((n) => n.id === anchor.nodeId)
+  const focusNi = endBlock.content.findIndex((n) => n.id === focus.nodeId)
+
+  if (anchorNi === -1 || focusNi === -1) {
+    return []
+  }
+
+  let spans: TextSpanInRange[] = []
+
+  if (startBi === endBi) {
+    spans = appendTextSpansInRangeFromBlock(
+      spans,
+      anchor.blockId,
+      startBlock.content,
+      anchorNi,
+      focusNi,
+      anchor.offset,
+      focus.offset,
+    )
+  }
+
+  spans = appendTextSpansInRangeFromBlock(
+    spans,
+    anchor.blockId,
+    startBlock.content,
+    anchorNi,
+    startBlock.content.length - 1,
+    anchor.offset,
+  )
+
+  for (let bi = startBi + 1; bi < endBi; bi += 1) {
+    const blockId = order[bi]
+    if (!blockId) {
+      continue
+    }
+
+    const block = state.blocks.get(blockId)
+    if (!block) {
+      continue
+    }
+
+    spans = appendTextSpansInRangeFromBlock(
+      spans,
+      blockId,
+      block.content,
+      0,
+      block.content.length - 1,
+      0,
+    )
+  }
+
+  return spans
+}
+
+/**
+ * Normalizes a range so anchor precedes focus in document order.
+ * Works across blocks, inline nodes, and backward DOM selections.
+ *
+ * Returns a new range with anchor ≤ focus in document order.
+ */
+export function normalizeRange(
+  state: DocumentState,
+  selection: RangeSelection,
+): RangeSelection {
+  const { anchor, focus } = selection
+  if (compareTextCursorsInDocument(state, anchor, focus) <= 0) {
+    return selection
+  }
+  return createRange(focus, anchor)
 }

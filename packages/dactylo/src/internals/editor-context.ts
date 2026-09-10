@@ -1,5 +1,10 @@
 import { findNodeInBlock } from './blocks'
-import { createInitialEmptyDocumentState, getBlockInDocument } from './document'
+import {
+  collectTextSpansInRangeInDocument,
+  createInitialEmptyDocumentState,
+  getBlockInDocument,
+  normalizeRange,
+} from './document'
 import type { DocumentState } from './document'
 import { createInitialActiveMarks, isMarkEnabled } from './marks'
 import type { MarkKey, Marks } from './marks'
@@ -200,7 +205,7 @@ export function withActiveMarks(
  * 👉🏻  A toolbar button for a mark that should appear pressed or not.
  *
  * - Cursor: reflects `activeMarks`
- * - Range (single): `true` when mark enabled on that node
+ * - Range: `true` when every selected text slice already has the mark
  */
 export function isMarkActiveInContext(
   context: EditorContext,
@@ -215,19 +220,25 @@ export function isMarkActiveInContext(
   if (selection.__type === 'cursor') {
     return isMarkEnabled(activeMarks, markKey)
   } else if (selection.__type === 'range') {
-    const { anchor, focus } = selection
-    if (anchor.blockId !== focus.blockId || anchor.nodeId !== focus.nodeId) {
+    const spans = collectTextSpansInRangeInDocument(
+      context.state,
+      normalizeRange(context.state, selection),
+    )
+
+    if (spans.length <= 0) {
       return false
     }
 
-    const block = getBlockInDocument(context.state, anchor.blockId)
-    const found = findNodeInBlock(block, anchor.nodeId)
+    return spans.every((span) => {
+      const block = getBlockInDocument(context.state, span.blockId)
+      const found = findNodeInBlock(block, span.nodeId)
 
-    if (!found || found.node.__type !== 'text') {
-      return false
-    }
+      if (!found || found.node.__type !== 'text') {
+        return false
+      }
 
-    return isMarkEnabled(found.node.marks, markKey)
+      return isMarkEnabled(found.node.marks, markKey)
+    })
   }
 
   return false
