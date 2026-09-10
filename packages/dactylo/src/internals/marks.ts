@@ -96,3 +96,11 @@ export function createInitialActiveMarks(): Marks {
 export function isMarkEnabled(marks: Marks, mark: MarkKey): boolean {
   return marks[mark] === true
 }
+
+/** Toggles one mark flag on a marks object (immutable copy). */
+export function toggleMarkFlag(marks: Marks, mark: MarkKey): Marks {
+  return {
+    ...marks,
+    [mark]: !isMarkEnabled(marks, mark),
+  }
+}

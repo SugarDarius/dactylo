@@ -4,7 +4,9 @@ import type {
   EditorContext,
   EditorContextListener,
 } from './internals/editor-context'
+import type { MarkKey } from './internals/marks'
 import { TransactionPipeline } from './internals/transaction'
+import type { TransactionSource } from './internals/transaction'
 import type { Unsubscriber } from './internals/types'
 
 /** API to interact with the history of the editor. */
@@ -20,6 +22,15 @@ export interface DactyloHistoryApi {
 
   /** Re-applies the newest redo entry via the pipeline. */
   readonly redo: () => void
+}
+
+/** API to interact with the marks of the editor. */
+export interface DactyloMarksApi {
+  /** Toggle a mark on or off. */
+  readonly toggleMark: (
+    markKey: MarkKey,
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -119,6 +130,24 @@ export class Dactylo {
       canUndo: () => this.#transactionPipeline.canUndo(),
       redo: () => this.#transactionPipeline.redo(),
       undo: () => this.#transactionPipeline.undo(),
+    }
+  }
+
+  /**
+   * Returns the API to interact with the marks of the editor.
+   *
+   * @example
+   * ```ts
+   * editor.marks.toggleMark('bold')
+   * editor.marks.toggleMark('italic', 'ai-agent')
+   * ```
+   */
+  get marks(): DactyloMarksApi {
+    return {
+      toggleMark: (
+        markKey: MarkKey,
+        source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+      ) => this.#transactionPipeline.toggleMark(markKey, { source }),
     }
   }
 

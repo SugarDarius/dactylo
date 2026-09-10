@@ -14,9 +14,25 @@ import {
 import type { EditorContext, EditorContextListener } from './editor-context'
 import { DactyloError } from './errors'
 import { HistoryStack } from './history'
-import type { Marks } from './marks'
+import { toggleMarkFlag } from './marks'
+import type { MarkKey } from './marks'
 import type { Operation, InsertBlockOpPosition } from './operations'
 import type { Unsubscriber } from './types'
+
+/** The source of a transaction. */
+export type TransactionSource =
+  /**  The transaction is initiated by a human user action */
+  | 'user'
+  /** The transaction is initiated by an AI agent action */
+  | 'ai-agent'
+  /** The editor decided itself to initiate a transaction */
+  | 'editor'
+  /** The transaction is initiated by an import (ex. initial content) operation */
+  | 'import'
+  /** The transaction is an undo history operation */
+  | 'undo'
+  /** The transaction is a redo history operation */
+  | 'redo'
 
 /**
  * The policy layer as metadata about a {@link Transaction} not about individual operations.
@@ -52,22 +68,9 @@ export interface TransactionPolicy {
    * Who/what initiated the transaction.
    * It drives history rules, hooks filtering, ...
    */
-  source?:
-    /**  The transaction is initiated by a user action */
-    | 'user'
-    /** The editor decided itself to initiate a transaction */
-    | 'editor'
-    /** The transaction is initiated by an import (ex. initial content) operation */
-    | 'import'
-    /** The transaction is an undo history operation */
-    | 'undo'
-    /** The transaction is a redo history operation */
-    | 'redo'
+  source?: TransactionSource
 
-  /**
-   * When false, skip the merge history action for rapid typing coalescing.
-   * Default: true.
-   */
+  /** When false, skip the merge history action for rapid typing coalescing. */
   coalesce?: boolean
 }
 
@@ -599,27 +602,39 @@ export class TransactionPipeline {
 
   // ─── Marks ──────────────────────────────────────────────────────--
 
-  /** Updates active typing marks without mutating document content. */
-  setActiveMarks(activeMarks: Marks, policy?: TransactionPolicy): void {
-    this.#commit(
-      [
-        {
-          __type: 'set_active_marks',
-          activeMarks,
-          prevActiveMarks: this.#context.activeMarks,
-        },
-      ],
-      {
-        ...policy,
-        label: 'set_active_marks',
-        pushToHistory: false,
-      },
-    )
+  /** Toggle an a mark on of off. */
+  toggleMark(markKey: MarkKey, policy?: TransactionPolicy): void {
+    const { selection } = this.#context
+
+    if (selection !== null) {
+      if (selection.__type === 'cursor') {
+        const prevActiveMarks = this.#context.activeMarks
+        const activeMarks = toggleMarkFlag(prevActiveMarks, markKey)
+
+        this.#commit(
+          [
+            {
+              __type: 'set_active_marks',
+              activeMarks,
+              prevActiveMarks,
+            },
+          ],
+          {
+            ...policy,
+            label: 'set_active_marks',
+            pushToHistory: false,
+          },
+        )
+      } else if (selection.__type === 'range') {
+        // @todo: implement range toggle
+      }
+    }
   }
 
   // ─── Block mutations ──────────────────────────────────────────────
 
   /** Inserts a block at the given document position.  */
+  // @todo: to be updated according to the new upcoming block API
   insertBlock(
     blockWithOutPosKey: BlockWithoutPosKey,
     pos: InsertBlockOpPosition,
@@ -647,6 +662,7 @@ export class TransactionPipeline {
   }
 
   /** Removes a block by ID. */
+  // @todo: to be updated according to the new upcoming block API
   deleteBlock(blockId: BlockId, policy?: TransactionPolicy): void {
     const block = this.#context.state.blocks.get(blockId)
     if (!block) {
