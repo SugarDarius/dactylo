@@ -1,7 +1,7 @@
 import { createInitialEmptyDocumentState } from './document'
 import type { DocumentState } from './document'
-import { createInitialActiveMarks } from './marks'
-import type { Marks } from './marks'
+import { createInitialActiveMarks, isMarkEnabled } from './marks'
+import type { MarkKey, Marks } from './marks'
 import type { Selection } from './selection'
 
 /**
@@ -192,4 +192,30 @@ export function withActiveMarks(
     ...context,
     activeMarks,
   }
+}
+
+/**
+ * Whether a mark is active or not depending from the selection on the given editor context.
+ * 👉🏻  A toolbar button for a mark that should appear pressed or not.
+ *
+ * - Cursor: reflects `activeMarks`
+ * - Range (single): `true` when mark enabled on that node
+ */
+export function isMarkActiveInContext(
+  context: EditorContext,
+  markKey: MarkKey,
+): boolean {
+  const { selection, activeMarks } = context
+
+  if (selection === null) {
+    return false
+  }
+
+  if (selection.__type === 'cursor') {
+    return isMarkEnabled(activeMarks, markKey)
+  } else if (selection.__type === 'range') {
+    // @todo: implement range check
+  }
+
+  return false
 }

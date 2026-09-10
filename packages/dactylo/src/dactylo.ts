@@ -1,10 +1,12 @@
 import { DEFAULT_PLACEHOLDER } from './internals/constants'
-import { createInitialEditorContext } from './internals/editor-context'
+import {
+  createInitialEditorContext,
+  isMarkActiveInContext,
+} from './internals/editor-context'
 import type {
   EditorContext,
   EditorContextListener,
 } from './internals/editor-context'
-import { isMarkEnabled } from './internals/marks'
 import type { MarkKey } from './internals/marks'
 import { TransactionPipeline } from './internals/transaction'
 import type { TransactionSource } from './internals/transaction'
@@ -35,7 +37,7 @@ export interface DactyloMarksApi {
 
   /**
    * Whether a mark is active or not depending on the current current selection.
-   * 👉🏻  A toolbar button for a mark should appear pressed or not.
+   * 👉🏻  A toolbar button for a mark that should appear pressed or not.
    */
   readonly isActive: (markKey: MarkKey, context: EditorContext) => boolean
 }
@@ -162,28 +164,14 @@ export class Dactylo {
     return {
       /**
        * Whether a mark is active or not depending from the selection on the given editor context.
-       * 👉🏻  A toolbar button for a mark should appear pressed or not.
-       *
-       * - Cursor: reflects `activeMarks`
-       * - Range (single): `true` when mark enabled on that node
+       * 👉🏻  A toolbar button for a mark that should appear pressed or not.
        *
        * This is a pure function that does not mutate the editor context.
+       * To check is a mark is active or not you need to call this function with
+       * the current editor context after each updates.
        */
-      isActive: (markKey: MarkKey, context: EditorContext): boolean => {
-        const { selection, activeMarks } = context
-
-        if (selection === null) {
-          return false
-        }
-
-        if (selection.__type === 'cursor') {
-          return isMarkEnabled(activeMarks, markKey)
-        } else if (selection.__type === 'range') {
-          // @todo: implement range check
-        }
-
-        return false
-      },
+      isActive: (markKey: MarkKey, context: EditorContext) =>
+        isMarkActiveInContext(context, markKey),
 
       /** Toggle a mark on or off via the pipeline. */
       toggle: (
