@@ -10,6 +10,7 @@
 
 import { nanoid } from 'nanoid'
 
+import { isMarksEqual } from './marks'
 import type { Marks } from './marks'
 import type { Brand, Relax, Metadata } from './types'
 
@@ -116,4 +117,107 @@ export function createTextNode(opts: {
 /** Creates a placeholder text node */
 export function createPlaceholderTextNode(text: string): TextNode {
   return createTextNode({ metadata: { placeholder: true }, text })
+}
+
+/**
+ * Merges adjacent text nodes with identical marks into a single node.
+ *
+ * Preserves the ID of the first node in each merge group so downstream
+ * cursors and undo snapshots remain stable.
+ *
+ * Returns a new array with adjacent compatible text nodes merged.
+ */
+export function coalesceInlineNodes(
+  nodes: readonly InlineNode[],
+): InlineNode[] {
+  if (nodes.length <= 1) {
+    return [...nodes]
+  }
+
+  const result: InlineNode[] = []
+  let pending: TextNode | null = null
+
+  for (const node of nodes) {
+    if (node.__type !== 'text') {
+      if (pending) {
+        result.push(pending)
+        pending = null
+      }
+      result.push(node)
+
+      continue
+    }
+
+    if (pending && isMarksEqual(pending.marks, node.marks)) {
+      pending = {
+        __type: pending.__type,
+        createdAt: pending.createdAt,
+        id: pending.id,
+        marks: pending.marks,
+        metadata: pending.metadata,
+        text: pending.text + node.text,
+        updatedAt: pending.updatedAt,
+      }
+    } else {
+      if (pending) {
+        result.push(pending)
+      }
+      pending = node
+    }
+  }
+
+  if (pending) {
+    result.push(pending)
+  }
+
+  return result
+}
+
+/**
+ * Splits a text node into up to three segments around `[from, to)`.
+ * Empty segments are omitted. The leading segment keeps the original node id.
+ *
+ * Returns a replacement inline nodes (one to three entries).
+ */
+export function splitTextNodeAt(
+  /** Text node to split. */
+  node: TextNode,
+  /** Start offset (inclusive) within `node.text`. */
+  from: number,
+  /** End offset (exclusive) within `node.text`. */
+  to: number,
+  /** Marks applied to the middle segment when present. */
+  middleMarks: Marks,
+): InlineNode[] {
+  const replacement: InlineNode[] = []
+
+  const before = node.text.slice(0, from)
+  const middle = node.text.slice(from, to)
+  const after = node.text.slice(to)
+
+  if (before.length > 0) {
+    replacement.push({ ...node, text: before, updatedAt: new Date() })
+  }
+
+  if (middle.length > 0) {
+    replacement.push(
+      createTextNode({
+        marks: middleMarks,
+        metadata: node.metadata,
+        text: middle,
+      }),
+    )
+  }
+
+  if (after.length > 0) {
+    replacement.push(
+      createTextNode({
+        marks: node.marks,
+        metadata: node.metadata,
+        text: after,
+      }),
+    )
+  }
+
+  return replacement
 }

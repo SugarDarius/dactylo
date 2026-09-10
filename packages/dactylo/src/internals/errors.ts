@@ -14,6 +14,10 @@ export type DactyloErrorCode =
   | 'UNKNOWN'
   /** Unexpected fractional position error when computing a position key */
   | 'FRACTIONAL_POSITION'
+  /** Unexpected collapsed range selection */
+  | 'RANGE_SELECTION_COLLAPSED'
+  /** Unexpected range selection with no text spans */
+  | 'RANGE_SELECTION_NO_TEXT_SPANS'
   /** Failed to validate a transaction operation */
   | 'VALIDATE_TRANSACTION_OPERATION'
   /** Failed to apply a transaction operation */
@@ -113,7 +117,7 @@ export class DactyloError extends Error {
    * import { DactyloError } from '@sugardarius/dactylo'
    *
    * try {
-   *   await dactylo.addBlock(block)
+   *   await editor.marks.toggle('bold')
    * } catch (error) {
    *   throw DactyloError.wrap(error)
    * }

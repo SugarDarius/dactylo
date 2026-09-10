@@ -132,7 +132,35 @@ export interface SetActiveMarksOp {
   readonly activeMarks: Marks
 }
 
+/** Applies mark changes to a character range within a text node. */
+export interface SetMarksOp {
+  readonly __type: 'set_marks'
+
+  /** Block containing the target text node. */
+  readonly blockId: BlockId
+
+  /** Text node whose marks are updated. */
+  readonly nodeId: NodeId
+
+  /** Start offset (inclusive) of the mark range. */
+  readonly from: number
+
+  /** End offset (exclusive) of the mark range. */
+  readonly to: number
+
+  /** Marks before the change (for undo). */
+  readonly prevMarks: Marks
+
+  /** Marks after the change. */
+  readonly nextMarks: Marks
+}
+
 /** Discriminated union of all operations supported by Dactylo. */
 export type Operation = Relax<
-  InsertBlockOp | DeleteBlockOp | InsertTextOp | DeleteTextOp | SetActiveMarksOp
+  | InsertBlockOp
+  | DeleteBlockOp
+  | InsertTextOp
+  | DeleteTextOp
+  | SetActiveMarksOp
+  | SetMarksOp
 >

@@ -87,6 +87,14 @@ export interface DividerBlock extends IBlock {
 /** Discriminated union of all existing blocks in Dactylo. */
 export type Block = Relax<HeadingBlock | ParagraphBlock | DividerBlock>
 
+/** Allowed blocks to own inline content */
+export type BlockWithInlineContent = HeadingBlock | ParagraphBlock
+export function isBlockWithInlineContent(
+  block: Block,
+): block is BlockWithInlineContent {
+  return block.__type === 'heading' || block.__type === 'paragraph'
+}
+
 /** Discriminated union of all existing blocks without `posKey` in Dactylo. */
 export type BlockWithoutPosKey = Relax<
   | Omit<HeadingBlock, 'posKey'>
@@ -124,6 +132,11 @@ export function createInitialPlaceholderBlock(text: string): ParagraphBlock {
     content: [createPlaceholderTextNode(text)],
     posKey: makeInitialPosition(),
   })
+}
+
+/** Returns a shallow copy of a block with a fresh `updatedAt` timestamp. */
+export function touchBlock(block: Block): Block {
+  return { ...block, updatedAt: new Date() }
 }
 
 /** Whether the block is the placeholder empty paragraph shown in an empty editor. */

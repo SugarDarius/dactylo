@@ -1,13 +1,17 @@
-import { findNodeInBlock } from './blocks'
+import { findNodeInBlock, isBlockWithInlineContent, touchBlock } from './blocks'
+import type { BlockId } from './blocks'
 import {
   collectTextSpansInRangeInDocument,
   createInitialEmptyDocumentState,
   getBlockInDocument,
   normalizeRange,
+  replaceBlockInDocument,
 } from './document'
 import type { DocumentState } from './document'
 import { createInitialActiveMarks, isMarkEnabled } from './marks'
 import type { MarkKey, Marks } from './marks'
+import { coalesceInlineNodes } from './node'
+import type { InlineNode } from './node'
 import type { Selection } from './selection'
 
 /**
@@ -200,6 +204,44 @@ export function withActiveMarks(
   }
 }
 
+/** Replaces a block's inline content and coalesces adjacent text nodes. */
+export function updateBlockContent(
+  context: EditorContext,
+  blockId: BlockId,
+  content: InlineNode[],
+): EditorContext {
+  const block = getBlockInDocument(context.state, blockId)
+
+  /**
+   * Blocks with no allowed inline content are a no-op
+   * when updating the context.
+   *
+   * Here it's just a sugar statement with an extra safety net
+   * as when the following the code path, block content is updated
+   * from a committed operation but all operations are validated before being applied.
+   * So if a block is not allowed to have line content,
+   * it will be rejected by the validation phase and in this particular case,
+   * we just return the context as is.
+   */
+  if (!isBlockWithInlineContent(block)) {
+    // @todo: add specific logger.
+    console.warn(
+      `Dactylo is trying to update content of block ${blockId} with type ${block.__type}. It's a no-op in this \`updateBlockContent\` function.`,
+    )
+    return { ...context }
+  }
+
+  const next = touchBlock({
+    ...block,
+    content: coalesceInlineNodes(content),
+  })
+
+  return withDocumentState(
+    context,
+    replaceBlockInDocument(context.state, blockId, next),
+  )
+}
+
 /**
  * Whether a mark is active or not depending from the selection on the given editor context.
  * 👉🏻  A toolbar button for a mark that should appear pressed or not.
@@ -220,10 +262,8 @@ export function isMarkActiveInContext(
   if (selection.__type === 'cursor') {
     return isMarkEnabled(activeMarks, markKey)
   } else if (selection.__type === 'range') {
-    const spans = collectTextSpansInRangeInDocument(
-      context.state,
-      normalizeRange(context.state, selection),
-    )
+    const normalized = normalizeRange(context.state, selection)
+    const spans = collectTextSpansInRangeInDocument(context.state, normalized)
 
     if (spans.length <= 0) {
       return false

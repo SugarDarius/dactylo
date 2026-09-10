@@ -91,6 +91,8 @@ export function createInitialEmptyDocumentState(
   }
 }
 
+// --------Blocks--------
+
 /** Immutable update: add a block and refresh cached order. */
 export function insertBlockIntoDocument(
   state: DocumentState,
@@ -153,6 +155,17 @@ export function getBlockInDocument(
   }
 
   return block
+}
+
+/** Immutable update: replace one block in document state. */
+export function replaceBlockInDocument(
+  state: DocumentState,
+  blockId: BlockId,
+  nextBlock: Block,
+): DocumentState {
+  const blocks = new Map([...state.blocks, [blockId, nextBlock]])
+
+  return { ...state, blocks }
 }
 
 export function computeInsertBlockPosKeyError(blockId: BlockId): never {
@@ -280,6 +293,8 @@ export function resolveInsertAfterBlockIdInDocument(
     }
   }
 }
+
+// --------Selection--------
 
 /**
  * Compares two text cursors in full document order.

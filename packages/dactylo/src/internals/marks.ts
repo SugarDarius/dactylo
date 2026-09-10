@@ -92,6 +92,17 @@ export function createInitialActiveMarks(): Marks {
   }
 }
 
+/** Returns whether two mark objects are equivalent for coalescing purposes. */
+export function isMarksEqual(a: Readonly<Marks>, b: Readonly<Marks>): boolean {
+  return (
+    a.bold === b.bold &&
+    a.italic === b.italic &&
+    a.strikethrough === b.strikethrough &&
+    a.underline === b.underline &&
+    a.code === b.code
+  )
+}
+
 /** Returns whether a mark flag is enabled (strict `true`). */
 export function isMarkEnabled(marks: Marks, mark: MarkKey): boolean {
   return marks[mark] === true

@@ -1,12 +1,22 @@
-import { sortBlockOrder } from './blocks'
-import type { BlockId, BlockWithoutPosKey } from './blocks'
+import {
+  findNodeInBlock,
+  isBlockWithInlineContent,
+  sortBlockOrder,
+} from './blocks'
+import type { Block, BlockId, BlockWithoutPosKey } from './blocks'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
 import {
+  collectTextSpansInRangeInDocument,
+  compareTextCursorsInDocument,
   computeInsertBlockPosKeyInDocument,
+  getBlockInDocument,
   insertBlockIntoDocument,
+  normalizeRange,
   resolveInsertAfterBlockIdInDocument,
 } from './document'
+import type { DocumentState } from './document'
 import {
+  updateBlockContent,
   withActiveMarks,
   withDocumentState,
   withPlaceholderFlag,
@@ -14,8 +24,10 @@ import {
 import type { EditorContext, EditorContextListener } from './editor-context'
 import { DactyloError } from './errors'
 import { HistoryStack } from './history'
-import { toggleMarkFlag } from './marks'
-import type { MarkKey } from './marks'
+import { isMarkEnabled, toggleMarkFlag } from './marks'
+import type { MarkKey, Marks } from './marks'
+import { splitTextNodeAt } from './node'
+import type { NodeId, TextNode } from './node'
 import type { Operation, InsertBlockOpPosition } from './operations'
 import type { Unsubscriber } from './types'
 
@@ -70,7 +82,7 @@ export interface TransactionPolicy {
    */
   source?: TransactionSource
 
-  /** When false, skip the merge history action for rapid typing coalescing. */
+  /** When true, merge history action for rapid typing coalescing. */
   coalesce?: boolean
 }
 
@@ -263,6 +275,56 @@ export function validationError(message: string, op: Operation): never {
   })
 }
 
+/** Returns a block or accepted inline-content or throws. */
+export function requireInlineBlock(
+  state: DocumentState,
+  blockId: BlockId,
+  op: Operation,
+): Block {
+  const block = getBlockInDocument(state, blockId)
+
+  if (!isBlockWithInlineContent(block)) {
+    validationError(`Block ${blockId} is not allowed to receive inline ops`, op)
+  }
+
+  return block
+}
+
+/** Finds a text node inside a block or throws. */
+export function requireTextNode(
+  block: Block,
+  nodeId: NodeId,
+  op: Operation,
+): { node: TextNode; index: number } {
+  const found = findNodeInBlock(block, nodeId)
+  if (!found || found.node.__type !== 'text') {
+    validationError(`Text node ${nodeId} not found in block ${block.id}`, op)
+  }
+
+  return { index: found.index, node: found.node }
+}
+
+/**
+ * Asserts a mark range `[from, to)` lies within a text node's bounds.
+ * Throws when the range is invalid or out of bounds.
+ */
+export function assertRangeInText(
+  /** Range start (inclusive). */
+  from: number,
+  /** Range end (exclusive). */
+  to: number,
+  /** Length of the target text node. */
+  textLength: number,
+  op: Operation,
+): void {
+  if (from < 0 || to < from || to > textLength) {
+    validationError(
+      `Mark range [${from}, ${to}) out of bounds for text length ${textLength}`,
+      op,
+    )
+  }
+}
+
 /**
  * Validate a batch of operations against current state.
  * Throws on failure.
@@ -284,6 +346,14 @@ export function validateOps(
         ) {
           validationError(`Unknown block: ${op.afterBlockId}`, op)
         }
+        break
+      }
+      case 'set_marks': {
+        const block = requireInlineBlock(context.state, op.blockId, op)
+        const { node } = requireTextNode(block, op.nodeId, op)
+
+        assertRangeInText(op.from, op.to, node.text.length, op)
+
         break
       }
       case 'set_active_marks': {
@@ -320,6 +390,31 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
     case 'set_active_marks': {
       return withActiveMarks(context, op.activeMarks)
     }
+    case 'set_marks': {
+      const block = getBlockInDocument(context.state, op.blockId)
+
+      const content = [...block.content]
+
+      const idx = content.findIndex((node) => node.id === op.nodeId)
+      const node = content[idx]
+
+      if (!node || node.__type !== 'text') {
+        applyError('`set_marks` target must be a text node', op)
+      }
+
+      if (op.from === op.to) {
+        return { ...context }
+      }
+
+      const replacement = splitTextNodeAt(node, op.from, op.to, op.nextMarks)
+      if (replacement.length === 0) {
+        content.splice(idx, 1)
+      } else {
+        content.splice(idx, 1, ...replacement)
+      }
+
+      return updateBlockContent(context, op.blockId, content)
+    }
     default: {
       applyError(`Unknown operation: ${op.__type}`, op)
     }
@@ -351,6 +446,17 @@ export function invertOp(op: Operation): Operation {
         __type: 'set_active_marks',
         activeMarks: op.prevActiveMarks,
         prevActiveMarks: op.activeMarks,
+      }
+    }
+    case 'set_marks': {
+      return {
+        __type: 'set_marks',
+        blockId: op.blockId,
+        from: op.from,
+        nextMarks: op.prevMarks,
+        nodeId: op.nodeId,
+        prevMarks: op.nextMarks,
+        to: op.to,
       }
     }
     default: {
@@ -498,7 +604,11 @@ export class TransactionPipeline {
   }
 
   /**
-   * Run the full pipeline: validate → apply → commit.
+   * Run the full pipeline:
+   * 1. Validate or reject the operation
+   * 2. └- Apply the operation and get the invert operation for history
+   * 3. └- Commit
+   *
    * Returns new context. Does NOT mutate inputs.
    */
   #run(transaction: Transaction): TransactionResult {
@@ -518,11 +628,13 @@ export class TransactionPipeline {
     const inverseOps = invertOps(ops)
 
     if (!skipHistoryPush(transaction.policy)) {
-      this.#history.push(
-        { inverseOps, ops: [...ops] },
+      /** Only coalesce history entries for user and ai-agent transactions. */
+      const coalesce =
         transaction.policy?.coalesce === true &&
-          transaction.policy?.source === 'user',
-      )
+        (transaction.policy?.source === 'user' ||
+          transaction.policy?.source === 'ai-agent')
+
+      this.#history.push({ inverseOps, ops: [...ops] }, coalesce)
     }
 
     return { context: next, inverseOps, transaction }
@@ -621,12 +733,93 @@ export class TransactionPipeline {
           ],
           {
             ...policy,
-            label: `toggle_mark:${String(markKey)}`,
+            label: `toggle_active_mark:${String(markKey)}`,
             pushToHistory: false,
           },
         )
       } else if (selection.__type === 'range') {
-        // @todo: implement range toggle
+        const normalized = normalizeRange(this.#context.state, selection)
+        const { anchor, focus } = normalized
+
+        /**
+         * Anchor must precede focus in document order.
+         * We cannot accept this case as it's a contract-violation
+         * because a {@link RangeSelection} is a non-empty text range.
+         */
+        if (
+          compareTextCursorsInDocument(this.#context.state, anchor, focus) >= 0
+        ) {
+          throw DactyloError.from({
+            code: 'RANGE_SELECTION_COLLAPSED',
+            hint: 'Use selection.__type === "cursor" (or toggleMark with a collapsed caret) to change activeMarks in editor context.',
+            message:
+              'Range selection is collapsed; expected anchor to precede focus.',
+          })
+        }
+
+        /**
+         * Collecting text spans must yield at least one text slice.
+         * An empty span list is also a contract-violation (collapsed range stored as `range`, stale cursors,
+         * or range or non-text-only inline nodes) - not a cue to toggle {@link EditorContext} active marks.
+         *
+         * Use only `selection.__type === 'cursor'` to toggle active marks.
+         */
+        const spans = collectTextSpansInRangeInDocument(
+          this.#context.state,
+          normalized,
+        )
+        if (spans.length <= 0) {
+          throw DactyloError.from({
+            code: 'RANGE_SELECTION_NO_TEXT_SPANS',
+            hint: 'Ensure the range covers at least one text node with non-zero length.',
+            message: 'Range selection produced no text spans.',
+          })
+        }
+
+        const enabling = spans.every((span) => {
+          const block = getBlockInDocument(this.#context.state, span.blockId)
+          const found = findNodeInBlock(block, span.nodeId)
+
+          if (!found || found.node.__type !== 'text') {
+            return false
+          }
+
+          return isMarkEnabled(found.node.marks, markKey)
+        })
+
+        const ops: Operation[] = []
+
+        for (const span of spans) {
+          const block = getBlockInDocument(this.#context.state, span.blockId)
+          const found = findNodeInBlock(block, span.nodeId)
+
+          if (!found || found.node.__type !== 'text') {
+            continue
+          }
+
+          const { node } = found
+          const nextMarks: Marks = { ...node.marks }
+
+          if (enabling) {
+            nextMarks[markKey] = true
+          }
+
+          ops.push({
+            __type: 'set_marks',
+            blockId: span.blockId,
+            from: span.from,
+            nextMarks,
+            nodeId: span.nodeId,
+            prevMarks: { ...node.marks },
+            to: span.to,
+          })
+        }
+
+        this.#commit(ops, {
+          ...policy,
+          label: `toggle_mark_on_selection:${String(markKey)}`,
+          pushToHistory: true,
+        })
       }
     }
   }
