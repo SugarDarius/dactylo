@@ -4,6 +4,7 @@ import type {
   EditorContext,
   EditorContextListener,
 } from './internals/editor-context'
+import { isMarkEnabled } from './internals/marks'
 import type { MarkKey } from './internals/marks'
 import { TransactionPipeline } from './internals/transaction'
 import type { TransactionSource } from './internals/transaction'
@@ -17,20 +18,26 @@ export interface DactyloHistoryApi {
   /** Whether at least one redo entry is available. */
   readonly canRedo: () => boolean
 
-  /** Applies the newest undo entry via the pipeline. */
+  /** Applies the newest undo entry via the transaction pipeline. */
   readonly undo: () => void
 
-  /** Re-applies the newest redo entry via the pipeline. */
+  /** Re-applies the newest redo entry via the transaction pipeline. */
   readonly redo: () => void
 }
 
 /** API to interact with the marks of the editor. */
 export interface DactyloMarksApi {
-  /** Toggle a mark on or off. */
-  readonly toggleMark: (
+  /** Toggle a mark on or off via the transaction pipeline. */
+  readonly toggle: (
     markKey: MarkKey,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
+
+  /**
+   * Whether a mark is active or not depending on the current current selection.
+   * 👉🏻  A toolbar button for a mark should appear pressed or not.
+   */
+  readonly isActive: (markKey: MarkKey, context: EditorContext) => boolean
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -89,11 +96,11 @@ export class Dactylo {
   readonly #placeholder: string
 
   /** Transaction pipeline to use for the editor */
-  readonly #transactionPipeline: TransactionPipeline
+  readonly #pipeline: TransactionPipeline
 
   constructor(options: DactyloOptions) {
     this.#placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
-    this.#transactionPipeline = new TransactionPipeline({
+    this.#pipeline = new TransactionPipeline({
       batchMaxSize: options.config?.pipeline?.batchMaxSize,
       /**
        * Initialize the editor context
@@ -126,10 +133,17 @@ export class Dactylo {
    */
   get history(): DactyloHistoryApi {
     return {
-      canRedo: () => this.#transactionPipeline.canRedo(),
-      canUndo: () => this.#transactionPipeline.canUndo(),
-      redo: () => this.#transactionPipeline.redo(),
-      undo: () => this.#transactionPipeline.undo(),
+      /** Whether at least one redo entry is available. */
+      canRedo: () => this.#pipeline.canRedo(),
+
+      /** Whether at least one undo entry is available. */
+      canUndo: () => this.#pipeline.canUndo(),
+
+      /** Re-applies the newest redo entry via the transaction pipeline. */
+      redo: () => this.#pipeline.redo(),
+
+      /** Applies the newest undo entry via the transaction pipeline. */
+      undo: () => this.#pipeline.undo(),
     }
   }
 
@@ -138,16 +152,44 @@ export class Dactylo {
    *
    * @example
    * ```ts
-   * editor.marks.toggleMark('bold')
-   * editor.marks.toggleMark('italic', 'ai-agent')
+   * editor.marks.toggle('bold')
+   * editor.marks.toggle('italic', 'ai-agent')
+   *
+   * const isBoldActive = editor.marks.isActive('bold', editor.getContextSnapshot())
    * ```
    */
   get marks(): DactyloMarksApi {
     return {
-      toggleMark: (
+      /**
+       * Whether a mark is active or not depending from the selection on the given editor context.
+       * 👉🏻  A toolbar button for a mark should appear pressed or not.
+       *
+       * - Cursor: reflects `activeMarks`
+       * - Range (single): `true` when mark enabled on that node
+       *
+       * This is a pure function that does not mutate the editor context.
+       */
+      isActive: (markKey: MarkKey, context: EditorContext): boolean => {
+        const { selection, activeMarks } = context
+
+        if (selection === null) {
+          return false
+        }
+
+        if (selection.__type === 'cursor') {
+          return isMarkEnabled(activeMarks, markKey)
+        } else if (selection.__type === 'range') {
+          // @todo: implement range check
+        }
+
+        return false
+      },
+
+      /** Toggle a mark on or off via the pipeline. */
+      toggle: (
         markKey: MarkKey,
         source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-      ) => this.#transactionPipeline.toggleMark(markKey, { source }),
+      ) => this.#pipeline.toggleMark(markKey, { source }),
     }
   }
 
@@ -161,7 +203,7 @@ export class Dactylo {
    * ```
    */
   getContextSnapshot(): EditorContext {
-    return { ...this.#transactionPipeline.context }
+    return { ...this.#pipeline.context }
   }
 
   /**
@@ -176,6 +218,6 @@ export class Dactylo {
    * ```
    */
   subscribe(listener: EditorContextListener): Unsubscriber {
-    return this.#transactionPipeline.addSubscriber(listener)
+    return this.#pipeline.addSubscriber(listener)
   }
 }

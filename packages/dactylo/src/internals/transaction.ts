@@ -602,7 +602,7 @@ export class TransactionPipeline {
 
   // ─── Marks ──────────────────────────────────────────────────────--
 
-  /** Toggle an a mark on of off. */
+  /** Toggle a mark on or off. */
   toggleMark(markKey: MarkKey, policy?: TransactionPolicy): void {
     const { selection } = this.#context
 

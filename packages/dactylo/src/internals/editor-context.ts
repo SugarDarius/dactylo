@@ -105,7 +105,7 @@ import type { Selection } from './selection'
  * import { editor } from '~/dactylo'
  *
  * export function EditableDocument() {
- *   // 👉🏻 One object drives everything: the document, the selection, the placeholder flag.
+ *   // 👉🏻 One object drives everything: the document, the selection, the marks, and the placeholder flag.
  *   const context = useSyncExternalStore((listener) => editor.subscribe(() => listener()), editor.getContextSnapshot)
  *
  *   return <>...</>
