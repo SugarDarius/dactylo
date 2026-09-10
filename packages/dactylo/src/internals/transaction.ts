@@ -655,7 +655,10 @@ export class TransactionPipeline {
     this.#notify()
   }
 
-  /** Enqueues or immediately dispatches operations depending on batch state. */
+  /**
+   * Enqueues or immediately dispatches operations depending on batch state.
+   * Mental model: #commit([op1, op2, …]) 👉🏻 this user action is one atomic transaction.
+   */
   #commit(ops: Operation[], policy?: TransactionPolicy): void {
     if (this.#batch.active) {
       this.#batch.enqueue(ops, policy)
