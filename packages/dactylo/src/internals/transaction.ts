@@ -621,7 +621,7 @@ export class TransactionPipeline {
           ],
           {
             ...policy,
-            label: 'set_active_marks',
+            label: `toggle_mark:${String(markKey)}`,
             pushToHistory: false,
           },
         )
