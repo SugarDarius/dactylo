@@ -1,4 +1,5 @@
-import { createInitialEmptyDocumentState } from './document'
+import { findNodeInBlock } from './blocks'
+import { createInitialEmptyDocumentState, getBlockInDocument } from './document'
 import type { DocumentState } from './document'
 import { createInitialActiveMarks, isMarkEnabled } from './marks'
 import type { MarkKey, Marks } from './marks'
@@ -214,7 +215,19 @@ export function isMarkActiveInContext(
   if (selection.__type === 'cursor') {
     return isMarkEnabled(activeMarks, markKey)
   } else if (selection.__type === 'range') {
-    // @todo: implement range check
+    const { anchor, focus } = selection
+    if (anchor.blockId !== focus.blockId || anchor.nodeId !== focus.nodeId) {
+      return false
+    }
+
+    const block = getBlockInDocument(context.state, anchor.blockId)
+    const found = findNodeInBlock(block, anchor.nodeId)
+
+    if (!found || found.node.__type !== 'text') {
+      return false
+    }
+
+    return isMarkEnabled(found.node.marks, markKey)
   }
 
   return false

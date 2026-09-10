@@ -119,3 +119,11 @@ export interface BlockSelection {
 
 /** Discriminated union of all supported selection shapes in Dactylo. */
 export type Selection = Relax<CursorSelection | RangeSelection | BlockSelection>
+
+/** Creates a range selection from anchor and focus cursors. */
+export function createRange(
+  anchor: TextCursor,
+  focus: TextCursor,
+): RangeSelection {
+  return { __type: 'range', anchor, focus }
+}

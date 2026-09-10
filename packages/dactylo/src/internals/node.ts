@@ -48,9 +48,7 @@ export interface TextNode extends INode {
   /** Text content of the node. */
   readonly text: string
 
-  /**
-   * Marks decorating the text content
-   */
+  /** Marks decorating the text content */
   readonly marks: Readonly<Marks>
 }
 

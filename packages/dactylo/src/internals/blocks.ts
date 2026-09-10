@@ -10,7 +10,7 @@
 import { nanoid } from 'nanoid'
 
 import { createPlaceholderTextNode } from './node'
-import type { InlineNode } from './node'
+import type { InlineNode, NodeId } from './node'
 import { makeInitialPosition } from './position'
 import type { PosKey } from './position'
 import type { Brand, Relax, Metadata } from './types'
@@ -149,4 +149,22 @@ export function sortBlockOrder(blocks: ReadonlyMap<BlockId, Block>): BlockId[] {
       a.posKey < b.posKey ? -1 : a.posKey > b.posKey ? 1 : 0,
     )
     .map((b) => b.id)
+}
+
+/* Finds a node inside a block's content array. */
+export function findNodeInBlock(
+  block: Block,
+  nodeId: NodeId,
+): { node: InlineNode; index: number } | null {
+  const index = block.content.findIndex((n) => n.id === nodeId)
+  if (index === -1) {
+    return null
+  }
+
+  const node = block.content[index]
+  if (!node) {
+    return null
+  }
+
+  return { index, node }
 }
