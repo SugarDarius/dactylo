@@ -21,15 +21,16 @@ import {
   withDocumentState,
   withPlaceholderFlag,
 } from './editor-context'
-import type { EditorContext, EditorContextListener } from './editor-context'
+import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
+import type { Observable } from './event-source'
+import { EventSource } from './event-source'
 import { HistoryStack } from './history'
 import { isMarkEnabled, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
 import { splitTextNodeAt } from './node'
 import type { NodeId, TextNode } from './node'
 import type { Operation, InsertBlockOpPosition } from './operations'
-import type { Unsubscriber } from './types'
 
 /** The source of a transaction. */
 export type TransactionSource =
@@ -502,6 +503,20 @@ export interface TransactionResult {
   readonly inverseOps: Operation[]
 }
 
+/** Events emitted by the transaction pipeline */
+export interface TransactionPipelineEvents {
+  /**
+   * Subscribe to the current editor context changes.
+   * Fires anytime the context is updated.
+   */
+  readonly context: Observable<EditorContext>
+}
+
+export interface TransactionPipelineEventSources {
+  /** The event source for the current editor context */
+  readonly context: EventSource<EditorContext>
+}
+
 /** Options for constructing a {@link TransactionPipeline} instance. */
 export interface TransactionPipelineOptions {
   /** initial context to use for the pipeline */
@@ -570,8 +585,8 @@ export class TransactionPipeline {
   /** The history stack to use for the transaction pipeline */
   #history: HistoryStack
 
-  /** Subscribers notified after each committed transaction. */
-  #listeners = new Set<EditorContextListener>()
+  /** Events emitted by the transaction pipeline */
+  #events: TransactionPipelineEventSources
 
   constructor(options: TransactionPipelineOptions) {
     this.#context = options.context
@@ -586,6 +601,9 @@ export class TransactionPipeline {
     this.#history = new HistoryStack({
       maxDepth: options.historyMaxDepth,
     })
+    this.#events = {
+      context: new EventSource<EditorContext>(),
+    }
   }
 
   /** Returns the current editor context */
@@ -640,19 +658,12 @@ export class TransactionPipeline {
     return { context: next, inverseOps, transaction }
   }
 
-  /** Notifies all subscribers with the latest context. */
-  #notify(): void {
-    for (const listener of this.#listeners) {
-      listener(this.#context)
-    }
-  }
-
   /** Runs the transaction pipeline and updates editor context. */
   #dispatch(transaction: Transaction): void {
     const { context } = this.#run(transaction)
 
     this.#context = context
-    this.#notify()
+    this.#events.context.notify(context)
   }
 
   /**
@@ -671,12 +682,13 @@ export class TransactionPipeline {
     })
   }
 
-  // ─── Listeners ───────────────────────────────────────────────────-
+  // ─── Events ───────────────────────────────────────────────────-
 
-  /** Subscribes to the transaction pipeline and invokes the listener after each committed transaction. */
-  addSubscriber(listener: EditorContextListener): Unsubscriber {
-    this.#listeners.add(listener)
-    return () => this.#listeners.delete(listener)
+  /** Returns the events emitted by the transaction pipeline. */
+  get events(): TransactionPipelineEvents {
+    return {
+      context: this.#events.context.observable,
+    }
   }
 
   // ─── History ──────────────────────────────────────────────────────

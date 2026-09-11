@@ -3,14 +3,14 @@ import {
   createInitialEditorContext,
   isMarkActiveInContext,
 } from './internals/editor-context'
+import type { EditorContext } from './internals/editor-context'
 import type {
-  EditorContext,
-  EditorContextListener,
-} from './internals/editor-context'
+  SubscriberCallback,
+  UnsubscribeCallback,
+} from './internals/event-source'
 import type { MarkKey } from './internals/marks'
 import { TransactionPipeline } from './internals/transaction'
 import type { TransactionSource } from './internals/transaction'
-import type { Unsubscriber } from './internals/types'
 
 /** API to interact with the history of the editor. */
 export interface DactyloHistoryApi {
@@ -195,17 +195,17 @@ export class Dactylo {
   }
 
   /**
-   * Subscribes to the editor context and invokes the listener after each context update.
-   * Returns a function to unsubscribe from the listener.
+   * Subscribes to the editor context and invokes the callback after each context update.
+   * Returns a function to unsubscribe from the event.
    *
    * @example
    * ```ts
-   * editor.subscribe((context) => {
+   * const unsub = editor.subscribe((context) => {
    *  render(context.state.blocks)
    * })
    * ```
    */
-  subscribe(listener: EditorContextListener): Unsubscriber {
-    return this.#pipeline.addSubscriber(listener)
+  subscribe(callback: SubscriberCallback<EditorContext>): UnsubscribeCallback {
+    return this.#pipeline.events.context.subscribe(callback)
   }
 }

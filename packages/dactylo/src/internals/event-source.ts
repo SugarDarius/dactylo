@@ -3,13 +3,19 @@ export type SubscriberCallback<T> = (event: T) => void
 
 /** A function that unsubscribes from an event source. */
 export type UnsubscribeCallback = () => void
+
+/** An observable that can be subscribed to and notified about events. */
+export interface Observable<T> {
+  /** Register a callback function called when the event source emits an events. */
+  subscribe(callback: SubscriberCallback<T>): UnsubscribeCallback
+}
 /**
  * An event source that can be subscribed to and notified about events.
  * @example
  * ```ts
  * const event = new EventSource<string>()
  *
- * const unsub = event.subscribe((event: string) => {
+ * const unsub = event.observable.subscribe((event: string) => {
  *   console.log(event)
  * })
  *
@@ -27,11 +33,16 @@ export class EventSource<T> {
     this.#callbacks = new Set<SubscriberCallback<T>>()
   }
 
-  /** Register a callback function called when the event source emits an events. */
-  subscribe(callback: SubscriberCallback<T>): UnsubscribeCallback {
-    this.#callbacks.add(callback)
+  /** An observable that can be subscribed to and notified about events. */
+  get observable(): Observable<T> {
+    return {
+      /** Register a callback function called when the event source emits an events. */
+      subscribe: (callback: SubscriberCallback<T>): UnsubscribeCallback => {
+        this.#callbacks.add(callback)
 
-    return () => this.#callbacks.delete(callback)
+        return () => this.#callbacks.delete(callback)
+      },
+    }
   }
 
   /**
