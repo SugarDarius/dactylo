@@ -25,7 +25,7 @@ import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import type { Observable } from './event-source'
 import { EventSource } from './event-source'
-import { HistoryStack } from './history'
+import { HistoryStack, type HistoryEvent } from './history'
 import { isMarkEnabled, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
 import { splitTextNodeAt } from './node'
@@ -506,15 +506,24 @@ export interface TransactionResult {
 /** Events emitted by the transaction pipeline */
 export interface TransactionPipelineEvents {
   /**
-   * Subscribe to the current editor context changes.
+   * Subscribes to the current editor context changes.
    * Fires anytime the context is updated.
    */
   readonly context: Observable<EditorContext>
+
+  /**
+   * Subscribes to the history stack changes.
+   * Fires anytime the history stack is updated.
+   */
+  readonly history: Observable<HistoryEvent>
 }
 
 export interface TransactionPipelineEventSources {
   /** The event source for the current editor context */
   readonly context: EventSource<EditorContext>
+
+  /** The event source for the history stack */
+  readonly history: EventSource<HistoryEvent>
 }
 
 /** Options for constructing a {@link TransactionPipeline} instance. */
@@ -603,6 +612,7 @@ export class TransactionPipeline {
     })
     this.#events = {
       context: new EventSource<EditorContext>(),
+      history: new EventSource<HistoryEvent>(),
     }
   }
 
@@ -688,6 +698,7 @@ export class TransactionPipeline {
   get events(): TransactionPipelineEvents {
     return {
       context: this.#events.context.observable,
+      history: this.#events.history.observable,
     }
   }
 
@@ -722,6 +733,11 @@ export class TransactionPipeline {
       ops: [...entry.inverseOps],
       policy: { label: 'undo', pushToHistory: false, source: 'undo' },
     })
+
+    this.#events.history.notify({
+      canUndo: this.#history.canUndo(),
+      canRedo: this.#history.canRedo(),
+    })
   }
 
   /** Re-applies the newest redo entry's forward operations. */
@@ -742,6 +758,11 @@ export class TransactionPipeline {
     this.#dispatch({
       ops: [...entry.ops],
       policy: { label: 'redo', pushToHistory: false, source: 'redo' },
+    })
+
+    this.#events.history.notify({
+      canUndo: this.#history.canUndo(),
+      canRedo: this.#history.canRedo(),
     })
   }
 

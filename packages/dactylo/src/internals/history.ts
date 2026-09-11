@@ -28,6 +28,15 @@
 import { DEFAULT_HISTORY_STACK_MAX_DEPTH } from './constants'
 import type { Operation } from './operations'
 
+/** Events emitted when working with the history stack. */
+export interface HistoryEvent {
+  /** Whether at least one undo entry is available. */
+  readonly canUndo: boolean
+
+  /** Whether at least one redo entry is available. */
+  readonly canRedo: boolean
+}
+
 /**
  * One undo/redo unit
  * 👉🏻 A committed transaction's forward and inverse ops.

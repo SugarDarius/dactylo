@@ -5,9 +5,11 @@ import {
 } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
 import type {
+  Observable,
   SubscriberCallback,
   UnsubscribeCallback,
 } from './internals/event-source'
+import type { HistoryEvent } from './internals/history'
 import type { MarkKey } from './internals/marks'
 import { TransactionPipeline } from './internals/transaction'
 import type { TransactionSource } from './internals/transaction'
@@ -40,6 +42,12 @@ export interface DactyloMarksApi {
    * 👉🏻  A toolbar button for a mark that should appear pressed or not.
    */
   readonly isActive: (markKey: MarkKey, context: EditorContext) => boolean
+}
+
+/** API to interact with the events of the editor. */
+export interface DactyloEventsApi {
+  /** Subscribes to the history stack changes. */
+  readonly history: Observable<HistoryEvent>
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -146,6 +154,23 @@ export class Dactylo {
 
       /** Applies the newest undo entry via the transaction pipeline. */
       undo: () => this.#pipeline.undo(),
+    }
+  }
+
+  /**
+   * Returns the API to interact with the events of the editor.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.history.subscribe((event) => {
+   *  console.log(event.canUndo, event.canRedo)
+   * })
+   * ```
+   */
+  get events(): DactyloEventsApi {
+    return {
+      /** Subscribes to the history stack changes. */
+      history: this.#pipeline.events.history,
     }
   }
 
