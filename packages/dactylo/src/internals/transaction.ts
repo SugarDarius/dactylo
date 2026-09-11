@@ -687,7 +687,7 @@ export class TransactionPipeline {
           this.redo()
           return true
         }
-        //@todo: hto be handled
+        //@todo: to be handled
         case 'copy':
         case 'paste':
         case 'cut':
@@ -703,10 +703,7 @@ export class TransactionPipeline {
 
     const { selection } = this.#context
     if (selection !== null && selection.__type === 'cursor') {
-      // @todo: add shortcut detection
       // @todo: add mention and /command character (pay attention to behaviors in UI)
-      // @todo: detect history  (undo/redo) shortcuts
-      // @todo: detect paste shortcuts.
       // @todo: handle markdown
 
       event.preventDefault()
