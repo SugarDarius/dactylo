@@ -7,7 +7,7 @@ export type UnsubscribeCallback = () => void
 /** An observable that can be subscribed to and notified about events. */
 export interface Observable<T> {
   /** Register a callback function called when the event source emits an events. */
-  subscribe(callback: SubscriberCallback<T>): UnsubscribeCallback
+  subscribe: (callback: SubscriberCallback<T>) => UnsubscribeCallback
 }
 /**
  * An event source that can be subscribed to and notified about events.

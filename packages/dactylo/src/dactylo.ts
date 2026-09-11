@@ -223,8 +223,8 @@ export class Dactylo {
 
       this.#eventSources.errors.notify({
         command,
-        error: wrapped,
         durationMs,
+        error: wrapped,
         payload,
       })
       this.#eventSources.commands.notify({

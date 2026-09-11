@@ -26,7 +26,8 @@ import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import type { Observable } from './event-source'
 import { EventSource } from './event-source'
-import { HistoryStack, type HistoryEvent } from './history'
+import { HistoryStack } from './history'
+import type { HistoryEvent } from './history'
 import { isMarkEnabled, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
 import { splitTextNodeAt } from './node'
@@ -750,8 +751,8 @@ export class TransactionPipeline {
     })
 
     this.#eventSources.history.notify({
-      canUndo: this.#history.canUndo(),
       canRedo: this.#history.canRedo(),
+      canUndo: this.#history.canUndo(),
     })
   }
 
@@ -776,8 +777,8 @@ export class TransactionPipeline {
     })
 
     this.#eventSources.history.notify({
-      canUndo: this.#history.canUndo(),
       canRedo: this.#history.canRedo(),
+      canUndo: this.#history.canUndo(),
     })
   }
 
