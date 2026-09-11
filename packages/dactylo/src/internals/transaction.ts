@@ -6,13 +6,13 @@ import {
 import type { Block, BlockId, BlockWithoutPosKey } from './blocks'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
 import {
-  collectTextSpansInRangeInDocument,
-  compareTextCursorsInDocument,
-  computeInsertBlockPosKeyInDocument,
-  getBlockInDocument,
-  insertBlockIntoDocument,
+  collectTextSpansInRange,
+  compareTextCursors,
+  computeInsertBlockPosKey,
+  getBlock,
+  insertBlock,
   normalizeRange,
-  resolveInsertAfterBlockIdInDocument,
+  resolveInsertAfterBlockId,
 } from './document'
 import type { DocumentState } from './document'
 import {
@@ -284,7 +284,7 @@ export function requireInlineBlock(
   blockId: BlockId,
   op: Operation,
 ): Block {
-  const block = getBlockInDocument(state, blockId)
+  const block = getBlock(state, blockId)
 
   if (!isBlockWithInlineContent(block)) {
     validationError(`Block ${blockId} is not allowed to receive inline ops`, op)
@@ -386,7 +386,7 @@ export function applyError(message: string, op: Operation): never {
 export function applyOp(context: EditorContext, op: Operation): EditorContext {
   switch (op.__type) {
     case 'insert_block': {
-      let state = insertBlockIntoDocument(context.state, op.block)
+      let state = insertBlock(context.state, op.block)
       state = { ...state, blockOrderById: sortBlockOrder(state.blocks) }
       return withPlaceholderFlag(withDocumentState(context, state), false)
     }
@@ -394,7 +394,7 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
       return withActiveMarks(context, op.activeMarks)
     }
     case 'set_marks': {
-      const block = getBlockInDocument(context.state, op.blockId)
+      const block = getBlock(context.state, op.blockId)
 
       const content = [...block.content]
 
@@ -816,9 +816,7 @@ export class TransactionPipeline {
          * We cannot accept this case as it's a contract-violation
          * because a {@link RangeSelection} is a non-empty text range.
          */
-        if (
-          compareTextCursorsInDocument(this.#context.state, anchor, focus) >= 0
-        ) {
+        if (compareTextCursors(this.#context.state, anchor, focus) >= 0) {
           throw DactyloError.from({
             code: 'RANGE_SELECTION_COLLAPSED',
             hint: 'Use selection.__type === "cursor" (or toggleMark with a collapsed caret) to change activeMarks in editor context.',
@@ -834,10 +832,7 @@ export class TransactionPipeline {
          *
          * Use only `selection.__type === 'cursor'` to toggle active marks.
          */
-        const spans = collectTextSpansInRangeInDocument(
-          this.#context.state,
-          normalized,
-        )
+        const spans = collectTextSpansInRange(this.#context.state, normalized)
         if (spans.length <= 0) {
           throw DactyloError.from({
             code: 'RANGE_SELECTION_NO_TEXT_SPANS',
@@ -847,7 +842,7 @@ export class TransactionPipeline {
         }
 
         const enabling = spans.every((span) => {
-          const block = getBlockInDocument(this.#context.state, span.blockId)
+          const block = getBlock(this.#context.state, span.blockId)
           const found = findNodeInBlock(block, span.nodeId)
 
           if (!found || found.node.__type !== 'text') {
@@ -860,7 +855,7 @@ export class TransactionPipeline {
         const ops: Operation[] = []
 
         for (const span of spans) {
-          const block = getBlockInDocument(this.#context.state, span.blockId)
+          const block = getBlock(this.#context.state, span.blockId)
           const found = findNodeInBlock(block, span.nodeId)
 
           if (!found || found.node.__type !== 'text') {
@@ -907,16 +902,10 @@ export class TransactionPipeline {
       [
         {
           __type: 'insert_block',
-          afterBlockId: resolveInsertAfterBlockIdInDocument(
-            this.#context.state,
-            pos,
-          ),
+          afterBlockId: resolveInsertAfterBlockId(this.#context.state, pos),
           block: {
             ...blockWithOutPosKey,
-            posKey: computeInsertBlockPosKeyInDocument(
-              this.#context.state,
-              pos,
-            ),
+            posKey: computeInsertBlockPosKey(this.#context.state, pos),
           },
         },
       ],
@@ -927,15 +916,7 @@ export class TransactionPipeline {
   /** Removes a block by ID. */
   // @todo: to be updated according to the new upcoming block API
   deleteBlock(blockId: BlockId, policy?: TransactionPolicy): void {
-    const block = this.#context.state.blocks.get(blockId)
-    if (!block) {
-      throw DactyloError.from({
-        code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
-        hint: 'TransactionPipeline/#deleteBlock',
-        message: `Block ${blockId} not found in document`,
-      })
-    }
-
+    const block = getBlock(this.#context.state, blockId)
     const idx = this.#context.state.blockOrderById.indexOf(blockId)
 
     let afterBlockId: BlockId | null = null

@@ -61,7 +61,7 @@ export interface DactyloErrorEvent {
   readonly payload?: Record<string, unknown>
 }
 
-/** API to interact with the events of the editor. */
+/** Api to interact with the events of the editor. */
 export interface DactyloEventsApi {
   /** Subscribes to the commands executed by the user/ai-agent. */
   readonly commands: Observable<DactyloCommandEvent>
@@ -240,7 +240,7 @@ export class Dactylo {
   }
 
   /**
-   * Returns the API to interact with the events of the editor.
+   * Returns the Api to interact with the events of the editor.
    *
    * @example
    * ```ts
@@ -253,7 +253,7 @@ export class Dactylo {
     return {
       /** Subscribes to the commands executed by the user/ai-agent. */
       commands: this.#eventSources.commands.observable,
-      /** Subscribes to the errors thrown from public API calls. */
+      /** Subscribes to the errors thrown from executed commands. */
       errors: this.#eventSources.errors.observable,
       /** Subscribes to the history stack changes. */
       history: this.#pipeline.events.history,

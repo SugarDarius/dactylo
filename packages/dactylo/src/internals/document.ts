@@ -94,10 +94,7 @@ export function createInitialEmptyDocumentState(
 // --------Blocks--------
 
 /** Immutable update: add a block and refresh cached order. */
-export function insertBlockIntoDocument(
-  state: DocumentState,
-  block: Block,
-): DocumentState {
+export function insertBlock(state: DocumentState, block: Block): DocumentState {
   const blocks = new Map([...state.blocks, [block.id, block]])
 
   return {
@@ -114,7 +111,7 @@ export function insertBlockIntoDocument(
  * @param blockId - ID of the reference block.
  * @returns Previous and next block IDs, or `null` when absent.
  */
-export function getBlockNeighborsInDocument(
+export function getBlockNeighbors(
   state: DocumentState,
   blockId: BlockId,
 ): { prev: BlockId | null; next: BlockId | null } {
@@ -141,15 +138,12 @@ export function getBlockNeighborsInDocument(
 }
 
 /* Returns a block by ID or throws if it does not exist. */
-export function getBlockInDocument(
-  state: DocumentState,
-  blockId: BlockId,
-): Block {
+export function getBlock(state: DocumentState, blockId: BlockId): Block {
   const block = state.blocks.get(blockId)
   if (!block) {
     throw DactyloError.from({
       code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
-      hint: 'DocumentState/#getBlockInDocument',
+      hint: 'DocumentState/#getBlock',
       message: `Block ${blockId} not found in document`,
     })
   }
@@ -158,7 +152,7 @@ export function getBlockInDocument(
 }
 
 /** Immutable update: replace one block in document state. */
-export function replaceBlockInDocument(
+export function replaceBlock(
   state: DocumentState,
   blockId: BlockId,
   nextBlock: Block,
@@ -168,19 +162,11 @@ export function replaceBlockInDocument(
   return { ...state, blocks }
 }
 
-export function computeInsertBlockPosKeyError(blockId: BlockId): never {
-  throw DactyloError.from({
-    code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
-    hint: 'DocumentState/#computeInsertBlockPosKeyInDocument',
-    message: `Block ${blockId} not found in document`,
-  })
-}
-
 /**
  * Computes the position key (fractional index) where to insert a block
  * from a `InsertBlockOpPosition` in the document.
  */
-export function computeInsertBlockPosKeyInDocument(
+export function computeInsertBlockPosKey(
   state: DocumentState,
   pos: InsertBlockOpPosition,
 ): PosKey {
@@ -191,10 +177,7 @@ export function computeInsertBlockPosKeyInDocument(
         return makePosition()
       }
 
-      const block = state.blocks.get(firstBlockId)
-      if (!block) {
-        computeInsertBlockPosKeyError(firstBlockId)
-      }
+      const block = getBlock(state, firstBlockId)
       return makePosition(undefined, block.posKey)
     }
     case 'end': {
@@ -203,58 +186,37 @@ export function computeInsertBlockPosKeyInDocument(
         return makePosition()
       }
 
-      const block = state.blocks.get(lastBlockId)
-      if (!block) {
-        computeInsertBlockPosKeyError(lastBlockId)
-      }
+      const block = getBlock(state, lastBlockId)
       return makePosition(block.posKey)
     }
     case 'after': {
-      const block = state.blocks.get(pos.blockId)
-      if (!block) {
-        computeInsertBlockPosKeyError(pos.blockId)
-      }
+      const block = getBlock(state, pos.blockId)
 
-      const { next } = getBlockNeighborsInDocument(state, pos.blockId)
+      const { next } = getBlockNeighbors(state, pos.blockId)
       if (!next) {
         return after(block.posKey)
       }
 
-      const nextBlock = state.blocks.get(next)
-      if (!nextBlock) {
-        computeInsertBlockPosKeyError(next)
-      }
+      const nextBlock = getBlock(state, next)
 
       return between(block.posKey, nextBlock.posKey)
     }
     case 'before': {
-      const block = state.blocks.get(pos.blockId)
-      if (!block) {
-        computeInsertBlockPosKeyError(pos.blockId)
-      }
+      const block = getBlock(state, pos.blockId)
 
-      const { prev } = getBlockNeighborsInDocument(state, pos.blockId)
+      const { prev } = getBlockNeighbors(state, pos.blockId)
       if (!prev) {
         return before(block.posKey)
       }
 
-      const prevBlock = state.blocks.get(prev)
-      if (!prevBlock) {
-        computeInsertBlockPosKeyError(prev)
-      }
+      const prevBlock = getBlock(state, prev)
 
       return between(prevBlock.posKey, block.posKey)
     }
     case 'between': {
-      const loBlock = state.blocks.get(pos.afterBlockId)
-      if (!loBlock) {
-        computeInsertBlockPosKeyError(pos.afterBlockId)
-      }
+      const loBlock = getBlock(state, pos.afterBlockId)
+      const hiBlock = getBlock(state, pos.beforeBlockId)
 
-      const hiBlock = state.blocks.get(pos.beforeBlockId)
-      if (!hiBlock) {
-        computeInsertBlockPosKeyError(pos.beforeBlockId)
-      }
       return between(loBlock.posKey, hiBlock.posKey)
     }
     default: {
@@ -267,7 +229,7 @@ export function computeInsertBlockPosKeyInDocument(
  * Resolves the position where to insert a block from
  * a `InsertBlockOpPosition` in the document.
  */
-export function resolveInsertAfterBlockIdInDocument(
+export function resolveInsertAfterBlockId(
   state: DocumentState,
   pos: InsertBlockOpPosition,
 ): BlockId | null {
@@ -282,7 +244,7 @@ export function resolveInsertAfterBlockIdInDocument(
       return pos.blockId
     }
     case 'before': {
-      const { prev } = getBlockNeighborsInDocument(state, pos.blockId)
+      const { prev } = getBlockNeighbors(state, pos.blockId)
       return prev
     }
     case 'between': {
@@ -302,7 +264,7 @@ export function resolveInsertAfterBlockIdInDocument(
  *
  * Returns negative when `a` is before `b`, zero when equal, positive when after.
  */
-export function compareTextCursorsInDocument(
+export function compareTextCursors(
   state: DocumentState,
   a: TextCursor,
   b: TextCursor,
@@ -360,13 +322,13 @@ export function compareTextCursorsInDocument(
  *
  * Returns non-empty text spans; empty when the range is collapsed.
  */
-export function collectTextSpansInRangeInDocument(
+export function collectTextSpansInRange(
   state: DocumentState,
   range: RangeSelection,
 ): TextSpanInRange[] {
   const { anchor, focus } = range
 
-  if (compareTextCursorsInDocument(state, anchor, focus) >= 0) {
+  if (compareTextCursors(state, anchor, focus) >= 0) {
     return []
   }
 
@@ -462,7 +424,7 @@ export function normalizeRange(
   selection: RangeSelection,
 ): RangeSelection {
   const { anchor, focus } = selection
-  if (compareTextCursorsInDocument(state, anchor, focus) <= 0) {
+  if (compareTextCursors(state, anchor, focus) <= 0) {
     return selection
   }
   return createRange(focus, anchor)

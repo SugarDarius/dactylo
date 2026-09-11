@@ -1,11 +1,11 @@
 import { findNodeInBlock, isBlockWithInlineContent, touchBlock } from './blocks'
 import type { BlockId } from './blocks'
 import {
-  collectTextSpansInRangeInDocument,
+  collectTextSpansInRange,
   createInitialEmptyDocumentState,
-  getBlockInDocument,
+  getBlock,
   normalizeRange,
-  replaceBlockInDocument,
+  replaceBlock,
 } from './document'
 import type { DocumentState } from './document'
 import { createInitialActiveMarks, isMarkEnabled } from './marks'
@@ -207,7 +207,7 @@ export function updateBlockContent(
   blockId: BlockId,
   content: InlineNode[],
 ): EditorContext {
-  const block = getBlockInDocument(context.state, blockId)
+  const block = getBlock(context.state, blockId)
 
   /**
    * Blocks with no allowed inline content are a no-op
@@ -233,10 +233,7 @@ export function updateBlockContent(
     content: coalesceInlineNodes(content),
   })
 
-  return withDocumentState(
-    context,
-    replaceBlockInDocument(context.state, blockId, next),
-  )
+  return withDocumentState(context, replaceBlock(context.state, blockId, next))
 }
 
 /**
@@ -260,14 +257,14 @@ export function isMarkActiveInContext(
     return isMarkEnabled(activeMarks, markKey)
   } else if (selection.__type === 'range') {
     const normalized = normalizeRange(context.state, selection)
-    const spans = collectTextSpansInRangeInDocument(context.state, normalized)
+    const spans = collectTextSpansInRange(context.state, normalized)
 
     if (spans.length <= 0) {
       return false
     }
 
     return spans.every((span) => {
-      const block = getBlockInDocument(context.state, span.blockId)
+      const block = getBlock(context.state, span.blockId)
       const found = findNodeInBlock(block, span.nodeId)
 
       if (!found || found.node.__type !== 'text') {
