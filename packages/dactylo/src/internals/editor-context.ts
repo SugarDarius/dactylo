@@ -10,8 +10,8 @@ import {
 import type { DocumentState } from './document'
 import { createInitialActiveMarks, isMarkEnabled } from './marks'
 import type { MarkKey, Marks } from './marks'
-import { coalesceInlineNodes } from './node'
-import type { InlineNode } from './node'
+import { coalesceInlineNodes } from './nodes'
+import type { InlineNode } from './nodes'
 import type { Selection } from './selection'
 
 /**

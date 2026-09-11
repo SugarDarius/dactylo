@@ -9,8 +9,8 @@
 
 import { nanoid } from 'nanoid'
 
-import { createPlaceholderTextNode } from './node'
-import type { InlineNode, NodeId } from './node'
+import { createPlaceholderTextNode } from './nodes'
+import type { InlineNode, NodeId } from './nodes'
 import { makeInitialPosition } from './position'
 import type { PosKey } from './position'
 import type { Brand, Relax, Metadata } from './types'

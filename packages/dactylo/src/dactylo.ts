@@ -24,6 +24,7 @@ export type DactyloCommand =
   | 'history/can-redo'
   | 'marks/toggle'
   | 'marks/is-active'
+  | 'keyboard/on-key-down'
 
 /** Event emitted when a command is executed */
 export interface DactyloCommandEvent {
@@ -113,6 +114,12 @@ export interface DactyloMarksCommands {
     markKey: MarkKey,
     context: EditorContext,
   ) => Awaitable<boolean>
+}
+
+/** Commands to interact with the keyboard in the editor. */
+export interface DactyloKeyboardCommands {
+  /** Handles an `onKeyDown` event and returns a boolean indicating whether the event was handled. */
+  readonly onKeyDown: (event: KeyboardEvent) => Awaitable<boolean>
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -332,6 +339,26 @@ export class Dactylo {
           'marks/toggle',
           () => this.#pipeline.toggleMark(markKey, { source }),
           { mark: markKey, source },
+        ),
+    }
+  }
+
+  /**
+   * Returns the commands to interact with the keyboard in the editor.
+   *
+   * @example
+   * ```ts
+   * <div onKeyDown={editor.keyboard.onKeyDown} contentEditable={true} />
+   * ```
+   */
+  get keyboard(): DactyloKeyboardCommands {
+    return {
+      /** Handles an `onKeyDown` event and returns a boolean indicating whether the event was handled. */
+      onKeyDown: (event: KeyboardEvent) =>
+        this.#safeExecuteCommand(
+          'keyboard/on-key-down',
+          () => this.#pipeline.digestKeyboardEvent(event),
+          { payload: { event } },
         ),
     }
   }

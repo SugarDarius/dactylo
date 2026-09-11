@@ -18,7 +18,7 @@
 
 import type { Block, BlockId } from './blocks'
 import type { Marks } from './marks'
-import type { NodeId } from './node'
+import type { NodeId } from './nodes'
 import type { Relax } from './types'
 
 /** Operation to insert a block at the given position (fractional index). */

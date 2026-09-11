@@ -30,8 +30,8 @@ import { HistoryStack } from './history'
 import type { HistoryEvent } from './history'
 import { isMarkEnabled, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
-import { splitTextNodeAt } from './node'
-import type { NodeId, TextNode } from './node'
+import { splitTextNodeAt } from './nodes'
+import type { NodeId, TextNode } from './nodes'
 import type { Operation, InsertBlockOpPosition } from './operations'
 
 /** The source of a transaction. */
@@ -897,7 +897,8 @@ export class TransactionPipeline {
    * This method is responsible for automatically handling:
    * - Detect and resolves platform keyboard shortcuts (undo/redo, copy/paste/cut/select-all, deselect)
    * - Handles structural editing keys (Enter, Backspace, typing, ...)
-   * - Handles markdown shortcuts (bold, italic, ...)
+   * - Handles markdown shortcuts on type (bold, italic, ...)
+   * - Handles markdown syntax on paste (e.g, **bold**, [link](https://example.com))
    * - Handles mention key and slash command key
    * - Handles typed keys and behavior keys (e.g. Enter, Shift+Enter, Backspace, etc.)
    *
@@ -909,8 +910,13 @@ export class TransactionPipeline {
    * - `history`
    * - `mention`
    * - `slash-command`
+   *
+   * Returns a boolean indicating whether the event was handled.
    */
-  digestKeyboardEvent(event: KeyboardEvent, policy?: TransactionPolicy): void {
+  digestKeyboardEvent(
+    event: KeyboardEvent,
+    policy?: TransactionPolicy,
+  ): boolean {
     const { selection } = this.#context
     if (selection !== null && selection.__type === 'cursor') {
       // @todo: add shortcut detection
@@ -927,7 +933,11 @@ export class TransactionPipeline {
         label: `typed_key:${String(event.key)}`,
         pushToHistory: true,
       })
+
+      return true
     }
+
+    return false
   }
 
   // ─── Block operations ───────────────────────────────────────------

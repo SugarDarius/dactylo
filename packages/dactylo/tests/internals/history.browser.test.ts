@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import type { BlockId } from '../../src/internals/blocks'
 import { HistoryStack } from '../../src/internals/history'
-import type { NodeId } from '../../src/internals/node'
+import type { NodeId } from '../../src/internals/nodes'
 import { createChartInsertHistoryEntry } from './utils/history'
 
 describe('History', () => {

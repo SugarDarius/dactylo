@@ -1,5 +1,5 @@
 import type { BlockId } from './blocks'
-import type { InlineNode, NodeId } from './node'
+import type { InlineNode, NodeId } from './nodes'
 import type { Relax } from './types'
 
 /**
