@@ -637,6 +637,8 @@ export class TransactionPipeline {
     return this.#context
   }
 
+  // ─── Core pipeline ────────────────────────────────────────────────
+
   /** Apply operations in order, left to right. */
   #applyOps(ops: readonly Operation[]): EditorContext {
     let next = this.#context
@@ -708,7 +710,7 @@ export class TransactionPipeline {
     })
   }
 
-  // ─── Events ───────────────────────────────────────────────────-
+  // ─── Events ───────────────────────────────────────────────────----
 
   /** Returns the events emitted by the transaction pipeline. */
   get events(): TransactionPipelineEvents {
@@ -718,7 +720,7 @@ export class TransactionPipeline {
     }
   }
 
-  // ─── History ──────────────────────────────────────────────────────
+  // --- Marks operations ─────────────────────────────────────────----
 
   /** Whether at least one undo entry is available. */
   canUndo(): boolean {
@@ -782,7 +784,7 @@ export class TransactionPipeline {
     })
   }
 
-  // ─── Marks ──────────────────────────────────────────────────────--
+  // --- Marks operations ─────────────────────────────────────────----
 
   /** Toggle a mark on or off. */
   toggleMark(markKey: MarkKey, policy?: TransactionPolicy): void {
@@ -889,7 +891,9 @@ export class TransactionPipeline {
     }
   }
 
-  // ─── Block mutations ──────────────────────────────────────────────
+  // --- Keyboard operations ─────────────────────────────────────────
+
+  // ─── Block mutations (old) ───────────────────────────────────────-
 
   /** Inserts a block at the given document position.  */
   // @todo: to be updated according to the new upcoming block API
