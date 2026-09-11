@@ -24,6 +24,8 @@ export type DactyloErrorCode =
   | 'APPLY_TRANSACTION_OPERATION'
   /** Failed to invert a transaction operation */
   | 'INVERT_TRANSACTION_OPERATION'
+  /** History is not allowed to execute */
+  | 'HISTORY_NOT_ALLOWED'
   /** Failed to resolve a block in the document */
   | 'UNKNOWN_BLOCK_IN_DOCUMENT'
 

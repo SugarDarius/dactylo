@@ -705,10 +705,19 @@ export class TransactionPipeline {
 
   /** Applies the newest undo entry's inverse operations. */
   undo(): void {
+    if (this.#batch.active) {
+      throw DactyloError.from({
+        code: 'HISTORY_NOT_ALLOWED',
+        hint: 'TransactionPipeline/#undo',
+        message: 'undo() is not allowed to execute when the batch is active.',
+      })
+    }
+
     const entry = this.#history.popUndo()
     if (!entry) {
       return
     }
+
     this.#dispatch({
       ops: [...entry.inverseOps],
       policy: { label: 'undo', pushToHistory: false, source: 'undo' },
@@ -717,10 +726,19 @@ export class TransactionPipeline {
 
   /** Re-applies the newest redo entry's forward operations. */
   redo(): void {
+    if (this.#batch.active) {
+      throw DactyloError.from({
+        code: 'HISTORY_NOT_ALLOWED',
+        hint: 'TransactionPipeline/#redo',
+        message: 'redo() is not allowed to execute when the batch is active.',
+      })
+    }
+
     const entry = this.#history.popRedo()
     if (!entry) {
       return
     }
+
     this.#dispatch({
       ops: [...entry.ops],
       policy: { label: 'redo', pushToHistory: false, source: 'redo' },
