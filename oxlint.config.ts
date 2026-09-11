@@ -17,6 +17,7 @@ export default defineConfig({
     'jsx-a11y/click-events-have-key-events': 'off',
     'jsx-a11y/no-noninteractive-element-interactions': 'off',
     'jsx-a11y/prefer-tag-over-role': 'off',
+    'promise/prefer-await-to-callback': 'off',
     'typescript/consistent-type-definitions': 'off',
     'typescript/no-invalid-void-type': 'off',
     'unicorn/catch-error-name': 'off',
