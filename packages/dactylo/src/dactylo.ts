@@ -153,7 +153,7 @@ export interface DactyloOptions {
  * The core spine of Dactylo is a transactional pipeline as it provides:
  *  1. Atomic batches
  *  2. Predictable and reversible mutations and optimistic local updates
- *  3. Side effects: history, listeners, ...
+ *  3. Side effects: history, events, ...
  *  4. Uniform input paths: keyboard, Ai edits, imports, all produce transactions
  *
  * Pipeline stages:

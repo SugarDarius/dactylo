@@ -416,9 +416,7 @@ export class TransactionPipeline {
    * Dispatches a transaction by running the full pipeline:
    * 1. Validate or reject the operation
    * 2. └- Apply the operation and get the invert operation for history
-   * 3. └- Push to history
-   * 4. └- Updates the editor context
-   * 4. └- Notify subscribers
+   * 3. └- Commit: push to history; notify events subscribers
    *
    * Does not mutate the inputs.
    */
@@ -440,6 +438,8 @@ export class TransactionPipeline {
     next = applyOps(this.#context, ops)
     const inverseOps = invertOps(ops)
 
+    this.#context = next
+
     if (!skipHistoryPush(transaction.policy)) {
       /** Only coalesce history entries for user and ai-agent transactions. */
       const coalesce =
@@ -449,7 +449,6 @@ export class TransactionPipeline {
       this.#history.push({ inverseOps, ops: [...ops] }, coalesce)
     }
 
-    this.#context = next
     this.#eventSources.context.notify(next)
   }
 
@@ -657,7 +656,7 @@ export class TransactionPipeline {
    * This method is responsible for automatically handling:
    * - Detect and resolves platform keyboard shortcuts (undo/redo, copy/paste/cut/select-all, deselect)
    * - Handles structural editing keys (Enter, Backspace, typing, ...)
-   * - Handles markdown shortcuts on type (bold, italic, ...)
+   * - Handles markdown shortcuts on typing (bold, italic, ...)
    * - Handles markdown syntax on paste (e.g, **bold**, [link](https://example.com))
    * - Handles mention key and slash command key
    * - Handles typed keys and behavior keys (e.g. Enter, Shift+Enter, Backspace, etc.)
