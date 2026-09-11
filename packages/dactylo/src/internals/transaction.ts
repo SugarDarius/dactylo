@@ -420,7 +420,7 @@ export class TransactionPipeline {
    * 4. └- Updates the editor context
    * 4. └- Notify subscribers
    *
-   * Doest not mutate the inputs.
+   * Does not mutate the inputs.
    */
   #dispatch(transaction: Transaction): void {
     const { ops } = transaction
