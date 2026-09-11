@@ -63,7 +63,7 @@ export interface LinkNode extends INode {
     readonly href: string
 
     /** Title of the link */
-    readonly title?: string
+    readonly title: string
   }
 
   /** Text Node representing the link text */
@@ -74,12 +74,16 @@ export interface LinkNode extends INode {
 export interface MentionNode extends INode {
   readonly __type: 'mention'
 
-  /**
-   * Artefact key of the mention.
-   * It can represent a user id, a group id, etc.
-   * See it as the generic value to use when an artefact is mentioned.
-   */
-  readonly artefactKey: string
+  /** Structural data of the artefact representing the mention */
+  readonly artefact: {
+    /** The  key to use when you want to refer to the mention in the code. */
+    readonly key: string
+
+    /** The type to use when you want  a specific rendering
+     * in UI libraries for the mention.
+     */
+    readonly type: string
+  }
 }
 
 /** Node representing a like break (soft break, shift+enter) inside a block. */
