@@ -892,14 +892,32 @@ export class TransactionPipeline {
 
   // --- Keyboard operations ─────────────────────────────────────────
 
-  /** Digests a keyboard event and applies the corresponding operations. */
+  /**
+   * Digests a keyboard event and applies the corresponding operations.
+   * This method is responsible for automatically handling:
+   * - Detect and resolves platform keyboard shortcuts (undo/redo, copy/paste/cut/select-all, deselect)
+   * - Handles structural editing keys (Enter, Backspace, typing, ...)
+   * - Handles markdown shortcuts (bold, italic, ...)
+   * - Handles mention key and slash command key
+   * - Handles typed keys and behavior keys (e.g. Enter, Shift+Enter, Backspace, etc.)
+   *
+   * It commits the corresponding operations to the transaction pipeline
+   * given the current editor context and selection.
+   *
+   * And notify subscribers for the following events:
+   * - `context`
+   * - `history`
+   * - `mention`
+   * - `slash-command`
+   */
   digestKeyboardEvent(event: KeyboardEvent, policy?: TransactionPolicy): void {
     const { selection } = this.#context
     if (selection !== null && selection.__type === 'cursor') {
       // @todo: add shortcut detection
-      // @todo: add mention and /command character
+      // @todo: add mention and /command character (pay attention to behaviors in UI)
       // @todo: detect history  (undo/redo) shortcuts
       // @todo: detect paste shortcuts.
+      // @todo: handle markdown
 
       event.preventDefault()
 
@@ -914,7 +932,10 @@ export class TransactionPipeline {
 
   // ─── Block operations ───────────────────────────────────────------
 
-  /** Inserts a block at the given document position.  */
+  /**
+   * Inserts a block at the given document position.
+   * This method is intended to be used from server code and Ai agents.
+   */
   // @todo: to be updated according to the new upcoming block API
   insertBlock(
     blockWithOutPosKey: BlockWithoutPosKey,
@@ -936,7 +957,10 @@ export class TransactionPipeline {
     )
   }
 
-  /** Removes a block by ID. */
+  /**
+   * Removes a block by ID.
+   * This method is intended to be used from server code and Ai agents.
+   */
   // @todo: to be updated according to the new upcoming block API
   deleteBlock(blockId: BlockId, policy?: TransactionPolicy): void {
     const block = getBlock(this.#context.state, blockId)
