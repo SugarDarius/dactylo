@@ -17,13 +17,49 @@ import { TransactionPipeline } from './internals/transaction'
 import type { TransactionSource } from './internals/transaction'
 import type { Awaitable } from './internals/types'
 
-/** API to interact with the history of the editor. */
-export interface DactyloHistoryApi {
+/** Discriminated union of commands that can be executed by the user/ai-agent. */
+export type DactyloCommand =
+  | 'context/snapshot'
+  | 'context/subscribe'
+  | 'history/undo'
+  | 'history/redo'
+  | 'history/canUndo'
+  | 'history/canRedo'
+  | 'marks/toggle'
+  | 'marks/isActive'
+
+/** Event emitted when an error is thrown from a command. */
+export interface DactyloErrorEvent {
+  /** The command that caused the error. */
+  command: DactyloCommand
+  /** The error thrown from the command. */
+  error: DactyloError
+  /** The duration of the command in milliseconds. */
+  durationMs: number
+}
+
+/** API to interact with the events of the editor. */
+export interface DactyloEventsApi {
+  /** Subscribes to the history stack changes. */
+  readonly history: Observable<HistoryEvent>
+
+  /** Subscribes to the errors thrown from commands. */
+  readonly errors: Observable<DactyloErrorEvent>
+}
+
+/** Event sources for {@link Dactylo} */
+export interface DactyloEventSources {
+  /** The event source for the errors thrown from commands. */
+  readonly errors: EventSource<DactyloErrorEvent>
+}
+
+/** Commands to interact with the history of the editor. */
+export interface DactyloHistoryCommands {
   /** Whether at least one undo entry is available. */
-  readonly canUndo: () => boolean
+  readonly canUndo: () => Awaitable<boolean>
 
   /** Whether at least one redo entry is available. */
-  readonly canRedo: () => boolean
+  readonly canRedo: () => Awaitable<boolean>
 
   /** Applies the newest undo entry via the transaction pipeline. */
   readonly undo: () => Awaitable<void>
@@ -32,8 +68,8 @@ export interface DactyloHistoryApi {
   readonly redo: () => Awaitable<void>
 }
 
-/** API to interact with the marks of the editor. */
-export interface DactyloMarksApi {
+/** Commands to interact with the marks of the editor. */
+export interface DactyloMarksCommands {
   /** Toggle a mark on or off via the transaction pipeline. */
   readonly toggle: (
     markKey: MarkKey,
@@ -48,27 +84,6 @@ export interface DactyloMarksApi {
     markKey: MarkKey,
     context: EditorContext,
   ) => Awaitable<boolean>
-}
-
-/** Event emitted when an error is thrown from a public API call. */
-export interface DactyloErrorEvent {
-  error: DactyloError
-  durationMs: number
-}
-
-/** API to interact with the events of the editor. */
-export interface DactyloEventsApi {
-  /** Subscribes to the history stack changes. */
-  readonly history: Observable<HistoryEvent>
-
-  /** Subscribes to the errors thrown from public API calls. */
-  readonly errors: Observable<DactyloErrorEvent>
-}
-
-/** Event sources for {@link Dactylo} */
-export interface DactyloEventSources {
-  /** The event source for the errors thrown from public API calls. */
-  readonly errors: EventSource<DactyloErrorEvent>
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -158,11 +173,14 @@ export class Dactylo {
   }
 
   /**
-   * Safely executes a public api call and handle gracefully errors.
+   * Safely executes a command and handle gracefully errors.
    * When it rejects, the error is wrapped into a {@link DactyloError} and re-thrown,
    * and the event `errors` is emitted with it.
    */
-  #safeExecute<T>(fn: () => Awaitable<T>): Awaitable<T> {
+  #safeExecuteCommand<T>(
+    command: DactyloCommand,
+    fn: () => Awaitable<T>,
+  ): Awaitable<T> {
     const startedAt = Date.now()
     try {
       return fn()
@@ -174,37 +192,12 @@ export class Dactylo {
       console.error(wrapped)
 
       this.#eventSources.errors.notify({
+        command,
         error: wrapped,
         durationMs,
       })
+
       throw err
-    }
-  }
-
-  /**
-   * Returns the API to interact with the history of the editor.
-   *
-   * @example
-   * ```ts
-   * const canUndo = editor.history.canUndo()
-   * if (canUndo) {
-   *  editor.history.undo()
-   * }
-   * ```
-   */
-  get history(): DactyloHistoryApi {
-    return {
-      /** Whether at least one redo entry is available. */
-      canRedo: () => this.#pipeline.canRedo(),
-
-      /** Whether at least one undo entry is available. */
-      canUndo: () => this.#pipeline.canUndo(),
-
-      /** Re-applies the newest redo entry via the transaction pipeline. */
-      redo: () => this.#safeExecute(() => this.#pipeline.redo()),
-
-      /** Applies the newest undo entry via the transaction pipeline. */
-      undo: () => this.#safeExecute(() => this.#pipeline.undo()),
     }
   }
 
@@ -229,7 +222,42 @@ export class Dactylo {
   }
 
   /**
-   * Returns the API to interact with the marks of the editor.
+   * Returns the commands to interact with the history of the editor.
+   *
+   * @example
+   * ```ts
+   * const canUndo = editor.history.canUndo()
+   * if (canUndo) {
+   *  editor.history.undo()
+   * }
+   * ```
+   */
+  get history(): DactyloHistoryCommands {
+    return {
+      /** Whether at least one redo entry is available. */
+      canRedo: () =>
+        this.#safeExecuteCommand('history/canRedo', () =>
+          this.#pipeline.canRedo(),
+        ),
+
+      /** Whether at least one undo entry is available. */
+      canUndo: () =>
+        this.#safeExecuteCommand('history/canUndo', () =>
+          this.#pipeline.canUndo(),
+        ),
+
+      /** Re-applies the newest redo entry via the transaction pipeline. */
+      redo: () =>
+        this.#safeExecuteCommand('history/redo', () => this.#pipeline.redo()),
+
+      /** Applies the newest undo entry via the transaction pipeline. */
+      undo: () =>
+        this.#safeExecuteCommand('history/undo', () => this.#pipeline.undo()),
+    }
+  }
+
+  /**
+   * Returns the commands to interact with the marks of the editor.
    *
    * @example
    * ```ts
@@ -239,7 +267,7 @@ export class Dactylo {
    * const isBoldActive = editor.marks.isActive('bold', editor.getContextSnapshot())
    * ```
    */
-  get marks(): DactyloMarksApi {
+  get marks(): DactyloMarksCommands {
     return {
       /**
        * Whether a mark is active or not depending from the selection on the given editor context.
@@ -250,14 +278,18 @@ export class Dactylo {
        * the current editor context after each updates.
        */
       isActive: (markKey: MarkKey, context: EditorContext) =>
-        this.#safeExecute(() => isMarkActiveInContext(context, markKey)),
+        this.#safeExecuteCommand('marks/isActive', () =>
+          isMarkActiveInContext(context, markKey),
+        ),
 
       /** Toggle a mark on or off via the pipeline. */
       toggle: (
         markKey: MarkKey,
         source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
       ) =>
-        this.#safeExecute(() => this.#pipeline.toggleMark(markKey, { source })),
+        this.#safeExecuteCommand('marks/toggle', () =>
+          this.#pipeline.toggleMark(markKey, { source }),
+        ),
     }
   }
 
@@ -270,8 +302,10 @@ export class Dactylo {
    * console.log(context.state.blocks)
    * ```
    */
-  getContextSnapshot(): EditorContext {
-    return { ...this.#pipeline.context }
+  getContextSnapshot(): Awaitable<EditorContext> {
+    return this.#safeExecuteCommand('context/snapshot', () => ({
+      ...this.#pipeline.context,
+    }))
   }
 
   /**
@@ -285,7 +319,11 @@ export class Dactylo {
    * })
    * ```
    */
-  subscribe(callback: SubscriberCallback<EditorContext>): UnsubscribeCallback {
-    return this.#pipeline.events.context.subscribe(callback)
+  subscribe(
+    callback: SubscriberCallback<EditorContext>,
+  ): Awaitable<UnsubscribeCallback> {
+    return this.#safeExecuteCommand('context/subscribe', () =>
+      this.#pipeline.events.context.subscribe(callback),
+    )
   }
 }
