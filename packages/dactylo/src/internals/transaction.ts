@@ -28,11 +28,13 @@ import type { Observable } from './event-source'
 import { EventSource } from './event-source'
 import { HistoryStack } from './history'
 import type { HistoryEvent } from './history'
+import { detectPlatformKeyboardShortcut } from './keyboard'
 import { isMarkEnabled, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
 import { splitTextNodeAt } from './nodes'
 import type { NodeId, TextNode } from './nodes'
 import type { Operation, InsertBlockOpPosition } from './operations'
+import { assertNever } from './utils'
 
 /** The source of a transaction. */
 export type TransactionSource =
@@ -917,6 +919,23 @@ export class TransactionPipeline {
     event: KeyboardEvent,
     policy?: TransactionPolicy,
   ): boolean {
+    const platformShortcut = detectPlatformKeyboardShortcut(event)
+    if (platformShortcut !== null) {
+      switch (platformShortcut) {
+        case 'undo': {
+          this.undo()
+          return true
+        }
+        case 'redo': {
+          this.redo()
+          return true
+        }
+        default: {
+          assertNever(platformShortcut)
+        }
+      }
+    }
+
     const { selection } = this.#context
     if (selection !== null && selection.__type === 'cursor') {
       // @todo: add shortcut detection
