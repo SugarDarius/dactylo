@@ -277,18 +277,6 @@ export interface Transaction {
   readonly policy?: TransactionPolicy
 }
 
-/** Result of a transaction */
-export interface TransactionResult {
-  /** The output editor context after the transaction was applied */
-  readonly context: EditorContext
-
-  /** The transaction that was committed */
-  readonly transaction: Transaction
-
-  /** The inverse operations that were applied to the context */
-  readonly inverseOps: Operation[]
-}
-
 /** Events emitted by the transaction pipeline */
 export interface TransactionPipelineEvents {
   /**
