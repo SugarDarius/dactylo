@@ -16,6 +16,7 @@ import {
 } from './document'
 import type { DocumentState } from './document'
 import {
+  createInitialEditorContext,
   updateBlockContent,
   withActiveMarks,
   withDocumentState,
@@ -529,8 +530,8 @@ export interface TransactionPipelineEventSources {
 
 /** Options for constructing a {@link TransactionPipeline} instance. */
 export interface TransactionPipelineOptions {
-  /** initial context to use for the pipeline */
-  context: EditorContext
+  /** Placeholder text for the editor when no content is written. */
+  placeholder: string
 
   /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
   batchMaxSize?: number
@@ -599,7 +600,20 @@ export class TransactionPipeline {
   readonly #eventSources: TransactionPipelineEventSources
 
   constructor(options: TransactionPipelineOptions) {
-    this.#context = options.context
+    /**
+     * Initialize the editor context
+     * If no initial content is provided, it creates an empty document
+     * with a placeholder.
+     *
+     * Otherwise initial document state is provider from either:
+     *  - a JSON object (validated against the current schema version)
+     *  - a markdown string
+     *
+     * TODO: handle initial content from props
+     *  - from JSON
+     *  - from markdown string
+     */
+    this.#context = createInitialEditorContext(options.placeholder)
     this.#batch = new Batch({
       maxSize: options.batchMaxSize,
       onFlush: (ops, policy) =>

@@ -1,8 +1,5 @@
 import { DEFAULT_PLACEHOLDER } from './internals/constants'
-import {
-  createInitialEditorContext,
-  isMarkActiveInContext,
-} from './internals/editor-context'
+import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
 import { DactyloError } from './internals/errors'
 import type {
@@ -183,21 +180,8 @@ export class Dactylo {
     this.#placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
     this.#pipeline = new TransactionPipeline({
       batchMaxSize: options.config?.pipeline?.batchMaxSize,
-      /**
-       * Initialize the editor context
-       * If no initial content is provided, it creates an empty document
-       * with a placeholder.
-       *
-       * Otherwise initial document state is provider from either:
-       *  - a JSON object (validated against the current schema version)
-       *  - a markdown string
-       *
-       * TODO: handle initial content from props
-       *  - from JSON
-       *  - from markdown string
-       */
-      context: createInitialEditorContext(this.#placeholder),
       historyMaxDepth: options.config?.pipeline?.historyMaxDepth,
+      placeholder: this.#placeholder,
     })
     this.#eventSources = {
       commands: new EventSource<DactyloCommandEvent>(),
