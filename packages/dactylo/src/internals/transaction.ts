@@ -1,27 +1,15 @@
-import {
-  findNodeInBlock,
-  isBlockWithInlineContent,
-  sortBlockOrder,
-} from './blocks'
-import type { Block, BlockId, BlockWithoutPosKey } from './blocks'
+import { findNodeInBlock } from './blocks'
+import type { BlockId, BlockWithoutPosKey } from './blocks'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
 import {
   collectTextSpansInRange,
   compareTextCursors,
   computeInsertBlockPosKey,
   getBlock,
-  insertBlock,
   normalizeRange,
   resolveInsertAfterBlockId,
 } from './document'
-import type { DocumentState } from './document'
-import {
-  createInitialEditorContext,
-  updateBlockContent,
-  withActiveMarks,
-  withDocumentState,
-  withPlaceholderFlag,
-} from './editor-context'
+import { createInitialEditorContext } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import type { Observable } from './event-source'
@@ -31,9 +19,8 @@ import type { HistoryEvent } from './history'
 import { detectPlatformKeyboardShortcut } from './keyboard'
 import { isMarkEnabled, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
-import { splitTextNodeAt } from './nodes'
-import type { NodeId, TextNode } from './nodes'
 import type { Operation, InsertBlockOpPosition } from './operations'
+import { applyOps, invertOps, validateOps } from './operations-engine'
 import { assertNever } from './utils'
 
 /** The source of a transaction. */
@@ -270,211 +257,6 @@ export class Batch {
   }
 }
 
-/** Throws a validation {@link DactyloError} for a failed op check. */
-export function validationError(message: string, op: Operation): never {
-  throw DactyloError.from({
-    code: 'VALIDATE_TRANSACTION_OPERATION',
-    hint: 'TransactionPipeline/#validateOps',
-    message,
-    payload: { op },
-  })
-}
-
-/** Returns a block or accepted inline-content or throws. */
-export function requireInlineBlock(
-  state: DocumentState,
-  blockId: BlockId,
-  op: Operation,
-): Block {
-  const block = getBlock(state, blockId)
-
-  if (!isBlockWithInlineContent(block)) {
-    validationError(`Block ${blockId} is not allowed to receive inline ops`, op)
-  }
-
-  return block
-}
-
-/** Finds a text node inside a block or throws. */
-export function requireTextNode(
-  block: Block,
-  nodeId: NodeId,
-  op: Operation,
-): { node: TextNode; index: number } {
-  const found = findNodeInBlock(block, nodeId)
-  if (!found || found.node.__type !== 'text') {
-    validationError(`Text node ${nodeId} not found in block ${block.id}`, op)
-  }
-
-  return { index: found.index, node: found.node }
-}
-
-/**
- * Asserts a mark range `[from, to)` lies within a text node's bounds.
- * Throws when the range is invalid or out of bounds.
- */
-export function assertRangeInText(
-  /** Range start (inclusive). */
-  from: number,
-  /** Range end (exclusive). */
-  to: number,
-  /** Length of the target text node. */
-  textLength: number,
-  op: Operation,
-): void {
-  if (from < 0 || to < from || to > textLength) {
-    validationError(
-      `Mark range [${from}, ${to}) out of bounds for text length ${textLength}`,
-      op,
-    )
-  }
-}
-
-/**
- * Validate a batch of operations against current state.
- * Throws on failure.
- */
-export function validateOps(
-  context: EditorContext,
-  ops: readonly Operation[],
-): void {
-  for (const op of ops) {
-    switch (op.__type) {
-      case 'insert_block': {
-        if (context.state.blocks.has(op.block.id)) {
-          validationError(`Block ${op.block.id} already exists in document`, op)
-        }
-
-        if (
-          op.afterBlockId !== null &&
-          !context.state.blocks.has(op.afterBlockId)
-        ) {
-          validationError(`Unknown block: ${op.afterBlockId}`, op)
-        }
-        break
-      }
-      case 'set_marks': {
-        const block = requireInlineBlock(context.state, op.blockId, op)
-        const { node } = requireTextNode(block, op.nodeId, op)
-
-        assertRangeInText(op.from, op.to, node.text.length, op)
-
-        break
-      }
-      case 'set_active_marks': {
-        break
-      }
-      default: {
-        validationError(`Unknown operation: ${op.__type}`, op)
-      }
-    }
-  }
-}
-
-/** Throws an apply {@link DactyloError} for a failed op check. */
-export function applyError(message: string, op: Operation): never {
-  throw DactyloError.from({
-    code: 'APPLY_TRANSACTION_OPERATION',
-    hint: 'TransactionPipeline/#applyOps',
-    message,
-    payload: { op },
-  })
-}
-
-/**
- * Apply a single operation. Pure — no hooks, no history.
- * Throws on undefined operations
- */
-export function applyOp(context: EditorContext, op: Operation): EditorContext {
-  switch (op.__type) {
-    case 'insert_block': {
-      let state = insertBlock(context.state, op.block)
-      state = { ...state, blockOrderById: sortBlockOrder(state.blocks) }
-      return withPlaceholderFlag(withDocumentState(context, state), false)
-    }
-    case 'set_active_marks': {
-      return withActiveMarks(context, op.activeMarks)
-    }
-    case 'set_marks': {
-      const block = getBlock(context.state, op.blockId)
-
-      const content = [...block.content]
-
-      const idx = content.findIndex((node) => node.id === op.nodeId)
-      const node = content[idx]
-
-      if (!node || node.__type !== 'text') {
-        applyError('`set_marks` target must be a text node', op)
-      }
-
-      if (op.from === op.to) {
-        return { ...context }
-      }
-
-      const replacement = splitTextNodeAt(node, op.from, op.to, op.nextMarks)
-      if (replacement.length === 0) {
-        content.splice(idx, 1)
-      } else {
-        content.splice(idx, 1, ...replacement)
-      }
-
-      return updateBlockContent(context, op.blockId, content)
-    }
-    default: {
-      applyError(`Unknown operation: ${op.__type}`, op)
-    }
-  }
-}
-
-export function invertError(message: string, op: Operation): never {
-  throw DactyloError.from({
-    code: 'INVERT_TRANSACTION_OPERATION',
-    hint: 'TransactionPipeline/#invertOp',
-    message,
-    payload: { op },
-  })
-}
-
-/** Returns the inverse operation for undo. */
-export function invertOp(op: Operation): Operation {
-  switch (op.__type) {
-    case 'insert_block': {
-      return {
-        __type: 'delete_block',
-        afterBlockId: op.afterBlockId,
-        blockId: op.block.id,
-        snapshot: op.block,
-      }
-    }
-    case 'set_active_marks': {
-      return {
-        __type: 'set_active_marks',
-        activeMarks: op.prevActiveMarks,
-        prevActiveMarks: op.activeMarks,
-      }
-    }
-    case 'set_marks': {
-      return {
-        __type: 'set_marks',
-        blockId: op.blockId,
-        from: op.from,
-        nextMarks: op.prevMarks,
-        nodeId: op.nodeId,
-        prevMarks: op.nextMarks,
-        to: op.to,
-      }
-    }
-    default: {
-      invertError(`Unknown operation: ${op.__type}`, op)
-    }
-  }
-}
-
-/** Inverts a batch of operations in reverse application order to restore the prior context. */
-export function invertOps(ops: readonly Operation[]): Operation[] {
-  return ops.toReversed().map(invertOp)
-}
-
 export function skipHistoryPush(policy?: TransactionPolicy): boolean {
   return (
     policy?.pushToHistory === false ||
@@ -641,29 +423,22 @@ export class TransactionPipeline {
 
   // ─── Core pipeline ────────────────────────────────────────────────
 
-  /** Apply operations in order, left to right. */
-  #applyOps(ops: readonly Operation[]): EditorContext {
-    let next = this.#context
-    for (const op of ops) {
-      next = applyOp(next, op)
-    }
-
-    return next
-  }
-
+  /** Runs the transaction pipeline and updates editor context. */
   /**
-   * Run the full pipeline:
+   * Dispatches a transaction by running the full pipeline:
    * 1. Validate or reject the operation
    * 2. └- Apply the operation and get the invert operation for history
-   * 3. └- Commit
+   * 3. └- Push to history
+   * 4. └- Updates the editor context
+   * 4. └- Notify subscribers
    *
-   * Returns new context. Does NOT mutate inputs.
+   * Doest not mutate the inputs.
    */
-  #run(transaction: Transaction): TransactionResult {
+  #dispatch(transaction: Transaction): void {
     const { ops } = transaction
 
     if (ops.length === 0) {
-      return { context: this.#context, inverseOps: [], transaction }
+      return
     }
 
     try {
@@ -672,7 +447,9 @@ export class TransactionPipeline {
       throw DactyloError.wrap(err)
     }
 
-    const next = this.#applyOps(ops)
+    let next = { ...this.#context }
+
+    next = applyOps(this.#context, ops)
     const inverseOps = invertOps(ops)
 
     if (!skipHistoryPush(transaction.policy)) {
@@ -684,15 +461,8 @@ export class TransactionPipeline {
       this.#history.push({ inverseOps, ops: [...ops] }, coalesce)
     }
 
-    return { context: next, inverseOps, transaction }
-  }
-
-  /** Runs the transaction pipeline and updates editor context. */
-  #dispatch(transaction: Transaction): void {
-    const { context } = this.#run(transaction)
-
-    this.#context = context
-    this.#eventSources.context.notify(context)
+    this.#context = next
+    this.#eventSources.context.notify(next)
   }
 
   /**
