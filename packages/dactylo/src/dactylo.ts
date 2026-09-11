@@ -19,8 +19,8 @@ import type { Awaitable } from './internals/types'
 
 /** Discriminated union of commands that can be executed by the user/ai-agent. */
 export type DactyloCommand =
-  | 'context/snapshot'
-  | 'context/subscribe'
+  | 'editor-context/snapshot'
+  | 'editor-context/subscribe'
   | 'history/undo'
   | 'history/redo'
   | 'history/canUndo'
@@ -36,6 +36,8 @@ export interface DactyloErrorEvent {
   error: DactyloError
   /** The duration of the command in milliseconds. */
   durationMs: number
+  /** The optional payload of the command. */
+  payload?: Record<string, unknown>
 }
 
 /** API to interact with the events of the editor. */
@@ -176,10 +178,12 @@ export class Dactylo {
    * Safely executes a command and handle gracefully errors.
    * When it rejects, the error is wrapped into a {@link DactyloError} and re-thrown,
    * and the event `errors` is emitted with it.
+   * Emits an `commands` event when it settles.
    */
   #safeExecuteCommand<T>(
     command: DactyloCommand,
     fn: () => Awaitable<T>,
+    payload?: Record<string, unknown>,
   ): Awaitable<T> {
     const startedAt = Date.now()
     try {
@@ -195,6 +199,7 @@ export class Dactylo {
         command,
         error: wrapped,
         durationMs,
+        payload,
       })
 
       throw err
@@ -278,8 +283,10 @@ export class Dactylo {
        * the current editor context after each updates.
        */
       isActive: (markKey: MarkKey, context: EditorContext) =>
-        this.#safeExecuteCommand('marks/isActive', () =>
-          isMarkActiveInContext(context, markKey),
+        this.#safeExecuteCommand(
+          'marks/isActive',
+          () => isMarkActiveInContext(context, markKey),
+          { mark: markKey },
         ),
 
       /** Toggle a mark on or off via the pipeline. */
@@ -287,8 +294,10 @@ export class Dactylo {
         markKey: MarkKey,
         source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
       ) =>
-        this.#safeExecuteCommand('marks/toggle', () =>
-          this.#pipeline.toggleMark(markKey, { source }),
+        this.#safeExecuteCommand(
+          'marks/toggle',
+          () => this.#pipeline.toggleMark(markKey, { source }),
+          { mark: markKey, source },
         ),
     }
   }
@@ -303,7 +312,7 @@ export class Dactylo {
    * ```
    */
   getContextSnapshot(): Awaitable<EditorContext> {
-    return this.#safeExecuteCommand('context/snapshot', () => ({
+    return this.#safeExecuteCommand('editor-context/snapshot', () => ({
       ...this.#pipeline.context,
     }))
   }
@@ -322,7 +331,7 @@ export class Dactylo {
   subscribe(
     callback: SubscriberCallback<EditorContext>,
   ): Awaitable<UnsubscribeCallback> {
-    return this.#safeExecuteCommand('context/subscribe', () =>
+    return this.#safeExecuteCommand('editor-context/subscribe', () =>
       this.#pipeline.events.context.subscribe(callback),
     )
   }
