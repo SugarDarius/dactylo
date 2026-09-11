@@ -10,6 +10,7 @@ import type {
   SubscriberCallback,
   UnsubscribeCallback,
 } from './internals/event-source'
+import { EventSource } from './internals/event-source'
 import type { HistoryEvent } from './internals/history'
 import type { MarkKey } from './internals/marks'
 import { TransactionPipeline } from './internals/transaction'
@@ -49,10 +50,25 @@ export interface DactyloMarksApi {
   ) => Awaitable<boolean>
 }
 
+/** Event emitted when an error is thrown from a public API call. */
+export interface DactyloErrorEvent {
+  error: DactyloError
+  durationMs: number
+}
+
 /** API to interact with the events of the editor. */
 export interface DactyloEventsApi {
   /** Subscribes to the history stack changes. */
   readonly history: Observable<HistoryEvent>
+
+  /** Subscribes to the errors thrown from public API calls. */
+  readonly errors: Observable<DactyloErrorEvent>
+}
+
+/** Event sources for {@link Dactylo} */
+export interface DactyloEventSources {
+  /** The event source for the errors thrown from public API calls. */
+  readonly errors: EventSource<DactyloErrorEvent>
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -113,6 +129,9 @@ export class Dactylo {
   /** Transaction pipeline to use for the editor */
   readonly #pipeline: TransactionPipeline
 
+  /** Events emitted by Dactylo. */
+  readonly #eventSources: DactyloEventSources
+
   constructor(options: DactyloOptions) {
     this.#placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
     this.#pipeline = new TransactionPipeline({
@@ -133,6 +152,9 @@ export class Dactylo {
       context: createInitialEditorContext(this.#placeholder),
       historyMaxDepth: options.config?.pipeline?.historyMaxDepth,
     })
+    this.#eventSources = {
+      errors: new EventSource<DactyloErrorEvent>(),
+    }
   }
 
   /**
@@ -141,13 +163,20 @@ export class Dactylo {
    * and the event `errors` is emitted with it.
    */
   #safeExecute<T>(fn: () => Awaitable<T>): Awaitable<T> {
+    const startedAt = Date.now()
     try {
       return fn()
     } catch (err) {
       const wrapped = DactyloError.wrap(err)
+      const durationMs = Date.now() - startedAt
+
       // @todo: add specific logger.
       console.error(wrapped)
 
+      this.#eventSources.errors.notify({
+        error: wrapped,
+        durationMs,
+      })
       throw err
     }
   }
@@ -193,6 +222,9 @@ export class Dactylo {
     return {
       /** Subscribes to the history stack changes. */
       history: this.#pipeline.events.history,
+
+      /** Subscribes to the errors thrown from public API calls. */
+      errors: this.#eventSources.errors.observable,
     }
   }
 

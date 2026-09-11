@@ -518,6 +518,7 @@ export interface TransactionPipelineEvents {
   readonly history: Observable<HistoryEvent>
 }
 
+/** Event sources for the transaction pipeline. */
 export interface TransactionPipelineEventSources {
   /** The event source for the current editor context */
   readonly context: EventSource<EditorContext>
@@ -586,16 +587,16 @@ export interface TransactionPipelineOptions {
  */
 export class TransactionPipeline {
   /** The batch to use for the transaction pipeline */
-  #batch: Batch
+  readonly #batch: Batch
 
   /** Current editor context */
   #context: EditorContext
 
   /** The history stack to use for the transaction pipeline */
-  #history: HistoryStack
+  readonly #history: HistoryStack
 
   /** Events emitted by the transaction pipeline */
-  #events: TransactionPipelineEventSources
+  readonly #eventSources: TransactionPipelineEventSources
 
   constructor(options: TransactionPipelineOptions) {
     this.#context = options.context
@@ -610,7 +611,7 @@ export class TransactionPipeline {
     this.#history = new HistoryStack({
       maxDepth: options.historyMaxDepth,
     })
-    this.#events = {
+    this.#eventSources = {
       context: new EventSource<EditorContext>(),
       history: new EventSource<HistoryEvent>(),
     }
@@ -673,7 +674,7 @@ export class TransactionPipeline {
     const { context } = this.#run(transaction)
 
     this.#context = context
-    this.#events.context.notify(context)
+    this.#eventSources.context.notify(context)
   }
 
   /**
@@ -697,8 +698,8 @@ export class TransactionPipeline {
   /** Returns the events emitted by the transaction pipeline. */
   get events(): TransactionPipelineEvents {
     return {
-      context: this.#events.context.observable,
-      history: this.#events.history.observable,
+      context: this.#eventSources.context.observable,
+      history: this.#eventSources.history.observable,
     }
   }
 
@@ -734,7 +735,7 @@ export class TransactionPipeline {
       policy: { label: 'undo', pushToHistory: false, source: 'undo' },
     })
 
-    this.#events.history.notify({
+    this.#eventSources.history.notify({
       canUndo: this.#history.canUndo(),
       canRedo: this.#history.canRedo(),
     })
@@ -760,7 +761,7 @@ export class TransactionPipeline {
       policy: { label: 'redo', pushToHistory: false, source: 'redo' },
     })
 
-    this.#events.history.notify({
+    this.#eventSources.history.notify({
       canUndo: this.#history.canUndo(),
       canRedo: this.#history.canRedo(),
     })
