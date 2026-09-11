@@ -4,6 +4,7 @@ import {
   isMarkActiveInContext,
 } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
+import { DactyloError } from './internals/errors'
 import type {
   Observable,
   SubscriberCallback,
@@ -13,6 +14,7 @@ import type { HistoryEvent } from './internals/history'
 import type { MarkKey } from './internals/marks'
 import { TransactionPipeline } from './internals/transaction'
 import type { TransactionSource } from './internals/transaction'
+import type { Awaitable } from './internals/types'
 
 /** API to interact with the history of the editor. */
 export interface DactyloHistoryApi {
@@ -23,10 +25,10 @@ export interface DactyloHistoryApi {
   readonly canRedo: () => boolean
 
   /** Applies the newest undo entry via the transaction pipeline. */
-  readonly undo: () => void
+  readonly undo: () => Awaitable<void>
 
   /** Re-applies the newest redo entry via the transaction pipeline. */
-  readonly redo: () => void
+  readonly redo: () => Awaitable<void>
 }
 
 /** API to interact with the marks of the editor. */
@@ -35,13 +37,16 @@ export interface DactyloMarksApi {
   readonly toggle: (
     markKey: MarkKey,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => Awaitable<void>
 
   /**
    * Whether a mark is active or not depending on the current current selection.
    * 👉🏻  A toolbar button for a mark that should appear pressed or not.
    */
-  readonly isActive: (markKey: MarkKey, context: EditorContext) => boolean
+  readonly isActive: (
+    markKey: MarkKey,
+    context: EditorContext,
+  ) => Awaitable<boolean>
 }
 
 /** API to interact with the events of the editor. */
@@ -131,6 +136,23 @@ export class Dactylo {
   }
 
   /**
+   * Safely executes a public api call and handle gracefully errors.
+   * When it rejects, the error is wrapped into a {@link DactyloError} and re-thrown,
+   * and the event `errors` is emitted with it.
+   */
+  #safeExecute<T>(fn: () => Awaitable<T>): Awaitable<T> {
+    try {
+      return fn()
+    } catch (err) {
+      const wrapped = DactyloError.wrap(err)
+      // @todo: add specific logger.
+      console.error(wrapped)
+
+      throw err
+    }
+  }
+
+  /**
    * Returns the API to interact with the history of the editor.
    *
    * @example
@@ -150,10 +172,10 @@ export class Dactylo {
       canUndo: () => this.#pipeline.canUndo(),
 
       /** Re-applies the newest redo entry via the transaction pipeline. */
-      redo: () => this.#pipeline.redo(),
+      redo: () => this.#safeExecute(() => this.#pipeline.redo()),
 
       /** Applies the newest undo entry via the transaction pipeline. */
-      undo: () => this.#pipeline.undo(),
+      undo: () => this.#safeExecute(() => this.#pipeline.undo()),
     }
   }
 
@@ -196,13 +218,14 @@ export class Dactylo {
        * the current editor context after each updates.
        */
       isActive: (markKey: MarkKey, context: EditorContext) =>
-        isMarkActiveInContext(context, markKey),
+        this.#safeExecute(() => isMarkActiveInContext(context, markKey)),
 
       /** Toggle a mark on or off via the pipeline. */
       toggle: (
         markKey: MarkKey,
         source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-      ) => this.#pipeline.toggleMark(markKey, { source }),
+      ) =>
+        this.#safeExecute(() => this.#pipeline.toggleMark(markKey, { source })),
     }
   }
 
