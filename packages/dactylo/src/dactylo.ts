@@ -19,38 +19,68 @@ import type { Awaitable } from './internals/types'
 
 /** Discriminated union of commands that can be executed by the user/ai-agent. */
 export type DactyloCommand =
-  | 'editor-context/snapshot'
+  | 'editor-context/get-snapshot'
   | 'editor-context/subscribe'
   | 'history/undo'
   | 'history/redo'
-  | 'history/canUndo'
-  | 'history/canRedo'
+  | 'history/can-undo'
+  | 'history/can-redo'
   | 'marks/toggle'
-  | 'marks/isActive'
+  | 'marks/is-active'
+
+/** Event emitted when a command is executed */
+export interface DactyloCommandEvent {
+  /** The command that was executed. */
+  readonly command: DactyloCommand
+
+  /** The status of the command. */
+  readonly status: 'success' | 'error'
+
+  /** The result of the command on success. */
+  readonly result?: unknown
+
+  /** The error thrown from the command on failure. Also delivered to {@link DactyloErrorEvent}. */
+  readonly error?: DactyloError
+
+  /** The duration of the command in milliseconds. */
+  readonly durationMs: number
+
+  /** The optional payload of the command. */
+  readonly payload?: Record<string, unknown>
+}
 
 /** Event emitted when an error is thrown from a command. */
 export interface DactyloErrorEvent {
   /** The command that caused the error. */
-  command: DactyloCommand
+  readonly command: DactyloCommand
+
   /** The error thrown from the command. */
-  error: DactyloError
+  readonly error: DactyloError
+
   /** The duration of the command in milliseconds. */
-  durationMs: number
+  readonly durationMs: number
+
   /** The optional payload of the command. */
-  payload?: Record<string, unknown>
+  readonly payload?: Record<string, unknown>
 }
 
 /** API to interact with the events of the editor. */
 export interface DactyloEventsApi {
-  /** Subscribes to the history stack changes. */
-  readonly history: Observable<HistoryEvent>
+  /** Subscribes to the commands executed by the user/ai-agent. */
+  readonly commands: Observable<DactyloCommandEvent>
 
   /** Subscribes to the errors thrown from commands. */
   readonly errors: Observable<DactyloErrorEvent>
+
+  /** Subscribes to the history stack changes. */
+  readonly history: Observable<HistoryEvent>
 }
 
 /** Event sources for {@link Dactylo} */
 export interface DactyloEventSources {
+  /** The event source for the commands executed by the user/ai-agent. */
+  readonly commands: EventSource<DactyloCommandEvent>
+
   /** The event source for the errors thrown from commands. */
   readonly errors: EventSource<DactyloErrorEvent>
 }
@@ -170,6 +200,7 @@ export class Dactylo {
       historyMaxDepth: options.config?.pipeline?.historyMaxDepth,
     })
     this.#eventSources = {
+      commands: new EventSource<DactyloCommandEvent>(),
       errors: new EventSource<DactyloErrorEvent>(),
     }
   }
@@ -182,12 +213,23 @@ export class Dactylo {
    */
   #safeExecuteCommand<T>(
     command: DactyloCommand,
-    fn: () => Awaitable<T>,
+    executor: () => Awaitable<T>,
     payload?: Record<string, unknown>,
   ): Awaitable<T> {
     const startedAt = Date.now()
     try {
-      return fn()
+      const result = executor()
+      const durationMs = Date.now() - startedAt
+
+      this.#eventSources.commands.notify({
+        command,
+        durationMs,
+        payload,
+        result,
+        status: 'success',
+      })
+
+      return result
     } catch (err) {
       const wrapped = DactyloError.wrap(err)
       const durationMs = Date.now() - startedAt
@@ -200,6 +242,13 @@ export class Dactylo {
         error: wrapped,
         durationMs,
         payload,
+      })
+      this.#eventSources.commands.notify({
+        command,
+        durationMs,
+        error: wrapped,
+        payload,
+        status: 'error',
       })
 
       throw err
@@ -218,11 +267,12 @@ export class Dactylo {
    */
   get events(): DactyloEventsApi {
     return {
-      /** Subscribes to the history stack changes. */
-      history: this.#pipeline.events.history,
-
+      /** Subscribes to the commands executed by the user/ai-agent. */
+      commands: this.#eventSources.commands.observable,
       /** Subscribes to the errors thrown from public API calls. */
       errors: this.#eventSources.errors.observable,
+      /** Subscribes to the history stack changes. */
+      history: this.#pipeline.events.history,
     }
   }
 
@@ -241,13 +291,13 @@ export class Dactylo {
     return {
       /** Whether at least one redo entry is available. */
       canRedo: () =>
-        this.#safeExecuteCommand('history/canRedo', () =>
+        this.#safeExecuteCommand('history/can-redo', () =>
           this.#pipeline.canRedo(),
         ),
 
       /** Whether at least one undo entry is available. */
       canUndo: () =>
-        this.#safeExecuteCommand('history/canUndo', () =>
+        this.#safeExecuteCommand('history/can-undo', () =>
           this.#pipeline.canUndo(),
         ),
 
@@ -284,7 +334,7 @@ export class Dactylo {
        */
       isActive: (markKey: MarkKey, context: EditorContext) =>
         this.#safeExecuteCommand(
-          'marks/isActive',
+          'marks/is-active',
           () => isMarkActiveInContext(context, markKey),
           { mark: markKey },
         ),
@@ -312,7 +362,7 @@ export class Dactylo {
    * ```
    */
   getContextSnapshot(): Awaitable<EditorContext> {
-    return this.#safeExecuteCommand('editor-context/snapshot', () => ({
+    return this.#safeExecuteCommand('editor-context/get-snapshot', () => ({
       ...this.#pipeline.context,
     }))
   }

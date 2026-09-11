@@ -28,7 +28,7 @@
 import { DEFAULT_HISTORY_STACK_MAX_DEPTH } from './constants'
 import type { Operation } from './operations'
 
-/** Events emitted when working with the history stack. */
+/** Event emitted when working with the history stack. */
 export interface HistoryEvent {
   /** Whether at least one undo entry is available. */
   readonly canUndo: boolean
