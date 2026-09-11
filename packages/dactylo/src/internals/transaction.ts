@@ -930,6 +930,14 @@ export class TransactionPipeline {
           this.redo()
           return true
         }
+        //@todo: hto be handled
+        case 'copy':
+        case 'paste':
+        case 'cut':
+        case 'select-all':
+        case 'deselect': {
+          return false
+        }
         default: {
           assertNever(platformShortcut)
         }
