@@ -677,8 +677,7 @@ export class TransactionPipeline {
       /** Only coalesce history entries for user and ai-agent transactions. */
       const coalesce =
         transaction.policy?.coalesce === true &&
-        (transaction.policy?.source === 'user' ||
-          transaction.policy?.source === 'ai-agent')
+        transaction.policy?.source === 'user'
 
       this.#history.push({ inverseOps, ops: [...ops] }, coalesce)
     }
@@ -893,7 +892,27 @@ export class TransactionPipeline {
 
   // --- Keyboard operations ─────────────────────────────────────────
 
-  // ─── Block mutations (old) ───────────────────────────────────────-
+  /** Digests a keyboard event and applies the corresponding operations. */
+  digestKeyboardEvent(event: KeyboardEvent, policy?: TransactionPolicy): void {
+    const { selection } = this.#context
+    if (selection !== null && selection.__type === 'cursor') {
+      // @todo: add shortcut detection
+      // @todo: add mention and /command character
+      // @todo: detect history  (undo/redo) shortcuts
+      // @todo: detect paste shortcuts.
+
+      event.preventDefault()
+
+      this.#commit([], {
+        ...policy,
+        coalesce: true,
+        label: `typed_key:${String(event.key)}`,
+        pushToHistory: true,
+      })
+    }
+  }
+
+  // ─── Block operations ───────────────────────────────────────------
 
   /** Inserts a block at the given document position.  */
   // @todo: to be updated according to the new upcoming block API
