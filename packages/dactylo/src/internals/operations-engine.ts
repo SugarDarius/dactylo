@@ -757,7 +757,7 @@ export function buildSetMarksOps(
  * Builds operations for a single typed character at the current cursor position.
  * When the typed character is a `space` checks for markdown shortcut triggers.
  */
-export function buildInsertSingleCharTextOps(
+export function buildInsertTypedCharOps(
   context: EditorContext,
   /** Collapsed cursor anchor for the pending edit. */
   cursor: TextCursor,
@@ -783,7 +783,7 @@ export function buildInsertSingleCharTextOps(
     if (!first || first.__type !== 'text') {
       buildError(
         `First node of block ${block.id} is not a text node. Type: ${first?.__type}`,
-        'OperationsEngine/buildInsertSingleCharTextOps',
+        'OperationsEngine/buildInsertTypedCharOps',
       )
     }
 
@@ -850,7 +850,7 @@ export function buildInsertSingleCharTextOps(
  * Builds operations for deleting previous typed character
  * or merge with previous block at block start.
  */
-export function buildDeleteSingleCharTextOps(
+export function buildDeletePreviousTypedCharOps(
   context: EditorContext,
   /** Collapsed cursor anchor for the pending edit. */
   cursor: TextCursor,
@@ -873,7 +873,7 @@ export function buildDeleteSingleCharTextOps(
   if (!found || found.node.__type !== 'text') {
     buildError(
       `Node ${cursor.nodeId} not found in block ${block.id}`,
-      'OperationsEngine/buildDeleteSingleCharTextOps',
+      'OperationsEngine/buildDeletePreviousTypedCharOps',
     )
   }
 
@@ -916,7 +916,7 @@ export function buildKeyboardOps(
   /** The operations to apply. */
   ops: Operation[]
   /** The kind of the operation. */
-  kind: 'insert_single_typed_char' | 'delete_single_typed_char'
+  kind: 'insert_typed_char' | 'delete_previous_typed_char'
   /** When `true` merge history action for rapid typing coalescing. */
   coalesce: boolean
 } | null {
@@ -934,20 +934,22 @@ export function buildKeyboardOps(
   }
 
   if (event.key === 'Backspace') {
-    const { ops, coalesce } = buildDeleteSingleCharTextOps(
+    // @todo: handle non-text nodes like mentions and links
+    const { ops, coalesce } = buildDeletePreviousTypedCharOps(
       context,
       selection.anchor,
     )
     return {
       coalesce,
-      kind: 'delete_single_typed_char',
+      kind: 'delete_previous_typed_char',
       ops,
     }
   }
 
   /** We build `insert_text` operation when a single character is typed. */
+  // @todo: handle mentions and slash commands
   if (event.key.length === 1) {
-    const { ops, coalesce } = buildInsertSingleCharTextOps(
+    const { ops, coalesce } = buildInsertTypedCharOps(
       context,
       selection.anchor,
       event.key,
@@ -955,7 +957,7 @@ export function buildKeyboardOps(
 
     return {
       coalesce,
-      kind: 'insert_single_typed_char',
+      kind: 'insert_typed_char',
       ops,
     }
   }
