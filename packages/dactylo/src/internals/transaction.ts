@@ -678,6 +678,7 @@ export class TransactionPipeline {
   // ─── Block operations ───────────────────────────────────────------
 
   /** Inserts a block at the given document position. */
+  // @todo: to be updated according to the new upcoming blocks API
   insertBlock(
     pos: InsertBlockOpPosition,
     block: BlockWithoutPosKey,
@@ -687,10 +688,8 @@ export class TransactionPipeline {
     this.#commit(ops, { label: `insert_block`, pushToHistory: true, source })
   }
 
-  /**
-   * Removes a block by ID.
-   * This method is intended to be used from server code and Ai agents.
-   */
+  /** Removes a block by ID.  This method is intended to be used from server code and Ai agents. */
+  // @todo: to be updated according to the new upcoming blocks API
   deleteBlock(
     blockId: BlockId,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
