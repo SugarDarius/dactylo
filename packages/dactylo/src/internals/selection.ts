@@ -109,16 +109,8 @@ export interface RangeSelection {
   readonly focus: TextCursor
 }
 
-/** Block-level selection (future: drag handle, multi-block). v1: single block. */
-export interface BlockSelection {
-  readonly __type: 'block'
-
-  /** Selected block ID. */
-  readonly blockId: BlockId
-}
-
 /** Discriminated union of all supported selection shapes in Dactylo. */
-export type Selection = Relax<CursorSelection | RangeSelection | BlockSelection>
+export type Selection = Relax<CursorSelection | RangeSelection>
 
 /** A contiguous `[from, to)` slice inside one text node, part of a larger range. */
 export interface TextSpanInRange {

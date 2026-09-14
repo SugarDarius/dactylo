@@ -3,8 +3,16 @@ import {
   isBlockWithInlineContent,
   sortBlockOrder,
 } from './blocks'
-import type { Block, BlockId } from './blocks'
-import { getBlock, insertBlock } from './document'
+import type { Block, BlockId, BlockWithoutPosKey } from './blocks'
+import {
+  collectTextSpansInRange,
+  compareTextCursors,
+  computeInsertBlockPosKey,
+  getBlock,
+  insertBlock,
+  normalizeRange,
+  resolveInsertAfterBlockId,
+} from './document'
 import type { DocumentState } from './document'
 import {
   updateBlockContent,
@@ -14,9 +22,13 @@ import {
 } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
+import { isMarkEnabled, toggleMarkFlag } from './marks'
+import type { MarkKey, Marks } from './marks'
 import { splitTextNodeAt } from './nodes'
 import type { NodeId, TextNode } from './nodes'
-import type { Operation } from './operations'
+import type { InsertBlockOpPosition, Operation } from './operations'
+
+// --- Core engine ─────────────────────────────────────────---------
 
 /** Throws a validation {@link DactyloError} for a failed op check. */
 export function validationError(message: string, op: Operation): never {
@@ -248,4 +260,176 @@ export function invertOps(ops: readonly Operation[]): readonly Operation[] {
   }
 
   return invertedOps
+}
+
+// --- Marks operations ─────────────────────────────────────────----
+
+/**
+ * Builds the operations to toggle a mark on or off
+ * and indicates if we should push the operation to the history stack.
+ *
+ * Returns `set_active_marks` operation when the selection is a cursor.
+ * Returns `set_marks` operation when the selection is a range.
+ * Returns `null` when the selection is null.
+ */
+export function buildSetMarksOps(
+  context: EditorContext,
+  markKey: MarkKey,
+): {
+  /** The operations to apply. */
+  ops: Operation[]
+  /** The kind of the operation. */
+  kind: 'set_active_marks' | 'set_marks'
+} | null {
+  const { selection, state } = context
+
+  /** When we don't have selection it's a no-op. */
+  if (selection === null) {
+    return null
+  }
+
+  /**
+   * When the selection is a cursor, we enable the active mark for the given mark key
+   * for the whole document (e.g the mark is active on typing).
+   */
+  if (selection.__type === 'cursor') {
+    const prev = context.activeMarks
+    const next = toggleMarkFlag(prev, markKey)
+
+    return {
+      kind: 'set_active_marks',
+      ops: [
+        {
+          __type: 'set_active_marks',
+          activeMarks: next,
+          prevActiveMarks: prev,
+        },
+      ],
+    }
+  }
+  /**
+   * When the selection is a range, we enable the active mark for the given mark key
+   * only for the range of text nodes.
+   */
+  else if (selection.__type === 'range') {
+    const normalized = normalizeRange(state, selection)
+    const { anchor, focus } = normalized
+
+    /**
+     * Anchor must precede focus in document order.
+     * We cannot accept this case as it's a contract-violation
+     * because a {@link RangeSelection} is a non-empty text range.
+     */
+    if (compareTextCursors(state, anchor, focus) >= 0) {
+      throw DactyloError.from({
+        code: 'RANGE_SELECTION_COLLAPSED',
+        hint: 'Use selection.__type === "cursor" (or toggleMark with a collapsed caret) to change activeMarks in editor context.',
+        message:
+          'Range selection is collapsed; expected anchor to precede focus.',
+      })
+    }
+
+    /**
+     * Collecting text spans must yield at least one text slice.
+     * An empty span list is also a contract-violation (collapsed range stored as `range`, stale cursors,
+     * or range or non-text-only inline nodes) - not a cue to toggle {@link EditorContext} active marks.
+     *
+     * Use only `selection.__type === 'cursor'` to toggle active marks.
+     */
+    const spans = collectTextSpansInRange(state, normalized)
+    if (spans.length <= 0) {
+      throw DactyloError.from({
+        code: 'RANGE_SELECTION_NO_TEXT_SPANS',
+        hint: 'Ensure the range covers at least one text node with non-zero length.',
+        message: 'Range selection produced no text spans.',
+      })
+    }
+
+    const enabling = spans.every((span) => {
+      const block = getBlock(state, span.blockId)
+      const found = findNodeInBlock(block, span.nodeId)
+
+      if (!found || found.node.__type !== 'text') {
+        return false
+      }
+
+      return isMarkEnabled(found.node.marks, markKey)
+    })
+
+    const ops: Operation[] = []
+
+    for (const span of spans) {
+      const block = getBlock(state, span.blockId)
+      const found = findNodeInBlock(block, span.nodeId)
+
+      if (!found || found.node.__type !== 'text') {
+        continue
+      }
+
+      const { node } = found
+      const nextMarks: Marks = { ...node.marks }
+
+      if (enabling) {
+        nextMarks[markKey] = true
+      }
+
+      ops.push({
+        __type: 'set_marks',
+        blockId: span.blockId,
+        from: span.from,
+        nextMarks,
+        nodeId: span.nodeId,
+        prevMarks: { ...node.marks },
+        to: span.to,
+      })
+    }
+
+    return {
+      kind: 'set_marks',
+      ops,
+    }
+  }
+
+  return null
+}
+
+// --- Blocks operations ─────────────────────────────────────────---
+
+/** Builds the operations to insert a block at the given position. */
+export function buildInsertBlockOps(
+  context: EditorContext,
+  insertPos: InsertBlockOpPosition,
+  block: BlockWithoutPosKey,
+): Operation[] {
+  const { state } = context
+
+  const afterBlockId = resolveInsertAfterBlockId(state, insertPos)
+  const posKey = computeInsertBlockPosKey(state, insertPos)
+
+  const blockWithPosKey: Block = { ...block, posKey }
+
+  return [
+    {
+      __type: 'insert_block',
+      afterBlockId,
+      block: blockWithPosKey,
+    },
+  ]
+}
+
+/** Builds the operations to delete a block by ID. */
+export function buildDeleteBlockOps(
+  context: EditorContext,
+  blockId: BlockId,
+): Operation[] {
+  const { state } = context
+  const block = getBlock(state, blockId)
+  const idx = state.blockOrderById.indexOf(blockId)
+
+  let afterBlockId: BlockId | null = null
+  if (idx > 0) {
+    afterBlockId = state.blockOrderById[idx - 1] ?? null
+  }
+
+  return [{ __type: 'delete_block', afterBlockId, blockId, snapshot: block }]
 }

@@ -1,14 +1,5 @@
-import { findNodeInBlock } from './blocks'
 import type { BlockId, BlockWithoutPosKey } from './blocks'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
-import {
-  collectTextSpansInRange,
-  compareTextCursors,
-  computeInsertBlockPosKey,
-  getBlock,
-  normalizeRange,
-  resolveInsertAfterBlockId,
-} from './document'
 import { createInitialEditorContext } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
@@ -17,10 +8,16 @@ import { EventSource } from './event-source'
 import { HistoryStack } from './history'
 import type { HistoryEvent } from './history'
 import { detectPlatformKeyboardShortcut } from './keyboard'
-import { isMarkEnabled, toggleMarkFlag } from './marks'
-import type { MarkKey, Marks } from './marks'
+import type { MarkKey } from './marks'
 import type { Operation, InsertBlockOpPosition } from './operations'
-import { applyOps, invertOps, validateOps } from './operations-engine'
+import {
+  applyOps,
+  buildDeleteBlockOps,
+  buildInsertBlockOps,
+  buildSetMarksOps,
+  invertOps,
+  validateOps,
+} from './operations-engine'
 import { assertNever } from './utils'
 
 /** The source of a transaction. */
@@ -545,106 +542,38 @@ export class TransactionPipeline {
   // --- Marks operations ─────────────────────────────────────────----
 
   /** Toggle a mark on or off. */
-  toggleMark(markKey: MarkKey, policy?: TransactionPolicy): void {
-    const { selection } = this.#context
+  toggleMark(
+    markKey: MarkKey,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = buildSetMarksOps(this.#context, markKey)
 
-    if (selection !== null) {
-      if (selection.__type === 'cursor') {
-        const prevActiveMarks = this.#context.activeMarks
-        const activeMarks = toggleMarkFlag(prevActiveMarks, markKey)
+    /** No-op if we don't detect any active selection. */
+    if (intent === null) {
+      return
+    }
 
-        this.#commit(
-          [
-            {
-              __type: 'set_active_marks',
-              activeMarks,
-              prevActiveMarks,
-            },
-          ],
-          {
-            ...policy,
-            label: `toggle_active_mark:${String(markKey)}`,
-            pushToHistory: false,
-          },
-        )
-      } else if (selection.__type === 'range') {
-        const normalized = normalizeRange(this.#context.state, selection)
-        const { anchor, focus } = normalized
+    const { ops, kind } = intent
 
-        /**
-         * Anchor must precede focus in document order.
-         * We cannot accept this case as it's a contract-violation
-         * because a {@link RangeSelection} is a non-empty text range.
-         */
-        if (compareTextCursors(this.#context.state, anchor, focus) >= 0) {
-          throw DactyloError.from({
-            code: 'RANGE_SELECTION_COLLAPSED',
-            hint: 'Use selection.__type === "cursor" (or toggleMark with a collapsed caret) to change activeMarks in editor context.',
-            message:
-              'Range selection is collapsed; expected anchor to precede focus.',
-          })
-        }
-
-        /**
-         * Collecting text spans must yield at least one text slice.
-         * An empty span list is also a contract-violation (collapsed range stored as `range`, stale cursors,
-         * or range or non-text-only inline nodes) - not a cue to toggle {@link EditorContext} active marks.
-         *
-         * Use only `selection.__type === 'cursor'` to toggle active marks.
-         */
-        const spans = collectTextSpansInRange(this.#context.state, normalized)
-        if (spans.length <= 0) {
-          throw DactyloError.from({
-            code: 'RANGE_SELECTION_NO_TEXT_SPANS',
-            hint: 'Ensure the range covers at least one text node with non-zero length.',
-            message: 'Range selection produced no text spans.',
-          })
-        }
-
-        const enabling = spans.every((span) => {
-          const block = getBlock(this.#context.state, span.blockId)
-          const found = findNodeInBlock(block, span.nodeId)
-
-          if (!found || found.node.__type !== 'text') {
-            return false
-          }
-
-          return isMarkEnabled(found.node.marks, markKey)
-        })
-
-        const ops: Operation[] = []
-
-        for (const span of spans) {
-          const block = getBlock(this.#context.state, span.blockId)
-          const found = findNodeInBlock(block, span.nodeId)
-
-          if (!found || found.node.__type !== 'text') {
-            continue
-          }
-
-          const { node } = found
-          const nextMarks: Marks = { ...node.marks }
-
-          if (enabling) {
-            nextMarks[markKey] = true
-          }
-
-          ops.push({
-            __type: 'set_marks',
-            blockId: span.blockId,
-            from: span.from,
-            nextMarks,
-            nodeId: span.nodeId,
-            prevMarks: { ...node.marks },
-            to: span.to,
-          })
-        }
-
+    switch (kind) {
+      case 'set_active_marks': {
         this.#commit(ops, {
-          ...policy,
+          label: `toggle_active_mark:${String(markKey)}`,
+          pushToHistory: false,
+          source,
+        })
+        break
+      }
+      case 'set_marks': {
+        this.#commit(ops, {
           label: `toggle_mark_on_selection:${String(markKey)}`,
           pushToHistory: true,
+          source,
         })
+        break
+      }
+      default: {
+        assertNever(kind)
       }
     }
   }
@@ -741,48 +670,25 @@ export class TransactionPipeline {
 
   // ─── Block operations ───────────────────────────────────────------
 
-  /**
-   * Inserts a block at the given document position.
-   * This method is intended to be used from server code and Ai agents.
-   */
-  // @todo: to be updated according to the new upcoming block API
+  /** Inserts a block at the given document position. */
   insertBlock(
-    blockWithOutPosKey: BlockWithoutPosKey,
     pos: InsertBlockOpPosition,
-    policy?: TransactionPolicy,
+    block: BlockWithoutPosKey,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    this.#commit(
-      [
-        {
-          __type: 'insert_block',
-          afterBlockId: resolveInsertAfterBlockId(this.#context.state, pos),
-          block: {
-            ...blockWithOutPosKey,
-            posKey: computeInsertBlockPosKey(this.#context.state, pos),
-          },
-        },
-      ],
-      policy,
-    )
+    const ops = buildInsertBlockOps(this.#context, pos, block)
+    this.#commit(ops, { label: `insert_block`, pushToHistory: true, source })
   }
 
   /**
    * Removes a block by ID.
    * This method is intended to be used from server code and Ai agents.
    */
-  // @todo: to be updated according to the new upcoming block API
-  deleteBlock(blockId: BlockId, policy?: TransactionPolicy): void {
-    const block = getBlock(this.#context.state, blockId)
-    const idx = this.#context.state.blockOrderById.indexOf(blockId)
-
-    let afterBlockId: BlockId | null = null
-    if (idx > 0) {
-      afterBlockId = this.#context.state.blockOrderById[idx - 1] ?? null
-    }
-
-    this.#commit(
-      [{ __type: 'delete_block', afterBlockId, blockId, snapshot: block }],
-      policy,
-    )
+  deleteBlock(
+    blockId: BlockId,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const ops = buildDeleteBlockOps(this.#context, blockId)
+    this.#commit(ops, { label: `delete_block`, pushToHistory: true, source })
   }
 }

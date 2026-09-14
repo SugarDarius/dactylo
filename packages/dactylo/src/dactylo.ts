@@ -337,7 +337,7 @@ export class Dactylo {
       ) =>
         this.#safeExecuteCommand(
           'marks/toggle',
-          () => this.#pipeline.toggleMark(markKey, { source }),
+          () => this.#pipeline.toggleMark(markKey, source),
           { mark: markKey, source },
         ),
     }
