@@ -652,25 +652,46 @@ export class TransactionPipeline {
   // --- Keyboard operations ─────────────────────────────────────────
 
   /**
-   * Digests a keyboard event and applies the corresponding operations.
-   * This method is responsible for automatically handling:
-   * - Detect and resolves platform keyboard shortcuts (undo/redo, copy/paste/cut/select-all, deselect)
-   * - Handles structural editing keys (Enter, Backspace, typing, ...)
-   * - Handles markdown shortcuts on typing (bold, italic, ...)
-   * - Handles markdown syntax on paste (e.g, **bold**, [link](https://example.com))
-   * - Handles mention key and slash command key
-   * - Handles typed keys and behavior keys (e.g. Enter, Shift+Enter, Backspace, etc.)
-   *
-   * It commits the corresponding operations to the transaction pipeline
-   * given the current editor context and selection.
-   *
-   * And notify subscribers for the following events:
+   * Digests and translates keyboard and clipboard into operations.
+   * Enforces core constraints:
+   * - `Enter` → new block
+   * - `shift+Enter` → soft line break node
+   * - ...
+   * Parses markdown inline syntax on typing and on paste:
+   * - `##` → heading 2
+   * - `**` → bold
+   * - `[link](https://example.com)` → link node
+   * - ...
+   * Buffers mentions on typing and on paste and slash commands on typing.
+   * Notifies subscribers for the following events:
    * - `context`
    * - `history`
    * - `mention`
    * - `slash-command`
    *
-   * Returns a boolean indicating whether the event was handled.
+   * Platform chords are detected before structural keys (`Enter`, `Backspace`, typing)
+   * where detection is pure and dispatch splits intro three buckets:
+   * 1. History commands (undo/redo)
+   * 2. Clipboard command (copy, paste, and cut)
+   * 3. Document commands (select all, deselect)
+   *
+   * ```
+   * Input → context → operations
+   * KeyboardEvent
+   *      |
+   *      ▼
+   * Dactylo.keyboard.onKeyDown(event)
+   *      |
+   *      ▼
+   * TransactionPipeline.digestKeyboardEvent(event)
+   *      |
+   *      ├ ─ detects platform shortcuts  (e.g. undo / redo, copy / paste, cut, select-all, deselect)
+   *      ├ ─ builds keyboard operations → #commit (`Enter`, `Backspace`, typing....)
+   *      |
+   *      ▼
+   * EventSources.context.notify(context)
+   *
+   * Returns a boolean indicating whether the event was handled or not.
    */
   digestKeyboardEvent(
     event: KeyboardEvent,
@@ -703,9 +724,6 @@ export class TransactionPipeline {
 
     const { selection } = this.#context
     if (selection !== null && selection.__type === 'cursor') {
-      // @todo: add mention and /command character (pay attention to behaviors in UI)
-      // @todo: handle markdown
-
       event.preventDefault()
 
       this.#commit([], {
