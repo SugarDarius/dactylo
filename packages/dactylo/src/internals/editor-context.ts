@@ -175,7 +175,7 @@ export function withSelection(
   }
 }
 /** Replaces a block's inline content and coalesces adjacent text nodes. */
-export function updateBlockInlineContent(
+export function updateBlockWithInlineContent(
   context: EditorContext,
   blockId: BlockId,
   content: InlineNode[],

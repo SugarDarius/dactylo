@@ -165,6 +165,7 @@ export function coalesceInlineNodes(
         __type: pending.__type,
         createdAt: pending.createdAt,
         id: pending.id,
+        /** Always false as we are merging nodes */
         isPlaceholder: false,
         marks: pending.marks,
         metadata: pending.metadata,

@@ -23,7 +23,7 @@ import {
 } from './document'
 import type { DocumentState } from './document'
 import {
-  updateBlockInlineContent,
+  updateBlockWithInlineContent,
   withActiveMarks,
   withDocumentState,
   withSelection,
@@ -372,7 +372,7 @@ export function applyInsertTextOp(
     content.splice(idx, 1, ...updates)
   }
 
-  return updateBlockInlineContent(context, op.blockId, content)
+  return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
 /** Applies a `delete_text` operation to the editor context. */
@@ -402,7 +402,7 @@ export function applyDeleteTextOp(
     updatedAt: new Date(),
   }
 
-  return updateBlockInlineContent(context, op.blockId, content)
+  return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
 /** Applies a `set_marks` operation to the editor context. */
@@ -432,7 +432,7 @@ export function applySetMarksOp(
       content.splice(idx, 1, ...replacement)
     }
 
-    return updateBlockInlineContent(context, op.blockId, content)
+    return updateBlockWithInlineContent(context, op.blockId, content)
   }
 
   return context
