@@ -89,11 +89,6 @@ export type Block = Relax<HeadingBlock | ParagraphBlock | DividerBlock>
 
 /** Allowed blocks to own inline content */
 export type BlockWithInlineContent = HeadingBlock | ParagraphBlock
-export function isBlockWithInlineContent(
-  block: Block,
-): block is BlockWithInlineContent {
-  return block.__type === 'heading' || block.__type === 'paragraph'
-}
 
 /** Discriminated union of all existing blocks without `posKey` in Dactylo. */
 export type BlockWithoutPosKey = Relax<
@@ -139,6 +134,13 @@ export function createInitialParagraphPlaceholderBlock(
 /** Returns a shallow copy of a block with a fresh `updatedAt` timestamp. */
 export function touchBlock(block: Block): Block {
   return { ...block, updatedAt: new Date() }
+}
+
+/** Whether the block is allowed to have inline content. */
+export function isBlockWithInlineContent(
+  block: Block,
+): block is BlockWithInlineContent {
+  return block.__type === 'heading' || block.__type === 'paragraph'
 }
 
 /** Whether the block was created with a placeholder text node. */

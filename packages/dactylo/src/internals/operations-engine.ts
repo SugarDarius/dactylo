@@ -17,7 +17,7 @@ import {
 } from './document'
 import type { DocumentState } from './document'
 import {
-  updateBlockContent,
+  updateBlockInlineContent,
   withActiveMarks,
   withDocumentState,
   withSelection,
@@ -47,15 +47,15 @@ import { assertNever } from './utils'
 /** Throws a validation {@link DactyloError} for a failed op check. */
 export function validationError(message: string, op: Operation): never {
   throw DactyloError.from({
-    code: 'VALIDATE_TRANSACTION_OPERATION',
+    code: 'VALIDATE_TRANSACTION_OPERATIONS',
     hint: 'OperationsEngine/validateOps',
     message,
     payload: { op },
   })
 }
 
-/** Returns a block or accepted inline-content or throws. */
-export function requireInlineBlock(
+/** Returns a block with accepted inline-content or throws. */
+export function requireBlockWithInlineContent(
   state: DocumentState,
   blockId: BlockId,
   op: Operation,
@@ -122,7 +122,7 @@ export function validateTextCursor(
   cursor: TextCursor,
   op: Operation,
 ): void {
-  const block = requireInlineBlock(state, cursor.blockId, op)
+  const block = requireBlockWithInlineContent(state, cursor.blockId, op)
   const found = findNodeInBlock(block, cursor.nodeId)
 
   if (!found) {
@@ -193,7 +193,11 @@ export function validateOps(
         if (op.text.length === 0) {
           validationError('Cannot insert an empty text', op)
         }
-        const block = requireInlineBlock(context.state, op.blockId, op)
+        const block = requireBlockWithInlineContent(
+          context.state,
+          op.blockId,
+          op,
+        )
         const { node } = requireTextNode(block, op.nodeId, op)
 
         assertOffsetInText(
@@ -206,7 +210,11 @@ export function validateOps(
         break
       }
       case 'delete_text': {
-        const block = requireInlineBlock(context.state, op.blockId, op)
+        const block = requireBlockWithInlineContent(
+          context.state,
+          op.blockId,
+          op,
+        )
         const { node } = requireTextNode(block, op.nodeId, op)
 
         if (op.length < 0 || op.offset + op.length > node.text.length) {
@@ -216,7 +224,11 @@ export function validateOps(
         break
       }
       case 'set_marks': {
-        const block = requireInlineBlock(context.state, op.blockId, op)
+        const block = requireBlockWithInlineContent(
+          context.state,
+          op.blockId,
+          op,
+        )
         const { node } = requireTextNode(block, op.nodeId, op)
 
         assertRangeInText(op.from, op.to, node.text.length, op)
@@ -247,7 +259,7 @@ export function validateOps(
 /** Throws an apply {@link DactyloError} for a failed op check. */
 export function applyError(message: string, op: Operation): never {
   throw DactyloError.from({
-    code: 'APPLY_TRANSACTION_OPERATION',
+    code: 'APPLY_TRANSACTION_OPERATIONS',
     hint: 'OperationsEngine/applyOps',
     message,
     payload: { op },
@@ -354,7 +366,7 @@ export function applyInsertTextOp(
     content.splice(idx, 1, ...updates)
   }
 
-  return updateBlockContent(context, op.blockId, content)
+  return updateBlockInlineContent(context, op.blockId, content)
 }
 
 /** Applies a `delete_text` operation to the editor context. */
@@ -384,7 +396,7 @@ export function applyDeleteTextOp(
     updatedAt: new Date(),
   }
 
-  return updateBlockContent(context, op.blockId, content)
+  return updateBlockInlineContent(context, op.blockId, content)
 }
 
 /** Applies a `set_marks` operation to the editor context. */
@@ -414,7 +426,7 @@ export function applySetMarksOp(
       content.splice(idx, 1, ...replacement)
     }
 
-    return updateBlockContent(context, op.blockId, content)
+    return updateBlockInlineContent(context, op.blockId, content)
   }
 
   return context
@@ -470,7 +482,7 @@ export function applyOps(
 
 export function invertError(message: string, op: Operation): never {
   throw DactyloError.from({
-    code: 'INVERT_TRANSACTION_OPERATION',
+    code: 'INVERT_TRANSACTION_OPERATIONS',
     hint: 'OperationsEngine/invertOps',
     message,
     payload: { op },
@@ -566,6 +578,15 @@ export function invertOps(ops: readonly Operation[]): readonly Operation[] {
   }
 
   return invertedOps
+}
+
+/** Throws a build error {@link DactyloError} when something goes wrong while building operations. */
+export function buildError(message: string, hint: string): never {
+  throw DactyloError.from({
+    code: 'BUILD_TRANSACTION_OPERATIONS',
+    hint,
+    message,
+  })
 }
 
 // --- Marks operations ─────────────────────────────────────────----
@@ -713,27 +734,21 @@ export function buildSingleCharInsertTextOps(
   char: string,
 ): Operation[] {
   const { state } = context
-
   const block = getBlock(state, cursor.blockId)
-
-  /** Blocks with no inline content are not allowed to receive text related operations. */
-  if (!isBlockWithInlineContent(block)) {
-    throw DactyloError.from({
-      code: 'INSERT_TEXT_OP_NOT_ALLOWED_IN_BLOCK',
-      hint: 'Insert text op is not allowed in the given block',
-      message: `Block ${block.id} is not allowed to receive inline ops`,
-    })
-  }
 
   let ops: Operation[] = []
   if (isBlockWithPlaceholder(block)) {
     const [first] = block.content
+
+    /**
+     * Kind of overkill check as it gets re-validated during the validation phase.
+     * See it as an extra-safety net and sugar for TypeScript and linters.
+     */
     if (!first || first.__type !== 'text') {
-      throw DactyloError.from({
-        code: 'INSERT_TEXT_OP_ONLY_ALLOWED_IN_TEXT_NODE',
-        hint: 'Insert text op is only allowed in text nodes',
-        message: `First node of block ${block.id} is not a text node. Type: ${first?.__type}`,
-      })
+      buildError(
+        `First node of block ${block.id} is not a text node. Type: ${first?.__type}`,
+        'OperationsEngine/buildSingleCharInsertTextOps',
+      )
     }
 
     ops = [

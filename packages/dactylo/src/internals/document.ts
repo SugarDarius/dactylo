@@ -1,5 +1,8 @@
-import { createInitialParagraphPlaceholderBlock } from './blocks'
-import type { Block, BlockId } from './blocks'
+import {
+  createInitialParagraphPlaceholderBlock,
+  isBlockWithInlineContent,
+} from './blocks'
+import type { Block, BlockId, BlockWithInlineContent } from './blocks'
 import { DactyloError } from './errors'
 import type { InsertBlockOpPosition } from './operations'
 import { after, before, between, makePosition } from './position'
@@ -160,6 +163,23 @@ export function getBlock(state: DocumentState, blockId: BlockId): Block {
       code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
       hint: 'DocumentState/#getBlock',
       message: `Block ${blockId} not found in document`,
+    })
+  }
+
+  return block
+}
+
+/** Returns a block with allowed inline content or throws. */
+export function getBlockWithAllowedInlineContent(
+  state: DocumentState,
+  blockId: BlockId,
+): BlockWithInlineContent {
+  const block = getBlock(state, blockId)
+  if (!isBlockWithInlineContent(block)) {
+    throw DactyloError.from({
+      code: 'BLOCK_NOT_ALLOWED_TO_HAVE_INLINE_CONTENT',
+      hint: 'DocumentState/#getBlockWithAllowedInlineContent',
+      message: `Block ${blockId} is not allowed to have inline content`,
     })
   }
 

@@ -18,18 +18,18 @@ export type DactyloErrorCode =
   | 'RANGE_SELECTION_COLLAPSED'
   /** Unexpected range selection with no text spans */
   | 'RANGE_SELECTION_NO_TEXT_SPANS'
-  /** Failed to validate a transaction operation */
-  | 'VALIDATE_TRANSACTION_OPERATION'
-  /** Failed to apply a transaction operation */
-  | 'APPLY_TRANSACTION_OPERATION'
-  /** Failed to invert a transaction operation */
-  | 'INVERT_TRANSACTION_OPERATION'
+  /** Failed to validate a transaction operations */
+  | 'VALIDATE_TRANSACTION_OPERATIONS'
+  /** Failed to apply a transaction operations */
+  | 'APPLY_TRANSACTION_OPERATIONS'
+  /** Failed to invert a transaction operations */
+  | 'INVERT_TRANSACTION_OPERATIONS'
+  /** Failed to build a transaction operations */
+  | 'BUILD_TRANSACTION_OPERATIONS'
+  /** Block is not allowed to have inline content */
+  | 'BLOCK_NOT_ALLOWED_TO_HAVE_INLINE_CONTENT'
   /** History is not allowed to execute */
   | 'HISTORY_NOT_ALLOWED'
-  /** Insert text op is not allowed in the given block */
-  | 'INSERT_TEXT_OP_NOT_ALLOWED_IN_BLOCK'
-  /** Insert text op is only allowed in text nodes */
-  | 'INSERT_TEXT_OP_ONLY_ALLOWED_IN_TEXT_NODE'
   /** Failed to resolve a block in the document */
   | 'UNKNOWN_BLOCK_IN_DOCUMENT'
 
