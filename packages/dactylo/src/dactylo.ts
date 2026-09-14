@@ -118,7 +118,7 @@ export interface DactyloMarksCommands {
 
 /** Commands to interact with the keyboard in the editor. */
 export interface DactyloKeyboardCommands {
-  /** Handles an `onKeyDown` event and returns a boolean indicating whether the event was handled. */
+  /** Handles an `onKeyDown` event and returns a boolean indicating whether the event was handled or not. */
   readonly onKeyDown: (event: KeyboardEvent) => Awaitable<boolean>
 }
 
@@ -353,7 +353,7 @@ export class Dactylo {
    */
   get keyboard(): DactyloKeyboardCommands {
     return {
-      /** Handles an `onKeyDown` event and returns a boolean indicating whether the event was handled. */
+      /** Handles an `onKeyDown` event and returns a boolean indicating whether the event was handled or not. */
       onKeyDown: (event: KeyboardEvent) =>
         this.#safeExecuteCommand(
           'keyboard/on-key-down',
