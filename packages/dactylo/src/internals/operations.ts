@@ -117,7 +117,7 @@ export interface DeleteTextOp {
   readonly snapshot: {
     /** Substring removed from the text node. */
     readonly text: string
-    /** Marks applied to the removed run. */
+    /** Optional partial marks applied to the removed run. */
     readonly marks?: Partial<Marks>
   }
 }

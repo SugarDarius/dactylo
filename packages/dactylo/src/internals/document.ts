@@ -1,4 +1,4 @@
-import { createInitialPlaceholderBlock } from './blocks'
+import { createInitialParagraphPlaceholderBlock } from './blocks'
 import type { Block, BlockId } from './blocks'
 import { DactyloError } from './errors'
 import type { InsertBlockOpPosition } from './operations'
@@ -19,9 +19,9 @@ import { assertNever } from './utils'
  * │  DocumentState ← THE source of truth (in memory/RAM)    │
  * └─────────────────────────────────────────────────────────┘
  * ┌─────────────────────────────────────────────────--------┐
- * │  │ Block "blk_1"  key: "a0"  type: heading         │    │
+ * │  │ Block "bl_1"  key: "a0"  type: heading          │    │
  * │  │   └─ inline: [ text: "Hello" ]                  │    │
- * │  │ Block "blk_2"  key: "a1"  type: paragraph       │    │
+ * │  │ Block "bl_2"  key: "a1"  type: paragraph        │    │
  * │  │   └─ inline: [ text: "World", marks: [bold] ]   │    │
  * │  └─────────────────────────────────────────────────┘    │
  * └─────────────────────────────────────────────────────────┘
@@ -83,7 +83,7 @@ export interface DocumentState {
 export function createInitialEmptyDocumentState(
   placeholder: string,
 ): DocumentState {
-  const block = createInitialPlaceholderBlock(placeholder)
+  const block = createInitialParagraphPlaceholderBlock(placeholder)
   return {
     blockOrderById: [block.id],
     blocks: new Map([[block.id, block]]),

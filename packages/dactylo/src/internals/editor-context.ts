@@ -28,13 +28,10 @@ import type { Selection } from './selection'
  * |  |  activeMarks: Marks    |  | (where the user is editing)      |  |
  * |  │  (the written content) │  │                                  │  │
  * |  └─────────────────────---┘  └──────────────────────────────────┘  │
- * |  ┌─────────────────────────────────────────────────────────────-┐  │
- * |  │    isPlaceholder: boolean (ephemeral empty-doc semantics)    │  │
- * |  └─────────────────────────────────────────────────────────────-┘  │
  * └─────────────────────────────────────────────────────────────────---┘
  *         │                              │
  *         ▼                              ▼
- *  toMarkdown(), exports          caret render, keydown handlers(),
+ *  toMarkdown(), exports,         caret render, keydown handlers(),
  *  AI reads blocks                copy/paste, onSelectionChanged
  *
  * Why {@link Selection} is a first-class field (not external)?
@@ -74,21 +71,6 @@ import type { Selection } from './selection'
  *
  * Do not think marks are "not document content". Only the pre-keystroke typing button is excluded from export;
  * applied marks first-class document content.
- *
- * Why `isPlaceholder: boolean` lives in {@link EditorContext}?
- *
- * The placeholder is a **UX state**, not document content. When the user sees "Write something...",
- * the document technically contains one paragraph with placeholder metadata - but the user
- * hasn't committed any real content uet.
- *
- * The first keystroke behaves differently from normal typing:
- * 1. Remove placeholder text (not a normal backspace)
- * 2. Clear the placeholder flag (`isPlaceholder: false`)
- * 3. Insert the typed character
- *
- * That flag cannot live in {@link DocumentState} without polluting the exported JSON/markdown.
- * It cannot also live in UI libraries without breaking keydown handlers when no layer is mounted (tests, Ai agents, CLI).
- * On {@link EditorContext}, the keyboard builder an apply engine share the same signal.
  *
  * How {@link EditorContext} connects to the rest of Dactylo:
  * ```
@@ -149,33 +131,14 @@ export interface EditorContext {
    * 👉🏻 Where editing happens aka the finger on the page
    */
   readonly selection: Selection | null
-
-  /**
-   * Whether the document is a placeholder (empty)
-   * 👉🏻 Session flag: `true` while the empty-document is showing
-   * and the user has not typed real content yet.
-   */
-  readonly isPlaceholder: boolean
 }
 
 /** Creates the initial context for an empty editor with a placeholder */
 export function createInitialEditorContext(placeholder: string): EditorContext {
   return {
     activeMarks: createInitialActiveMarks(),
-    isPlaceholder: true,
     selection: null,
     state: createInitialEmptyDocumentState(placeholder),
-  }
-}
-
-/** Returns a copy of the context with an updated placeholder flag. */
-export function withPlaceholderFlag(
-  context: EditorContext,
-  isPlaceholder: boolean,
-): EditorContext {
-  return {
-    ...context,
-    isPlaceholder,
   }
 }
 
@@ -226,7 +189,7 @@ export function updateBlockContent(
    * Here it's just a sugar statement with an extra safety net
    * as when the following the code path, block content is updated
    * from a committed operation but all operations are validated before being applied.
-   * So if a block is not allowed to have line content,
+   * So if a block is not allowed to have inline content,
    * it will be rejected by the validation phase and in this particular case,
    * we just return the context as is.
    */

@@ -127,7 +127,9 @@ export function createParagraphBlock(opts: {
 }
 
 /** Creates an initial placeholder block (paragraph) for an empty document */
-export function createInitialPlaceholderBlock(text: string): ParagraphBlock {
+export function createInitialParagraphPlaceholderBlock(
+  text: string,
+): ParagraphBlock {
   return createParagraphBlock({
     content: [createPlaceholderTextNode(text)],
     posKey: makeInitialPosition(),

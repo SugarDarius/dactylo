@@ -20,7 +20,6 @@ import {
   updateBlockContent,
   withActiveMarks,
   withDocumentState,
-  withPlaceholderFlag,
   withSelection,
 } from './editor-context'
 import type { EditorContext } from './editor-context'
@@ -30,9 +29,18 @@ import { isMarkEnabled, isMarksEqual, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
 import { createTextNode, splitTextNodeAt } from './nodes'
 import type { InlineNode, NodeId, TextNode } from './nodes'
-import type { InsertBlockOpPosition, Operation } from './operations'
+import type {
+  DeleteBlockOp,
+  DeleteTextOp,
+  InsertBlockOp,
+  InsertBlockOpPosition,
+  InsertTextOp,
+  Operation,
+  SetMarksOp,
+} from './operations'
 import { createCursor } from './selection'
 import type { TextCursor } from './selection'
+import { assertNever } from './utils'
 
 // --- Core engine ─────────────────────────────────────────---------
 
@@ -153,7 +161,8 @@ export function validateOps(
   ops: readonly Operation[],
 ): void {
   for (const op of ops) {
-    switch (op.__type) {
+    const type = op.__type
+    switch (type) {
       case 'insert_block': {
         if (context.state.blocks.has(op.block.id)) {
           validationError(`Block ${op.block.id} already exists in document`, op)
@@ -196,6 +205,16 @@ export function validateOps(
 
         break
       }
+      case 'delete_text': {
+        const block = requireInlineBlock(context.state, op.blockId, op)
+        const { node } = requireTextNode(block, op.nodeId, op)
+
+        if (op.length < 0 || op.offset + op.length > node.text.length) {
+          validationError('Remove range out of bounds', op)
+        }
+
+        break
+      }
       case 'set_marks': {
         const block = requireInlineBlock(context.state, op.blockId, op)
         const { node } = requireTextNode(block, op.nodeId, op)
@@ -219,7 +238,7 @@ export function validateOps(
         break
       }
       default: {
-        validationError(`Unknown operation: ${op.__type}`, op)
+        assertNever(type)
       }
     }
   }
@@ -253,6 +272,185 @@ export function applyNormalizedMarks(
   return { ...editor, ...text }
 }
 
+/** Applies an `insert_block` operation to the editor context. */
+export function applyInsertBlockOp(
+  context: EditorContext,
+  op: InsertBlockOp,
+): EditorContext {
+  let state = insertBlock(context.state, op.block)
+
+  state = { ...state, blockOrderById: sortBlockOrder(state.blocks) }
+  return withDocumentState(context, state)
+}
+
+/** Applies a `delete_block` operation to the editor context. */
+export function applyDeleteBlockOp(
+  context: EditorContext,
+  op: DeleteBlockOp,
+): EditorContext {
+  const state = deleteBlock(context.state, op.blockId)
+  return withDocumentState(context, state)
+}
+
+/** Applies an `insert_text` operation to the editor context. */
+export function applyInsertTextOp(
+  context: EditorContext,
+  op: InsertTextOp,
+): EditorContext {
+  const block = getBlock(context.state, op.blockId)
+  const content = [...block.content]
+
+  const idx = content.findIndex((node) => node.id === op.nodeId)
+  if (idx === -1) {
+    applyError(`Node ${op.nodeId} not found in block ${block.id}`, op)
+  }
+
+  const node = content[idx]
+  if (!node || node.__type !== 'text') {
+    applyError('`insert_text` target must be a text node', op)
+  }
+
+  const before = node.text.slice(0, op.offset)
+  const after = node.text.slice(op.offset)
+
+  const marks = op.marks
+    ? applyNormalizedMarks(context.activeMarks, op.marks)
+    : { ...context.activeMarks }
+
+  /** When marks are the same we append the text in the same existing node. */
+  if (isMarksEqual(node.marks, marks)) {
+    const text = before + op.text + after
+    const updated: TextNode = { ...node, text, updatedAt: new Date() }
+
+    content[idx] = updated
+  }
+  /** Otherwise we split the node and create a new text node to insert the text. */
+  else {
+    const updates: InlineNode[] = []
+
+    if (before.length > 0) {
+      updates.push({ ...node, text: before, updatedAt: new Date() })
+    }
+
+    /* By design the text in the operation is never empty as its validated in the validation phase. */
+    updates.push(
+      createTextNode({
+        marks,
+        metadata: node.metadata,
+        text: op.text,
+      }),
+    )
+
+    if (after.length > 0) {
+      updates.push(
+        createTextNode({
+          marks: node.marks,
+          metadata: node.metadata,
+          text: after,
+        }),
+      )
+    }
+
+    content.splice(idx, 1, ...updates)
+  }
+
+  return updateBlockContent(context, op.blockId, content)
+}
+
+/** Applies a `delete_text` operation to the editor context. */
+export function applyDeleteTextOp(
+  context: EditorContext,
+  op: DeleteTextOp,
+): EditorContext {
+  const block = getBlock(context.state, op.blockId)
+  const content = [...block.content]
+
+  const idx = content.findIndex((node) => node.id === op.nodeId)
+  if (idx === -1) {
+    applyError(`Node ${op.nodeId} not found in block ${block.id}`, op)
+  }
+
+  const node = content[idx]
+  if (!node || node.__type !== 'text') {
+    applyError('`delete_text` target must be a text node', op)
+  }
+
+  const before = node.text.slice(0, op.offset)
+  const after = node.text.slice(op.offset + op.length)
+
+  content[idx] = {
+    ...node,
+    text: before + after,
+    updatedAt: new Date(),
+  }
+
+  return updateBlockContent(context, op.blockId, content)
+}
+
+/** Applies a `set_marks` operation to the editor context. */
+export function applySetMarksOp(
+  context: EditorContext,
+  op: SetMarksOp,
+): EditorContext {
+  const block = getBlock(context.state, op.blockId)
+  const content = [...block.content]
+
+  const idx = content.findIndex((node) => node.id === op.nodeId)
+  const node = content[idx]
+
+  if (!node || node.__type !== 'text') {
+    applyError('`set_marks` target must be a text node', op)
+  }
+
+  /**
+   * Apply operation only on a non-empty range.
+   * Otherwise for this operation it's a no-op.
+   */
+  if (op.from !== op.to) {
+    const replacement = splitTextNodeAt(node, op.from, op.to, op.nextMarks)
+    if (replacement.length === 0) {
+      content.splice(idx, 1)
+    } else {
+      content.splice(idx, 1, ...replacement)
+    }
+
+    return updateBlockContent(context, op.blockId, content)
+  }
+
+  return context
+}
+
+/** Applies a single operation to the editor context. */
+export function applyOp(context: EditorContext, op: Operation): EditorContext {
+  const type = op.__type
+  switch (type) {
+    case 'insert_block': {
+      return applyInsertBlockOp(context, op)
+    }
+    case 'delete_block': {
+      return applyDeleteBlockOp(context, op)
+    }
+    case 'insert_text': {
+      return applyInsertTextOp(context, op)
+    }
+    case 'delete_text': {
+      return applyDeleteTextOp(context, op)
+    }
+    case 'set_active_marks': {
+      return withActiveMarks(context, op.activeMarks)
+    }
+    case 'set_marks': {
+      return applySetMarksOp(context, op)
+    }
+    case 'set_selection': {
+      return withSelection(context, op.next)
+    }
+    default: {
+      assertNever(type)
+    }
+  }
+}
+
 /**
  * Apply operations in order, left to right.
  * Pure - no history, no events.
@@ -264,131 +462,7 @@ export function applyOps(
   let next = { ...context }
 
   for (const op of ops) {
-    switch (op.__type) {
-      case 'insert_block': {
-        let state = insertBlock(context.state, op.block)
-
-        state = { ...state, blockOrderById: sortBlockOrder(state.blocks) }
-        next = withPlaceholderFlag(withDocumentState(context, state), false)
-
-        break
-      }
-      case 'delete_block': {
-        const state = deleteBlock(context.state, op.blockId)
-        next = withDocumentState(context, state)
-        break
-      }
-      case 'insert_text': {
-        const block = getBlock(context.state, op.blockId)
-        const content = [...block.content]
-
-        const idx = content.findIndex((node) => node.id === op.nodeId)
-        if (idx === -1) {
-          applyError(`Node ${op.nodeId} not found in block ${block.id}`, op)
-        }
-
-        const node = content[idx]
-        if (!node || node.__type !== 'text') {
-          applyError('`insert_text` target must be a text node', op)
-        }
-
-        const before = node.text.slice(0, op.offset)
-        const after = node.text.slice(op.offset)
-
-        const marks = op.marks
-          ? applyNormalizedMarks(context.activeMarks, op.marks)
-          : { ...context.activeMarks }
-
-        /** When marks are the same we append the text in the same existing node. */
-        if (isMarksEqual(node.marks, marks)) {
-          const text = before + op.text + after
-          const updated: TextNode = { ...node, text, updatedAt: new Date() }
-
-          content[idx] = updated
-        }
-        /** Otherwise we split the node and create a new text node to insert the text. */
-        else {
-          const updates: InlineNode[] = []
-
-          if (before.length > 0) {
-            updates.push({ ...node, text: before, updatedAt: new Date() })
-          }
-
-          /* By design the text in the operation is never empty as its validated in the validation phase. */
-          updates.push(
-            createTextNode({
-              marks,
-              metadata: node.metadata,
-              text: op.text,
-            }),
-          )
-
-          if (after.length > 0) {
-            updates.push(
-              createTextNode({
-                marks: node.marks,
-                metadata: node.metadata,
-                text: after,
-              }),
-            )
-          }
-
-          content.splice(idx, 1, ...updates)
-        }
-
-        next = updateBlockContent(
-          withPlaceholderFlag(context, false),
-          op.blockId,
-          content,
-        )
-
-        break
-      }
-      case 'set_active_marks': {
-        next = withActiveMarks(context, op.activeMarks)
-        break
-      }
-      case 'set_marks': {
-        const block = getBlock(context.state, op.blockId)
-
-        const content = [...block.content]
-
-        const idx = content.findIndex((node) => node.id === op.nodeId)
-        const node = content[idx]
-
-        if (!node || node.__type !== 'text') {
-          applyError('`set_marks` target must be a text node', op)
-        }
-
-        /**
-         * Apply operation only on a non-empty range.
-         * Otherwise for this operation it's a no-op.
-         */
-        if (op.from !== op.to) {
-          const replacement = splitTextNodeAt(
-            node,
-            op.from,
-            op.to,
-            op.nextMarks,
-          )
-          if (replacement.length === 0) {
-            content.splice(idx, 1)
-          } else {
-            content.splice(idx, 1, ...replacement)
-          }
-
-          next = updateBlockContent(context, op.blockId, content)
-        }
-        break
-      }
-      case 'set_selection': {
-        next = withSelection(context, op.next)
-        break
-      }
-      default: {
-        applyError(`Unknown operation: ${op.__type}`, op)
-      }
-    }
+    next = applyOp(next, op)
   }
 
   return next
@@ -413,7 +487,8 @@ export function invertOps(ops: readonly Operation[]): readonly Operation[] {
   const invertedOps: Operation[] = []
 
   for (const op of reversed) {
-    switch (op.__type) {
+    const type = op.__type
+    switch (type) {
       case 'insert_block': {
         invertedOps.push({
           __type: 'delete_block',
@@ -442,6 +517,17 @@ export function invertOps(ops: readonly Operation[]): readonly Operation[] {
             marks: op.marks,
             text: op.text,
           },
+        })
+        break
+      }
+      case 'delete_text': {
+        invertedOps.push({
+          __type: 'insert_text',
+          blockId: op.blockId,
+          marks: op.snapshot.marks,
+          nodeId: op.nodeId,
+          offset: op.offset,
+          text: op.snapshot.text,
         })
         break
       }
@@ -474,7 +560,7 @@ export function invertOps(ops: readonly Operation[]): readonly Operation[] {
         break
       }
       default: {
-        invertError(`Unknown operation: ${op.__type}`, op)
+        assertNever(type)
       }
     }
   }
