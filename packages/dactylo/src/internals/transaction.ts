@@ -662,11 +662,11 @@ export class TransactionPipeline {
       return false
     }
 
-    const { ops, kind } = intent
+    const { ops, kind, coalesce } = intent
     switch (kind) {
       case 'insert_single_typed_char': {
         this.#commit(ops, {
-          coalesce: true,
+          coalesce,
           label: `typed_key:${event.key}`,
           pushToHistory: true,
           source: 'user',

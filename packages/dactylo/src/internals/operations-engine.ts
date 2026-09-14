@@ -760,7 +760,12 @@ export function buildSingleCharInsertTextOps(
   cursor: TextCursor,
   /** The character to insert. */
   char: string,
-): Operation[] {
+): {
+  /** The operations to apply. */
+  ops: Operation[]
+  /** When `true` merge history action for rapid typing coalescing. */
+  coalesce: boolean
+} {
   const { state } = context
   let ops: Operation[] = []
 
@@ -829,12 +834,13 @@ export function buildSingleCharInsertTextOps(
   }
 
   if (char !== ' ') {
-    return ops
+    return { coalesce: true, ops }
   }
 
+  // @todo: handle coalesce behaviors
   //@todo: detects markdown shortcut
 
-  return ops
+  return { coalesce: false, ops }
 }
 
 /**
@@ -849,6 +855,8 @@ export function buildKeyboardOps(
   ops: Operation[]
   /** The kind of the operation. */
   kind: 'insert_single_typed_char'
+  /** When `true` merge history action for rapid typing coalescing. */
+  coalesce: boolean
 } | null {
   const { selection } = context
 
@@ -865,13 +873,14 @@ export function buildKeyboardOps(
 
   /** We build `insert_text` operation when a single character is typed. */
   if (event.key.length === 1) {
-    const ops = buildSingleCharInsertTextOps(
+    const { ops, coalesce } = buildSingleCharInsertTextOps(
       context,
       selection.anchor,
       event.key,
     )
 
     return {
+      coalesce,
       kind: 'insert_single_typed_char',
       ops,
     }
