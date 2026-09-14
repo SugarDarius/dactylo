@@ -657,7 +657,7 @@ export class TransactionPipeline {
     }
 
     const intent = buildKeyboardOps(this.#context, event)
-    /** No when we don't have active selection or if the event is a modifier key. */
+    /** When we don't have any active selection or if the event is a modifier key. */
     if (intent === null) {
       return false
     }
