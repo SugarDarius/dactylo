@@ -254,12 +254,22 @@ export class Batch {
   }
 }
 
+/** Whether to skip pushing the transaction to the history stack. */
 export function skipHistoryPush(policy?: TransactionPolicy): boolean {
   return (
     policy?.pushToHistory === false ||
     policy?.source === 'undo' ||
     policy?.source === 'redo'
   )
+}
+
+/** Throws a {@link DactyloError} when history is not allowed. */
+export function historyError(message: string, hint: string): never {
+  throw DactyloError.from({
+    code: 'HISTORY_NOT_ALLOWED',
+    hint,
+    message,
+  })
 }
 
 /**
@@ -490,11 +500,10 @@ export class TransactionPipeline {
   /** Applies the newest undo entry's inverse operations. */
   undo(): void {
     if (this.#batch.active) {
-      throw DactyloError.from({
-        code: 'HISTORY_NOT_ALLOWED',
-        hint: 'TransactionPipeline/#undo',
-        message: 'undo() is not allowed to execute when the batch is active.',
-      })
+      historyError(
+        'undo() is not allowed to execute when the batch is active.',
+        'TransactionPipeline/#undo',
+      )
     }
 
     const entry = this.#history.popUndo()
@@ -516,11 +525,10 @@ export class TransactionPipeline {
   /** Re-applies the newest redo entry's forward operations. */
   redo(): void {
     if (this.#batch.active) {
-      throw DactyloError.from({
-        code: 'HISTORY_NOT_ALLOWED',
-        hint: 'TransactionPipeline/#redo',
-        message: 'redo() is not allowed to execute when the batch is active.',
-      })
+      historyError(
+        'redo() is not allowed to execute when the batch is active.',
+        'TransactionPipeline/#redo',
+      )
     }
 
     const entry = this.#history.popRedo()
@@ -554,7 +562,6 @@ export class TransactionPipeline {
     }
 
     const { ops, kind } = intent
-
     switch (kind) {
       case 'set_active_marks': {
         this.#commit(ops, {
