@@ -93,8 +93,8 @@ export interface InsertTextOp {
   /** Text string to insert. */
   readonly text: string
 
-  /** Optional marks applied to inserted text (defaults to node marks). */
-  readonly marks?: Marks
+  /** Optional partial marks applied to inserted text (defaults to node marks). */
+  readonly marks?: Partial<Marks>
 }
 
 /** Operation to delete a run of characters from a text node. */
@@ -118,7 +118,7 @@ export interface DeleteTextOp {
     /** Substring removed from the text node. */
     readonly text: string
     /** Marks applied to the removed run. */
-    readonly marks: Marks
+    readonly marks?: Partial<Marks>
   }
 }
 

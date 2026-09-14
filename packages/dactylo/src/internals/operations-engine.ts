@@ -26,10 +26,10 @@ import {
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import { isModKey } from './keyboard'
-import { isMarkEnabled, toggleMarkFlag } from './marks'
+import { isMarkEnabled, isMarksEqual, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
-import { splitTextNodeAt } from './nodes'
-import type { NodeId, TextNode } from './nodes'
+import { createTextNode, splitTextNodeAt } from './nodes'
+import type { InlineNode, NodeId, TextNode } from './nodes'
 import type { InsertBlockOpPosition, Operation } from './operations'
 import { createCursor } from './selection'
 import type { TextCursor } from './selection'
@@ -80,10 +80,11 @@ export function assertOffsetInText(
   offset: number,
   textLength: number,
   op: Operation,
+  label: string,
 ): void {
   if (offset < 0 || offset > textLength) {
     validationError(
-      `Offset ${offset} out of bounds for text length ${textLength}`,
+      `${label}: Offset ${offset} out of bounds for text length ${textLength}`,
       op,
     )
   }
@@ -121,7 +122,12 @@ export function validateTextCursor(
   }
 
   if (found.node.__type === 'text') {
-    assertOffsetInText(cursor.offset, found.node.text.length, op)
+    assertOffsetInText(
+      cursor.offset,
+      found.node.text.length,
+      op,
+      'Cursor offset',
+    )
     return
   }
 
@@ -174,6 +180,22 @@ export function validateOps(
         }
         break
       }
+      case 'insert_text': {
+        if (op.text.length === 0) {
+          validationError('Cannot insert an empty text', op)
+        }
+        const block = requireInlineBlock(context.state, op.blockId, op)
+        const { node } = requireTextNode(block, op.nodeId, op)
+
+        assertOffsetInText(
+          op.offset,
+          node.text.length,
+          op,
+          'Insert text offset',
+        )
+
+        break
+      }
       case 'set_marks': {
         const block = requireInlineBlock(context.state, op.blockId, op)
         const { node } = requireTextNode(block, op.nodeId, op)
@@ -214,6 +236,24 @@ export function applyError(message: string, op: Operation): never {
 }
 
 /**
+ * Normalizes marks between active marks and a text node marks.
+ *
+ * When a text is inserted not by typing a character, then it means the text node is
+ * inserted by an external source (e.g: copy/paste, Ai agent). So in that case the intent
+ * is to say the final marks applied are the ones from the operation not the current active marks.
+ *
+ * By design it's a cascade: Text node marks > Active marks.
+ */
+export function applyNormalizedMarks(
+  /** Active marks in the editor context. */
+  editor: Marks,
+  /** Marks required for inserting a text */
+  text: Partial<Marks>,
+): Marks {
+  return { ...editor, ...text }
+}
+
+/**
  * Apply operations in order, left to right.
  * Pure - no history, no events.
  */
@@ -236,6 +276,72 @@ export function applyOps(
       case 'delete_block': {
         const state = deleteBlock(context.state, op.blockId)
         next = withDocumentState(context, state)
+        break
+      }
+      case 'insert_text': {
+        const block = getBlock(context.state, op.blockId)
+        const content = [...block.content]
+
+        const idx = content.findIndex((node) => node.id === op.nodeId)
+        if (idx === -1) {
+          applyError(`Node ${op.nodeId} not found in block ${block.id}`, op)
+        }
+
+        const node = content[idx]
+        if (!node || node.__type !== 'text') {
+          applyError('`insert_text` target must be a text node', op)
+        }
+
+        const before = node.text.slice(0, op.offset)
+        const after = node.text.slice(op.offset)
+
+        const marks = op.marks
+          ? applyNormalizedMarks(context.activeMarks, op.marks)
+          : { ...context.activeMarks }
+
+        /** When marks are the same we append the text in the same existing node. */
+        if (isMarksEqual(node.marks, marks)) {
+          const text = before + op.text + after
+          const updated: TextNode = { ...node, text, updatedAt: new Date() }
+
+          content[idx] = updated
+        }
+        /** Otherwise we split the node and create a new text node to insert the text. */
+        else {
+          const updates: InlineNode[] = []
+
+          if (before.length > 0) {
+            updates.push({ ...node, text: before, updatedAt: new Date() })
+          }
+
+          /* By design the text in the operation is never empty as its validated in the validation phase. */
+          updates.push(
+            createTextNode({
+              marks,
+              metadata: node.metadata,
+              text: op.text,
+            }),
+          )
+
+          if (after.length > 0) {
+            updates.push(
+              createTextNode({
+                marks: node.marks,
+                metadata: node.metadata,
+                text: after,
+              }),
+            )
+          }
+
+          content.splice(idx, 1, ...updates)
+        }
+
+        next = updateBlockContent(
+          withPlaceholderFlag(context, false),
+          op.blockId,
+          content,
+        )
+
         break
       }
       case 'set_active_marks': {
@@ -322,6 +428,20 @@ export function invertOps(ops: readonly Operation[]): readonly Operation[] {
           __type: 'insert_block',
           afterBlockId: op.afterBlockId,
           block: op.snapshot,
+        })
+        break
+      }
+      case 'insert_text': {
+        invertedOps.push({
+          __type: 'delete_text',
+          blockId: op.blockId,
+          length: op.text.length,
+          nodeId: op.nodeId,
+          offset: op.offset,
+          snapshot: {
+            marks: op.marks,
+            text: op.text,
+          },
         })
         break
       }
