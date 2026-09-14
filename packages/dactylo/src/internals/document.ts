@@ -170,7 +170,7 @@ export function getBlock(state: DocumentState, blockId: BlockId): Block {
 }
 
 /** Returns a block with allowed inline content or throws. */
-export function getBlockWithAllowedInlineContent(
+export function getBlockWithInlineContent(
   state: DocumentState,
   blockId: BlockId,
 ): BlockWithInlineContent {
@@ -318,7 +318,7 @@ export function compareTextCursors(
   }
 
   const block = state.blocks.get(a.blockId)
-  if (!block) {
+  if (!block || !block.content) {
     return 0
   }
 
@@ -390,7 +390,7 @@ export function collectTextSpansInRange(
   const startBlock = state.blocks.get(anchor.blockId)
   const endBlock = state.blocks.get(focus.blockId)
 
-  if (!startBlock || !endBlock) {
+  if (!startBlock || !endBlock || !startBlock.content || !endBlock.content) {
     return []
   }
 
@@ -431,7 +431,7 @@ export function collectTextSpansInRange(
     }
 
     const block = state.blocks.get(blockId)
-    if (!block) {
+    if (!block || !block.content) {
       continue
     }
 

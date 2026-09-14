@@ -25,10 +25,7 @@ import type { Brand, Relax, Metadata } from './types'
  */
 export type BlockId = Brand<`bl_${string}`, 'BlockId'>
 
-/**
- * Base interface to implement by all
- * existing blocks in Dactylo.
- */
+/** Base interface to implement by all existing blocks in Dactylo. */
 export interface IBlock {
   /** Unique identifier for the block. */
   readonly id: BlockId
@@ -44,14 +41,6 @@ export interface IBlock {
    */
   readonly parentId: BlockId | null
 
-  /**
-   * Inline content tree for the block.
-   * By design, this array is kept lightweight as an inline sequence
-   * with coalesced text nodes to give better mutation performances
-   * while staying memory-conscious.
-   * */
-  readonly content: readonly InlineNode[]
-
   /** When the block was created.  */
   readonly createdAt: Date
 
@@ -65,23 +54,32 @@ export interface IBlock {
   readonly metadata: Metadata
 }
 
+/** Base interface for blocks with inline content. */
+export interface IBlockInlineContext extends IBlock {
+  /**
+   * Inline content tree for the block.
+   * By design, this array is kept lightweight as an inline sequence
+   * with coalesced text nodes to give better mutation performances
+   * while staying memory-conscious.
+   * */
+  readonly content: readonly InlineNode[]
+}
+
 /** Block representing a heading with markdown level (1-6). */
-export interface HeadingBlock extends IBlock {
+export interface HeadingBlock extends IBlockInlineContext {
   readonly __type: 'heading'
   /** Level of the heading. */
   readonly level: 1 | 2 | 3 | 4 | 5 | 6
 }
 
 /** Block representing a paragraph (plain text) -- default block type. */
-export interface ParagraphBlock extends IBlock {
+export interface ParagraphBlock extends IBlockInlineContext {
   readonly __type: 'paragraph'
 }
 
 /** Block representing a divider */
 export interface DividerBlock extends IBlock {
   readonly __type: 'divider'
-  /** Empty content array, no inline nodes allowed */
-  readonly content: readonly []
 }
 
 /** Discriminated union of all existing blocks in Dactylo. */
@@ -145,14 +143,14 @@ export function isBlockWithInlineContent(
 
 /** Whether the block was created with a placeholder text node. */
 export function isBlockWithPlaceholder(block: Block): boolean {
-  if (block.__type === 'heading' || block.__type === 'paragraph') {
+  if (isBlockWithInlineContent(block)) {
     /** placeholders represents always one single text node. */
     if (block.content.length !== 1) {
       return false
     }
 
     const [first] = block.content
-    return first?.__type === 'text' && first.metadata.isPlaceholder === true
+    return first?.__type === 'text' && first.isPlaceholder === true
   }
 
   return false
@@ -168,8 +166,8 @@ export function sortBlockOrder(blocks: ReadonlyMap<BlockId, Block>): BlockId[] {
 }
 
 /* Finds a node inside a block's content array. */
-export function findNodeInBlock(
-  block: Block,
+export function findNodeInBlockWithInlineContent(
+  block: BlockWithInlineContent,
   nodeId: NodeId,
 ): { node: InlineNode; index: number } | null {
   const index = block.content.findIndex((n) => n.id === nodeId)

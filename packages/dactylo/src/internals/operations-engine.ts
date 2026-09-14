@@ -1,16 +1,22 @@
 import {
-  findNodeInBlock,
+  findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
   isBlockWithPlaceholder,
   sortBlockOrder,
 } from './blocks'
-import type { Block, BlockId, BlockWithoutPosKey } from './blocks'
+import type {
+  Block,
+  BlockId,
+  BlockWithInlineContent,
+  BlockWithoutPosKey,
+} from './blocks'
 import {
   collectTextSpansInRange,
   compareTextCursors,
   computeInsertBlockPosKey,
   deleteBlock,
   getBlock,
+  getBlockWithInlineContent,
   insertBlock,
   normalizeRange,
   resolveInsertAfterBlockId,
@@ -59,8 +65,8 @@ export function requireBlockWithInlineContent(
   state: DocumentState,
   blockId: BlockId,
   op: Operation,
-): Block {
-  const block = getBlock(state, blockId)
+): BlockWithInlineContent {
+  const block = getBlockWithInlineContent(state, blockId)
 
   if (!isBlockWithInlineContent(block)) {
     validationError(`Block ${blockId} is not allowed to receive inline ops`, op)
@@ -71,11 +77,11 @@ export function requireBlockWithInlineContent(
 
 /** Finds a text node inside a block or throws. */
 export function requireTextNode(
-  block: Block,
+  block: BlockWithInlineContent,
   nodeId: NodeId,
   op: Operation,
 ): { node: TextNode; index: number } {
-  const found = findNodeInBlock(block, nodeId)
+  const found = findNodeInBlockWithInlineContent(block, nodeId)
   if (!found || found.node.__type !== 'text') {
     validationError(`Text node ${nodeId} not found in block ${block.id}`, op)
   }
@@ -123,7 +129,7 @@ export function validateTextCursor(
   op: Operation,
 ): void {
   const block = requireBlockWithInlineContent(state, cursor.blockId, op)
-  const found = findNodeInBlock(block, cursor.nodeId)
+  const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
 
   if (!found) {
     validationError(`Node ${cursor.nodeId} no found in block ${block.id}`, op)
@@ -266,24 +272,6 @@ export function applyError(message: string, op: Operation): never {
   })
 }
 
-/**
- * Normalizes marks between active marks and a text node marks.
- *
- * When a text is inserted not by typing a character, then it means the text node is
- * inserted by an external source (e.g: copy/paste, Ai agent). So in that case the intent
- * is to say the final marks applied are the ones from the operation not the current active marks.
- *
- * By design it's a cascade: Text node marks > Active marks.
- */
-export function applyNormalizedMarks(
-  /** Active marks in the editor context. */
-  editor: Marks,
-  /** Marks required for inserting a text */
-  text: Partial<Marks>,
-): Marks {
-  return { ...editor, ...text }
-}
-
 /** Applies an `insert_block` operation to the editor context. */
 export function applyInsertBlockOp(
   context: EditorContext,
@@ -304,12 +292,30 @@ export function applyDeleteBlockOp(
   return withDocumentState(context, state)
 }
 
+/**
+ * Normalizes marks between active marks and a text node marks.
+ *
+ * When a text is inserted not by typing a character, then it means the text node is
+ * inserted by an external source (e.g: copy/paste, Ai agent). So in that case the intent
+ * is to say the final marks applied are the ones from the operation not the current active marks.
+ *
+ * By design it's a cascade: Text node marks > Active marks.
+ */
+export function applyNormalizedMarks(
+  /** Active marks in the editor context. */
+  editor: Marks,
+  /** Marks required for inserting a text */
+  text: Partial<Marks>,
+): Marks {
+  return { ...editor, ...text }
+}
+
 /** Applies an `insert_text` operation to the editor context. */
 export function applyInsertTextOp(
   context: EditorContext,
   op: InsertTextOp,
 ): EditorContext {
-  const block = getBlock(context.state, op.blockId)
+  const block = getBlockWithInlineContent(context.state, op.blockId)
   const content = [...block.content]
 
   const idx = content.findIndex((node) => node.id === op.nodeId)
@@ -374,7 +380,7 @@ export function applyDeleteTextOp(
   context: EditorContext,
   op: DeleteTextOp,
 ): EditorContext {
-  const block = getBlock(context.state, op.blockId)
+  const block = getBlockWithInlineContent(context.state, op.blockId)
   const content = [...block.content]
 
   const idx = content.findIndex((node) => node.id === op.nodeId)
@@ -404,7 +410,7 @@ export function applySetMarksOp(
   context: EditorContext,
   op: SetMarksOp,
 ): EditorContext {
-  const block = getBlock(context.state, op.blockId)
+  const block = getBlockWithInlineContent(context.state, op.blockId)
   const content = [...block.content]
 
   const idx = content.findIndex((node) => node.id === op.nodeId)
@@ -673,8 +679,8 @@ export function buildSetMarksOps(
     }
 
     const enabling = spans.every((span) => {
-      const block = getBlock(state, span.blockId)
-      const found = findNodeInBlock(block, span.nodeId)
+      const block = getBlockWithInlineContent(state, span.blockId)
+      const found = findNodeInBlockWithInlineContent(block, span.nodeId)
 
       if (!found || found.node.__type !== 'text') {
         return false
@@ -686,8 +692,8 @@ export function buildSetMarksOps(
     const ops: Operation[] = []
 
     for (const span of spans) {
-      const block = getBlock(state, span.blockId)
-      const found = findNodeInBlock(block, span.nodeId)
+      const block = getBlockWithInlineContent(state, span.blockId)
+      const found = findNodeInBlockWithInlineContent(block, span.nodeId)
 
       if (!found || found.node.__type !== 'text') {
         continue
@@ -734,9 +740,9 @@ export function buildSingleCharInsertTextOps(
   char: string,
 ): Operation[] {
   const { state } = context
-  const block = getBlock(state, cursor.blockId)
-
   let ops: Operation[] = []
+
+  const block = getBlockWithInlineContent(state, cursor.blockId)
   if (isBlockWithPlaceholder(block)) {
     const [first] = block.content
 

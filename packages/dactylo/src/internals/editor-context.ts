@@ -1,10 +1,9 @@
-import { findNodeInBlock, touchBlock } from './blocks'
+import { findNodeInBlockWithInlineContent, touchBlock } from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
 import {
   collectTextSpansInRange,
   createInitialEmptyDocumentState,
-  getBlock,
-  getBlockWithAllowedInlineContent,
+  getBlockWithInlineContent,
   normalizeRange,
   replaceBlock,
 } from './document'
@@ -181,7 +180,7 @@ export function updateBlockInlineContent(
   blockId: BlockId,
   content: InlineNode[],
 ): EditorContext {
-  const block = getBlockWithAllowedInlineContent(context.state, blockId)
+  const block = getBlockWithInlineContent(context.state, blockId)
   const updated: BlockWithInlineContent = {
     ...block,
     content: coalesceInlineNodes(content),
@@ -219,8 +218,8 @@ export function isMarkActiveInContext(
     }
 
     return spans.every((span) => {
-      const block = getBlock(context.state, span.blockId)
-      const found = findNodeInBlock(block, span.nodeId)
+      const block = getBlockWithInlineContent(context.state, span.blockId)
+      const found = findNodeInBlockWithInlineContent(block, span.nodeId)
 
       if (!found || found.node.__type !== 'text') {
         return false
