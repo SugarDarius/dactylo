@@ -318,13 +318,13 @@ export function applyInsertTextOp(
   const block = getBlockWithInlineContent(context.state, op.blockId)
   const content = [...block.content]
 
-  const idx = content.findIndex((node) => node.id === op.nodeId)
-  if (idx === -1) {
+  const found = findNodeInBlockWithInlineContent(block, op.nodeId)
+  if (!found) {
     applyError(`Node ${op.nodeId} not found in block ${block.id}`, op)
   }
 
-  const node = content[idx]
-  if (!node || node.__type !== 'text') {
+  const { node, index } = found
+  if (node.__type !== 'text') {
     applyError('`insert_text` target must be a text node', op)
   }
 
@@ -338,16 +338,28 @@ export function applyInsertTextOp(
   /** When marks are the same we append the text in the same existing node. */
   if (isMarksEqual(node.marks, marks)) {
     const text = before + op.text + after
-    const updated: TextNode = { ...node, text, updatedAt: new Date() }
+    const updated: TextNode = {
+      ...node,
+      /** Always set to `false` as we are updating */
+      isPlaceholder: false,
+      text,
+      updatedAt: new Date(),
+    }
 
-    content[idx] = updated
+    content[index] = updated
   }
   /** Otherwise we split the node and create a new text node to insert the text. */
   else {
     const updates: InlineNode[] = []
 
     if (before.length > 0) {
-      updates.push({ ...node, text: before, updatedAt: new Date() })
+      updates.push({
+        ...node,
+        /** Always set to `false` as we are updating */
+        isPlaceholder: false,
+        text: before,
+        updatedAt: new Date(),
+      })
     }
 
     /* By design the text in the operation is never empty as its validated in the validation phase. */
@@ -369,7 +381,7 @@ export function applyInsertTextOp(
       )
     }
 
-    content.splice(idx, 1, ...updates)
+    content.splice(index, 1, ...updates)
   }
 
   return updateBlockWithInlineContent(context, op.blockId, content)
@@ -383,22 +395,32 @@ export function applyDeleteTextOp(
   const block = getBlockWithInlineContent(context.state, op.blockId)
   const content = [...block.content]
 
-  const idx = content.findIndex((node) => node.id === op.nodeId)
-  if (idx === -1) {
+  const found = findNodeInBlockWithInlineContent(block, op.nodeId)
+  if (!found) {
     applyError(`Node ${op.nodeId} not found in block ${block.id}`, op)
   }
 
-  const node = content[idx]
-  if (!node || node.__type !== 'text') {
+  const { node, index } = found
+
+  if (node.__type !== 'text') {
     applyError('`delete_text` target must be a text node', op)
   }
 
   const before = node.text.slice(0, op.offset)
   const after = node.text.slice(op.offset + op.length)
 
-  content[idx] = {
+  const text = before + after
+  /**
+   * Set to back to `isPlaceholder: true` when:
+   * 1. The text is empty
+   * 2. The node is the first and only existing node in the block
+   */
+  const isPlaceholder = text.length === 0 && index === 0 && content.length === 1
+
+  content[index] = {
     ...node,
-    text: before + after,
+    isPlaceholder,
+    text,
     updatedAt: new Date(),
   }
 

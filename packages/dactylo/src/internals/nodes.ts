@@ -56,28 +56,28 @@ export interface TextNode extends INode {
   readonly isPlaceholder: boolean
 }
 
-/** Node representing a link */
+/** Node representing a link. */
 export interface LinkNode extends INode {
   readonly __type: 'link'
 
-  /** URL of the link */
+  /** URL of the link. */
   readonly url: {
-    /** Href of the link */
+    /** Href of the link. */
     readonly href: string
 
-    /** Title of the link */
+    /** Title of the link. */
     readonly title: string
   }
 
-  /** Text Node representing the link text */
+  /** Text Node representing the link text. */
   readonly textNode: TextNode
 }
 
-/** Node representing a mention */
+/** Node representing a mention. */
 export interface MentionNode extends INode {
   readonly __type: 'mention'
 
-  /** Structural data of the artefact representing the mention */
+  /** Structural data of the artefact representing the mention. */
   readonly artefact: {
     /** The  key to use when you want to refer to the mention in the code. */
     readonly key: string
@@ -107,28 +107,23 @@ export function generateNodeId(): NodeId {
   return `nd_${nanoid(21)}` as NodeId
 }
 
-/** Creates a text node */
+/** Creates a text node. */
 export function createTextNode(opts: {
   text: string
   isPlaceholder?: boolean
   metadata?: Metadata
-  marks?: Marks
+  marks: Marks
 }): TextNode {
   return {
     __type: 'text',
     createdAt: new Date(),
     id: generateNodeId(),
     isPlaceholder: opts.isPlaceholder ?? false,
-    marks: opts.marks ?? {},
+    marks: opts.marks,
     metadata: opts.metadata ?? {},
     text: opts.text,
     updatedAt: null,
   }
-}
-
-/** Creates a placeholder text node */
-export function createPlaceholderTextNode(text: string): TextNode {
-  return createTextNode({ isPlaceholder: true, text })
 }
 
 /**
@@ -165,7 +160,7 @@ export function coalesceInlineNodes(
         __type: pending.__type,
         createdAt: pending.createdAt,
         id: pending.id,
-        /** Always false as we are merging nodes */
+        /** Always set to `false` as we are merging nodes */
         isPlaceholder: false,
         marks: pending.marks,
         metadata: pending.metadata,

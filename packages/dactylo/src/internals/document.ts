@@ -1,11 +1,16 @@
-import {
-  createInitialParagraphPlaceholderBlock,
-  isBlockWithInlineContent,
-} from './blocks'
+import { createParagraphBlock, isBlockWithInlineContent } from './blocks'
 import type { Block, BlockId, BlockWithInlineContent } from './blocks'
 import { DactyloError } from './errors'
+import type { Marks } from './marks'
+import { createTextNode } from './nodes'
 import type { InsertBlockOpPosition } from './operations'
-import { after, before, between, makePosition } from './position'
+import {
+  after,
+  before,
+  between,
+  makeInitialPosition,
+  makePosition,
+} from './position'
 import type { PosKey } from './position'
 import { appendTextSpansInRangeFromBlock, createRange } from './selection'
 import type { RangeSelection, TextCursor, TextSpanInRange } from './selection'
@@ -85,8 +90,18 @@ export interface DocumentState {
  */
 export function createInitialEmptyDocumentState(
   placeholder: string,
+  activeMarks: Marks,
 ): DocumentState {
-  const block = createInitialParagraphPlaceholderBlock(placeholder)
+  const block = createParagraphBlock({
+    content: [
+      createTextNode({
+        isPlaceholder: true,
+        marks: activeMarks,
+        text: placeholder,
+      }),
+    ],
+    posKey: makeInitialPosition(),
+  })
   return {
     blockOrderById: [block.id],
     blocks: new Map([[block.id, block]]),

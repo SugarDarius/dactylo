@@ -135,10 +135,11 @@ export interface EditorContext {
 
 /** Creates the initial context for an empty editor with a placeholder */
 export function createInitialEditorContext(placeholder: string): EditorContext {
+  const initialActiveMarks = createInitialActiveMarks()
   return {
-    activeMarks: createInitialActiveMarks(),
+    activeMarks: initialActiveMarks,
     selection: null,
-    state: createInitialEmptyDocumentState(placeholder),
+    state: createInitialEmptyDocumentState(placeholder, initialActiveMarks),
   }
 }
 

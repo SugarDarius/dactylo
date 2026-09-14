@@ -9,9 +9,7 @@
 
 import { nanoid } from 'nanoid'
 
-import { createPlaceholderTextNode } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
-import { makeInitialPosition } from './position'
 import type { PosKey } from './position'
 import type { Brand, Relax, Metadata } from './types'
 
@@ -100,7 +98,7 @@ export function generateBlockId(): BlockId {
   return `bl_${nanoid(21)}` as BlockId
 }
 
-/** Creates a paragraph block */
+/** Creates a paragraph block. */
 export function createParagraphBlock(opts: {
   content: InlineNode[]
   metadata?: Metadata
@@ -118,17 +116,6 @@ export function createParagraphBlock(opts: {
     updatedAt: null,
   }
 }
-
-/** Creates an initial placeholder block (paragraph) for an empty document */
-export function createInitialParagraphPlaceholderBlock(
-  text: string,
-): ParagraphBlock {
-  return createParagraphBlock({
-    content: [createPlaceholderTextNode(text)],
-    posKey: makeInitialPosition(),
-  })
-}
-
 /** Returns a shallow copy of a block with a fresh `updatedAt` timestamp. */
 export function touchBlock(block: Block): Block {
   return { ...block, updatedAt: new Date() }
