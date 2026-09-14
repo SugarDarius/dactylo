@@ -697,9 +697,9 @@ export class TransactionPipeline {
     event: KeyboardEvent,
     policy?: TransactionPolicy,
   ): boolean {
-    const platformShortcut = detectPlatformKeyboardShortcut(event)
-    if (platformShortcut !== null) {
-      switch (platformShortcut) {
+    const shortcut = detectPlatformKeyboardShortcut(event)
+    if (shortcut !== null) {
+      switch (shortcut) {
         case 'undo': {
           this.undo()
           return true
@@ -717,7 +717,7 @@ export class TransactionPipeline {
           return false
         }
         default: {
-          assertNever(platformShortcut)
+          assertNever(shortcut)
         }
       }
     }
