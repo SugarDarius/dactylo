@@ -848,7 +848,7 @@ export function buildKeyboardOps(
   /** The operations to apply. */
   ops: Operation[]
   /** The kind of the operation. */
-  kind: 'insert_single_char'
+  kind: 'insert_single_typed_char'
 } | null {
   const { selection } = context
 
@@ -872,7 +872,7 @@ export function buildKeyboardOps(
     )
 
     return {
-      kind: 'insert_single_char',
+      kind: 'insert_single_typed_char',
       ops,
     }
   }
