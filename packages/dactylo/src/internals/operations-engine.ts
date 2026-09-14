@@ -9,6 +9,7 @@ import {
   collectTextSpansInRange,
   compareTextCursors,
   computeInsertBlockPosKey,
+  deleteBlock,
   getBlock,
   insertBlock,
   normalizeRange,
@@ -137,7 +138,10 @@ export function validateTextCursor(
   validationError(`Cursor node ${cursor.nodeId} must be text or line_break`, op)
 }
 
-/** Validate a batch of operations against current state. */
+/**
+ * Validates a batch of operations against current state.
+ * Throws when operations do no respects the rules implemented in the editor.
+ */
 export function validateOps(
   context: EditorContext,
   ops: readonly Operation[],
@@ -154,6 +158,19 @@ export function validateOps(
           !context.state.blocks.has(op.afterBlockId)
         ) {
           validationError(`Unknown block: ${op.afterBlockId}`, op)
+        }
+        break
+      }
+      case 'delete_block': {
+        if (op.snapshot.id !== op.blockId) {
+          validationError(
+            `Snapshot block ID ${op.snapshot.id} does not match the deleted block ID ${op.blockId}`,
+            op,
+          )
+        }
+
+        if (context.state.blockOrderById.length === 1) {
+          validationError(`Cannot delete the last block in the document`, op)
         }
         break
       }
@@ -214,6 +231,11 @@ export function applyOps(
         state = { ...state, blockOrderById: sortBlockOrder(state.blocks) }
         next = withPlaceholderFlag(withDocumentState(context, state), false)
 
+        break
+      }
+      case 'delete_block': {
+        const state = deleteBlock(context.state, op.blockId)
+        next = withDocumentState(context, state)
         break
       }
       case 'set_active_marks': {
@@ -292,6 +314,14 @@ export function invertOps(ops: readonly Operation[]): readonly Operation[] {
           afterBlockId: op.afterBlockId,
           blockId: op.block.id,
           snapshot: op.block,
+        })
+        break
+      }
+      case 'delete_block': {
+        invertedOps.push({
+          __type: 'insert_block',
+          afterBlockId: op.afterBlockId,
+          block: op.snapshot,
         })
         break
       }
