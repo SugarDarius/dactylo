@@ -1,6 +1,7 @@
 import {
   findNodeInBlock,
   isBlockWithInlineContent,
+  isBlockWithPlaceholder,
   sortBlockOrder,
 } from './blocks'
 import type { Block, BlockId, BlockWithoutPosKey } from './blocks'
@@ -19,6 +20,7 @@ import {
   withActiveMarks,
   withDocumentState,
   withPlaceholderFlag,
+  withSelection,
 } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
@@ -28,6 +30,8 @@ import type { MarkKey, Marks } from './marks'
 import { splitTextNodeAt } from './nodes'
 import type { NodeId, TextNode } from './nodes'
 import type { InsertBlockOpPosition, Operation } from './operations'
+import { createCursor } from './selection'
+import type { TextCursor } from './selection'
 
 // --- Core engine ─────────────────────────────────────────---------
 
@@ -70,10 +74,21 @@ export function requireTextNode(
   return { index: found.index, node: found.node }
 }
 
-/**
- * Asserts a mark range `[from, to)` lies within a text node's bounds.
- * Throws when the range is invalid or out of bounds.
- */
+/** Asserts an offset lies within a text node's bounds. */
+export function assertOffsetInText(
+  offset: number,
+  textLength: number,
+  op: Operation,
+): void {
+  if (offset < 0 || offset > textLength) {
+    validationError(
+      `Offset ${offset} out of bounds for text length ${textLength}`,
+      op,
+    )
+  }
+}
+
+/** Asserts a mark range `[from, to)` lies within a text node's bounds. */
 export function assertRangeInText(
   /** Range start (inclusive). */
   from: number,
@@ -89,6 +104,37 @@ export function assertRangeInText(
       op,
     )
   }
+}
+
+/** Validates a text cursor by checking its type and offset. */
+export function validateTextCursor(
+  state: DocumentState,
+  cursor: TextCursor,
+  op: Operation,
+): void {
+  const block = requireInlineBlock(state, cursor.blockId, op)
+  const found = findNodeInBlock(block, cursor.nodeId)
+
+  if (!found) {
+    validationError(`Node ${cursor.nodeId} no found in block ${block.id}`, op)
+  }
+
+  if (found.node.__type === 'text') {
+    assertOffsetInText(cursor.offset, found.node.text.length, op)
+    return
+  }
+
+  if (found.node.__type === 'line_break') {
+    if (cursor.offset !== 0) {
+      validationError(
+        `Cursor offset ${cursor.offset} invalid for line_break`,
+        op,
+      )
+    }
+    return
+  }
+
+  validationError(`Cursor node ${cursor.nodeId} must be text or line_break`, op)
 }
 
 /** Validate a batch of operations against current state. */
@@ -117,6 +163,17 @@ export function validateOps(
 
         assertRangeInText(op.from, op.to, node.text.length, op)
 
+        break
+      }
+      case 'set_selection': {
+        if (op.next !== null) {
+          if (op.next.__type === 'cursor') {
+            validateTextCursor(context.state, op.next.anchor, op)
+          } else if (op.next.__type === 'range') {
+            validateTextCursor(context.state, op.next.anchor, op)
+            validateTextCursor(context.state, op.next.focus, op)
+          }
+        }
         break
       }
       case 'set_active_marks': {
@@ -196,6 +253,10 @@ export function applyOps(
         }
         break
       }
+      case 'set_selection': {
+        next = withSelection(context, op.next)
+        break
+      }
       default: {
         applyError(`Unknown operation: ${op.__type}`, op)
       }
@@ -251,6 +312,14 @@ export function invertOps(ops: readonly Operation[]): readonly Operation[] {
           nodeId: op.nodeId,
           prevMarks: op.nextMarks,
           to: op.to,
+        })
+        break
+      }
+      case 'set_selection': {
+        invertedOps.push({
+          __type: 'set_selection',
+          next: op.prev,
+          prev: op.next,
         })
         break
       }
@@ -397,14 +466,111 @@ export function buildSetMarksOps(
 // --- Keyboard operations ─────────────────────────────────────────-
 
 /**
+ * Builds operations for a single typed character at the current cursor position.
+ * When the typed character is a `space` checks for markdown shortcut triggers.
+ */
+export function buildSingleCharInsertTextOps(
+  context: EditorContext,
+  /** Collapsed cursor anchor for the pending edit. */
+  cursor: TextCursor,
+  /** The character to insert. */
+  char: string,
+): Operation[] {
+  const { state } = context
+
+  const block = getBlock(state, cursor.blockId)
+
+  /** Blocks with no inline content are not allowed to receive text related operations. */
+  if (!isBlockWithInlineContent(block)) {
+    throw DactyloError.from({
+      code: 'INSERT_TEXT_OP_NOT_ALLOWED_IN_BLOCK',
+      hint: 'Insert text op is not allowed in the given block',
+      message: `Block ${block.id} is not allowed to receive inline ops`,
+    })
+  }
+
+  let ops: Operation[] = []
+  if (isBlockWithPlaceholder(block)) {
+    const [first] = block.content
+    if (!first || first.__type !== 'text') {
+      throw DactyloError.from({
+        code: 'INSERT_TEXT_OP_ONLY_ALLOWED_IN_TEXT_NODE',
+        hint: 'Insert text op is only allowed in text nodes',
+        message: `First node of block ${block.id} is not a text node. Type: ${first?.__type}`,
+      })
+    }
+
+    ops = [
+      {
+        __type: 'delete_text',
+        blockId: block.id,
+        length: first.text.length,
+        nodeId: first.id,
+        offset: 0,
+        snapshot: { marks: first.marks, text: first.text },
+      },
+      {
+        __type: 'insert_text',
+        blockId: block.id,
+        marks: context.activeMarks,
+        nodeId: first.id,
+        offset: 0,
+        text: char,
+      },
+      {
+        __type: 'set_selection',
+        next: createCursor({
+          blockId: block.id,
+          nodeId: first.id,
+          offset: char.length,
+        }),
+        prev: context.selection,
+      },
+    ]
+  } else {
+    ops = [
+      {
+        __type: 'insert_text',
+        blockId: block.id,
+        marks: context.activeMarks,
+        nodeId: cursor.nodeId,
+        offset: 0,
+        text: char,
+      },
+      {
+        __type: 'set_selection',
+        next: createCursor({
+          blockId: block.id,
+          nodeId: cursor.nodeId,
+          offset: cursor.offset + char.length,
+        }),
+        prev: context.selection,
+      },
+    ]
+  }
+
+  if (char !== ' ') {
+    return ops
+  }
+
+  //@todo: detects markdown shortcut
+
+  return ops
+}
+
+/**
  * Builds keyboard operations to handle a keyboard event.
- *
  * Returns `null` when the selection is null or not a cursor selection.
  */
 export function buildKeyboardOps(
   context: EditorContext,
   event: KeyboardEvent,
-): null {
+): {
+  /** The operations to apply. */
+  ops: Operation[]
+  /** The kind of the operation. */
+  kind: 'insert_single_char'
+} | null {
   const { selection } = context
 
   /** When we don't have any selection or it's not a cursor selection it's a no-op. */
@@ -416,6 +582,20 @@ export function buildKeyboardOps(
   /** When the event is a modifier key, it's a no-op. */
   if (isMod) {
     return null
+  }
+
+  /** We build `insert_text` operation when a single character is typed. */
+  if (event.key.length === 1) {
+    const ops = buildSingleCharInsertTextOps(
+      context,
+      selection.anchor,
+      event.key,
+    )
+
+    return {
+      kind: 'insert_single_char',
+      ops,
+    }
   }
 
   return null

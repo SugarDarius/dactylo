@@ -143,7 +143,7 @@ export interface EditorContext {
   readonly activeMarks: Marks
 
   /**
-   * Active cursor, range, or block selection; `null` when unfocused.
+   * Active cursor, or range selection; `null` when unfocused.
    * Commits together with document changes so undo/redo restores both.
    *
    * 👉🏻 Where editing happens aka the finger on the page
@@ -201,6 +201,16 @@ export function withActiveMarks(
   }
 }
 
+/** Returns a copy of the context with an updated selection. */
+export function withSelection(
+  context: EditorContext,
+  selection: Selection | null,
+): EditorContext {
+  return {
+    ...context,
+    selection,
+  }
+}
 /** Replaces a block's inline content and coalesces adjacent text nodes. */
 export function updateBlockContent(
   context: EditorContext,

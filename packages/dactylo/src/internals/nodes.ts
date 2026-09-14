@@ -79,10 +79,13 @@ export interface MentionNode extends INode {
     /** The  key to use when you want to refer to the mention in the code. */
     readonly key: string
 
-    /** The type to use when you want  a specific rendering
+    /** The type to use when you want a specific rendering
      * in UI libraries for the mention.
      */
     readonly type: string
+
+    /** The text to display for the mention */
+    readonly text: string
   }
 }
 

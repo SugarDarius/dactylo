@@ -173,3 +173,8 @@ export function createRange(
 ): RangeSelection {
   return { __type: 'range', anchor, focus }
 }
+
+/** Creates a collapsed cursor selection. */
+export function createCursor(anchor: TextCursor): CursorSelection {
+  return { __type: 'cursor', anchor }
+}

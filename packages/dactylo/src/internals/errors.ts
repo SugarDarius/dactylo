@@ -26,6 +26,10 @@ export type DactyloErrorCode =
   | 'INVERT_TRANSACTION_OPERATION'
   /** History is not allowed to execute */
   | 'HISTORY_NOT_ALLOWED'
+  /** Insert text op is not allowed in the given block */
+  | 'INSERT_TEXT_OP_NOT_ALLOWED_IN_BLOCK'
+  /** Insert text op is only allowed in text nodes */
+  | 'INSERT_TEXT_OP_ONLY_ALLOWED_IN_TEXT_NODE'
   /** Failed to resolve a block in the document */
   | 'UNKNOWN_BLOCK_IN_DOCUMENT'
 

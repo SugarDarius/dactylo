@@ -139,20 +139,19 @@ export function touchBlock(block: Block): Block {
   return { ...block, updatedAt: new Date() }
 }
 
-/** Whether the block is the placeholder empty paragraph shown in an empty editor. */
-export function isPlaceholderBlock(block: Block): boolean {
-  if (block.__type !== 'paragraph') {
-    return false
+/** Whether the block was created with a placeholder text node. */
+export function isBlockWithPlaceholder(block: Block): boolean {
+  if (block.__type === 'heading' || block.__type === 'paragraph') {
+    /** placeholders represents always one single text node. */
+    if (block.content.length !== 1) {
+      return false
+    }
+
+    const [first] = block.content
+    return first?.__type === 'text' && first.metadata.isPlaceholder === true
   }
 
-  if (block.content.length !== 1) {
-    return false
-  }
-
-  const [firstNode] = block.content
-  return (
-    firstNode?.__type === 'text' && firstNode.metadata.isPlaceholder === true
-  )
+  return false
 }
 
 /** Rebuilds block order from a blocks map (after posKey changes). */

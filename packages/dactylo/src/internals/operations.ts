@@ -19,6 +19,7 @@
 import type { Block, BlockId } from './blocks'
 import type { Marks } from './marks'
 import type { NodeId } from './nodes'
+import type { Selection } from './selection'
 import type { Relax } from './types'
 
 /** Operation to insert a block at the given position (fractional index). */
@@ -155,6 +156,17 @@ export interface SetMarksOp {
   readonly nextMarks: Marks
 }
 
+/** Updates editor selection without mutating document content, */
+export interface SetSelectionOp {
+  readonly __type: 'set_selection'
+
+  /** Previous selection stored for undo inversion. */
+  readonly prev: Selection | null
+
+  /** Next selection to apply after the transaction. */
+  readonly next: Selection | null
+}
+
 /** Discriminated union of all operations supported by Dactylo. */
 export type Operation = Relax<
   | InsertBlockOp
@@ -163,4 +175,5 @@ export type Operation = Relax<
   | DeleteTextOp
   | SetActiveMarksOp
   | SetMarksOp
+  | SetSelectionOp
 >
