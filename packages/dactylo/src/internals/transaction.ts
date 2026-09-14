@@ -667,7 +667,16 @@ export class TransactionPipeline {
       case 'insert_single_typed_char': {
         this.#commit(ops, {
           coalesce,
-          label: `typed_key:${event.key}`,
+          label: `insert_single_typed_char:${event.key}`,
+          pushToHistory: true,
+          source: 'user',
+        })
+        return true
+      }
+      case 'delete_single_typed_char': {
+        this.#commit(ops, {
+          coalesce,
+          label: `delete_previous_typed_char`,
           pushToHistory: true,
           source: 'user',
         })

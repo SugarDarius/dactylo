@@ -435,10 +435,13 @@ export function applySetMarksOp(
   const block = getBlockWithInlineContent(context.state, op.blockId)
   const content = [...block.content]
 
-  const idx = content.findIndex((node) => node.id === op.nodeId)
-  const node = content[idx]
+  const found = findNodeInBlockWithInlineContent(block, op.nodeId)
+  if (!found) {
+    applyError(`Node ${op.nodeId} not found in block ${block.id}`, op)
+  }
 
-  if (!node || node.__type !== 'text') {
+  const { node, index } = found
+  if (node.__type !== 'text') {
     applyError('`set_marks` target must be a text node', op)
   }
 
@@ -449,9 +452,9 @@ export function applySetMarksOp(
   if (op.from !== op.to) {
     const replacement = splitTextNodeAt(node, op.from, op.to, op.nextMarks)
     if (replacement.length === 0) {
-      content.splice(idx, 1)
+      content.splice(index, 1)
     } else {
-      content.splice(idx, 1, ...replacement)
+      content.splice(index, 1, ...replacement)
     }
 
     return updateBlockWithInlineContent(context, op.blockId, content)
@@ -754,7 +757,7 @@ export function buildSetMarksOps(
  * Builds operations for a single typed character at the current cursor position.
  * When the typed character is a `space` checks for markdown shortcut triggers.
  */
-export function buildSingleCharInsertTextOps(
+export function buildInsertSingleCharTextOps(
   context: EditorContext,
   /** Collapsed cursor anchor for the pending edit. */
   cursor: TextCursor,
@@ -780,7 +783,7 @@ export function buildSingleCharInsertTextOps(
     if (!first || first.__type !== 'text') {
       buildError(
         `First node of block ${block.id} is not a text node. Type: ${first?.__type}`,
-        'OperationsEngine/buildSingleCharInsertTextOps',
+        'OperationsEngine/buildInsertSingleCharTextOps',
       )
     }
 
@@ -844,6 +847,65 @@ export function buildSingleCharInsertTextOps(
 }
 
 /**
+ * Builds operations for deleting previous typed character
+ * or merge with previous block at block start.
+ */
+export function buildDeleteSingleCharTextOps(
+  context: EditorContext,
+  /** Collapsed cursor anchor for the pending edit. */
+  cursor: TextCursor,
+): {
+  /** The operations to apply. */
+  ops: Operation[]
+  /** When `true` merge history action for rapid typing coalescing. */
+  coalesce: boolean
+} {
+  if (cursor.offset === 0) {
+    // @todo: handle merge blocks
+    return { coalesce: false, ops: [] }
+  }
+
+  const { state } = context
+
+  const block = getBlockWithInlineContent(state, cursor.blockId)
+  const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+
+  if (!found || found.node.__type !== 'text') {
+    buildError(
+      `Node ${cursor.nodeId} not found in block ${block.id}`,
+      'OperationsEngine/buildDeleteSingleCharTextOps',
+    )
+  }
+
+  const { node } = found
+
+  const ops: Operation[] = [
+    {
+      __type: 'delete_text',
+      blockId: cursor.blockId,
+      length: 1,
+      nodeId: cursor.nodeId,
+      offset: cursor.offset - 1,
+      snapshot: {
+        marks: node.marks,
+        text: node.text[cursor.offset - 1] ?? '',
+      },
+    },
+    {
+      __type: 'set_selection',
+      next: createCursor({
+        blockId: cursor.blockId,
+        nodeId: cursor.nodeId,
+        offset: cursor.offset - 1,
+      }),
+      prev: context.selection,
+    },
+  ]
+
+  return { coalesce: false, ops }
+}
+
+/**
  * Builds keyboard operations to handle a keyboard event.
  * Returns `null` when the selection is null or not a cursor selection.
  */
@@ -854,7 +916,7 @@ export function buildKeyboardOps(
   /** The operations to apply. */
   ops: Operation[]
   /** The kind of the operation. */
-  kind: 'insert_single_typed_char'
+  kind: 'insert_single_typed_char' | 'delete_single_typed_char'
   /** When `true` merge history action for rapid typing coalescing. */
   coalesce: boolean
 } | null {
@@ -871,9 +933,21 @@ export function buildKeyboardOps(
     return null
   }
 
+  if (event.key === 'Backspace') {
+    const { ops, coalesce } = buildDeleteSingleCharTextOps(
+      context,
+      selection.anchor,
+    )
+    return {
+      coalesce,
+      kind: 'delete_single_typed_char',
+      ops,
+    }
+  }
+
   /** We build `insert_text` operation when a single character is typed. */
   if (event.key.length === 1) {
-    const { ops, coalesce } = buildSingleCharInsertTextOps(
+    const { ops, coalesce } = buildInsertSingleCharTextOps(
       context,
       selection.anchor,
       event.key,
