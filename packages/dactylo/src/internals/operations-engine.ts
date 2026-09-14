@@ -22,6 +22,7 @@ import {
 } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
+import { isModKey } from './keyboard'
 import { isMarkEnabled, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
 import { splitTextNodeAt } from './nodes'
@@ -283,7 +284,7 @@ export function buildSetMarksOps(
 } | null {
   const { selection, state } = context
 
-  /** When we don't have selection it's a no-op. */
+  /** When we don't have any selection it's a no-op. */
   if (selection === null) {
     return null
   }
@@ -388,6 +389,33 @@ export function buildSetMarksOps(
       kind: 'set_marks',
       ops,
     }
+  }
+
+  return null
+}
+
+// --- Keyboard operations ─────────────────────────────────────────-
+
+/**
+ * Builds keyboard operations to handle a keyboard event.
+ *
+ * Returns `null` when the selection is null or not a cursor selection.
+ */
+export function buildKeyboardOps(
+  context: EditorContext,
+  event: KeyboardEvent,
+): null {
+  const { selection } = context
+
+  /** When we don't have any selection or it's not a cursor selection it's a no-op. */
+  if (selection === null || selection?.__type !== 'cursor') {
+    return null
+  }
+
+  const isMod = isModKey(event)
+  /** When the event is a modifier key, it's a no-op. */
+  if (isMod) {
+    return null
   }
 
   return null

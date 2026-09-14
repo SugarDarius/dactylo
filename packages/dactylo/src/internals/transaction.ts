@@ -14,6 +14,7 @@ import {
   applyOps,
   buildDeleteBlockOps,
   buildInsertBlockOps,
+  buildKeyboardOps,
   buildSetMarksOps,
   invertOps,
   validateOps,
@@ -629,10 +630,7 @@ export class TransactionPipeline {
    *
    * Returns a boolean indicating whether the event was handled or not.
    */
-  digestKeyboardEvent(
-    event: KeyboardEvent,
-    policy?: TransactionPolicy,
-  ): boolean {
+  digestKeyboardEvent(event: KeyboardEvent): boolean {
     const shortcut = detectPlatformKeyboardShortcut(event)
     if (shortcut !== null) {
       switch (shortcut) {
@@ -658,18 +656,10 @@ export class TransactionPipeline {
       }
     }
 
-    const { selection } = this.#context
-    if (selection !== null && selection.__type === 'cursor') {
-      event.preventDefault()
-
-      this.#commit([], {
-        ...policy,
-        coalesce: true,
-        label: `typed_key:${String(event.key)}`,
-        pushToHistory: true,
-      })
-
-      return true
+    const intent = buildKeyboardOps(this.#context, event)
+    /** No when we don't have active selection or if the event is a modifier key. */
+    if (intent === null) {
+      return false
     }
 
     return false
