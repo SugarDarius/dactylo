@@ -55,7 +55,7 @@ export interface IBlock {
 }
 
 /** Base interface for blocks with inline content. */
-export interface IBlockInlineContext extends IBlock {
+export interface IBlockWithInlineContext extends IBlock {
   /**
    * Inline content tree for the block.
    * By design, this array is kept lightweight as an inline sequence
@@ -66,14 +66,14 @@ export interface IBlockInlineContext extends IBlock {
 }
 
 /** Block representing a heading with markdown level (1-6). */
-export interface HeadingBlock extends IBlockInlineContext {
+export interface HeadingBlock extends IBlockWithInlineContext {
   readonly __type: 'heading'
   /** Level of the heading. */
   readonly level: 1 | 2 | 3 | 4 | 5 | 6
 }
 
 /** Block representing a paragraph (plain text) -- default block type. */
-export interface ParagraphBlock extends IBlockInlineContext {
+export interface ParagraphBlock extends IBlockWithInlineContext {
   readonly __type: 'paragraph'
 }
 

@@ -318,7 +318,7 @@ export function compareTextCursors(
   }
 
   const block = state.blocks.get(a.blockId)
-  if (!block || !block.content) {
+  if (!block || !isBlockWithInlineContent(block)) {
     return 0
   }
 
@@ -390,7 +390,12 @@ export function collectTextSpansInRange(
   const startBlock = state.blocks.get(anchor.blockId)
   const endBlock = state.blocks.get(focus.blockId)
 
-  if (!startBlock || !endBlock || !startBlock.content || !endBlock.content) {
+  if (
+    !startBlock ||
+    !endBlock ||
+    !isBlockWithInlineContent(startBlock) ||
+    !isBlockWithInlineContent(endBlock)
+  ) {
     return []
   }
 
@@ -431,7 +436,7 @@ export function collectTextSpansInRange(
     }
 
     const block = state.blocks.get(blockId)
-    if (!block || !block.content) {
+    if (!block || !isBlockWithInlineContent(block)) {
       continue
     }
 
