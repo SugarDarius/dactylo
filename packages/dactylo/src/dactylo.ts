@@ -119,8 +119,16 @@ export interface DactyloMarksCommands {
 
 /** Commands to interact with the keyboard in the editor. */
 export interface DactyloKeyboardCommands {
-  /** Handles an `onKeyDown` event and returns a boolean indicating whether the event was handled or not. */
-  readonly onKeyDown: (event: KeyboardEvent) => Awaitable<boolean>
+  /**
+   * Handles an `onKeyDown` event and returns a boolean indicating whether the event was handled or not.
+   *
+   * By design, recognized keystrokes and shortcuts are prevented by default.
+   * They can be not prevented by passing `{ prevent: false }` in the options.
+   */
+  readonly onKeyDown: (
+    event: KeyboardEvent,
+    opts?: { prevent?: false },
+  ) => Awaitable<boolean>
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -354,10 +362,10 @@ export class Dactylo {
   get keyboard(): DactyloKeyboardCommands {
     return {
       /** Handles an `onKeyDown` event and returns a boolean indicating whether the event was handled or not. */
-      onKeyDown: (event: KeyboardEvent) =>
+      onKeyDown: (event: KeyboardEvent, opts?: { prevent?: false }) =>
         this.#safeExecuteCommand(
           'keyboard/on-key-down',
-          () => this.#pipeline.digestKeyboardEvent(event),
+          () => this.#pipeline.digestKeyboardEvent(event, opts),
           { payload: { event } },
         ),
     }

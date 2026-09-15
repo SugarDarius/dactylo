@@ -628,18 +628,35 @@ export class TransactionPipeline {
    *      ▼
    * EventSources.context.notify(context)
    *
+   * By design, recognized keystrokes and shortcuts are prevented by default.
+   * They can be not prevented by passing `{ prevent: false }` in the options.
+   *
    * Returns a boolean indicating whether the event was handled or not.
    */
-  digestKeyboardEvent(event: KeyboardEvent): boolean {
+  digestKeyboardEvent(
+    event: KeyboardEvent,
+    opts: { prevent?: false } = {},
+  ): boolean {
+    const prevent = () => {
+      const prevented = opts.prevent !== false
+      if (prevented) {
+        event.preventDefault()
+      }
+    }
+
     const shortcut = detectPlatformKeyboardShortcut(event)
     if (shortcut !== null) {
       switch (shortcut) {
         case 'undo': {
+          prevent()
           this.undo()
+
           return true
         }
         case 'redo': {
+          prevent()
           this.redo()
+
           return true
         }
         //@todo: to be handled
@@ -651,15 +668,17 @@ export class TransactionPipeline {
           return false
         }
         default: {
-          assertNever(shortcut, {
-            hint: 'TransactionPipeline/#digestKeyboardEvent',
-          })
+          /** Unrecognized shortcuts are not handled. */
+          return false
         }
       }
     }
 
     const intent = buildKeyboardOps(this.#context, event)
-    /** When we don't have any active selection or if the event is a modifier key. */
+    /**
+     * When we don't have any active selection or if the event is a modifier key
+     * we don't want to handle the event and we don't prevent it by default.
+     */
     if (intent === null) {
       return false
     }
@@ -667,24 +686,29 @@ export class TransactionPipeline {
     const { ops, kind, coalesce } = intent
     switch (kind) {
       case 'insert_typed_char': {
+        prevent()
         this.#commit(ops, {
           coalesce,
           label: `insert_typed_char:${event.key}`,
           pushToHistory: true,
           source: 'user',
         })
+
         return true
       }
       case 'delete_previous_typed_char': {
+        prevent()
         this.#commit(ops, {
           coalesce,
           label: `delete_previous_typed_char`,
           pushToHistory: true,
           source: 'user',
         })
+
         return true
       }
       default: {
+        /** It should never happen. */
         assertNever(kind, { hint: 'TransactionPipeline/#digestKeyboardEvent' })
       }
     }
