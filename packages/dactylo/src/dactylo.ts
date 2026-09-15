@@ -1,3 +1,4 @@
+import { error } from './internals/console'
 import { DEFAULT_PLACEHOLDER } from './internals/constants'
 import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
@@ -225,8 +226,7 @@ export class Dactylo {
       const wrapped = DactyloError.wrap(err)
       const durationMs = Date.now() - startedAt
 
-      // @todo: add specific logger.
-      console.error(wrapped)
+      error(wrapped.message, wrapped.stack)
 
       this.#eventSources.errors.notify({
         command,
