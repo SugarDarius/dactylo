@@ -256,7 +256,7 @@ export function validateOps(
         break
       }
       default: {
-        assertNever(type)
+        assertNever(type, { hint: 'OperationsEngine/validateOps' })
       }
     }
   }
@@ -489,7 +489,7 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
       return withSelection(context, op.next)
     }
     default: {
-      assertNever(type)
+      assertNever(type, { hint: 'OperationsEngine/applyOp' })
     }
   }
 }
@@ -603,7 +603,7 @@ export function invertOps(ops: readonly Operation[]): readonly Operation[] {
         break
       }
       default: {
-        assertNever(type)
+        assertNever(type, { hint: 'OperationsEngine/invertOps' })
       }
     }
   }

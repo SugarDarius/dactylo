@@ -270,7 +270,7 @@ export function computeInsertBlockPosKey(
       return between(loBlock.posKey, hiBlock.posKey)
     }
     default: {
-      assertNever(pos, 'Unknown insert block position type')
+      assertNever(pos, { hint: 'DocumentState/#computeInsertBlockPosKey' })
     }
   }
 }
@@ -301,7 +301,7 @@ export function resolveInsertAfterBlockId(
       return pos.afterBlockId
     }
     default: {
-      assertNever(pos, 'Unknown insert block position type')
+      assertNever(pos, { hint: 'DocumentState/#resolveInsertAfterBlockId' })
     }
   }
 }

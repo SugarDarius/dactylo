@@ -581,7 +581,7 @@ export class TransactionPipeline {
         break
       }
       default: {
-        assertNever(kind)
+        assertNever(kind, { hint: 'TransactionPipeline/#toggleMark' })
       }
     }
   }
@@ -651,7 +651,9 @@ export class TransactionPipeline {
           return false
         }
         default: {
-          assertNever(shortcut)
+          assertNever(shortcut, {
+            hint: 'TransactionPipeline/#digestKeyboardEvent',
+          })
         }
       }
     }
@@ -683,7 +685,7 @@ export class TransactionPipeline {
         return true
       }
       default: {
-        assertNever(kind)
+        assertNever(kind, { hint: 'TransactionPipeline/#digestKeyboardEvent' })
       }
     }
   }
