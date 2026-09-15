@@ -1,5 +1,5 @@
-import type { BlockId } from './blocks'
-import type { InlineNode, NodeId } from './nodes'
+import type { BlockId, BlockWithInlineContent } from './blocks'
+import type { InlineNode, NodeId, TextNode } from './nodes'
 import type { Relax } from './types'
 
 /**
@@ -177,4 +177,22 @@ export function createRange(
 /** Creates a collapsed cursor selection. */
 export function createCursor(anchor: TextCursor): CursorSelection {
   return { __type: 'cursor', anchor }
+}
+
+/** Places a collapsed cursor at the end of the last text node in a block. */
+export function cursorAtBlockEnd(
+  blockId: BlockId,
+  block: BlockWithInlineContent,
+): CursorSelection | null {
+  const nodes = block.content.filter(
+    // @todo: handle links and mentions
+    (n): n is TextNode => n.__type === 'text',
+  )
+
+  const last = nodes.at(-1)
+  if (!last) {
+    return null
+  }
+
+  return createCursor({ blockId, nodeId: last.id, offset: last.text.length })
 }

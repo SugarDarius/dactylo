@@ -122,8 +122,23 @@ export function insertBlock(state: DocumentState, block: Block): DocumentState {
   }
 }
 
-/** immutable update: delete a block and refresh cached order. */
+/** Immutable update: delete a block and refresh cached order. */
 export function deleteBlock(
+  state: DocumentState,
+  blockId: BlockId,
+): DocumentState {
+  const blocks = new Map(state.blocks)
+  blocks.delete(blockId)
+
+  return {
+    ...state,
+    blockOrderById: state.blockOrderById.filter((id) => id !== blockId),
+    blocks,
+  }
+}
+
+/** Immutable update: remove a block and refresh cached order. */
+export function removeBlock(
   state: DocumentState,
   blockId: BlockId,
 ): DocumentState {

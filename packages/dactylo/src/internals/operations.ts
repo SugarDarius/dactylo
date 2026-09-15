@@ -16,13 +16,13 @@
  * | Small        | Prefer minimal fields for memory and efficiency      |
  */
 
-import type { Block, BlockId } from './blocks'
+import type { Block, BlockId, BlockWithInlineContent } from './blocks'
 import type { Marks } from './marks'
-import type { NodeId } from './nodes'
+import type { InlineNode, NodeId } from './nodes'
 import type { Selection } from './selection'
 import type { Relax } from './types'
 
-/** Operation to insert a block at the given position (fractional index). */
+/** Inserts a block at the given position (fractional index). */
 export interface InsertBlockOp {
   readonly __type: 'insert_block'
   /** Block to insert. */
@@ -63,7 +63,7 @@ export type InsertBlockOpPosition = Relax<
     }
 >
 
-/** Operation to delete a block at the given position (fractional index). */
+/** Deletes a block at the given position (fractional index). */
 export interface DeleteBlockOp {
   readonly __type: 'delete_block'
   /** ID of the block to delete. */
@@ -77,7 +77,62 @@ export interface DeleteBlockOp {
   readonly afterBlockId: BlockId | null
 }
 
-/** Operation to insert text into an existing text node at a character offset.  */
+/** Splits a block into two at a cursor position (Enter key). */
+export interface SplitBlockOp {
+  readonly __type: 'split_block'
+
+  /** Block to split. */
+  readonly blockId: BlockId
+
+  /** Text node ID where the split occurs. */
+  readonly atNodeId: NodeId
+
+  /** Character offset within `atNodeId` where content is divided. */
+  readonly atOffset: number
+
+  /** New block created by the split (already constructed with posKey). */
+  readonly newBlock: BlockWithInlineContent
+
+  /**
+   * Inline nodes moved to `newBlock` (tail content after split).
+   * Stored for undo inversion.
+   */
+  readonly tailSnapshot: readonly InlineNode[]
+
+  /**
+   * Index in the head block's content where the tail originally started.
+   * Used by undo to merge blocks back correctly.
+   */
+  readonly atIndex: number
+}
+
+/** Merges a source block's content into a target block (Backspace at block start). */
+export interface MergeBlocksOp {
+  readonly __type: 'merge_blocks'
+
+  /** Block receiving merged content. */
+  readonly targetBlockId: BlockId
+
+  /** Block whose content is merged in and then deleted. */
+  readonly sourceBlockId: BlockId
+
+  /** Full source block snapshot before merge (for undo). */
+  readonly sourceSnapshot: BlockWithInlineContent
+
+  /** Insertion index in target content where source was spliced. */
+  readonly atIndex: number
+
+  /** Copy of source inline content before deletion (for undo). */
+  readonly mergedTailSnapshot: readonly InlineNode[]
+
+  /** Text node ID in target where undo split must occur. */
+  readonly splitAtNodeId: NodeId
+
+  /** Character offset within `splitAtNodeId` for undo split. */
+  readonly splitAtOffset: number
+}
+
+/** Inserts a text into an existing text node at a character offset.  */
 export interface InsertTextOp {
   readonly __type: 'insert_text'
 
@@ -97,7 +152,7 @@ export interface InsertTextOp {
   readonly marks?: Partial<Marks>
 }
 
-/** Operation to delete a run of characters from a text node. */
+/** Deletes a run of characters from a text node. */
 export interface DeleteTextOp {
   readonly __type: 'delete_text'
 
@@ -171,6 +226,8 @@ export interface SetSelectionOp {
 export type Operation = Relax<
   | InsertBlockOp
   | DeleteBlockOp
+  | SplitBlockOp
+  | MergeBlocksOp
   | InsertTextOp
   | DeleteTextOp
   | SetActiveMarksOp

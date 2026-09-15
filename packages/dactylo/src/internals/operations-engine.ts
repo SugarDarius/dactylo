@@ -3,6 +3,7 @@ import {
   isBlockWithInlineContent,
   isBlockWithPlaceholder,
   sortBlockOrder,
+  touchBlock,
 } from './blocks'
 import type {
   Block,
@@ -19,6 +20,8 @@ import {
   getBlockWithInlineContent,
   insertBlock,
   normalizeRange,
+  removeBlock,
+  replaceBlock,
   resolveInsertAfterBlockId,
 } from './document'
 import type { DocumentState } from './document'
@@ -33,7 +36,7 @@ import { DactyloError } from './errors'
 import { isModKey } from './keyboard'
 import { isMarkEnabled, isMarksEqual, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
-import { createTextNode, splitTextNodeAt } from './nodes'
+import { coalesceInlineNodes, createTextNode, splitTextNodeAt } from './nodes'
 import type { InlineNode, NodeId, TextNode } from './nodes'
 import type {
   DeleteBlockOp,
@@ -41,10 +44,13 @@ import type {
   InsertBlockOp,
   InsertBlockOpPosition,
   InsertTextOp,
+  MergeBlocksOp,
   Operation,
   SetMarksOp,
+  SetSelectionOp,
+  SplitBlockOp,
 } from './operations'
-import { createCursor } from './selection'
+import { createCursor, cursorAtBlockEnd } from './selection'
 import type { TextCursor } from './selection'
 import { assertNever } from './utils'
 
@@ -158,6 +164,181 @@ export function validateTextCursor(
   validationError(`Cursor node ${cursor.nodeId} must be text or line_break`, op)
 }
 
+/** Validates an `insert_block` operation. */
+export function validateInsertBlockOp(
+  context: EditorContext,
+  op: InsertBlockOp,
+): void | never {
+  if (context.state.blocks.has(op.block.id)) {
+    validationError(`Block ${op.block.id} already exists in document`, op)
+  }
+
+  if (op.afterBlockId !== null && !context.state.blocks.has(op.afterBlockId)) {
+    validationError(`Unknown block: ${op.afterBlockId}`, op)
+  }
+}
+
+/** Validates a `delete_block` operation. */
+export function validateDeleteBlockOp(
+  context: EditorContext,
+  op: DeleteBlockOp,
+): void | never {
+  if (op.snapshot.id !== op.blockId) {
+    validationError(
+      `Snapshot block ID ${op.snapshot.id} does not match the deleted block ID ${op.blockId}`,
+      op,
+    )
+  }
+
+  if (op.snapshot.id !== op.blockId) {
+    validationError(
+      `Snapshot block ID ${op.snapshot.id} does not match the deleted block ID ${op.blockId}`,
+      op,
+    )
+  }
+
+  if (context.state.blockOrderById.length === 1) {
+    validationError(`Cannot delete the last block in the document`, op)
+  }
+}
+
+/** Validates a `merge_blocks` operation. */
+export function validateMergeBlocksOp(
+  context: EditorContext,
+  op: MergeBlocksOp,
+): void | never {
+  if (op.sourceBlockId === op.targetBlockId) {
+    validationError(`Source and target block IDs cannot be the same`, op)
+  }
+
+  const target = requireBlockWithInlineContent(
+    context.state,
+    op.targetBlockId,
+    op,
+  )
+
+  const source = requireBlockWithInlineContent(
+    context.state,
+    op.sourceBlockId,
+    op,
+  )
+
+  if (op.sourceSnapshot.id !== op.sourceBlockId) {
+    validationError(`Snapshot id mismatch for ${op.sourceBlockId}`, op)
+  }
+  if (op.atIndex < 0 || op.atIndex > target.content.length) {
+    validationError(`Merge atIndex out of bounds`, op)
+  }
+  if (op.mergedTailSnapshot.length !== source.content.length) {
+    validationError(
+      `mergedTailSnapshot length does not match source block content`,
+      op,
+    )
+  }
+
+  for (let i = 0; i < source.content.length; i += 1) {
+    if (op.mergedTailSnapshot[i]?.id !== source.content[i]?.id) {
+      validationError(
+        `mergedTailSnapshot does not match source block content`,
+        op,
+      )
+    }
+  }
+
+  const splitNode = findNodeInBlockWithInlineContent(target, op.splitAtNodeId)
+  if (!splitNode) {
+    validationError(
+      `Node ${op.splitAtNodeId} not found in target block ${op.targetBlockId}`,
+      op,
+    )
+  }
+
+  if (splitNode.node.__type === 'text') {
+    assertOffsetInText(
+      op.splitAtOffset,
+      splitNode.node.text.length,
+      op,
+      'Merge split offset',
+    )
+  } else if (op.splitAtOffset !== 0) {
+    validationError(
+      `Merge split offset ${op.splitAtOffset} invalid for non-text node`,
+      op,
+    )
+  }
+}
+
+/** Validates a `split_block` operation. */
+export function validateSplitBlockOp(
+  context: EditorContext,
+  op: SplitBlockOp,
+): void | never {
+  const block = requireBlockWithInlineContent(context.state, op.blockId, op)
+  const { node } = requireTextNode(block, op.atNodeId, op)
+
+  assertOffsetInText(op.atOffset, node.text.length, op, 'Split block offset')
+
+  if (context.state.blocks.has(op.newBlock.id)) {
+    validationError(
+      `New block ${op.newBlock.id} already exists in document`,
+      op,
+    )
+  }
+}
+
+/** Validates an `insert_text` operation. */
+export function validateInsertTextOp(
+  context: EditorContext,
+  op: InsertTextOp,
+): void | never {
+  if (op.text.length === 0) {
+    validationError('Cannot insert an empty text', op)
+  }
+  const block = requireBlockWithInlineContent(context.state, op.blockId, op)
+  const { node } = requireTextNode(block, op.nodeId, op)
+
+  assertOffsetInText(op.offset, node.text.length, op, 'Insert text offset')
+}
+
+/** Validates a `delete_text` operation. */
+export function validateDeleteTextOp(
+  context: EditorContext,
+  op: DeleteTextOp,
+): void | never {
+  const block = requireBlockWithInlineContent(context.state, op.blockId, op)
+  const { node } = requireTextNode(block, op.nodeId, op)
+
+  if (op.length < 0 || op.offset + op.length > node.text.length) {
+    validationError('Remove range out of bounds', op)
+  }
+}
+
+/** Validates a `set_marks` operation. */
+export function validateSetMarksOp(
+  context: EditorContext,
+  op: SetMarksOp,
+): void | never {
+  const block = requireBlockWithInlineContent(context.state, op.blockId, op)
+  const { node } = requireTextNode(block, op.nodeId, op)
+
+  assertRangeInText(op.from, op.to, node.text.length, op)
+}
+
+/** Validates a `set_selection` operation. */
+export function validateSetSelectionOp(
+  context: EditorContext,
+  op: SetSelectionOp,
+): void | never {
+  if (op.next !== null) {
+    if (op.next.__type === 'cursor') {
+      validateTextCursor(context.state, op.next.anchor, op)
+    } else if (op.next.__type === 'range') {
+      validateTextCursor(context.state, op.next.anchor, op)
+      validateTextCursor(context.state, op.next.focus, op)
+    }
+  }
+}
+
 /**
  * Validates a batch of operations against current state.
  * Throws when operations do no respects the rules implemented in the editor.
@@ -170,86 +351,35 @@ export function validateOps(
     const type = op.__type
     switch (type) {
       case 'insert_block': {
-        if (context.state.blocks.has(op.block.id)) {
-          validationError(`Block ${op.block.id} already exists in document`, op)
-        }
-
-        if (
-          op.afterBlockId !== null &&
-          !context.state.blocks.has(op.afterBlockId)
-        ) {
-          validationError(`Unknown block: ${op.afterBlockId}`, op)
-        }
+        validateInsertBlockOp(context, op)
         break
       }
       case 'delete_block': {
-        if (op.snapshot.id !== op.blockId) {
-          validationError(
-            `Snapshot block ID ${op.snapshot.id} does not match the deleted block ID ${op.blockId}`,
-            op,
-          )
-        }
-
-        if (context.state.blockOrderById.length === 1) {
-          validationError(`Cannot delete the last block in the document`, op)
-        }
+        validateDeleteBlockOp(context, op)
+        break
+      }
+      case 'split_block': {
+        validateSplitBlockOp(context, op)
+        break
+      }
+      case 'merge_blocks': {
+        validateMergeBlocksOp(context, op)
         break
       }
       case 'insert_text': {
-        if (op.text.length === 0) {
-          validationError('Cannot insert an empty text', op)
-        }
-        const block = requireBlockWithInlineContent(
-          context.state,
-          op.blockId,
-          op,
-        )
-        const { node } = requireTextNode(block, op.nodeId, op)
-
-        assertOffsetInText(
-          op.offset,
-          node.text.length,
-          op,
-          'Insert text offset',
-        )
-
+        validateInsertTextOp(context, op)
         break
       }
       case 'delete_text': {
-        const block = requireBlockWithInlineContent(
-          context.state,
-          op.blockId,
-          op,
-        )
-        const { node } = requireTextNode(block, op.nodeId, op)
-
-        if (op.length < 0 || op.offset + op.length > node.text.length) {
-          validationError('Remove range out of bounds', op)
-        }
-
+        validateDeleteTextOp(context, op)
         break
       }
       case 'set_marks': {
-        const block = requireBlockWithInlineContent(
-          context.state,
-          op.blockId,
-          op,
-        )
-        const { node } = requireTextNode(block, op.nodeId, op)
-
-        assertRangeInText(op.from, op.to, node.text.length, op)
-
+        validateSetMarksOp(context, op)
         break
       }
       case 'set_selection': {
-        if (op.next !== null) {
-          if (op.next.__type === 'cursor') {
-            validateTextCursor(context.state, op.next.anchor, op)
-          } else if (op.next.__type === 'range') {
-            validateTextCursor(context.state, op.next.anchor, op)
-            validateTextCursor(context.state, op.next.focus, op)
-          }
-        }
+        validateSetSelectionOp(context, op)
         break
       }
       case 'set_active_marks': {
@@ -290,6 +420,80 @@ export function applyDeleteBlockOp(
 ): EditorContext {
   const state = deleteBlock(context.state, op.blockId)
   return withDocumentState(context, state)
+}
+
+/**
+ * Applies a `merge_blocks` operation to the editor context.
+ * It splices source content into the target at `op.atIndex`,
+ * then removes the source blocks.
+ */
+export function applyMergeBlocksOp(
+  context: EditorContext,
+  op: MergeBlocksOp,
+): EditorContext {
+  const target = getBlockWithInlineContent(context.state, op.targetBlockId)
+  const source = getBlockWithInlineContent(context.state, op.sourceBlockId)
+
+  const mergedContent = coalesceInlineNodes([
+    ...target.content.slice(0, op.atIndex),
+    ...source.content,
+    ...target.content.slice(op.atIndex),
+  ])
+
+  const updatedTarget = touchBlock({ ...target, content: mergedContent })
+
+  let doc = replaceBlock(context.state, op.targetBlockId, updatedTarget)
+  doc = removeBlock(doc, op.sourceBlockId)
+
+  return withDocumentState(context, doc)
+}
+
+/** Applies a `split_block` operation to the editor context. */
+export function applySplitBlockOp(
+  context: EditorContext,
+  op: SplitBlockOp,
+): EditorContext {
+  const block = getBlockWithInlineContent(context.state, op.blockId)
+
+  const found = findNodeInBlockWithInlineContent(block, op.atNodeId)
+  if (!found) {
+    applyError(`Node ${op.atNodeId} not found in block ${block.id}`, op)
+  }
+
+  const { node, index } = found
+  if (node.__type !== 'text') {
+    applyError('`split_block` atNodeId target must be a text node', op)
+  }
+
+  const content = [...block.content]
+
+  const headText = node.text.slice(0, op.atOffset)
+  const tailText = node.text.slice(op.atOffset)
+
+  const headNodes: InlineNode[] = content.slice(0, index)
+  if (headText.length > 0 || headNodes.length === 0) {
+    headNodes.push({ ...node, text: headText, updatedAt: new Date() })
+  }
+
+  const tailNodes: InlineNode[] = []
+  if (tailText.length > 0) {
+    tailNodes.push(createTextNode({ marks: node.marks, text: tailText }))
+  }
+  tailNodes.push(...content.slice(index + 1))
+
+  const updatedOriginal = touchBlock({
+    ...block,
+    content: coalesceInlineNodes(headNodes),
+  })
+
+  let doc = replaceBlock(context.state, op.blockId, updatedOriginal)
+  const newBlock: BlockWithInlineContent = {
+    ...op.newBlock,
+    content: coalesceInlineNodes(tailNodes),
+  }
+  doc = insertBlock(doc, newBlock)
+
+  return withDocumentState(context, doc)
 }
 
 /**
@@ -473,6 +677,12 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
     case 'delete_block': {
       return applyDeleteBlockOp(context, op)
     }
+    case 'split_block': {
+      return applySplitBlockOp(context, op)
+    }
+    case 'merge_blocks': {
+      return applyMergeBlocksOp(context, op)
+    }
     case 'insert_text': {
       return applyInsertTextOp(context, op)
     }
@@ -549,6 +759,31 @@ export function invertOps(ops: readonly Operation[]): readonly Operation[] {
         })
         break
       }
+      case 'split_block': {
+        invertedOps.push({
+          __type: 'merge_blocks',
+          atIndex: op.atIndex,
+          mergedTailSnapshot: [...op.tailSnapshot],
+          sourceBlockId: op.newBlock.id,
+          sourceSnapshot: op.newBlock,
+          splitAtNodeId: op.atNodeId,
+          splitAtOffset: op.atOffset,
+          targetBlockId: op.blockId,
+        })
+        break
+      }
+      case 'merge_blocks': {
+        invertedOps.push({
+          __type: 'split_block',
+          atIndex: op.atIndex,
+          atNodeId: op.splitAtNodeId,
+          atOffset: op.splitAtOffset,
+          blockId: op.targetBlockId,
+          newBlock: op.sourceSnapshot,
+          tailSnapshot: [...op.mergedTailSnapshot],
+        })
+        break
+      }
       case 'insert_text': {
         invertedOps.push({
           __type: 'delete_text',
@@ -618,6 +853,68 @@ export function buildError(message: string, hint: string): never {
     hint,
     message,
   })
+}
+
+/**
+ * Resolves undo fields when merging two blocks for a `MergeBlocksOp`.
+ * After a merge, the previous block’s content and the current block’s content
+ * live in one block, often in one coalesced text node.
+ *
+ * Undo must cut the document exactly at the old block boundary—as if
+ * `Enter` had been pressed there before the merge—not at an arbitrary position
+ *
+ * Branch-by-branch logic:
+ *  1. Target has no inline content (last node is missing)
+ *   1.2 Both blocks have no inline content
+ *  2. Target’s last inline node is text (usual case)
+ *  3. Target’s last inline node is not text (line break, link, mentions, ...)
+ *
+ * Mental model (`Backspace merge`):
+ * ```
+ * Before:
+ *    Target:  [ ... , T_last(text:"abc") ]
+ *    Source:  [ S_first(text:"def"), ... ]
+ *
+ * merge_blocks (atIndex = end of target)
+ *
+ * After:
+ *    Target:  [ ... , coalesced "abcdef"? , ... ]
+ *
+ * Undo `split_block` at (T_last.id, 3)
+ *    Head block keeps "abc"
+ *    New/restored source block gets "def" + rest
+ * ```
+ *
+ */
+export function resolvesMergeBlocksUndoFields(
+  source: BlockWithInlineContent,
+  target: BlockWithInlineContent,
+  marks: Marks,
+): { splitAtNodeId: NodeId; splitAtOffset: number } {
+  const last = target.content[target.content.length - 1]
+  if (!last) {
+    const [first] = source.content
+    /**
+     * Degenerate case (two empty paragraphs). There is no real join point in the document.
+     * The helper still returns some id/offset pair so MergeBlocksOp can be constructed;
+     * in practice merges like this are rare, and undo leans on sourceSnapshot / mergedTailSnapshot /
+     * atIndex as well.
+     * The fallback id is not in the document until something else creates it—treat this as a
+     * spec placeholder for an edge case, not a happy-path path.
+     */
+    if (!first) {
+      const fallback = createTextNode({ marks, text: '' })
+      return { splitAtNodeId: fallback.id, splitAtOffset: 0 }
+    }
+
+    return { splitAtNodeId: first.id, splitAtOffset: 0 }
+  }
+
+  if (last.__type === 'text') {
+    return { splitAtNodeId: last.id, splitAtOffset: last.text.length }
+  }
+
+  return { splitAtNodeId: last.id, splitAtOffset: 0 }
 }
 
 // --- Marks operations ─────────────────────────────────────────----
@@ -753,22 +1050,28 @@ export function buildSetMarksOps(
 
 // --- Keyboard operations ─────────────────────────────────────────-
 
+/** Intent for building keyboard operations. */
+export interface KeyboardOpsIntent {
+  /** The operations to apply. */
+  ops: Operation[]
+  /** The kind for the intent. */
+  label: string
+  /** When `true` merge history action for rapid typing coalescing. */
+  coalesce: boolean
+}
+
 /**
  * Builds operations for a single typed character at the current cursor position.
  * When the typed character is a `space` checks for markdown shortcut triggers.
  */
-export function buildInsertTypedCharOps(
+// @todo: handle coalesce behaviors
+export function buildTypedCharOps(
   context: EditorContext,
   /** Collapsed cursor anchor for the pending edit. */
   cursor: TextCursor,
   /** The character to insert. */
   char: string,
-): {
-  /** The operations to apply. */
-  ops: Operation[]
-  /** When `true` merge history action for rapid typing coalescing. */
-  coalesce: boolean
-} {
+): KeyboardOpsIntent {
   const { state } = context
   let ops: Operation[] = []
 
@@ -783,7 +1086,7 @@ export function buildInsertTypedCharOps(
     if (!first || first.__type !== 'text') {
       buildError(
         `First node of block ${block.id} is not a text node. Type: ${first?.__type}`,
-        'OperationsEngine/buildInsertTypedCharOps',
+        'OperationsEngine/buildTypedCharOps',
       )
     }
 
@@ -837,32 +1140,85 @@ export function buildInsertTypedCharOps(
   }
 
   if (char !== ' ') {
-    return { coalesce: true, ops }
+    return { coalesce: true, label: `insert_typed_char:${char}`, ops }
   }
 
-  // @todo: handle coalesce behaviors
   //@todo: detects markdown shortcut
 
-  return { coalesce: false, ops }
+  return { coalesce: false, label: `insert_markdown_shortcut`, ops }
 }
 
 /**
- * Builds operations for deleting previous typed character
- * or merge with previous block at block start.
+ * Builds operations when user presses `Backspace` key,
+ * to delete the previous typed character or merge with previous block at block start.
  */
-export function buildDeletePreviousTypedCharOps(
+// @todo: handle coalesce behaviors
+export function buildBackspaceOps(
   context: EditorContext,
   /** Collapsed cursor anchor for the pending edit. */
   cursor: TextCursor,
-): {
-  /** The operations to apply. */
-  ops: Operation[]
-  /** When `true` merge history action for rapid typing coalescing. */
-  coalesce: boolean
-} {
+): KeyboardOpsIntent | null {
+  /** Merges the current block into the previous block when backspacing at block start. */
   if (cursor.offset === 0) {
-    // @todo: handle merge blocks
-    return { coalesce: false, ops: [] }
+    const index = context.state.blockOrderById.indexOf(cursor.blockId)
+    /**
+     * 👉🏻 Expected UX:
+     * At the very start of the document (first block, offset = 0), `Backspace` key typically
+     * deletes nothing. We are not at "delete the character before the cursor" (→ offset - 1),
+     * because we already took the block-start branch and there is no previous block to join with.
+     */
+    if (index <= 0) {
+      return null
+    }
+
+    const prevBlockId = context.state.blockOrderById[index - 1]
+    if (prevBlockId === undefined) {
+      buildError(
+        `Previous block ID is not found for block ${cursor.blockId}`,
+        'OperationsEngine/buildBackspaceOps',
+      )
+    }
+
+    const prevBlock = getBlockWithInlineContent(context.state, prevBlockId)
+    const sourceBlock = getBlockWithInlineContent(context.state, cursor.blockId)
+
+    const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
+      sourceBlock,
+      prevBlock,
+      context.activeMarks,
+    )
+
+    const endSelection =
+      cursorAtBlockEnd(prevBlockId, prevBlock) ??
+      createCursor({
+        blockId: prevBlockId,
+        nodeId: prevBlock.content.at(-1)?.id ?? cursor.nodeId,
+        offset: 0,
+      })
+
+    const ops: Operation[] = [
+      {
+        __type: 'merge_blocks',
+        atIndex: prevBlock.content.length,
+        mergedTailSnapshot: [...sourceBlock.content],
+        sourceBlockId: cursor.blockId,
+        sourceSnapshot: sourceBlock,
+        splitAtNodeId,
+        splitAtOffset,
+        targetBlockId: prevBlockId,
+      },
+      {
+        __type: 'set_selection',
+        next: endSelection,
+        prev: context.selection,
+      },
+    ]
+
+    return {
+      coalesce: true,
+      label: `merge_blocks_backspace_at_block_start`,
+      ops,
+    }
   }
 
   const { state } = context
@@ -902,7 +1258,7 @@ export function buildDeletePreviousTypedCharOps(
     },
   ]
 
-  return { coalesce: false, ops }
+  return { coalesce: false, label: 'delete_previous_typed_char', ops }
 }
 
 /**
@@ -912,14 +1268,7 @@ export function buildDeletePreviousTypedCharOps(
 export function buildKeyboardOps(
   context: EditorContext,
   event: KeyboardEvent,
-): {
-  /** The operations to apply. */
-  ops: Operation[]
-  /** The kind of the operation. */
-  kind: 'insert_typed_char' | 'delete_previous_typed_char'
-  /** When `true` merge history action for rapid typing coalescing. */
-  coalesce: boolean
-} | null {
+): KeyboardOpsIntent | null {
   const { selection } = context
 
   /** When we don't have any selection or it's not a cursor selection it's a no-op. */
@@ -933,35 +1282,19 @@ export function buildKeyboardOps(
     return null
   }
 
+  /** We build operations when user presses `Backspace` key. */
+  // @todo: handle mentions and slash commands
   if (event.key === 'Backspace') {
-    // @todo: handle non-text nodes like mentions and links
-    const { ops, coalesce } = buildDeletePreviousTypedCharOps(
-      context,
-      selection.anchor,
-    )
-    return {
-      coalesce,
-      kind: 'delete_previous_typed_char',
-      ops,
-    }
+    return buildBackspaceOps(context, selection.anchor)
   }
 
-  /** We build `insert_text` operation when a single character is typed. */
+  /** We build operations when a single character is pressed by user. */
   // @todo: handle mentions and slash commands
   if (event.key.length === 1) {
-    const { ops, coalesce } = buildInsertTypedCharOps(
-      context,
-      selection.anchor,
-      event.key,
-    )
-
-    return {
-      coalesce,
-      kind: 'insert_typed_char',
-      ops,
-    }
+    return buildTypedCharOps(context, selection.anchor, event.key)
   }
 
+  /** Event is not handled */
   return null
 }
 

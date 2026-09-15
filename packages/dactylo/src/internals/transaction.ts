@@ -676,42 +676,26 @@ export class TransactionPipeline {
 
     const intent = buildKeyboardOps(this.#context, event)
     /**
-     * When we don't have any active selection or if the event is a modifier key
+     * When we don't have any active selection or if the event is a modifier key,
+     * or if twe don't have any handled intent,
      * we don't want to handle the event and we don't prevent it by default.
      */
     if (intent === null) {
       return false
     }
 
-    const { ops, kind, coalesce } = intent
-    switch (kind) {
-      case 'insert_typed_char': {
-        prevent()
-        this.#commit(ops, {
-          coalesce,
-          label: `insert_typed_char:${event.key}`,
-          pushToHistory: true,
-          source: 'user',
-        })
+    /** Otherwise we handle the event and commit the operations. */
+    const { ops, label, coalesce } = intent
 
-        return true
-      }
-      case 'delete_previous_typed_char': {
-        prevent()
-        this.#commit(ops, {
-          coalesce,
-          label: `delete_previous_typed_char`,
-          pushToHistory: true,
-          source: 'user',
-        })
+    prevent()
+    this.#commit(ops, {
+      coalesce,
+      label,
+      pushToHistory: true,
+      source: 'user',
+    })
 
-        return true
-      }
-      default: {
-        /** It should never happen. */
-        assertNever(kind, { hint: 'TransactionPipeline/#digestKeyboardEvent' })
-      }
-    }
+    return true
   }
 
   // ─── Block operations ───────────────────────────────────────------
