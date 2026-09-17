@@ -4,14 +4,14 @@ import { Batch } from '../../src/internals/transaction'
 import { makeFixtureSetupApi } from '../utils/fixture'
 
 describe('Batch', () => {
-  const api = makeFixtureSetupApi()
+  const fixture = makeFixtureSetupApi()
 
   test('`run()` defers flush until outermost scope ends', () => {
     const flush = vi.fn()
     const batch = new Batch({ onFlush: flush })
 
-    const block = api.blocks.createEmptyParagraphBlock()
-    const op = api.operations.createInsertBlockOperation({ block })
+    const block = fixture.blocks.createEmptyParagraphBlock()
+    const op = fixture.operations.createInsertBlockOperation({ block })
 
     batch.run(() => {
       batch.enqueue([op])
@@ -25,11 +25,11 @@ describe('Batch', () => {
     const flush = vi.fn()
     const batch = new Batch({ onFlush: flush })
 
-    const block1 = api.blocks.createEmptyParagraphBlock()
-    const block2 = api.blocks.createEmptyParagraphBlock()
+    const block1 = fixture.blocks.createEmptyParagraphBlock()
+    const block2 = fixture.blocks.createEmptyParagraphBlock()
 
-    const op1 = api.operations.createInsertBlockOperation({ block: block1 })
-    const op2 = api.operations.createInsertBlockOperation({
+    const op1 = fixture.operations.createInsertBlockOperation({ block: block1 })
+    const op2 = fixture.operations.createInsertBlockOperation({
       afterBlockId: block1.id,
       block: block2,
     })
@@ -50,16 +50,16 @@ describe('Batch', () => {
     const flush = vi.fn()
     const batch = new Batch({ maxSize: 2, onFlush: flush })
 
-    const block1 = api.blocks.createEmptyParagraphBlock()
-    const block2 = api.blocks.createEmptyParagraphBlock()
-    const block3 = api.blocks.createEmptyParagraphBlock()
+    const block1 = fixture.blocks.createEmptyParagraphBlock()
+    const block2 = fixture.blocks.createEmptyParagraphBlock()
+    const block3 = fixture.blocks.createEmptyParagraphBlock()
 
-    const op1 = api.operations.createInsertBlockOperation({ block: block1 })
-    const op2 = api.operations.createInsertBlockOperation({
+    const op1 = fixture.operations.createInsertBlockOperation({ block: block1 })
+    const op2 = fixture.operations.createInsertBlockOperation({
       afterBlockId: block1.id,
       block: block2,
     })
-    const op3 = api.operations.createInsertBlockOperation({
+    const op3 = fixture.operations.createInsertBlockOperation({
       afterBlockId: block2.id,
       block: block3,
     })
@@ -74,8 +74,8 @@ describe('Batch', () => {
     const flush = vi.fn()
     const batch = new Batch({ onFlush: flush })
 
-    const block = api.blocks.createEmptyParagraphBlock()
-    const op = api.operations.createInsertBlockOperation({ block })
+    const block = fixture.blocks.createEmptyParagraphBlock()
+    const op = fixture.operations.createInsertBlockOperation({ block })
 
     batch.enqueue([op])
     batch.discard()
@@ -88,11 +88,11 @@ describe('Batch', () => {
     const flush = vi.fn()
     const batch = new Batch({ onFlush: flush })
 
-    const block1 = api.blocks.createEmptyParagraphBlock()
-    const block2 = api.blocks.createEmptyParagraphBlock()
+    const block1 = fixture.blocks.createEmptyParagraphBlock()
+    const block2 = fixture.blocks.createEmptyParagraphBlock()
 
-    const op1 = api.operations.createInsertBlockOperation({ block: block1 })
-    const op2 = api.operations.createInsertBlockOperation({
+    const op1 = fixture.operations.createInsertBlockOperation({ block: block1 })
+    const op2 = fixture.operations.createInsertBlockOperation({
       afterBlockId: block1.id,
       block: block2,
     })

@@ -16,7 +16,6 @@ import type { HistoryEvent } from './internals/history'
 import type { MarkKey } from './internals/marks'
 import { TransactionPipeline } from './internals/transaction'
 import type { Transaction, TransactionSource } from './internals/transaction'
-import type { Awaitable } from './internals/types'
 
 /** Static configuration for the editor. */
 export interface DactyloEditorConfig {
@@ -111,16 +110,16 @@ export interface DactyloEventSources {
 /** Commands to interact with the history of the editor. */
 export interface DactyloHistoryCommands {
   /** Whether at least one undo entry is available. */
-  readonly canUndo: () => Awaitable<boolean>
+  readonly canUndo: () => boolean
 
   /** Whether at least one redo entry is available. */
-  readonly canRedo: () => Awaitable<boolean>
+  readonly canRedo: () => boolean
 
   /** Applies the newest undo entry via the transaction pipeline. */
-  readonly undo: () => Awaitable<void>
+  readonly undo: () => void
 
   /** Re-applies the newest redo entry via the transaction pipeline. */
-  readonly redo: () => Awaitable<void>
+  readonly redo: () => void
 }
 
 /** Commands to interact with the marks of the editor. */
@@ -129,16 +128,13 @@ export interface DactyloMarksCommands {
   readonly toggle: (
     markKey: MarkKey,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => Awaitable<void>
+  ) => void
 
   /**
    * Whether a mark is active or not depending on the current current selection.
    * 👉🏻  A toolbar button for a mark that should appear pressed or not.
    */
-  readonly isActive: (
-    markKey: MarkKey,
-    context: EditorContext,
-  ) => Awaitable<boolean>
+  readonly isActive: (markKey: MarkKey, context: EditorContext) => boolean
 }
 
 /** Commands to interact with the keyboard in the editor. */
@@ -152,7 +148,7 @@ export interface DactyloKeyboardCommands {
   readonly onKeyDown: (
     event: KeyboardEvent,
     opts?: { prevent?: false },
-  ) => Awaitable<boolean>
+  ) => boolean
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -274,9 +270,9 @@ export class Dactylo {
    */
   #safeExecuteCommand<T>(
     command: DactyloCommand,
-    executor: () => Awaitable<T>,
+    executor: () => T,
     payload?: Record<string, unknown>,
-  ): Awaitable<T> {
+  ): T {
     const startedAt = Date.now()
     try {
       const result = executor()
@@ -369,23 +365,23 @@ export class Dactylo {
   get history(): DactyloHistoryCommands {
     return {
       /** Whether at least one redo entry is available. */
-      canRedo: () =>
+      canRedo: (): boolean =>
         this.#safeExecuteCommand('history/can-redo', () =>
           this.#pipeline.canRedo(),
         ),
 
       /** Whether at least one undo entry is available. */
-      canUndo: () =>
+      canUndo: (): boolean =>
         this.#safeExecuteCommand('history/can-undo', () =>
           this.#pipeline.canUndo(),
         ),
 
       /** Re-applies the newest redo entry via the transaction pipeline. */
-      redo: () =>
+      redo: (): void =>
         this.#safeExecuteCommand('history/redo', () => this.#pipeline.redo()),
 
       /** Applies the newest undo entry via the transaction pipeline. */
-      undo: () =>
+      undo: (): void =>
         this.#safeExecuteCommand('history/undo', () => this.#pipeline.undo()),
     }
   }
@@ -411,7 +407,7 @@ export class Dactylo {
        * To check if a mark is active or not you need to call this function with
        * the current editor context after each updates.
        */
-      isActive: (markKey: MarkKey, context: EditorContext) =>
+      isActive: (markKey: MarkKey, context: EditorContext): boolean =>
         this.#safeExecuteCommand(
           'marks/is-active',
           () => isMarkActiveInContext(context, markKey),
@@ -422,7 +418,7 @@ export class Dactylo {
       toggle: (
         markKey: MarkKey,
         source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-      ) =>
+      ): void =>
         this.#safeExecuteCommand(
           'marks/toggle',
           () => this.#pipeline.toggleMark(markKey, source),
@@ -442,7 +438,7 @@ export class Dactylo {
   get keyboard(): DactyloKeyboardCommands {
     return {
       /** Handles an `onKeyDown` event and returns a boolean indicating whether the event was handled or not. */
-      onKeyDown: (event: KeyboardEvent, opts?: { prevent?: false }) =>
+      onKeyDown: (event: KeyboardEvent, opts?: { prevent?: false }): boolean =>
         this.#safeExecuteCommand(
           'keyboard/on-key-down',
           () => this.#pipeline.digestKeyboardEvent(event, opts),
@@ -460,7 +456,7 @@ export class Dactylo {
    * console.log(context.state.blocks)
    * ```
    */
-  getContextSnapshot(): Awaitable<EditorContext> {
+  getContextSnapshot(): EditorContext {
     return this.#safeExecuteCommand('editor-context/get-snapshot', () => ({
       ...this.#pipeline.context,
     }))
@@ -477,9 +473,7 @@ export class Dactylo {
    * })
    * ```
    */
-  subscribe(
-    callback: SubscriberCallback<EditorContext>,
-  ): Awaitable<UnsubscribeCallback> {
+  subscribe(callback: SubscriberCallback<EditorContext>): UnsubscribeCallback {
     return this.#safeExecuteCommand('editor-context/subscribe', () =>
       this.#pipeline.events.context.subscribe(callback),
     )
