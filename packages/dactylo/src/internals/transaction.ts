@@ -1,4 +1,5 @@
 import type { BlockId, BlockWithoutPosKey } from './blocks'
+import { warn } from './console'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
 import { createInitialEditorContext } from './editor-context'
 import type { EditorContext } from './editor-context'
@@ -447,7 +448,16 @@ export class TransactionPipeline {
   #dispatch(transaction: Transaction): void {
     const { ops } = transaction
 
+    /**
+     * Do nothing if the transaction has no operations.
+     * By design a transaction should always have at least one operations
+     * but it should not be treated as an error and break the editor.
+     */
     if (ops.length === 0) {
+      warn(
+        'TransactionPipeline/#dispatch: empty operations in transaction',
+        JSON.stringify(transaction, null, 2),
+      )
       return
     }
 
