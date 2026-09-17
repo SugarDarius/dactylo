@@ -166,10 +166,10 @@ export interface DactyloOptions {
  *  4. Uniform input paths: keyboard, Ai edits, imports, all produce transactions
  *
  * Pipeline stages:
- * ┌─────────────┐   ┌──────────────┐   ┌───────────┐   ┌────────────┐   ┌──────────-┐
- * │   Source    │ → │ Build Tx     │ → │ Validate  │ → │ Apply      │ → │ Commit    │
- * │ (input/AI)  │   │ (ops batch)  │   │ (schema)  │   │ (pure)     │   │ (effects) │
- * └─────────────┘   └──────────────┘   └───────────┘   └────────────┘   └──────────-┘
+ * ┌─────────────┐   ┌──────────────┐   ┌───────────┐   ┌────────────┐   ┌──────────---------┐
+ * │   Source    │ → │ Build Tx     │ → │ Validate  │ → │ Apply      │ → │ Commit Effects    │
+ * │ (input/AI)  │   │ (ops batch)  │   │ (schema)  │   │ (pure)     │   │ (history/events)  │
+ * └─────────────┘   └──────────────┘   └───────────┘   └────────────┘   └──────────---------┘
  *                                          ↓ fail
  *                              Reject (state unchanged) + error
  *

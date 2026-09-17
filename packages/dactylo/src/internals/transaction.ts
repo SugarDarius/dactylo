@@ -331,8 +331,7 @@ export interface TransactionPipelineOptions {
  *
  * Commit effects (side effects, not pure):
  *  1. Push to history stack (unless we don't want too)
- *  2. Dispatch hooks and plugins
- *  3. Notify subscribers (UI)
+ *  2. Notify subscribers (UI)
  *
  * Keeping commit separate from apply stage means undo action
  * applies inverted operations through the same apply stage path
@@ -424,7 +423,7 @@ export class TransactionPipeline {
    * Dispatches a transaction by running the full pipeline:
    * 1. Validate or reject the operation
    * 2. └- Apply the operation and get the invert operation for history
-   * 3. └- Commit: push to history; notify events subscribers
+   * 3. └- Commit effects: push to history; notify events to subscribers
    *
    * Does not mutate the inputs.
    */
