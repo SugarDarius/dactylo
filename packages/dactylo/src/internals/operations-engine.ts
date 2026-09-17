@@ -1,4 +1,5 @@
 import {
+  createParagraphBlockAfter,
   findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
   isBlockWithPlaceholder,
@@ -50,7 +51,7 @@ import type {
   SetSelectionOp,
   SplitBlockOp,
 } from './operations'
-import { createCursor, cursorAtBlockEnd } from './selection'
+import { createCursor, cursorAtBlockEnd, cursorAtBlockStart } from './selection'
 import type { TextCursor } from './selection'
 import { assertNever } from './utils'
 
@@ -856,7 +857,7 @@ export function buildError(message: string, hint: string): never {
 }
 
 /**
- * Resolves undo fields when merging two blocks for a `MergeBlocksOp`.
+ * Resolves undo fields when merging two blocks for a {@link MergeBlocksOp}.
  * After a merge, the previous block’s content and the current block’s content
  * live in one block, often in one coalesced text node.
  *
@@ -915,6 +916,39 @@ export function resolvesMergeBlocksUndoFields(
   }
 
   return { splitAtNodeId: last.id, splitAtOffset: 0 }
+}
+
+/**
+ * Inline nodes that move to the tail block when splitting a cursor.
+ * Used by operations emitters to populate {@link SplitBlockOp} tailSnapshot field for undo.
+ *
+ * It mirrors tail extraction in {@link applySplitBlockOp}.
+ */
+export function computeSplitTailSnapshot(
+  block: BlockWithInlineContent,
+  atNodeId: NodeId,
+  atOffset: number,
+): InlineNode[] {
+  const found = findNodeInBlockWithInlineContent(block, atNodeId)
+  if (!found) {
+    return []
+  }
+
+  const { node, index } = found
+  if (node.__type !== 'text') {
+    return []
+  }
+
+  const tailText = node.text.slice(atOffset)
+  const tailNodes: InlineNode[] = []
+
+  if (tailText.length > 0) {
+    tailNodes.push(createTextNode({ marks: node.marks, text: tailText }))
+  }
+
+  tailNodes.push(...block.content.slice(index + 1))
+
+  return tailNodes
 }
 
 // --- Marks operations ─────────────────────────────────────────----
@@ -1188,6 +1222,7 @@ export function buildBackspaceOps(
       context.activeMarks,
     )
 
+    // @todo: handle placeholders nodes
     const endSelection =
       cursorAtBlockEnd(prevBlockId, prevBlock) ??
       createCursor({
@@ -1258,7 +1293,72 @@ export function buildBackspaceOps(
     },
   ]
 
-  return { coalesce: false, label: 'delete_previous_typed_char', ops }
+  return { coalesce: true, label: 'delete_previous_typed_char', ops }
+}
+
+/**
+ * Builds operations when user presses `Enter` key as a hard break.
+ * Split blocks calling `split_block` operation at cursor.
+ */
+// @todo: special node splits like links
+export function buildHardBreakOps(
+  context: EditorContext,
+  cursor: TextCursor,
+): KeyboardOpsIntent {
+  const block = getBlockWithInlineContent(context.state, cursor.blockId)
+  const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+  if (!found || found.node.__type !== 'text') {
+    buildError(
+      `Node ${cursor.nodeId} not found in block ${block.id}`,
+      'OperationsEngine/buildHardBreakOps',
+    )
+  }
+
+  const { node, index } = found
+
+  const tailSnapshot = computeSplitTailSnapshot(block, node.id, cursor.offset)
+  const isPlaceholder = tailSnapshot.length === 0
+
+  // @todo: pass default content for the new block
+  const insertedBlock = createParagraphBlockAfter(
+    block,
+    isPlaceholder
+      ? tailSnapshot
+      : [
+          createTextNode({
+            isPlaceholder,
+            marks: node.marks,
+            text: 'Write something...',
+          }),
+        ],
+  )
+
+  const startSelection = cursorAtBlockStart(insertedBlock.id, insertedBlock)
+  if (!startSelection) {
+    buildError(
+      `Failed to create start selection for inserted block ${insertedBlock.id}`,
+      'OperationsEngine/buildHardBreakOps',
+    )
+  }
+
+  const ops: Operation[] = [
+    {
+      __type: 'split_block',
+      atIndex: index,
+      atNodeId: cursor.nodeId,
+      atOffset: cursor.offset,
+      blockId: block.id,
+      newBlock: insertedBlock,
+      tailSnapshot,
+    },
+    {
+      __type: 'set_selection',
+      next: startSelection,
+      prev: context.selection,
+    },
+  ]
+
+  return { coalesce: false, label: 'split_block_hard_break', ops }
 }
 
 /**
@@ -1280,6 +1380,15 @@ export function buildKeyboardOps(
   /** When the event is a modifier key, it's a no-op. */
   if (isMod) {
     return null
+  }
+
+  /**
+   * We build operations whe user presses `Enter` key.
+   *  1. `Enter` solo is considered as an hard break.
+   *  2. `shift+enter` is considered as a soft break.
+   */
+  if (event.key === 'Enter') {
+    return event.shiftKey ? null : buildHardBreakOps(context, selection.anchor)
   }
 
   /** We build operations when user presses `Backspace` key. */

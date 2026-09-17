@@ -9,7 +9,8 @@
 
 import { nanoid } from 'nanoid'
 
-import type { InlineNode, NodeId } from './nodes'
+import type { InlineNode, NodeId, TextNode } from './nodes'
+import { makePosition } from './position'
 import type { PosKey } from './position'
 import type { Brand, Relax, Metadata } from './types'
 
@@ -116,6 +117,23 @@ export function createParagraphBlock(opts: {
     updatedAt: null,
   }
 }
+
+/**
+ * Creates a paragraph block after a given existing block.
+ * Computes `posKey` of the new block based on the `afterBlock` position.
+ */
+export function createParagraphBlockAfter(
+  afterBlock: Block,
+  content: InlineNode[],
+): ParagraphBlock {
+  const posKey = makePosition(afterBlock.posKey)
+  return createParagraphBlock({
+    content,
+    parentId: afterBlock.parentId,
+    posKey,
+  })
+}
+
 /** Returns a shallow copy of a block with a fresh `updatedAt` timestamp. */
 export function touchBlock(block: Block): Block {
   return { ...block, updatedAt: new Date() }
@@ -168,4 +186,22 @@ export function findNodeInBlockWithInlineContent(
   }
 
   return { index, node }
+}
+
+/** Finds the first text node in a block. */
+export function findFirstTextNodeInBlock(
+  block: BlockWithInlineContent,
+): TextNode | null {
+  return block.content.find((n): n is TextNode => n.__type === 'text') ?? null
+}
+
+/** Finds the last text node in a block. */
+export function findLastTextNodeInBlock(
+  block: BlockWithInlineContent,
+): TextNode | null {
+  return (
+    block.content
+      .toReversed()
+      .find((n): n is TextNode => n.__type === 'text') ?? null
+  )
 }

@@ -1,5 +1,5 @@
 import { error } from './internals/console'
-import { DEFAULT_PLACEHOLDER } from './internals/constants'
+import { DEFAULT_PARAGRAPH_PLACEHOLDER } from './internals/constants'
 import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
 import { DactyloError } from './internals/errors'
@@ -193,7 +193,7 @@ export class Dactylo {
   readonly #eventSources: DactyloEventSources
 
   constructor(options: DactyloOptions) {
-    this.#placeholder = options.placeholder ?? DEFAULT_PLACEHOLDER
+    this.#placeholder = options.placeholder ?? DEFAULT_PARAGRAPH_PLACEHOLDER
     this.#pipeline = new TransactionPipeline({
       batchMaxSize: options.config?.pipeline?.batchMaxSize,
       historyMaxDepth: options.config?.pipeline?.historyMaxDepth,
