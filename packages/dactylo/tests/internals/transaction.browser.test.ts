@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 
 import { Batch } from '../../src/internals/transaction'
-import { makeFixtureSetupApi } from './utils/fixture'
+import { makeFixtureSetupApi } from '../utils/fixture'
 
 describe('Batch', () => {
   const api = makeFixtureSetupApi()

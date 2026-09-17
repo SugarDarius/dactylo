@@ -1,10 +1,10 @@
-import { Dactylo } from '../../../src/dactylo'
-import { createParagraphBlock } from '../../../src/internals/blocks'
-import type { Block, BlockId } from '../../../src/internals/blocks'
-import type { InsertBlockOp } from '../../../src/internals/operations'
-import { makeInitialPosition } from '../../../src/internals/position'
-import type { PosKey } from '../../../src/internals/position'
-import type { Metadata } from '../../../src/internals/types'
+import { Dactylo } from '../../src/dactylo'
+import { createParagraphBlock } from '../../src/internals/blocks'
+import type { Block, BlockId } from '../../src/internals/blocks'
+import type { InsertBlockOp } from '../../src/internals/operations'
+import { makeInitialPosition } from '../../src/internals/position'
+import type { PosKey } from '../../src/internals/position'
+import type { Metadata } from '../../src/internals/types'
 
 /** Fixture API to use in tests. */
 export interface FixtureApi {
