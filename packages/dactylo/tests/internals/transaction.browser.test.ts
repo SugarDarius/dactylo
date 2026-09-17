@@ -1,17 +1,17 @@
 import { describe, expect, test, vi } from 'vitest'
 
-import type { BlockId } from '../../src/internals/blocks'
 import { Batch } from '../../src/internals/transaction'
-import { createEmptyParagraphBlock } from './utils/blocks'
-import { createInsertBlockOperation } from './utils/operations'
+import { makeFixtureSetupApi } from './utils/fixture'
 
 describe('Batch', () => {
+  const api = makeFixtureSetupApi()
+
   test('`run()` defers flush until outermost scope ends', () => {
     const flush = vi.fn()
     const batch = new Batch({ onFlush: flush })
 
-    const block = createEmptyParagraphBlock()
-    const op = createInsertBlockOperation({ block })
+    const block = api.blocks.createEmptyParagraphBlock()
+    const op = api.operations.createInsertBlockOperation({ block })
 
     batch.run(() => {
       batch.enqueue([op])
@@ -25,11 +25,11 @@ describe('Batch', () => {
     const flush = vi.fn()
     const batch = new Batch({ onFlush: flush })
 
-    const block1 = createEmptyParagraphBlock({ id: 'bl_0001' as BlockId })
-    const block2 = createEmptyParagraphBlock({ id: 'bl_0002' as BlockId })
+    const block1 = api.blocks.createEmptyParagraphBlock()
+    const block2 = api.blocks.createEmptyParagraphBlock()
 
-    const op1 = createInsertBlockOperation({ block: block1 })
-    const op2 = createInsertBlockOperation({
+    const op1 = api.operations.createInsertBlockOperation({ block: block1 })
+    const op2 = api.operations.createInsertBlockOperation({
       afterBlockId: block1.id,
       block: block2,
     })
@@ -50,16 +50,16 @@ describe('Batch', () => {
     const flush = vi.fn()
     const batch = new Batch({ maxSize: 2, onFlush: flush })
 
-    const block1 = createEmptyParagraphBlock({ id: 'bl_0001' as BlockId })
-    const block2 = createEmptyParagraphBlock({ id: 'bl_0002' as BlockId })
-    const block3 = createEmptyParagraphBlock({ id: 'bl_0003' as BlockId })
+    const block1 = api.blocks.createEmptyParagraphBlock()
+    const block2 = api.blocks.createEmptyParagraphBlock()
+    const block3 = api.blocks.createEmptyParagraphBlock()
 
-    const op1 = createInsertBlockOperation({ block: block1 })
-    const op2 = createInsertBlockOperation({
+    const op1 = api.operations.createInsertBlockOperation({ block: block1 })
+    const op2 = api.operations.createInsertBlockOperation({
       afterBlockId: block1.id,
       block: block2,
     })
-    const op3 = createInsertBlockOperation({
+    const op3 = api.operations.createInsertBlockOperation({
       afterBlockId: block2.id,
       block: block3,
     })
@@ -74,8 +74,8 @@ describe('Batch', () => {
     const flush = vi.fn()
     const batch = new Batch({ onFlush: flush })
 
-    const block = createEmptyParagraphBlock()
-    const op = createInsertBlockOperation({ block })
+    const block = api.blocks.createEmptyParagraphBlock()
+    const op = api.operations.createInsertBlockOperation({ block })
 
     batch.enqueue([op])
     batch.discard()
@@ -88,11 +88,11 @@ describe('Batch', () => {
     const flush = vi.fn()
     const batch = new Batch({ onFlush: flush })
 
-    const block1 = createEmptyParagraphBlock({ id: 'bl_0001' as BlockId })
-    const block2 = createEmptyParagraphBlock({ id: 'bl_0002' as BlockId })
+    const block1 = api.blocks.createEmptyParagraphBlock()
+    const block2 = api.blocks.createEmptyParagraphBlock()
 
-    const op1 = createInsertBlockOperation({ block: block1 })
-    const op2 = createInsertBlockOperation({
+    const op1 = api.operations.createInsertBlockOperation({ block: block1 })
+    const op2 = api.operations.createInsertBlockOperation({
       afterBlockId: block1.id,
       block: block2,
     })

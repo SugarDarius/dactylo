@@ -2,8 +2,38 @@ import { describe, expect, test } from 'vitest'
 
 import type { BlockId } from '../../src/internals/blocks'
 import { HistoryStack } from '../../src/internals/history'
+import type { HistoryEntry } from '../../src/internals/history'
 import type { NodeId } from '../../src/internals/nodes'
-import { createChartInsertHistoryEntry } from './utils/history'
+import type { InsertTextOp } from '../../src/internals/operations'
+
+const createInsertHistoryEntry = (opts: {
+  blockId: BlockId
+  nodeId: NodeId
+  offset: number
+  char: string
+}): Pick<HistoryEntry, 'ops' | 'inverseOps'> => {
+  const op: InsertTextOp = {
+    __type: 'insert_text',
+    blockId: opts.blockId,
+    nodeId: opts.nodeId,
+    offset: opts.offset,
+    text: opts.char,
+  }
+
+  return {
+    inverseOps: [
+      {
+        __type: 'delete_text',
+        blockId: opts.blockId,
+        length: opts.char.length,
+        nodeId: opts.nodeId,
+        offset: opts.offset,
+        snapshot: { marks: {}, text: opts.char },
+      },
+    ],
+    ops: [op],
+  }
+}
 
 describe('History', () => {
   test('coalesces adjacent single-char inserts', () => {
@@ -14,7 +44,7 @@ describe('History', () => {
     }
 
     stack.push(
-      createChartInsertHistoryEntry({
+      createInsertHistoryEntry({
         blockId: ids.blockId,
         char: 'a',
         nodeId: ids.nodeId,
@@ -25,7 +55,7 @@ describe('History', () => {
 
     // oxlint-disable-next-line unicorn/prefer-single-call
     stack.push(
-      createChartInsertHistoryEntry({
+      createInsertHistoryEntry({
         blockId: ids.blockId,
         char: 'b',
         nodeId: ids.nodeId,
@@ -55,7 +85,7 @@ describe('History', () => {
     }
 
     stack.push(
-      createChartInsertHistoryEntry({
+      createInsertHistoryEntry({
         blockId: ids.blockId,
         char: 'a',
         nodeId: ids.nodeId,
@@ -68,7 +98,7 @@ describe('History', () => {
     expect(stack.canRedo()).toBe(true)
 
     stack.push(
-      createChartInsertHistoryEntry({
+      createInsertHistoryEntry({
         blockId: ids.blockId,
         char: 'x',
         nodeId: ids.nodeId,
@@ -88,7 +118,7 @@ describe('History', () => {
     }
 
     stack.push(
-      createChartInsertHistoryEntry({
+      createInsertHistoryEntry({
         blockId: ids.blockId,
         char: 'a',
         nodeId: ids.nodeId,
@@ -98,7 +128,7 @@ describe('History', () => {
     )
     // oxlint-disable-next-line unicorn/prefer-single-call
     stack.push(
-      createChartInsertHistoryEntry({
+      createInsertHistoryEntry({
         blockId: ids.blockId,
         char: 'b',
         nodeId: ids.nodeId,
@@ -141,7 +171,7 @@ describe('History', () => {
     }
 
     stack.push(
-      createChartInsertHistoryEntry({
+      createInsertHistoryEntry({
         blockId: ids.blockId,
         char: 'a',
         nodeId: ids.nodeId,
@@ -151,7 +181,7 @@ describe('History', () => {
     )
     // oxlint-disable-next-line unicorn/prefer-single-call
     stack.push(
-      createChartInsertHistoryEntry({
+      createInsertHistoryEntry({
         blockId: ids.blockId,
         char: 'b',
         nodeId: ids.nodeId,
@@ -161,7 +191,7 @@ describe('History', () => {
     )
     // oxlint-disable-next-line unicorn/prefer-single-call
     stack.push(
-      createChartInsertHistoryEntry({
+      createInsertHistoryEntry({
         blockId: ids.blockId,
         char: 'c',
         nodeId: ids.nodeId,
