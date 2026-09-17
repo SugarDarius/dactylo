@@ -315,7 +315,17 @@ export class Dactylo {
     }
   }
 
-  /** Returns the static configuration for the editor. */
+  /**
+   * Returns the static configuration for the editor.
+   *
+   * @example
+   * ```ts
+   * const config = editor.config
+   *
+   * console.log(config.paragraph.placeholder)
+   * console.log(config.heading.placeholder)
+   * ```
+   */
   get config(): DactyloEditorConfig {
     return this.#config
   }
