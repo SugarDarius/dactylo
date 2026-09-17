@@ -12,7 +12,7 @@ import { EventSource } from './internals/event-source'
 import type { HistoryEvent } from './internals/history'
 import type { MarkKey } from './internals/marks'
 import { TransactionPipeline } from './internals/transaction'
-import type { TransactionSource } from './internals/transaction'
+import type { Transaction, TransactionSource } from './internals/transaction'
 import type { Awaitable } from './internals/types'
 
 /** Discriminated union of commands that can be executed by the user/ai-agent. */
@@ -73,6 +73,12 @@ export interface DactyloEventsApi {
 
   /** Subscribes to the history stack changes. */
   readonly history: Observable<HistoryEvent>
+
+  /** Subscribes to applied transactions. */
+  readonly transactionDidApply: Observable<Transaction>
+
+  /** Subscribes to rejected transactions. */
+  readonly transactionDidReject: Observable<Transaction>
 }
 
 /** Event sources for {@link Dactylo} */
@@ -272,6 +278,10 @@ export class Dactylo {
       errors: this.#eventSources.errors.observable,
       /** Subscribes to the history stack changes. */
       history: this.#pipeline.events.history,
+      /** Subscribes to applied transactions. */
+      transactionDidApply: this.#pipeline.events.transactionDidApply,
+      /** Subscribes to rejected transactions. */
+      transactionDidReject: this.#pipeline.events.transactionDidReject,
     }
   }
 

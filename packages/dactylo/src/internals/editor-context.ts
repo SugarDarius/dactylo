@@ -25,8 +25,10 @@ import type { Selection } from './selection'
  * │                        EditorContext                               │
  * |  ┌─────────────────────---┐  ┌──────────────────────────────────┐  │
  * |  │  state: DocumentState  │  │ selection: Selection | null      │  │
- * |  |  activeMarks: Marks    |  | (where the user is editing)      |  |
- * |  │  (the written content) │  │                                  │  │
+ * |  |  activeMarks: Marks    |  |            |                     |  |
+ * |  |         |              |  |            |                     |  |
+ * |  |         ▼              |  |            ▼                     |  |
+ * |  │  the written content   │  │ where the user is editing        │  │
  * |  └─────────────────────---┘  └──────────────────────────────────┘  │
  * └─────────────────────────────────────────────────────────────────---┘
  *         │                              │

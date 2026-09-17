@@ -2,8 +2,7 @@
  * Branded `console.warn` / `console.error` helpers for Dactylo internals.
  *
  * In the browser (non-test), messages are prefixed with a styled **Dactylo**
- * badge. On the server or under `NODE_ENV=test`, output is forwarded unchanged
- * so logs stay readable in SSR and test runners.
+ * badge. On the server output is forwarded unchanged so logs stay readable in SSR and test runners.
  */
 /** CSS applied to the `%cDactylo` badge in styled console output. */
 export const BADGE =
@@ -19,7 +18,7 @@ export const BADGE =
 export function wrap(
   method: 'log' | 'warn' | 'error',
 ): (message: string, ...args: readonly unknown[]) => void {
-  return typeof window === 'undefined' || process.env.NODE_ENV === 'test'
+  return typeof window === 'undefined'
     ? console[method]
     : (message, ...args) =>
         console[method]('%cDactylo', BADGE, message, ...args)

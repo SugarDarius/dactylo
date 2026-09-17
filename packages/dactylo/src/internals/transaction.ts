@@ -298,6 +298,18 @@ export interface TransactionPipelineEvents {
    * Fires anytime the history stack is updated.
    */
   readonly history: Observable<HistoryEvent>
+
+  /**
+   * Subscribes to applied transactions.
+   * Fires anytime a transaction is applied.
+   */
+  readonly transactionDidApply: Observable<Transaction>
+
+  /**
+   * Subscribes to rejected transactions.
+   * Fires anytime a transaction is rejected.
+   */
+  readonly transactionDidReject: Observable<Transaction>
 }
 
 /** Event sources for the transaction pipeline. */
@@ -307,6 +319,12 @@ export interface TransactionPipelineEventSources {
 
   /** The event source for the history stack */
   readonly history: EventSource<HistoryEvent>
+
+  /** The event source for the transaction that was applied. */
+  readonly transactionDidApply: EventSource<Transaction>
+
+  /** The event source for the transaction that was rejected. */
+  readonly transactionDidReject: EventSource<Transaction>
 }
 
 /** Options for constructing a {@link TransactionPipeline} instance. */
@@ -408,6 +426,8 @@ export class TransactionPipeline {
     this.#eventSources = {
       context: new EventSource<EditorContext>(),
       history: new EventSource<HistoryEvent>(),
+      transactionDidApply: new EventSource<Transaction>(),
+      transactionDidReject: new EventSource<Transaction>(),
     }
   }
 
@@ -437,6 +457,7 @@ export class TransactionPipeline {
     try {
       validateOps(this.#context, ops)
     } catch (err) {
+      this.#eventSources.transactionDidReject.notify(transaction)
       throw DactyloError.wrap(err)
     }
 
@@ -457,6 +478,7 @@ export class TransactionPipeline {
     }
 
     this.#eventSources.context.notify(next)
+    this.#eventSources.transactionDidApply.notify(transaction)
   }
 
   /**
@@ -482,6 +504,8 @@ export class TransactionPipeline {
     return {
       context: this.#eventSources.context.observable,
       history: this.#eventSources.history.observable,
+      transactionDidApply: this.#eventSources.transactionDidApply.observable,
+      transactionDidReject: this.#eventSources.transactionDidReject.observable,
     }
   }
 
