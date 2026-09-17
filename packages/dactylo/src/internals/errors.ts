@@ -18,8 +18,6 @@ export type DactyloErrorCode =
   | 'RANGE_SELECTION_COLLAPSED'
   /** Unexpected range selection with no text spans */
   | 'RANGE_SELECTION_NO_TEXT_SPANS'
-  /** Unexpected empty operations in a transaction */
-  | 'EMPTY_OPERATIONS_IN_TRANSACTION'
   /** Failed to validate a transaction operations */
   | 'VALIDATE_TRANSACTION_OPERATIONS'
   /** Failed to apply a transaction operations */
