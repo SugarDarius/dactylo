@@ -14,7 +14,7 @@ npm i @sugardarius/dactylo
 import { Dactylo } from '@sugardarius/dactylo'
 
 const editor = new Dactylo({
-  placeholder: 'Write something...',
+  placeholder: 'Write something…',
 })
 
 editor.subscribe((ctx) => {

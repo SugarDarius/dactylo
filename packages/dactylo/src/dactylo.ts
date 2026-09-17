@@ -228,7 +228,7 @@ export interface DactyloOptions {
  * import { Dactylo } from '@sugardarius/dactylo'
  *
  * const editor = new Dactylo({
- *  placeholder: 'Write something...',
+ *  placeholder: 'Write something…',
  * })
  * ```
  */
