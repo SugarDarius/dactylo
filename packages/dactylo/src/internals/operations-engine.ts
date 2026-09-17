@@ -1298,14 +1298,51 @@ export function buildBackspaceOps(
 
 /**
  * Builds operations when user presses `Enter` key as a hard break.
- * Split blocks calling `split_block` operation at cursor.
+ * Split blocks calling `split_block` operation at cursor blocks is not with a placeholder.
+ * Otherwise, insert a new block with a placeholder text.
  */
 // @todo: special node splits like links
+// @todo: handle other upcoming blocks like lists, quotes, ...
 export function buildHardBreakOps(
   context: EditorContext,
   cursor: TextCursor,
 ): KeyboardOpsIntent {
   const block = getBlockWithInlineContent(context.state, cursor.blockId)
+
+  // When blocks is with a placeholder
+  if (isBlockWithPlaceholder(block)) {
+    const insertedBlock = createParagraphBlockAfter(block, [
+      createTextNode({
+        marks: context.activeMarks,
+        // @todo: pass default placeholder text
+        text: 'Write something...',
+      }),
+    ])
+
+    const startSelection = cursorAtBlockStart(insertedBlock.id, insertedBlock)
+    if (!startSelection) {
+      buildError(
+        `Failed to create start selection for inserted block ${insertedBlock.id}`,
+        'OperationsEngine/buildHardBreakOps',
+      )
+    }
+
+    const ops: Operation[] = [
+      {
+        __type: 'insert_block',
+        afterBlockId: block.id,
+        block: insertedBlock,
+      },
+      {
+        __type: 'set_selection',
+        next: startSelection,
+        prev: context.selection,
+      },
+    ]
+
+    return { coalesce: false, label: 'insert_new_block_hard_break', ops }
+  }
+
   const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
   if (!found || found.node.__type !== 'text') {
     buildError(
@@ -1328,6 +1365,7 @@ export function buildHardBreakOps(
           createTextNode({
             isPlaceholder,
             marks: node.marks,
+            // @todo: pass default placeholder text
             text: 'Write something...',
           }),
         ],
