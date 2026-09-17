@@ -476,7 +476,7 @@ export class TransactionPipeline {
     this.#context = next
 
     if (!skipHistoryPush(transaction.policy)) {
-      /** Only coalesce history entries for user and ai-agent transactions. */
+      /** Only coalesce history entries for transactions initiated by a user. */
       const coalesce =
         transaction.policy?.coalesce === true &&
         transaction.policy?.source === 'user'
