@@ -99,7 +99,7 @@ export type InlineNode = Relax<
   TextNode | LinkNode | MentionNode | LineBreakNode
 >
 
-/** Generates a 24 characters long unique node ID */
+/** Generates a 24 characters long unique node ID. */
 export function generateNodeId(): NodeId {
   return `nd_${nanoid(21)}` as NodeId
 }
@@ -117,6 +117,21 @@ export function createTextNode(opts: {
     marks: opts.marks,
     metadata: opts.metadata ?? {},
     text: opts.text,
+    updatedAt: null,
+  }
+}
+
+/** Creates a line break node.  */
+export function createLineBreakNode(
+  opts: {
+    metadata?: Metadata
+  } = {},
+): LineBreakNode {
+  return {
+    __type: 'line_break',
+    createdAt: new Date(),
+    id: generateNodeId(),
+    metadata: opts.metadata ?? {},
     updatedAt: null,
   }
 }

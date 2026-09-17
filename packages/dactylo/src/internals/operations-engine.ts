@@ -36,16 +36,23 @@ import { DactyloError } from './errors'
 import { isModKey } from './keyboard'
 import { isMarkEnabled, isMarksEqual, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
-import { coalesceInlineNodes, createTextNode, splitTextNodeAt } from './nodes'
+import {
+  coalesceInlineNodes,
+  createLineBreakNode,
+  createTextNode,
+  splitTextNodeAt,
+} from './nodes'
 import type { InlineNode, NodeId, TextNode } from './nodes'
 import type {
   DeleteBlockOp,
   DeleteTextOp,
   InsertBlockOp,
   InsertBlockOpPosition,
+  InsertInlineNodeOp,
   InsertTextOp,
   MergeBlocksOp,
   Operation,
+  RemoveInlineNodeOp,
   SetMarksOp,
   SetSelectionOp,
   SplitBlockOp,
@@ -339,6 +346,28 @@ export function validateSetSelectionOp(
   }
 }
 
+/** Validates a `insert_inline_node` operation. */
+export function validateInsertInlineNodeOp(
+  context: EditorContext,
+  op: InsertInlineNodeOp,
+): void | never {
+  const block = requireBlockWithInlineContent(context.state, op.blockId, op)
+  if (op.index < 0 || op.index > block.content.length) {
+    validationError(`Insert index ${op.index} out of bounds`, op)
+  }
+}
+
+/** Validates a `remove_inline_node` operation. */
+export function validateRemoveInlineNodeOp(
+  context: EditorContext,
+  op: RemoveInlineNodeOp,
+): void | never {
+  const block = requireBlockWithInlineContent(context.state, op.blockId, op)
+  if (op.index < 0 || op.index >= block.content.length) {
+    validationError(`Remove index ${op.index} out of bounds`, op)
+  }
+}
+
 /**
  * Validates a batch of operations against current state.
  * Throws when operations do no respects the rules implemented in the editor.
@@ -372,6 +401,14 @@ export function validateOps(
       }
       case 'delete_text': {
         validateDeleteTextOp(context, op)
+        break
+      }
+      case 'insert_inline_node': {
+        validateInsertInlineNodeOp(context, op)
+        break
+      }
+      case 'remove_inline_node': {
+        validateRemoveInlineNodeOp(context, op)
         break
       }
       case 'set_marks': {
@@ -656,6 +693,32 @@ export function applySetMarksOp(
   return context
 }
 
+/** Applies a `insert_inline_node` operation to the editor context. */
+export function applyInsertInlineNodeOp(
+  context: EditorContext,
+  op: InsertInlineNodeOp,
+): EditorContext {
+  const block = getBlockWithInlineContent(context.state, op.blockId)
+
+  const content = [...block.content]
+  content.splice(op.index, 0, op.node)
+
+  return updateBlockWithInlineContent(context, op.blockId, content)
+}
+
+/** Applies a `remove_inline_node` operation to the editor context. */
+export function applyRemoveInlineNodeOp(
+  context: EditorContext,
+  op: RemoveInlineNodeOp,
+): EditorContext {
+  const block = getBlockWithInlineContent(context.state, op.blockId)
+
+  const content = [...block.content]
+  content.splice(op.index, 1)
+
+  return updateBlockWithInlineContent(context, op.blockId, content)
+}
+
 /** Applies a single operation to the editor context. */
 export function applyOp(context: EditorContext, op: Operation): EditorContext {
   const type = op.__type
@@ -677,6 +740,12 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
     }
     case 'delete_text': {
       return applyDeleteTextOp(context, op)
+    }
+    case 'insert_inline_node': {
+      return applyInsertInlineNodeOp(context, op)
+    }
+    case 'remove_inline_node': {
+      return applyRemoveInlineNodeOp(context, op)
     }
     case 'set_active_marks': {
       return withActiveMarks(context, op.activeMarks)
@@ -795,6 +864,24 @@ export function invertOps(ops: readonly Operation[]): readonly Operation[] {
           nodeId: op.nodeId,
           offset: op.offset,
           text: op.snapshot.text,
+        })
+        break
+      }
+      case 'insert_inline_node': {
+        invertedOps.push({
+          __type: 'remove_inline_node',
+          blockId: op.blockId,
+          index: op.index,
+          snapshot: op.node,
+        })
+        break
+      }
+      case 'remove_inline_node': {
+        invertedOps.push({
+          __type: 'insert_inline_node',
+          blockId: op.blockId,
+          index: op.index,
+          node: op.snapshot,
         })
         break
       }
@@ -1120,12 +1207,12 @@ export function buildTypedCharOps(
   ]
 
   if (char !== ' ') {
-    return { coalesce: true, label: `insert_typed_char:${char}`, ops }
+    return { coalesce: true, label: `insert_char:${char}`, ops }
   }
 
   //@todo: detects markdown shortcut
 
-  return { coalesce: false, label: `insert_markdown_shortcut`, ops }
+  return { coalesce: false, label: `[TBD]`, ops }
 }
 
 /**
@@ -1133,6 +1220,7 @@ export function buildTypedCharOps(
  * to delete the previous typed character or merge with previous block at block start.
  */
 // @todo: handle coalesce behaviors
+// @todo: handle links, mentions, and line breaks.
 export function buildBackspaceOps(
   context: EditorContext,
   /** Collapsed cursor anchor for the pending edit. */
@@ -1168,7 +1256,6 @@ export function buildBackspaceOps(
       context.activeMarks,
     )
 
-    // @todo: handle placeholders nodes
     const endSelection =
       cursorAtBlockEnd(prevBlockId, prevBlock) ??
       createCursor({
@@ -1197,7 +1284,7 @@ export function buildBackspaceOps(
 
     return {
       coalesce: true,
-      label: `merge_blocks_backspace_at_block_start`,
+      label: `merge_blocks`,
       ops,
     }
   }
@@ -1239,15 +1326,11 @@ export function buildBackspaceOps(
     },
   ]
 
-  return { coalesce: true, label: 'delete_previous_typed_char', ops }
+  return { coalesce: true, label: 'delete_character', ops }
 }
 
-/**
- * Builds operations when user presses `Enter` key as a hard break.
- * Split blocks calling `split_block` operation at cursor blocks is not with a placeholder.
- * Otherwise, insert a new block with a placeholder text.
- */
-// @todo: special node splits like links
+/** Builds operations when user presses `Enter` key as a hard break. */
+// @todo: handle special node splits like links
 // @todo: handle other upcoming blocks like lists, quotes, ...
 export function buildHardBreakOps(
   context: EditorContext,
@@ -1294,7 +1377,48 @@ export function buildHardBreakOps(
     },
   ]
 
-  return { coalesce: false, label: 'split_block_hard_break', ops }
+  return { coalesce: false, label: 'split_blocks', ops }
+}
+
+/** Builds operations when user presses `shift+Enter` key as a soft break. */
+// @todo: handle special node splits like links
+// @todo: handle other upcoming blocks like lists, quotes, ...
+export function buildSoftBreakOps(
+  context: EditorContext,
+  cursor: TextCursor,
+): KeyboardOpsIntent {
+  const block = getBlockWithInlineContent(context.state, cursor.blockId)
+
+  const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+  if (!found || found.node.__type !== 'text') {
+    buildError(
+      `Node ${cursor.nodeId} not found in block ${block.id}`,
+      'OperationsEngine/buildSoftBreakOps',
+    )
+  }
+
+  const { index } = found
+  const insertedLineBreak = createLineBreakNode()
+
+  const ops: Operation[] = [
+    {
+      __type: 'insert_inline_node',
+      blockId: block.id,
+      index: index + 1,
+      node: insertedLineBreak,
+    },
+    {
+      __type: 'set_selection',
+      next: createCursor({
+        blockId: cursor.blockId,
+        nodeId: insertedLineBreak.id,
+        offset: 0,
+      }),
+      prev: context.selection,
+    },
+  ]
+
+  return { coalesce: false, label: 'insert_line_break', ops }
 }
 
 /**
@@ -1324,7 +1448,9 @@ export function buildKeyboardOps(
    *  2. `shift+enter` is considered as a soft break.
    */
   if (event.key === 'Enter') {
-    return event.shiftKey ? null : buildHardBreakOps(context, selection.anchor)
+    return event.shiftKey
+      ? buildSoftBreakOps(context, selection.anchor)
+      : buildHardBreakOps(context, selection.anchor)
   }
 
   /** We build operations when user presses `Backspace` key. */

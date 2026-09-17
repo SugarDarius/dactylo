@@ -177,6 +177,34 @@ export interface DeleteTextOp {
   }
 }
 
+/** Inserts a structural inline node (line break, link, mention) at a content index. */
+export interface InsertInlineNodeOp {
+  readonly __type: 'insert_inline_node'
+
+  /** Block containing the target inline node. */
+  readonly blockId: BlockId
+
+  /** Index where the inline node is inserted. */
+  readonly index: number
+
+  /** Inline node to insert. */
+  readonly node: InlineNode
+}
+
+/** Removes an inline node at a content index. */
+export interface RemoveInlineNodeOp {
+  readonly __type: 'remove_inline_node'
+
+  /** Block containing the node to remove. */
+  readonly blockId: BlockId
+
+  /** Index in `block.content` of the node to remove. */
+  readonly index: number
+
+  /** Removed node snapshot for undo. */
+  readonly snapshot: InlineNode
+}
+
 /** Updates active typing marks without mutating document content. */
 export interface SetActiveMarksOp {
   readonly __type: 'set_active_marks'
@@ -230,6 +258,8 @@ export type Operation = Relax<
   | MergeBlocksOp
   | InsertTextOp
   | DeleteTextOp
+  | InsertInlineNodeOp
+  | RemoveInlineNodeOp
   | SetActiveMarksOp
   | SetMarksOp
   | SetSelectionOp
