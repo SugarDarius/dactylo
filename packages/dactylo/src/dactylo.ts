@@ -43,6 +43,7 @@ export type DactyloCommand =
   | 'marks/toggle'
   | 'marks/is-active'
   | 'keyboard/on-key-down'
+  | 'selection/focus'
 
 /** Event emitted when a command is executed */
 export interface DactyloCommandEvent {
@@ -149,6 +150,15 @@ export interface DactyloKeyboardCommands {
     event: KeyboardEvent,
     opts?: { prevent?: false },
   ) => boolean
+}
+
+/** Commands to interact with the selection of the editor, */
+export interface DactyloSelectionCommands {
+  /**
+   * Focus the editor by placing a collapsed cursor at the end of the document.
+   * Call when the user enters the editor surface (click, tab) so keyboard input applies.
+   */
+  readonly focus: () => void
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -444,6 +454,24 @@ export class Dactylo {
           () => this.#pipeline.digestKeyboardEvent(event, opts),
           { payload: { event } },
         ),
+    }
+  }
+
+  /**
+   * Returns the commands to interact with the selection of the editor.
+   *
+   * @example
+   * ```ts
+   * editor.selection.focus()
+   * ```
+   */
+  get selection(): DactyloSelectionCommands {
+    return {
+      /** Focus the editor by placing a collapsed cursor at the end of the document. */
+      focus: (): void =>
+        this.#safeExecuteCommand('selection/focus', () => {
+          // @todo: implement
+        }),
     }
   }
 
