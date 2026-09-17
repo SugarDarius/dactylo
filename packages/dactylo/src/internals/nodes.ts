@@ -51,9 +51,6 @@ export interface TextNode extends INode {
 
   /** Marks decorating the text content */
   readonly marks: Readonly<Marks>
-
-  /** Whether the node was created with a placeholder text node. */
-  readonly isPlaceholder: boolean
 }
 
 /** Node representing a link. */
@@ -110,7 +107,6 @@ export function generateNodeId(): NodeId {
 /** Creates a text node. */
 export function createTextNode(opts: {
   text: string
-  isPlaceholder?: boolean
   metadata?: Metadata
   marks: Marks
 }): TextNode {
@@ -118,7 +114,6 @@ export function createTextNode(opts: {
     __type: 'text',
     createdAt: new Date(),
     id: generateNodeId(),
-    isPlaceholder: opts.isPlaceholder ?? false,
     marks: opts.marks,
     metadata: opts.metadata ?? {},
     text: opts.text,
@@ -160,8 +155,6 @@ export function coalesceInlineNodes(
         __type: pending.__type,
         createdAt: pending.createdAt,
         id: pending.id,
-        /** Always set to `false` as we are merging nodes */
-        isPlaceholder: false,
         marks: pending.marks,
         metadata: pending.metadata,
         text: pending.text + node.text,

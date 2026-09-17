@@ -329,9 +329,6 @@ export interface TransactionPipelineEventSources {
 
 /** Options for constructing a {@link TransactionPipeline} instance. */
 export interface TransactionPipelineOptions {
-  /** Placeholder text for the editor when no content is written. */
-  placeholder: string
-
   /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
   batchMaxSize?: number
 
@@ -411,7 +408,7 @@ export class TransactionPipeline {
      *  - from JSON
      *  - from markdown string
      */
-    this.#context = createInitialEditorContext(options.placeholder)
+    this.#context = createInitialEditorContext()
     this.#batch = new Batch({
       maxSize: options.batchMaxSize,
       onFlush: (ops, policy) =>

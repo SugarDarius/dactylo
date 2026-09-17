@@ -1,5 +1,8 @@
 import { error } from './internals/console'
-import { DEFAULT_PARAGRAPH_PLACEHOLDER } from './internals/constants'
+import {
+  DEFAULT_HEADING_PLACEHOLDER,
+  DEFAULT_PARAGRAPH_PLACEHOLDER,
+} from './internals/constants'
 import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
 import { DactyloError } from './internals/errors'
@@ -14,6 +17,21 @@ import type { MarkKey } from './internals/marks'
 import { TransactionPipeline } from './internals/transaction'
 import type { Transaction, TransactionSource } from './internals/transaction'
 import type { Awaitable } from './internals/types'
+
+/** Static configuration for the editor. */
+export interface DactyloEditorConfig {
+  /** Configuration for the paragraphs */
+  paragraph: {
+    /** Placeholder text when an empty paragraph is created or empty. */
+    placeholder: string
+  }
+
+  /** Configuration for the headings */
+  heading: {
+    /** Placeholder text when a heading is created or empty. */
+    placeholder: string
+  }
+}
 
 /** Discriminated union of commands that can be executed by the user/ai-agent. */
 export type DactyloCommand =
@@ -139,6 +157,32 @@ export interface DactyloKeyboardCommands {
 
 /** Config options to use for the internal components and delegates of the editor. */
 export interface DactyloConfigOptions {
+  /** Configuration for te editor */
+  editor?: {
+    /** Configuration for the paragraphs */
+    paragraph?: {
+      /**
+       * Placeholder text when an empty paragraph is created or empty.
+       * Defaults to placeholder option in {@link DactyloOptions} if set
+       * or defaults to {@link DEFAULT_PARAGRAPH_PLACEHOLDER}.
+       */
+      placeholder?: string
+    }
+
+    /** Configuration for the headings */
+    heading?: {
+      /**
+       * Placeholder text when a heading is created or empty.
+       * Defaults to {@link DEFAULT_HEADING_PLACEHOLDER} with level.
+       * @example
+       * ```txt
+       * Heading 1
+       * ```
+       */
+      placeholder?: string
+    }
+  }
+
   /** Configuration for the transaction pipeline */
   pipeline?: {
     /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
@@ -151,7 +195,7 @@ export interface DactyloConfigOptions {
 
 /** Options for constructing a {@link Dactylo} instance. */
 export interface DactyloOptions {
-  /** Placeholder text for the editor when no content is written. */
+  /** Alias for {@link DactyloConfigOptions.editor.paragraph.placeholder}. */
   placeholder?: string
 
   /** Config options to use for the internal components and delegates of the editor. */
@@ -189,8 +233,8 @@ export interface DactyloOptions {
  * ```
  */
 export class Dactylo {
-  /** Placeholder text for the editor when no content is written. */
-  readonly #placeholder: string
+  /** Static configuration for the editor. */
+  readonly #config: DactyloEditorConfig
 
   /** Transaction pipeline to use for the editor */
   readonly #pipeline: TransactionPipeline
@@ -199,11 +243,22 @@ export class Dactylo {
   readonly #eventSources: DactyloEventSources
 
   constructor(options: DactyloOptions) {
-    this.#placeholder = options.placeholder ?? DEFAULT_PARAGRAPH_PLACEHOLDER
+    this.#config = {
+      heading: {
+        placeholder:
+          options.config?.editor?.heading?.placeholder ??
+          DEFAULT_HEADING_PLACEHOLDER,
+      },
+      paragraph: {
+        placeholder:
+          options.placeholder ??
+          options.config?.editor?.paragraph?.placeholder ??
+          DEFAULT_PARAGRAPH_PLACEHOLDER,
+      },
+    }
     this.#pipeline = new TransactionPipeline({
       batchMaxSize: options.config?.pipeline?.batchMaxSize,
       historyMaxDepth: options.config?.pipeline?.historyMaxDepth,
-      placeholder: this.#placeholder,
     })
     this.#eventSources = {
       commands: new EventSource<DactyloCommandEvent>(),
@@ -258,6 +313,11 @@ export class Dactylo {
 
       throw err
     }
+  }
+
+  /** Returns the static configuration for the editor. */
+  get config(): DactyloEditorConfig {
+    return this.#config
   }
 
   /**

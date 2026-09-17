@@ -146,21 +146,6 @@ export function isBlockWithInlineContent(
   return block.__type === 'heading' || block.__type === 'paragraph'
 }
 
-/** Whether the block was created with a placeholder text node. */
-export function isBlockWithPlaceholder(block: Block): boolean {
-  if (isBlockWithInlineContent(block)) {
-    /** placeholders represents always one single text node. */
-    if (block.content.length !== 1) {
-      return false
-    }
-
-    const [first] = block.content
-    return first?.__type === 'text' && first.isPlaceholder === true
-  }
-
-  return false
-}
-
 /** Rebuilds block order from a blocks map (after posKey changes). */
 export function sortBlockOrder(blocks: ReadonlyMap<BlockId, Block>): BlockId[] {
   return [...blocks.values()]

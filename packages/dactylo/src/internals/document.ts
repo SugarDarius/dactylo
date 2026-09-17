@@ -84,20 +84,15 @@ export interface DocumentState {
   readonly blockOrderById: readonly BlockId[]
 }
 
-/**
- * Creates an initial empty doc state for empty document.
- * It contains a single placeholder paragraph block with the given text.
- */
+/** Creates an initial empty doc state for empty document. */
 export function createInitialEmptyDocumentState(
-  placeholder: string,
   activeMarks: Marks,
 ): DocumentState {
   const block = createParagraphBlock({
     content: [
       createTextNode({
-        isPlaceholder: true,
         marks: activeMarks,
-        text: placeholder,
+        text: '',
       }),
     ],
     posKey: makeInitialPosition(),

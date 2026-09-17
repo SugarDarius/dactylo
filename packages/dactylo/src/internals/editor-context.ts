@@ -135,13 +135,13 @@ export interface EditorContext {
   readonly selection: Selection | null
 }
 
-/** Creates the initial context for an empty editor with a placeholder */
-export function createInitialEditorContext(placeholder: string): EditorContext {
+/** Creates the initial context for an empty document. */
+export function createInitialEditorContext(): EditorContext {
   const initialActiveMarks = createInitialActiveMarks()
   return {
     activeMarks: initialActiveMarks,
     selection: null,
-    state: createInitialEmptyDocumentState(placeholder, initialActiveMarks),
+    state: createInitialEmptyDocumentState(initialActiveMarks),
   }
 }
 

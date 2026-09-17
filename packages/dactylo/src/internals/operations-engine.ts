@@ -2,7 +2,6 @@ import {
   createParagraphBlockAfter,
   findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
-  isBlockWithPlaceholder,
   sortBlockOrder,
   touchBlock,
 } from './blocks'
@@ -545,8 +544,6 @@ export function applyInsertTextOp(
     const text = before + op.text + after
     const updated: TextNode = {
       ...node,
-      /** Always set to `false` as we are updating */
-      isPlaceholder: false,
       text,
       updatedAt: new Date(),
     }
@@ -560,8 +557,6 @@ export function applyInsertTextOp(
     if (before.length > 0) {
       updates.push({
         ...node,
-        /** Always set to `false` as we are updating */
-        isPlaceholder: false,
         text: before,
         updatedAt: new Date(),
       })
@@ -615,16 +610,9 @@ export function applyDeleteTextOp(
   const after = node.text.slice(op.offset + op.length)
 
   const text = before + after
-  /**
-   * Set to back to `isPlaceholder: true` when:
-   * 1. The text is empty
-   * 2. The node is the first and only existing node in the block
-   */
-  const isPlaceholder = text.length === 0 && index === 0 && content.length === 1
 
   content[index] = {
     ...node,
-    isPlaceholder,
     text,
     updatedAt: new Date(),
   }
@@ -1107,71 +1095,29 @@ export function buildTypedCharOps(
   char: string,
 ): KeyboardOpsIntent {
   const { state } = context
+
   let ops: Operation[] = []
-
   const block = getBlockWithInlineContent(state, cursor.blockId)
-  if (isBlockWithPlaceholder(block)) {
-    const [first] = block.content
 
-    /**
-     * Kind of overkill check as it gets re-validated during the validation phase.
-     * See it as an extra-safety net and sugar for TypeScript and linters.
-     */
-    if (!first || first.__type !== 'text') {
-      buildError(
-        `First node of block ${block.id} is not a text node. Type: ${first?.__type}`,
-        'OperationsEngine/buildTypedCharOps',
-      )
-    }
-
-    ops = [
-      {
-        __type: 'delete_text',
+  ops = [
+    {
+      __type: 'insert_text',
+      blockId: block.id,
+      marks: context.activeMarks,
+      nodeId: cursor.nodeId,
+      offset: 0,
+      text: char,
+    },
+    {
+      __type: 'set_selection',
+      next: createCursor({
         blockId: block.id,
-        length: first.text.length,
-        nodeId: first.id,
-        offset: 0,
-        snapshot: { marks: first.marks, text: first.text },
-      },
-      {
-        __type: 'insert_text',
-        blockId: block.id,
-        marks: context.activeMarks,
-        nodeId: first.id,
-        offset: 0,
-        text: char,
-      },
-      {
-        __type: 'set_selection',
-        next: createCursor({
-          blockId: block.id,
-          nodeId: first.id,
-          offset: char.length,
-        }),
-        prev: context.selection,
-      },
-    ]
-  } else {
-    ops = [
-      {
-        __type: 'insert_text',
-        blockId: block.id,
-        marks: context.activeMarks,
         nodeId: cursor.nodeId,
-        offset: 0,
-        text: char,
-      },
-      {
-        __type: 'set_selection',
-        next: createCursor({
-          blockId: block.id,
-          nodeId: cursor.nodeId,
-          offset: cursor.offset + char.length,
-        }),
-        prev: context.selection,
-      },
-    ]
-  }
+        offset: cursor.offset + char.length,
+      }),
+      prev: context.selection,
+    },
+  ]
 
   if (char !== ' ') {
     return { coalesce: true, label: `insert_typed_char:${char}`, ops }
@@ -1309,40 +1255,6 @@ export function buildHardBreakOps(
 ): KeyboardOpsIntent {
   const block = getBlockWithInlineContent(context.state, cursor.blockId)
 
-  // When blocks is with a placeholder
-  if (isBlockWithPlaceholder(block)) {
-    const insertedBlock = createParagraphBlockAfter(block, [
-      createTextNode({
-        marks: context.activeMarks,
-        // @todo: pass default placeholder text
-        text: 'Write something...',
-      }),
-    ])
-
-    const startSelection = cursorAtBlockStart(insertedBlock.id, insertedBlock)
-    if (!startSelection) {
-      buildError(
-        `Failed to create start selection for inserted block ${insertedBlock.id}`,
-        'OperationsEngine/buildHardBreakOps',
-      )
-    }
-
-    const ops: Operation[] = [
-      {
-        __type: 'insert_block',
-        afterBlockId: block.id,
-        block: insertedBlock,
-      },
-      {
-        __type: 'set_selection',
-        next: startSelection,
-        prev: context.selection,
-      },
-    ]
-
-    return { coalesce: false, label: 'insert_new_block_hard_break', ops }
-  }
-
   const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
   if (!found || found.node.__type !== 'text') {
     buildError(
@@ -1354,24 +1266,10 @@ export function buildHardBreakOps(
   const { node, index } = found
 
   const tailSnapshot = computeSplitTailSnapshot(block, node.id, cursor.offset)
-  const isPlaceholder = tailSnapshot.length === 0
-
-  // @todo: pass default content for the new block
-  const insertedBlock = createParagraphBlockAfter(
-    block,
-    isPlaceholder
-      ? tailSnapshot
-      : [
-          createTextNode({
-            isPlaceholder,
-            marks: node.marks,
-            // @todo: pass default placeholder text
-            text: 'Write something...',
-          }),
-        ],
-  )
+  const insertedBlock = createParagraphBlockAfter(block, tailSnapshot)
 
   const startSelection = cursorAtBlockStart(insertedBlock.id, insertedBlock)
+
   if (!startSelection) {
     buildError(
       `Failed to create start selection for inserted block ${insertedBlock.id}`,
