@@ -113,6 +113,13 @@ export interface RangeSelection {
 /** Discriminated union of all supported selection shapes in Dactylo. */
 export type Selection = Relax<CursorSelection | RangeSelection>
 
+/** Checks if a selection is a collapsed cursor selection. */
+export function isCursorSelection(
+  selection: Selection | null,
+): selection is CursorSelection {
+  return selection !== null && selection.__type === 'cursor'
+}
+
 /** A contiguous `[from, to)` slice inside one text node, part of a larger range. */
 export interface TextSpanInRange {
   /** Block containing the text node. */

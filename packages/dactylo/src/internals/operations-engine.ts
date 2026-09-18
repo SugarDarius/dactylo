@@ -34,7 +34,6 @@ import {
 } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
-import { isModKey } from './keyboard'
 import { isMarkEnabled, isMarksEqual, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
 import {
@@ -1222,7 +1221,7 @@ export function buildTypedCharOps(
  */
 // @todo: handle coalesce behaviors
 // @todo: handle links, mentions, and line breaks.
-export function buildBackspaceOps(
+export function buildCursorBackspaceOps(
   context: EditorContext,
   /** Collapsed cursor anchor for the pending edit. */
   cursor: TextCursor,
@@ -1244,7 +1243,7 @@ export function buildBackspaceOps(
     if (prevBlockId === undefined) {
       buildError(
         `Previous block ID is not found for block ${cursor.blockId}`,
-        'OperationsEngine/buildBackspaceOps',
+        'OperationsEngine/buildCursorBackspaceOps',
       )
     }
 
@@ -1420,54 +1419,6 @@ export function buildSoftBreakOps(
   ]
 
   return { coalesce: false, label: 'insert-line-break-node', ops }
-}
-
-/**
- * Builds keyboard operations to handle a keyboard event.
- * Returns `null` when the selection is null or not a cursor selection.
- */
-export function buildKeyboardOps(
-  context: EditorContext,
-  event: KeyboardEvent,
-): KeyboardOpsIntent | null {
-  const { selection } = context
-
-  /** When we don't have any selection or it's not a cursor selection it's a no-op. */
-  if (selection === null || selection?.__type !== 'cursor') {
-    return null
-  }
-
-  const isMod = isModKey(event)
-  /** When the event is a modifier key, it's a no-op. */
-  if (isMod) {
-    return null
-  }
-
-  /**
-   * We build operations whe user presses `Enter` key.
-   *  1. `Enter` solo is considered as a hard break.
-   *  2. `shift+Enter` is considered as a soft break.
-   */
-  if (event.key === 'Enter') {
-    return event.shiftKey
-      ? buildSoftBreakOps(context, selection.anchor)
-      : buildHardBreakOps(context, selection.anchor)
-  }
-
-  /** We build operations when user presses `Backspace` key. */
-  // @todo: handle mentions and slash commands
-  if (event.key === 'Backspace') {
-    return buildBackspaceOps(context, selection.anchor)
-  }
-
-  /** We build operations when a single character is pressed by user. */
-  // @todo: handle mentions and slash commands
-  if (event.key.length === 1) {
-    return buildTypedCharOps(context, selection.anchor, event.key)
-  }
-
-  /** Event is not handled */
-  return null
 }
 
 // --- Selection operations ─────────────────────────────────────────

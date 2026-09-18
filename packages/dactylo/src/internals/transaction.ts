@@ -8,20 +8,23 @@ import type { Observable } from './event-source'
 import { EventSource } from './event-source'
 import { HistoryStack } from './history'
 import type { HistoryEvent } from './history'
-import { detectPlatformKeyboardShortcut } from './keyboard'
 import type { MarkKey } from './marks'
 import type { Operation, InsertBlockOpPosition } from './operations'
 import {
   applyOps,
   buildClearSelectionOps,
+  buildCursorBackspaceOps,
   buildDeleteBlockOps,
+  buildHardBreakOps,
   buildInsertBlockOps,
-  buildKeyboardOps,
   buildPutCursorSelectionAtDocumentEndOps,
   buildSetMarksOps,
+  buildSoftBreakOps,
+  buildTypedCharOps,
   invertOps,
   validateOps,
 } from './operations-engine'
+import { isCursorSelection } from './selection'
 import { assertNever } from './utils'
 
 /** The source of a transaction. */
@@ -639,11 +642,11 @@ export class TransactionPipeline {
     }
   }
 
-  // --- Keyboard operations ─────────────────────────────────────────
+  // --- Composing operations ─────────────────────────────────────────
 
   /**
-   * Digests and translates keyboard and clipboard into operations.
-   * Enforces core constraints:
+   * Digests and translates and input event into operations.
+   * Enforces core constraints invariants:
    * - `Enter` → new block
    * - `shift+Enter` → soft line break node
    * - ...
@@ -652,104 +655,184 @@ export class TransactionPipeline {
    * - `**` → bold
    * - `[link](https://example.com)` → link node
    * - ...
-   * Buffers mentions on typing and on paste and slash commands on typing.
+   * Buffers mentions and slash commands on typing
    * Notifies subscribers for the following events:
    * - `context`
    * - `history`
-   * - `mention`
-   * - `slash-command`
    *
    * Platform chords are detected before structural keys (`Enter`, `Backspace`, typing)
-   * where detection is pure and dispatch splits intro three buckets:
-   * 1. History commands (undo/redo)
-   * 2. Clipboard command (copy, paste, and cut)
-   * 3. Document commands (select all, deselect)
+   * where detection is pure and dispatch splits intro buckets:
+   *  1. History commands (undo/redo)
+   *  2. Clipboard commands (paste, and cut)
+   *  3. Typing commands (text, line break, paragraph, heading, etc.)
    *
    * ```
    * Input → context → operations
-   * KeyboardEvent
+   * InputEvent
    *      |
    *      ▼
-   * Dactylo.keyboard.onKeyDown(event)
+   * Dactylo.composer.sendInput(event)
    *      |
    *      ▼
-   * TransactionPipeline.digestKeyboardEvent(event)
+   * TransactionPipeline.digestInputEvent(event)
    *      |
-   *      ├ ─ detects platform shortcuts  (e.g. undo / redo, copy / paste, cut, select-all, deselect)
+   *      ├ ─ detects shortcuts  (e.g. history, pasting)
    *      ├ ─ builds keyboard operations → #commit (`Enter`, `Backspace`, typing....)
    *      |
    *      ▼
    * EventSources.context.notify(context)
    *
-   * By design, recognized keystrokes and shortcuts are prevented by default.
-   * They can be not prevented by passing `{ prevent: false }` in the options.
-   *
+   * By design, recognized intents are prevented by default.
    * Returns a boolean indicating whether the event was handled or not.
    */
-  digestKeyboardEvent(
-    event: KeyboardEvent,
-    opts: { prevent?: false } = {},
-  ): boolean {
+  digestInputEvent(event: InputEvent): boolean {
+    const { inputType } = event
+
     const prevent = () => {
-      const prevented = opts.prevent !== false
-      if (prevented) {
-        event.preventDefault()
-      }
+      event.preventDefault()
     }
 
-    const shortcut = detectPlatformKeyboardShortcut(event)
-    if (shortcut !== null) {
-      switch (shortcut) {
-        case 'undo': {
+    // @todo: handle composition
+    switch (inputType) {
+      /** History commands bucket */
+      case 'historyUndo': {
+        prevent()
+        this.undo()
+
+        return true
+      }
+      case 'historyRedo': {
+        prevent()
+        this.redo()
+
+        return true
+      }
+
+      // @todo: cut and paste
+      /** Clipboard commands bucket */
+
+      /** Typing commands bucket */
+      case 'insertLineBreak': {
+        /** `shift+Enter` is considered as a soft break. */
+        if (isCursorSelection(this.#context.selection)) {
           prevent()
-          this.undo()
+
+          const { ops, label, coalesce } = buildSoftBreakOps(
+            this.#context,
+            this.#context.selection.anchor,
+          )
+
+          this.#commit(ops, {
+            coalesce,
+            label: transactionPolicyLabel('input', 'digest-event', label),
+            pushToHistory: true,
+            source: 'user',
+          })
 
           return true
         }
-        case 'redo': {
+        return false
+      }
+      case 'insertParagraph': {
+        /** `Enter` solo is considered as a hard break. */
+        if (isCursorSelection(this.#context.selection)) {
           prevent()
-          this.redo()
+
+          const { ops, label, coalesce } = buildHardBreakOps(
+            this.#context,
+            this.#context.selection.anchor,
+          )
+
+          this.#commit(ops, {
+            coalesce,
+            label: transactionPolicyLabel('input', 'digest-event', label),
+            pushToHistory: true,
+            source: 'user',
+          })
 
           return true
         }
-        // @todo: to be handled
-        // @note: decides if we either handle here or directly through DOM events
-        case 'copy':
-        case 'paste':
-        case 'cut':
-        case 'select-all':
-        case 'deselect': {
-          return false
+        return false
+      }
+      case 'deleteContentBackward': {
+        if (isCursorSelection(this.#context.selection)) {
+          prevent()
+
+          const intent = buildCursorBackspaceOps(
+            this.#context,
+            this.#context.selection.anchor,
+          )
+
+          /** 👉🏻 See {@link buildCursorBackspaceOps} jsdoc on why it can return `null` */
+          if (intent === null) {
+            return false
+          }
+
+          const { ops, label, coalesce } = intent
+          this.#commit(ops, {
+            coalesce,
+            label: transactionPolicyLabel('input', 'digest-event', label),
+            pushToHistory: true,
+            source: 'user',
+          })
+
+          return true
         }
-        default: {
-          /** Unrecognized shortcuts are not handled. */
-          return false
+
+        // @todo: handle range selection
+
+        return false
+      }
+      case 'insertText': {
+        if (isCursorSelection(this.#context.selection)) {
+          const { data } = event
+          if (data && data.length === 1) {
+            prevent()
+
+            const { ops, label, coalesce } = buildTypedCharOps(
+              this.#context,
+              this.#context.selection.anchor,
+              data,
+            )
+
+            this.#commit(ops, {
+              coalesce,
+              label: transactionPolicyLabel('input', 'digest-event', label),
+              pushToHistory: true,
+              source: 'user',
+            })
+          }
         }
+        return false
+      }
+
+      default: {
+        return false
       }
     }
 
-    const intent = buildKeyboardOps(this.#context, event)
     /**
-     * When we don't have any active selection or if the event is a modifier key,
-     * or if twe don't have any handled intent,
-     * we don't want to handle the event and we don't prevent it by default.
+     * ⚠️ OLD AND DEAD CODE BELOW ⚠️
+     * This first intent wasn't the good one to use in rich text editors.
      */
-    if (intent === null) {
-      return false
-    }
-
-    /** Otherwise we handle the event and commit the operations. */
-    const { ops, label, coalesce } = intent
-
-    prevent()
-    this.#commit(ops, {
-      coalesce,
-      label: transactionPolicyLabel('keyboard', 'digest-event', label),
-      pushToHistory: true,
-      source: 'user',
-    })
-
-    return true
+    // const shortcut = detectPlatformKeyboardShortcut(event)
+    // if (shortcut !== null) {
+    //   switch (shortcut) {
+    //     // @todo: to be handled
+    //     // @note: decides if we either handle here or directly through DOM events
+    //     case 'copy':
+    //     case 'paste':
+    //     case 'cut':
+    //     case 'select-all':
+    //     case 'deselect': {
+    //       return false
+    //     }
+    //     default: {
+    //       /** Unrecognized shortcuts are not handled. */
+    //       return false
+    //     }
+    //   }
+    // }
   }
 
   // --- Selection operations ─────────────────────────────────────────

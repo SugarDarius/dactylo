@@ -34,15 +34,24 @@ export interface DactyloEditorConfig {
 
 /** Discriminated union of commands that can be executed by the user/ai-agent. */
 export type DactyloCommand =
+  /** Editor context commands */
   | 'editor-context/get-snapshot'
   | 'editor-context/subscribe'
+
+  /** History commands */
   | 'history/undo'
   | 'history/redo'
   | 'history/can-undo'
   | 'history/can-redo'
+
+  /** Marks commands */
   | 'marks/toggle'
   | 'marks/is-active'
-  | 'keyboard/on-key-down'
+
+  /** Composer commands */
+  | 'composer/send-input'
+
+  /** Selection commands */
   | 'selection/focus'
   | 'selection/blur'
 
@@ -134,23 +143,27 @@ export interface DactyloMarksCommands {
 
   /**
    * Whether a mark is active or not depending on the current current selection.
-   * 👉🏻  A toolbar button for a mark that should appear pressed or not.
+   * 👉🏻 A toolbar button for a mark that should appear pressed or not.
    */
   readonly isActive: (markKey: MarkKey, context: EditorContext) => boolean
 }
 
-/** Commands to interact with the keyboard in the editor. */
-export interface DactyloKeyboardCommands {
+/** Commands to interact with the composer of the editor. */
+export interface DactyloComposerCommands {
   /**
-   * Handles an `onKeyDown` event and returns a boolean indicating whether the event was handled or not.
+   * Sends an input event to the editor and returns a boolean indicating whether the event was processed or not.
+   * Input events are triggered by user actions such as typing, pasting, or selecting text.
    *
-   * By design, recognized keystrokes and shortcuts are prevented by default.
-   * They can be not prevented by passing `{ prevent: false }` in the options.
+   * Use it to handle events like `onBeforeInput` or `onInput` to get real user intent and get:
+   *  - inserted characters
+   *  - delete intents
+   *  - data transfer from copy/paste
+   *
+   * Using input events is meant to be used with the `onBeforeInput` event handler
+   * for IME composition and be compliant with virtual mobile keyboards (iOS and Android)
+   * by telling us "What's being inserted", not just "What's being pressed".
    */
-  readonly onKeyDown: (
-    event: KeyboardEvent,
-    opts?: { prevent?: false },
-  ) => boolean
+  readonly sendInput: (event: InputEvent) => boolean
 }
 
 /** Commands to interact with the selection of the editor, */
@@ -445,20 +458,24 @@ export class Dactylo {
   }
 
   /**
-   * Returns the commands to interact with the keyboard in the editor.
+   * Returns the commands to interact with the composer of the editor.
    *
    * @example
    * ```ts
-   * <div onKeyDown={editor.keyboard.onKeyDown} contentEditable={true} />
+   *
+   * const handleBeforeInput = (event: InputEvent) => {
+   *  editor.composer.sendInput(event)
+   * }
+   * <div onKeyDown={handleBeforeInput} contentEditable={true} />
    * ```
    */
-  get keyboard(): DactyloKeyboardCommands {
+  get composer(): DactyloComposerCommands {
     return {
-      /** Handles an `onKeyDown` event and returns a boolean indicating whether the event was handled or not. */
-      onKeyDown: (event: KeyboardEvent, opts?: { prevent?: false }): boolean =>
+      /** Sends an input event to the editor and returns a boolean indicating whether the event was processed or not. */
+      sendInput: (event: InputEvent): boolean =>
         this.#safeExecuteCommand(
-          'keyboard/on-key-down',
-          () => this.#pipeline.digestKeyboardEvent(event, opts),
+          'composer/send-input',
+          () => this.#pipeline.digestInputEvent(event),
           { payload: { event } },
         ),
     }
