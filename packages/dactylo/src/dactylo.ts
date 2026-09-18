@@ -469,9 +469,9 @@ export class Dactylo {
     return {
       /** Focus the editor by placing a collapsed cursor at the end of the document. */
       focus: (): void =>
-        this.#safeExecuteCommand('selection/focus', () => {
-          // @todo: implement
-        }),
+        this.#safeExecuteCommand('selection/focus', () =>
+          this.#pipeline.putCursorSelectionAtDocumentEnd('user'),
+        ),
     }
   }
 

@@ -12,8 +12,17 @@ import {
   makePosition,
 } from './position'
 import type { PosKey } from './position'
-import { appendTextSpansInRangeFromBlock, createRange } from './selection'
-import type { RangeSelection, TextCursor, TextSpanInRange } from './selection'
+import {
+  appendTextSpansInRangeFromBlock,
+  createRange,
+  cursorAtBlockEnd,
+} from './selection'
+import type {
+  CursorSelection,
+  RangeSelection,
+  TextCursor,
+  TextSpanInRange,
+} from './selection'
 import { assertNever } from './utils'
 
 /**
@@ -493,4 +502,21 @@ export function normalizeRange(
     return selection
   }
   return createRange(focus, anchor)
+}
+
+/**
+ * Creates a collapsed cursor at the end of the last block in document order.
+ * Returns `null` on when the document has no blocks. However, this case should never
+ * happen based on the design and the current invariants implemented.
+ */
+export function createCursorAtDocumentEnd(
+  state: DocumentState,
+): CursorSelection | null {
+  const lastBlockId = state.blockOrderById.at(-1)
+  if (!lastBlockId) {
+    return null
+  }
+
+  const block = getBlockWithInlineContent(state, lastBlockId)
+  return cursorAtBlockEnd(block.id, block)
 }

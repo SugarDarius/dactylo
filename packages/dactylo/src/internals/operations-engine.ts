@@ -15,6 +15,7 @@ import {
   collectTextSpansInRange,
   compareTextCursors,
   computeInsertBlockPosKey,
+  createCursorAtDocumentEnd,
   deleteBlock,
   getBlock,
   getBlockWithInlineContent,
@@ -117,7 +118,7 @@ export function assertOffsetInText(
   }
 }
 
-/** Asserts a mark range `[from, to)` lies within a text node's bounds. */
+/** Asserts a mark range `[from, to]` lies within a text node's bounds. */
 export function assertRangeInText(
   /** Range start (inclusive). */
   from: number,
@@ -1444,8 +1445,8 @@ export function buildKeyboardOps(
 
   /**
    * We build operations whe user presses `Enter` key.
-   *  1. `Enter` solo is considered as an hard break.
-   *  2. `shift+enter` is considered as a soft break.
+   *  1. `Enter` solo is considered as a hard break.
+   *  2. `shift+Enter` is considered as a soft break.
    */
   if (event.key === 'Enter') {
     return event.shiftKey
@@ -1467,6 +1468,44 @@ export function buildKeyboardOps(
 
   /** Event is not handled */
   return null
+}
+
+// --- Selection operations ─────────────────────────────────────────
+
+/**
+ * Builds the operations to set the selection to the end of the last block in document order.
+ * Returns `null` when the selection is already set so we can skip it.
+ */
+export function buildPutCursorSelectionAtDocumentEndOps(
+  context: EditorContext,
+): Operation[] | null {
+  const next = createCursorAtDocumentEnd(context.state)
+  if (!next) {
+    buildError(
+      'Failed to create cursor selection at document end',
+      'OperationsEngine/buildPutCursorSelectionAtDocumentEndOps',
+    )
+  }
+
+  const prev = context.selection
+
+  /** Skip if the selection is already at the end of the document. */
+  if (
+    prev?.__type === 'cursor' &&
+    prev.anchor.blockId === next.anchor.blockId &&
+    prev.anchor.nodeId === next.anchor.nodeId &&
+    prev.anchor.offset === next.anchor.offset
+  ) {
+    return null
+  }
+
+  return [
+    {
+      __type: 'set_selection',
+      next,
+      prev,
+    },
+  ]
 }
 
 // --- Blocks operations ─────────────────────────────────────────---
@@ -1494,6 +1533,7 @@ export function buildInsertBlockOps(
 }
 
 /** Builds the operations to delete a block by ID. */
+// @todo: add invariant check to ensure the block is not the last block in the document.
 export function buildDeleteBlockOps(
   context: EditorContext,
   blockId: BlockId,

@@ -16,6 +16,7 @@ import {
   buildDeleteBlockOps,
   buildInsertBlockOps,
   buildKeyboardOps,
+  buildPutCursorSelectionAtDocumentEndOps,
   buildSetMarksOps,
   invertOps,
   validateOps,
@@ -689,7 +690,8 @@ export class TransactionPipeline {
 
           return true
         }
-        //@todo: to be handled
+        // @todo: to be handled
+        // @note: decides if we either handle here or directly through DOM events
         case 'copy':
         case 'paste':
         case 'cut':
@@ -726,6 +728,27 @@ export class TransactionPipeline {
     })
 
     return true
+  }
+
+  // --- Selection operations ─────────────────────────────────────────
+
+  /**
+   * Sets the selection to the end of the last block in document order without mutating content.
+   * Does not push to history (caret-only session change)
+   */
+  putCursorSelectionAtDocumentEnd(
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const ops = buildPutCursorSelectionAtDocumentEndOps(this.#context)
+    if (ops === null) {
+      return
+    }
+
+    this.#commit(ops, {
+      label: `put_cursor_selection_at_document_end`,
+      pushToHistory: false,
+      source,
+    })
   }
 
   // ─── Block operations ───────────────────────────────────────------
