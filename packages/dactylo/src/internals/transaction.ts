@@ -78,6 +78,11 @@ export interface TransactionPolicy {
   coalesce?: boolean
 }
 
+/** Joins the parts with a `:` for a human-readable label. */
+export function transactionPolicyLabel(...parts: string[]): string {
+  return parts.join(':')
+}
+
 /** Callback to invoke when the batch is flushed. */
 export type BatchFlushCallback = (
   /** The operations that were flushed. */
@@ -533,7 +538,7 @@ export class TransactionPipeline {
   undo(): void {
     if (this.#batch.active) {
       historyError(
-        'undo() is not allowed to execute when the batch is active.',
+        '`undo()` is not allowed to execute when the batch is active.',
         'TransactionPipeline/#undo',
       )
     }
@@ -545,7 +550,11 @@ export class TransactionPipeline {
 
     this.#dispatch({
       ops: [...entry.inverseOps],
-      policy: { label: 'undo', pushToHistory: false, source: 'undo' },
+      policy: {
+        label: transactionPolicyLabel('history', 'undo'),
+        pushToHistory: false,
+        source: 'undo',
+      },
     })
 
     this.#eventSources.history.notify({
@@ -558,7 +567,7 @@ export class TransactionPipeline {
   redo(): void {
     if (this.#batch.active) {
       historyError(
-        'redo() is not allowed to execute when the batch is active.',
+        '`redo()` is not allowed to execute when the batch is active.',
         'TransactionPipeline/#redo',
       )
     }
@@ -570,7 +579,11 @@ export class TransactionPipeline {
 
     this.#dispatch({
       ops: [...entry.ops],
-      policy: { label: 'redo', pushToHistory: false, source: 'redo' },
+      policy: {
+        label: transactionPolicyLabel('history', 'redo'),
+        pushToHistory: false,
+        source: 'redo',
+      },
     })
 
     this.#eventSources.history.notify({
@@ -597,7 +610,11 @@ export class TransactionPipeline {
     switch (kind) {
       case 'set_active_marks': {
         this.#commit(ops, {
-          label: `toggle_active_mark:${String(markKey)}`,
+          label: transactionPolicyLabel(
+            'toggle-mark',
+            'active',
+            String(markKey),
+          ),
           pushToHistory: false,
           source,
         })
@@ -605,7 +622,11 @@ export class TransactionPipeline {
       }
       case 'set_marks': {
         this.#commit(ops, {
-          label: `toggle_mark_on_selection:${String(markKey)}`,
+          label: transactionPolicyLabel(
+            'toggle-mark',
+            'on-selection',
+            String(markKey),
+          ),
           pushToHistory: true,
           source,
         })
@@ -722,7 +743,7 @@ export class TransactionPipeline {
     prevent()
     this.#commit(ops, {
       coalesce,
-      label,
+      label: transactionPolicyLabel('keyboard', 'digest-event', label),
       pushToHistory: true,
       source: 'user',
     })
@@ -745,7 +766,7 @@ export class TransactionPipeline {
     }
 
     this.#commit(ops, {
-      label: `put_cursor_selection_at_document_end`,
+      label: transactionPolicyLabel('selection', 'put-at-document-end'),
       pushToHistory: false,
       source,
     })
@@ -761,7 +782,11 @@ export class TransactionPipeline {
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
     const ops = buildInsertBlockOps(this.#context, pos, block)
-    this.#commit(ops, { label: `insert_block`, pushToHistory: true, source })
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', 'insert'),
+      pushToHistory: true,
+      source,
+    })
   }
 
   /** Removes a block by ID.  This method is intended to be used from server code and Ai agents. */
@@ -771,6 +796,10 @@ export class TransactionPipeline {
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
     const ops = buildDeleteBlockOps(this.#context, blockId)
-    this.#commit(ops, { label: `delete_block`, pushToHistory: true, source })
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', 'delete'),
+      pushToHistory: true,
+      source,
+    })
   }
 }

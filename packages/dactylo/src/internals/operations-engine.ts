@@ -1208,7 +1208,7 @@ export function buildTypedCharOps(
   ]
 
   if (char !== ' ') {
-    return { coalesce: true, label: `insert_char:${char}`, ops }
+    return { coalesce: true, label: `insert-char:${char}`, ops }
   }
 
   //@todo: detects markdown shortcut
@@ -1285,7 +1285,7 @@ export function buildBackspaceOps(
 
     return {
       coalesce: true,
-      label: `merge_blocks`,
+      label: `merge-blocks`,
       ops,
     }
   }
@@ -1327,7 +1327,7 @@ export function buildBackspaceOps(
     },
   ]
 
-  return { coalesce: true, label: 'delete_character', ops }
+  return { coalesce: true, label: 'delete-character', ops }
 }
 
 /** Builds operations when user presses `Enter` key as a hard break. */
@@ -1378,7 +1378,7 @@ export function buildHardBreakOps(
     },
   ]
 
-  return { coalesce: false, label: 'split_blocks', ops }
+  return { coalesce: false, label: 'split-block', ops }
 }
 
 /** Builds operations when user presses `shift+Enter` key as a soft break. */
@@ -1419,7 +1419,7 @@ export function buildSoftBreakOps(
     },
   ]
 
-  return { coalesce: false, label: 'insert_line_break', ops }
+  return { coalesce: false, label: 'insert-line-break-node', ops }
 }
 
 /**
