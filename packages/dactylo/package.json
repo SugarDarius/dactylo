@@ -41,6 +41,17 @@
         "module": "./dist/index.js",
         "default": "./dist/index.cjs"
       }
+    },
+    "./react": {
+      "import": {
+        "types": "./dist/react/index.d.ts",
+        "default": "./dist/react/index.js"
+      },
+      "require": {
+        "types": "./dist/react/index.d.cts",
+        "module": "./dist/react/index.js",
+        "default": "./dist/react/index.cjs"
+      }
     }
   },
   "publishConfig": {
