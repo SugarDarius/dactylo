@@ -13,6 +13,7 @@ import type { MarkKey } from './marks'
 import type { Operation, InsertBlockOpPosition } from './operations'
 import {
   applyOps,
+  buildClearSelectionOps,
   buildDeleteBlockOps,
   buildInsertBlockOps,
   buildKeyboardOps,
@@ -767,6 +768,25 @@ export class TransactionPipeline {
 
     this.#commit(ops, {
       label: transactionPolicyLabel('selection', 'put-at-document-end'),
+      pushToHistory: false,
+      source,
+    })
+  }
+
+  /**
+   * Clears the the current selection.
+   * Does not push to the history.
+   */
+  clearSelection(
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const ops = buildClearSelectionOps(this.#context)
+    if (ops === null) {
+      return
+    }
+
+    this.#commit(ops, {
+      label: transactionPolicyLabel('selection', 'clear'),
       pushToHistory: false,
       source,
     })

@@ -1508,6 +1508,25 @@ export function buildPutCursorSelectionAtDocumentEndOps(
   ]
 }
 
+/** Builds the operations to clear the selection. */
+export function buildClearSelectionOps(
+  context: EditorContext,
+): Operation[] | null {
+  const { selection } = context
+
+  /** Skip if the selection is already set to `null`. */
+  if (!selection) {
+    return null
+  }
+
+  return [
+    {
+      __type: 'set_selection',
+      next: null,
+      prev: selection,
+    },
+  ]
+}
 // --- Blocks operations ─────────────────────────────────────────---
 
 /** Builds the operations to insert a block at the given position. */

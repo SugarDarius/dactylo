@@ -44,6 +44,7 @@ export type DactyloCommand =
   | 'marks/is-active'
   | 'keyboard/on-key-down'
   | 'selection/focus'
+  | 'selection/blur'
 
 /** Event emitted when a command is executed */
 export interface DactyloCommandEvent {
@@ -159,6 +160,12 @@ export interface DactyloSelectionCommands {
    * Call when the user enters the editor surface (click, tab) so keyboard input applies.
    */
   readonly focus: () => void
+
+  /**
+   * Blurs the editor by clearing the selection.
+   * Call when the user leaves the editor surface (blur, tab) so keyboard input does not apply.
+   */
+  readonly blur: () => void
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -467,6 +474,12 @@ export class Dactylo {
    */
   get selection(): DactyloSelectionCommands {
     return {
+      /** Blurs the editor by clearing the selection. */
+      blur: (): void =>
+        this.#safeExecuteCommand('selection/blur', () =>
+          this.#pipeline.clearSelection('user'),
+        ),
+
       /** Focus the editor by placing a collapsed cursor at the end of the document. */
       focus: (): void =>
         this.#safeExecuteCommand('selection/focus', () =>
