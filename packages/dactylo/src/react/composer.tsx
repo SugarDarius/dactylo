@@ -2,14 +2,40 @@
 
 import { forwardRef } from 'react'
 
-/**  Props for declaring the composer root. */
-export interface ComposerRootProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Alias for {@link DactyloConfigOptions.editor.paragraph.placeholder}. */
-  placeholder?: string
+import type { DactyloOptions } from '../dactylo'
+
+/** Props for declaring the composer root. */
+export interface ComposerRootProps
+  extends React.HTMLAttributes<HTMLDivElement>, DactyloOptions {
+  /**
+   * Whether the composer is disabled.
+   * Defaults to `false`.
+   */
+  disabled?: boolean
 }
 
+/**
+ * Adds the root of the composers.
+ * @example
+ * ```tsx
+ * import { Composer } from '@liveblocks/dactylo/react'
+ *
+ * <Composer.Root>
+ *   {children}
+ * </Composer.Root>
+ * ```
+ */
 export const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
-  (props, ref) => <div ref={ref} {...props} />,
+  ({ children, disabled = false, ...props }, forwardedRef) => (
+    <div
+      {...props}
+      ref={forwardedRef}
+      dactylo-root=''
+      style={{ position: 'relative' }}
+    >
+      {children}
+    </div>
+  ),
 )
 
 ComposerRoot.displayName = 'ComposerRoot'
