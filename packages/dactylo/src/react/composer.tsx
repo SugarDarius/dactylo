@@ -2,13 +2,22 @@
 
 import { forwardRef } from 'react'
 
+import { Dactylo } from '../dactylo'
+import type { DactyloOptions } from '../dactylo'
+import { createSafeContext } from './internals/context'
+import { useStableReference } from './internals/use-stable'
+
+const { Provider: DactyloProvider, useContext: useDactylo } =
+  createSafeContext<Dactylo>({
+    errorMsg:
+      '`<Composer.Root />` is missing. Did you forget to wrap your component with it?',
+  })
+
 /** Props for declaring the composer root. */
-export interface ComposerRootProps extends React.HTMLAttributes<HTMLDivElement> {
-  /**
-   * Whether the composer is disabled.
-   * Defaults to `false`.
-   */
-  disabled?: boolean
+export interface ComposerRootProps
+  extends React.HTMLAttributes<HTMLDivElement>, DactyloOptions {
+  // @note: placeholder prop for now
+  onChange: () => void
 }
 
 /**
@@ -17,24 +26,28 @@ export interface ComposerRootProps extends React.HTMLAttributes<HTMLDivElement> 
  * ```tsx
  * import { Composer } from '@liveblocks/dactylo/react'
  *
- * <Composer.Root>
+ * <Composer.Root placeholder='Write something…'>
  *   {children}
  * </Composer.Root>
  * ```
  */
 export const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
-  ({ children, disabled = false, ...props }, forwardedRef) => (
-    <div
-      {...props}
-      ref={forwardedRef}
-      dactylo-root=''
-      style={{ position: 'relative' }}
-    >
-      {children}
-    </div>
-  ),
+  ({ children, placeholder, config, ...props }, forwardedRef) => {
+    const dactylo = useStableReference(new Dactylo({ config, placeholder }))
+
+    return (
+      <div
+        {...props}
+        ref={forwardedRef}
+        dactylo-composer-root=''
+        style={{ position: 'relative' }}
+      >
+        <DactyloProvider value={dactylo}>{children}</DactyloProvider>
+      </div>
+    )
+  },
 )
 
 ComposerRoot.displayName = 'ComposerRoot'
 
-export { ComposerRoot as Root }
+export { ComposerRoot as Root, useDactylo }

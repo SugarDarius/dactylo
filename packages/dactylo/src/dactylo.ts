@@ -19,15 +19,15 @@ import type { Transaction, TransactionSource } from './internals/transaction'
 
 /** Static configuration for the editor. */
 export interface DactyloEditorConfig {
-  /** Configuration for the paragraphs */
-  paragraph: {
-    /** Placeholder text when an empty paragraph is created or empty. */
-    placeholder: string
-  }
-
   /** Configuration for the headings */
   heading: {
     /** Placeholder text when a heading is created or empty. */
+    placeholder: string
+  }
+
+  /** Configuration for the paragraphs */
+  paragraph: {
+    /** Placeholder text when an empty paragraph is created or empty. */
     placeholder: string
   }
 }
@@ -268,7 +268,7 @@ export class Dactylo {
   /** Events emitted by Dactylo. */
   readonly #eventSources: DactyloEventSources
 
-  constructor(options: DactyloOptions) {
+  constructor(options: DactyloOptions = {}) {
     this.#config = {
       heading: {
         placeholder:
