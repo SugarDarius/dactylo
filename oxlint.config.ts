@@ -19,6 +19,7 @@ export default defineConfig({
     'jsx-a11y/prefer-tag-over-role': 'off',
     'node/callback-return': 'off',
     'promise/prefer-await-to-callbacks': 'off',
+    'react/function-component-definition': 'off',
     'typescript/consistent-type-definitions': 'off',
     'typescript/no-invalid-void-type': 'off',
     'unicorn/catch-error-name': 'off',
