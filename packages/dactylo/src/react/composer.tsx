@@ -2,11 +2,8 @@
 
 import { forwardRef } from 'react'
 
-import type { DactyloOptions } from '../dactylo'
-
 /** Props for declaring the composer root. */
-export interface ComposerRootProps
-  extends React.HTMLAttributes<HTMLDivElement>, DactyloOptions {
+export interface ComposerRootProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
    * Whether the composer is disabled.
    * Defaults to `false`.
