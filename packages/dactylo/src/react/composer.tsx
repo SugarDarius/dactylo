@@ -5,7 +5,7 @@ import { forwardRef } from 'react'
 import { Dactylo } from '../dactylo'
 import type { DactyloOptions } from '../dactylo'
 import { createSafeContext } from './internals/context'
-import { useStableReference } from './internals/use-stable'
+import { useStableReference } from './internals/hooks'
 
 const { Provider: DactyloProvider, useContext: useDactylo } =
   createSafeContext<Dactylo>({
