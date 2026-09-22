@@ -7,10 +7,12 @@ import type { DactyloOptions } from '../dactylo'
 import { createSafeContext } from './internals/context'
 import { useStableReference } from './internals/hooks'
 
+/** The name of the composer root component. */
+export const COMPOSER_ROOT_NAME = 'Composer.Root'
+
 const { Provider: DactyloProvider, useContext: useDactylo } =
   createSafeContext<Dactylo>({
-    errorMsg:
-      '`<Composer.Root />` is missing. Did you forget to wrap your component with it?',
+    errorMsg: `\`<${COMPOSER_ROOT_NAME} />\` is missing. Did you forget to wrap your component with it?`,
   })
 
 /** Props for declaring the composer root. */
@@ -36,18 +38,13 @@ export const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
     const dactylo = useStableReference(new Dactylo({ config, placeholder }))
 
     return (
-      <div
-        {...props}
-        ref={forwardedRef}
-        dactylo-composer-root=''
-        style={{ position: 'relative' }}
-      >
+      <div {...props} ref={forwardedRef} dactylo-composer-root=''>
         <DactyloProvider value={dactylo}>{children}</DactyloProvider>
       </div>
     )
   },
 )
 
-ComposerRoot.displayName = 'ComposerRoot'
+ComposerRoot.displayName = COMPOSER_ROOT_NAME
 
 export { ComposerRoot as Root, useDactylo }
