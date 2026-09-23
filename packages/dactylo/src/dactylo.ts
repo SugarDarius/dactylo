@@ -3,7 +3,10 @@ import {
   DEFAULT_HEADING_PLACEHOLDER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
 } from './internals/constants'
-import { isMarkActiveInContext } from './internals/editor-context'
+import {
+  isMarkActiveInContext,
+  isSelectionActive,
+} from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
 import { DactyloError } from './internals/errors'
 import type {
@@ -54,7 +57,7 @@ export type DactyloCommand =
   /** Selection commands */
   | 'selection/focus'
   | 'selection/blur'
-
+  | 'selection/is-focused'
 /** Event emitted when a command is executed */
 export interface DactyloCommandEvent {
   /** The command that was executed. */
@@ -179,6 +182,16 @@ export interface DactyloSelectionCommands {
    * Call when the user leaves the editor surface (blur, tab) so keyboard input does not apply.
    */
   readonly blur: () => void
+
+  /**
+   * Whether the editor is focused or not.
+   *
+   * @example
+   * ```ts
+   * const isFocused = editor.selection.isFocused()
+   * ```
+   */
+  readonly isFocused: () => boolean
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -491,16 +504,42 @@ export class Dactylo {
    */
   get selection(): DactyloSelectionCommands {
     return {
-      /** Blurs the editor by clearing the selection. */
+      /**
+       * Blurs the editor by clearing the selection.
+       *
+       * @example
+       * ```ts
+       * editor.selection.blur()
+       * ```
+       */
       blur: (): void =>
         this.#safeExecuteCommand('selection/blur', () =>
           this.#pipeline.clearSelection('user'),
         ),
 
-      /** Focus the editor by placing a collapsed cursor at the end of the document. */
+      /**
+       * Focus the editor by placing a collapsed cursor at the end of the document.
+       *
+       * @example
+       * ```ts
+       * editor.selection.focus()
+       * ```
+       */
       focus: (): void =>
         this.#safeExecuteCommand('selection/focus', () =>
           this.#pipeline.putCursorSelectionAtDocumentEnd('user'),
+        ),
+      /**
+       * Whether the selection is active or not.
+       *
+       * @example
+       * ```ts
+       * const isFocused = editor.selection.isFocused()
+       * ```
+       */
+      isFocused: (): boolean =>
+        this.#safeExecuteCommand('selection/is-focused', () =>
+          isSelectionActive(this.#pipeline.context),
         ),
     }
   }

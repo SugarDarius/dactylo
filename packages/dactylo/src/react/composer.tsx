@@ -17,10 +17,7 @@ const { Provider: DactyloProvider, useContext: useDactylo } =
 
 /** Props for declaring the composer root. */
 export interface ComposerRootProps
-  extends React.HTMLAttributes<HTMLDivElement>, DactyloOptions {
-  // @note: placeholder prop for now
-  onChange: () => void
-}
+  extends React.HTMLAttributes<HTMLDivElement>, DactyloOptions {}
 
 /**
  * Adds the root of the composers.
