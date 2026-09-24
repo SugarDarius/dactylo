@@ -22,6 +22,18 @@ editor.subscribe((ctx) => {
 })
 ```
 
+```tsx
+import { Composer } from '@sugardarius/dactylo/react'
+
+export function Editor() {
+  return (
+    <Composer.Root placeholder='Write something…'>
+      <Composer.Editable autoFocus />
+    </Composer.Root>
+  )
+}
+```
+
 ## License
 
 This project is licensed under the [MIT License](https://choosealicense.com/licenses/mit/).
