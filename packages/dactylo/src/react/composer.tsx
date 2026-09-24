@@ -6,6 +6,9 @@ import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
 import { useStableCallback } from './internals/hooks'
 
+/** @internal */
+type OnStoreChange = () => void
+
 export const { Provider: DactyloProvider, useContext: useDactylo } =
   createSafeContext<Dactylo>({
     errorMsg: `\`<${COMPOSER_ROOT_NAME} />\` is missing. Did you forget to wrap your component with it?`,
@@ -23,8 +26,10 @@ export const { Provider: DactyloProvider, useContext: useDactylo } =
 export function useEditorContext(): EditorContext {
   const editor = useDactylo()
 
-  const { subscribe } = editor
-  const getSnapshot = editor.getContextSnapshot
+  const subscribe = useStableCallback((onStoreChange: OnStoreChange) =>
+    editor.subscribe(onStoreChange),
+  )
+  const getSnapshot = useStableCallback(() => editor.getContextSnapshot())
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
@@ -41,7 +46,9 @@ export function useEditorContext(): EditorContext {
 export function useIsFocused(): boolean {
   const editor = useDactylo()
 
-  const { subscribe } = editor
+  const subscribe = useStableCallback((onStoreChange: OnStoreChange) =>
+    editor.subscribe(onStoreChange),
+  )
   const getSnapshot = useStableCallback(() =>
     editor.selection.isFocused(editor.getContextSnapshot()),
   )
@@ -60,8 +67,8 @@ export function useIsFocused(): boolean {
 export function useCanEdit(): boolean {
   const editor = useDactylo()
 
-  const { subscribe } = editor.events.editable
-  const { canEdit } = editor
+  const subscribe = useStableCallback(editor.events.editable.subscribe)
+  const getSnapshot = useStableCallback(() => editor.canEdit())
 
-  return useSyncExternalStore(subscribe, canEdit, canEdit)
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
