@@ -1,4 +1,4 @@
-import { error } from './internals/console'
+import { error, warn } from './internals/console'
 import {
   DEFAULT_HEADING_PLACEHOLDER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
@@ -21,7 +21,7 @@ import { TransactionPipeline } from './internals/transaction'
 import type { Transaction, TransactionSource } from './internals/transaction'
 
 /** Static configuration for the editor. */
-export interface DactyloEditorConfig {
+export interface DactyloStaticConfig {
   /** Configuration for the headings */
   heading: {
     /** Placeholder text when a heading is created or empty. */
@@ -236,6 +236,12 @@ export interface DactyloOptions {
   /** Alias for {@link DactyloConfigOptions.editor.paragraph.placeholder}. */
   placeholder?: string
 
+  /**
+   * Whether the editor is editable.
+   * Defaults to `true`
+   */
+  editable?: boolean
+
   /** Config options to use for the internal components and delegates of the editor. */
   config?: DactyloConfigOptions
 }
@@ -271,8 +277,11 @@ export interface DactyloOptions {
  * ```
  */
 export class Dactylo {
+  /** Whether the editor is editable or not. */
+  #editable: boolean
+
   /** Static configuration for the editor. */
-  readonly #config: DactyloEditorConfig
+  readonly #staticConfig: DactyloStaticConfig
 
   /** Transaction pipeline to use for the editor */
   readonly #pipeline: TransactionPipeline
@@ -281,7 +290,8 @@ export class Dactylo {
   readonly #eventSources: DactyloEventSources
 
   constructor(options: DactyloOptions = {}) {
-    this.#config = {
+    this.#editable = options.editable ?? true
+    this.#staticConfig = {
       heading: {
         placeholder:
           options.config?.editor?.heading?.placeholder ??
@@ -315,6 +325,17 @@ export class Dactylo {
     executor: () => T,
     payload?: Record<string, unknown>,
   ): T {
+    if (!this.#editable) {
+      warn(
+        'Cannot perform command as editor is not editable. To make it editable please call the method `.setEditable(true)`',
+      )
+
+      throw DactyloError.from({
+        code: 'EDITOR_NOT_EDITABLE',
+        message: 'Cannot perform command as editor is not editable.',
+      })
+    }
+
     const startedAt = Date.now()
     try {
       const result = executor()
@@ -364,8 +385,8 @@ export class Dactylo {
    * console.log(config.heading.placeholder)
    * ```
    */
-  get config(): DactyloEditorConfig {
-    return this.#config
+  get config(): DactyloStaticConfig {
+    return this.#staticConfig
   }
 
   /** Returns the Api to interact with the events of the editor. */
@@ -599,6 +620,18 @@ export class Dactylo {
           isSelectionActive(context),
         ),
     }
+  }
+
+  /**
+   * Sets the editable state of the editor.
+   *
+   * @example
+   * ```ts
+   * editor.setEditable(true)
+   * ```
+   */
+  setEditable(editable: boolean): void {
+    this.#editable = editable
   }
 
   /**

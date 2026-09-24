@@ -32,6 +32,8 @@ export type DactyloErrorCode =
   | 'HISTORY_NOT_ALLOWED'
   /** Failed to resolve a block in the document */
   | 'UNKNOWN_BLOCK_IN_DOCUMENT'
+  /** Editor is not editable */
+  | 'EDITOR_NOT_EDITABLE'
 
 /**
  * Typed error for Dactylo operations.

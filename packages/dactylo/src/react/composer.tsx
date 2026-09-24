@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useCallback } from 'react'
+import { forwardRef } from 'react'
 
 import { Dactylo } from '../dactylo'
 import type { DactyloOptions } from '../dactylo'
@@ -34,8 +34,13 @@ export interface ComposerRootProps
  * ```
  */
 export const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
-  ({ children, placeholder, config, ...props }, forwardedRef) => {
-    const dactylo = useStableReference(new Dactylo({ config, placeholder }))
+  (
+    { children, editable = true, placeholder, config, ...props },
+    forwardedRef,
+  ) => {
+    const dactylo = useStableReference(
+      new Dactylo({ config, editable, placeholder }),
+    )
 
     return (
       <div {...props} ref={forwardedRef} dactylo-composer-root=''>
@@ -61,14 +66,6 @@ export const ComposerEditable = forwardRef<
 >(({ children, autoFocus, ...props }, forwardedRef) => {
   const dactylo = useDactylo()
 
-  /** Send input events to the editor's composer. */
-  const onBeforeInput = useCallback(
-    (event: React.InputEvent<HTMLDivElement>) => {
-      dactylo.composer.sendInput(event.nativeEvent)
-    },
-    [dactylo],
-  )
-
   /** Focus the editor after initial mount if `autoFocus` is true. */
   useIsomorphicLayoutEffect(() => {
     const isFocused = dactylo.selection.isFocused(dactylo.getContextSnapshot())
@@ -78,13 +75,7 @@ export const ComposerEditable = forwardRef<
   }, [])
 
   return (
-    <div
-      {...props}
-      ref={forwardedRef}
-      dactylo-composer-editable=''
-      suppressContentEditableWarning={true}
-      onBeforeInput={onBeforeInput}
-    >
+    <div {...props} ref={forwardedRef} dactylo-composer-editable=''>
       {children}
     </div>
   )
