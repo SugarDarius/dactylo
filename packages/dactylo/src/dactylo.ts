@@ -94,8 +94,17 @@ export interface DactyloErrorEvent {
   readonly payload?: Record<string, unknown>
 }
 
+/** Event emitted when the `editable` state changes in the editor. */
+export interface DactyloEditableEvent {
+  /** The editor state. */
+  readonly editable: boolean
+}
+
 /** Api to interact with the events of the editor. */
 export interface DactyloEventsApi {
+  /** Subscribes to the `editable` changes */
+  readonly editable: Observable<DactyloEditableEvent>
+
   /** Subscribes to the commands executed by the user/ai-agent. */
   readonly commands: Observable<DactyloCommandEvent>
 
@@ -114,6 +123,9 @@ export interface DactyloEventsApi {
 
 /** Event sources for {@link Dactylo} */
 export interface DactyloEventSources {
+  /** The event source for `editable` changes.  */
+  readonly editable: EventSource<DactyloEditableEvent>
+
   /** The event source for the commands executed by the user/ai-agent. */
   readonly commands: EventSource<DactyloCommandEvent>
 
@@ -310,6 +322,7 @@ export class Dactylo {
     })
     this.#eventSources = {
       commands: new EventSource<DactyloCommandEvent>(),
+      editable: new EventSource<DactyloEditableEvent>(),
       errors: new EventSource<DactyloErrorEvent>(),
     }
   }
@@ -414,6 +427,17 @@ export class Dactylo {
        * ```
        */
       commands: this.#eventSources.commands.observable,
+      /**
+       * Subscribe to the `editable` changes.
+       *
+       * @example
+       * ```ts
+       * const unsub = editor.events.editable.subscribe((event) => {
+       *  console.log(event.editable)
+       * })
+       * ```
+       */
+      editable: this.#eventSources.editable.observable,
       /**
        * Subscribes to the errors thrown from executed commands.
        *
@@ -643,6 +667,7 @@ export class Dactylo {
    */
   setEditable(editable: boolean): void {
     this.#editable = editable
+    this.#eventSources.editable.notify({ editable: this.#editable })
   }
 
   /**
