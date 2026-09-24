@@ -13,7 +13,8 @@
       "severity": {
         "NotUsingCatalog": "error",
         "MissingFromCatalog": "warn"
-      }
+      },
+      "packages": ["!@playgrounds/**"]
     }
   ]
 }

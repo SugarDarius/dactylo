@@ -336,13 +336,13 @@ export class Dactylo {
   #safeExecuteCommand<T>(
     command: DactyloCommand,
     executor: () => T,
-    options?: {
+    opts?: {
       /** Whether the command should bypass the `editable` guard */
       bypassEditableGuard?: boolean
       payload?: Record<string, unknown>
     },
   ): T {
-    const bypass = options?.bypassEditableGuard ?? false
+    const bypass = opts?.bypassEditableGuard ?? false
     if (!this.#editable && !bypass) {
       warn(
         `Cannot perform command \`${command}\` as editor is not editable. To make it editable please call the method \`.setEditable(true)\``,
@@ -351,7 +351,7 @@ export class Dactylo {
       throw DactyloError.from({
         code: 'EDITOR_NOT_EDITABLE',
         message: `Cannot perform command \`${command}\` as editor is not editable.`,
-        payload: options?.payload,
+        payload: opts?.payload,
       })
     }
 
@@ -363,7 +363,7 @@ export class Dactylo {
       this.#eventSources.commands.notify({
         command,
         durationMs,
-        payload: options?.payload,
+        payload: opts?.payload,
         result,
         status: 'success',
       })
@@ -379,13 +379,13 @@ export class Dactylo {
         command,
         durationMs,
         error: wrapped,
-        payload: options?.payload,
+        payload: opts?.payload,
       })
       this.#eventSources.commands.notify({
         command,
         durationMs,
         error: wrapped,
-        payload: options?.payload,
+        payload: opts?.payload,
         status: 'error',
       })
 
