@@ -1,6 +1,10 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useLayoutEffect, useEffect } from 'react'
+
+/** Prevents warning on SSR by falling back to `useEffect` when DOM isn't available. */
+export const useIsomorphicLayoutEffect =
+  typeof window === 'undefined' ? useEffect : useLayoutEffect
 
 /**
  * Creates a stable reference to a given value.

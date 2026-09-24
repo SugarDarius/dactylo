@@ -186,12 +186,11 @@ export interface DactyloSelectionCommands {
   /**
    * Whether the editor is focused or not.
    *
-   * @example
-   * ```ts
-   * const isFocused = editor.selection.isFocused()
-   * ```
+   * This is a pure function that does not mutate the editor context.
+   * To check if the editor is focused or not you need to call this function with
+   * the current editor context after each updates.
    */
-  readonly isFocused: () => boolean
+  readonly isFocused: (context: EditorContext) => boolean
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -369,77 +368,127 @@ export class Dactylo {
     return this.#config
   }
 
-  /**
-   * Returns the Api to interact with the events of the editor.
-   *
-   * @example
-   * ```ts
-   * const unsub = editor.events.history.subscribe((event) => {
-   *  console.log(event.canUndo, event.canRedo)
-   * })
-   * ```
-   */
+  /** Returns the Api to interact with the events of the editor. */
   get events(): DactyloEventsApi {
     return {
-      /** Subscribes to the commands executed by the user/ai-agent. */
+      /**
+       * Subscribes to the commands executed by the user/ai-agent.
+       *
+       * @example
+       * ```ts
+       * const unsub = editor.events.commands.subscribe((event) => {
+       *  console.log(event.command, event.status)
+       * })
+       * ```
+       */
       commands: this.#eventSources.commands.observable,
-      /** Subscribes to the errors thrown from executed commands. */
+      /**
+       * Subscribes to the errors thrown from executed commands.
+       *
+       * @example
+       * ```ts
+       * const unsub = editor.events.errors.subscribe((event) => {
+       *  console.log(event.command, event.error)
+       * })
+       * ```
+       */
       errors: this.#eventSources.errors.observable,
-      /** Subscribes to the history stack changes. */
+      /**
+       * Subscribes to the history stack changes.
+       *
+       * @example
+       * ```ts
+       * const unsub = editor.events.history.subscribe((event) => {
+       *  console.log(event.canUndo, event.canRedo)
+       * })
+       * ```
+       */
       history: this.#pipeline.events.history,
-      /** Subscribes to applied transactions. */
+      /**
+       * Subscribes to applied transactions.
+       *
+       * @example
+       * ```ts
+       * const unsub = editor.events.transactionDidApply.subscribe((event) => {
+       *  console.log(event.transaction)
+       * })
+       * ```
+       */
       transactionDidApply: this.#pipeline.events.transactionDidApply,
-      /** Subscribes to rejected transactions. */
+      /**
+       * Subscribes to rejected transactions.
+       *
+       * @example
+       * ```ts
+       * const unsub = editor.events.transactionDidReject.subscribe((event) => {
+       *  console.log(event.transaction)
+       * })
+       * ```
+       */
       transactionDidReject: this.#pipeline.events.transactionDidReject,
     }
   }
 
-  /**
-   * Returns the commands to interact with the history of the editor.
-   *
-   * @example
-   * ```ts
-   * const canUndo = editor.history.canUndo()
-   * if (canUndo) {
-   *  editor.history.undo()
-   * }
-   * ```
-   */
+  /** Returns the commands to interact with the history of the editor. */
   get history(): DactyloHistoryCommands {
     return {
-      /** Whether at least one redo entry is available. */
+      /**
+       * Whether at least one redo entry is available.
+       *
+       * @example
+       * ```ts
+       * const canRedo = editor.history.canRedo()
+       * if (canRedo) {
+       *  editor.history.redo()
+       * }
+       * ```
+       */
       canRedo: (): boolean =>
         this.#safeExecuteCommand('history/can-redo', () =>
           this.#pipeline.canRedo(),
         ),
 
-      /** Whether at least one undo entry is available. */
+      /**
+       * Whether at least one undo entry is available.
+       *
+       * @example
+       * ```ts
+       * const canUndo = editor.history.canUndo()
+       * if (canUndo) {
+       *  editor.history.undo()
+       * }
+       * ```
+       */
       canUndo: (): boolean =>
         this.#safeExecuteCommand('history/can-undo', () =>
           this.#pipeline.canUndo(),
         ),
 
-      /** Re-applies the newest redo entry via the transaction pipeline. */
+      /**
+       * Re-applies the newest redo entry via the transaction pipeline.
+       *
+       * @example
+       * ```ts
+       * editor.history.redo()
+       * ```
+       */
       redo: (): void =>
         this.#safeExecuteCommand('history/redo', () => this.#pipeline.redo()),
 
-      /** Applies the newest undo entry via the transaction pipeline. */
+      /**
+       * Applies the newest undo entry via the transaction pipeline.
+       *
+       * @example
+       * ```ts
+       * editor.history.undo()
+       * ```
+       */
       undo: (): void =>
         this.#safeExecuteCommand('history/undo', () => this.#pipeline.undo()),
     }
   }
 
-  /**
-   * Returns the commands to interact with the marks of the editor.
-   *
-   * @example
-   * ```ts
-   * editor.marks.toggle('bold')
-   * editor.marks.toggle('italic', 'ai-agent')
-   *
-   * const isBoldActive = editor.marks.isActive('bold', editor.getContextSnapshot())
-   * ```
-   */
+  /** Returns the commands to interact with the marks of the editor. */
   get marks(): DactyloMarksCommands {
     return {
       /**
@@ -449,6 +498,11 @@ export class Dactylo {
        * This is a pure function that does not mutate the editor context.
        * To check if a mark is active or not you need to call this function with
        * the current editor context after each updates.
+       *
+       * @example
+       * ```ts
+       * const isBoldActive = editor.marks.isActive('bold', editor.getContextSnapshot())
+       * ```
        */
       isActive: (markKey: MarkKey, context: EditorContext): boolean =>
         this.#safeExecuteCommand(
@@ -457,7 +511,14 @@ export class Dactylo {
           { mark: markKey },
         ),
 
-      /** Toggle a mark on or off via the pipeline. */
+      /**
+       * Toggle a mark on or off via the pipeline.
+       *
+       * @example
+       * ```ts
+       * editor.marks.toggle('bold')
+       * ```
+       */
       toggle: (
         markKey: MarkKey,
         source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
@@ -470,21 +531,20 @@ export class Dactylo {
     }
   }
 
-  /**
-   * Returns the commands to interact with the composer of the editor.
-   *
-   * @example
-   * ```ts
-   *
-   * const handleBeforeInput = (event: InputEvent) => {
-   *  editor.composer.sendInput(event)
-   * }
-   * <div onKeyDown={handleBeforeInput} contentEditable={true} />
-   * ```
-   */
+  /** Returns the commands to interact with the composer of the editor. */
   get composer(): DactyloComposerCommands {
     return {
-      /** Sends an input event to the editor and returns a boolean indicating whether the event was processed or not. */
+      /**
+       * Sends an input event to the editor and returns a boolean indicating whether the event was processed or not.
+       * @example
+       * ```ts
+       *
+       * const handleBeforeInput = (event: InputEvent) => {
+       *  editor.composer.sendInput(event)
+       * }
+       * <div onKeyDown={handleBeforeInput} contentEditable={true} />
+       * ```
+       */
       sendInput: (event: InputEvent): boolean =>
         this.#safeExecuteCommand(
           'composer/send-input',
@@ -494,14 +554,7 @@ export class Dactylo {
     }
   }
 
-  /**
-   * Returns the commands to interact with the selection of the editor.
-   *
-   * @example
-   * ```ts
-   * editor.selection.focus()
-   * ```
-   */
+  /**  Returns the commands to interact with the selection of the editor. */
   get selection(): DactyloSelectionCommands {
     return {
       /**
@@ -532,14 +585,18 @@ export class Dactylo {
       /**
        * Whether the selection is active or not.
        *
+       * This is a pure function that does not mutate the editor context.
+       * To check if the editor is focused or not you need to call this function with
+       * the current editor context after each updates.
+       *
        * @example
        * ```ts
-       * const isFocused = editor.selection.isFocused()
+       * const isFocused = editor.selection.isFocused(editor.getContextSnapshot())
        * ```
        */
-      isFocused: (): boolean =>
+      isFocused: (context: EditorContext): boolean =>
         this.#safeExecuteCommand('selection/is-focused', () =>
-          isSelectionActive(this.#pipeline.context),
+          isSelectionActive(context),
         ),
     }
   }
