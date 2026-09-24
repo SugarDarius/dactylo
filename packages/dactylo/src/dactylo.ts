@@ -323,16 +323,22 @@ export class Dactylo {
   #safeExecuteCommand<T>(
     command: DactyloCommand,
     executor: () => T,
-    payload?: Record<string, unknown>,
+    options?: {
+      /** Whether the command should bypass the `editable` guard */
+      bypassEditableGuard?: boolean
+      payload?: Record<string, unknown>
+    },
   ): T {
-    if (!this.#editable) {
+    const bypass = options?.bypassEditableGuard ?? false
+    if (!this.#editable && !bypass) {
       warn(
-        'Cannot perform command as editor is not editable. To make it editable please call the method `.setEditable(true)`',
+        `Cannot perform command \`${command}\` as editor is not editable. To make it editable please call the method \`.setEditable(true)\``,
       )
 
       throw DactyloError.from({
         code: 'EDITOR_NOT_EDITABLE',
-        message: 'Cannot perform command as editor is not editable.',
+        message: `Cannot perform command \`${command}\` as editor is not editable.`,
+        payload: options?.payload,
       })
     }
 
@@ -344,7 +350,7 @@ export class Dactylo {
       this.#eventSources.commands.notify({
         command,
         durationMs,
-        payload,
+        payload: options?.payload,
         result,
         status: 'success',
       })
@@ -360,18 +366,23 @@ export class Dactylo {
         command,
         durationMs,
         error: wrapped,
-        payload,
+        payload: options?.payload,
       })
       this.#eventSources.commands.notify({
         command,
         durationMs,
         error: wrapped,
-        payload,
+        payload: options?.payload,
         status: 'error',
       })
 
       throw err
     }
+  }
+
+  /** Returns whether the editor is editable. */
+  get isEditable(): boolean {
+    return this.#editable
   }
 
   /**
@@ -529,7 +540,7 @@ export class Dactylo {
         this.#safeExecuteCommand(
           'marks/is-active',
           () => isMarkActiveInContext(context, markKey),
-          { mark: markKey },
+          { payload: { mark: markKey } },
         ),
 
       /**
@@ -547,7 +558,7 @@ export class Dactylo {
         this.#safeExecuteCommand(
           'marks/toggle',
           () => this.#pipeline.toggleMark(markKey, source),
-          { mark: markKey, source },
+          { payload: { mark: markKey, source } },
         ),
     }
   }
@@ -644,9 +655,19 @@ export class Dactylo {
    * ```
    */
   getContextSnapshot(): EditorContext {
-    return this.#safeExecuteCommand('editor-context/get-snapshot', () => ({
-      ...this.#pipeline.context,
-    }))
+    return this.#safeExecuteCommand(
+      'editor-context/get-snapshot',
+      () => ({
+        ...this.#pipeline.context,
+      }),
+      {
+        /**
+         * Bypassing as in any case we should be able to get the context snapshot
+         * as a not editable editor is a readonly instance.
+         */
+        bypassEditableGuard: true,
+      },
+    )
   }
 
   /**
@@ -661,8 +682,16 @@ export class Dactylo {
    * ```
    */
   subscribe(callback: SubscriberCallback<EditorContext>): UnsubscribeCallback {
-    return this.#safeExecuteCommand('editor-context/subscribe', () =>
-      this.#pipeline.events.context.subscribe(callback),
+    return this.#safeExecuteCommand(
+      'editor-context/subscribe',
+      () => this.#pipeline.events.context.subscribe(callback),
+      {
+        /**
+         * Bypassing to avoid to crash UI libraries when subscribing
+         * at the first render as a not editable editor is a readonly instance.
+         */
+        bypassEditableGuard: true,
+      },
     )
   }
 }

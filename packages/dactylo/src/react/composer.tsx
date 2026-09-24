@@ -56,7 +56,7 @@ export const COMPOSER_EDITABLE_NAME = 'Composer.Editable'
 
 /** Props for declaring the composer editable component. */
 export interface ComposerEditableProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Whether to place the cursor in the editor after initial mount. */
+  /** Whether to place the cursor in the editor at the document end  after initial mount. */
   autoFocus?: boolean
 }
 
@@ -68,8 +68,10 @@ export const ComposerEditable = forwardRef<
 
   /** Focus the editor after initial mount if `autoFocus` is true. */
   useIsomorphicLayoutEffect(() => {
+    const { isEditable } = dactylo
     const isFocused = dactylo.selection.isFocused(dactylo.getContextSnapshot())
-    if (autoFocus && !isFocused) {
+
+    if (autoFocus && !isFocused && isEditable) {
       dactylo.selection.focus()
     }
   }, [])
