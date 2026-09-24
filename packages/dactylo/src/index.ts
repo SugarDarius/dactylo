@@ -2,10 +2,14 @@ export {
   Dactylo,
   type DactyloConfigOptions,
   type DactyloEventsApi,
+  type DactyloCommandEvent,
+  type DactyloEditableEvent,
   type DactyloHistoryCommands,
-  type DactyloKeyboardCommands,
+  type DactyloComposerCommands,
   type DactyloMarksCommands,
   type DactyloOptions,
+  type DactyloSelectionCommands,
+  type DactyloStaticConfig,
 } from './dactylo'
 export type {
   Block,

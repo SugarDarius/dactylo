@@ -331,7 +331,7 @@ export class Dactylo {
    * Safely executes a command and handle gracefully errors.
    * When it rejects, the error is wrapped into a {@link DactyloError} and re-thrown,
    * and the event `errors` is emitted with it.
-   * Emits an `commands` event when it settles.
+   * Emits a `commands` event when it settles.
    */
   #safeExecuteCommand<T>(
     command: DactyloCommand,
@@ -391,11 +391,6 @@ export class Dactylo {
 
       throw err
     }
-  }
-
-  /** Returns whether the editor is editable. */
-  get isEditable(): boolean {
-    return this.#editable
   }
 
   /**
@@ -658,7 +653,21 @@ export class Dactylo {
   }
 
   /**
+   * Returns whether the editor is editable.
+   *
+   * @example
+   * ```ts
+   * const canEdit = editor.canEdit()
+   * console.log(canEdit))
+   * ```
+   */
+  canEdit(): boolean {
+    return this.#editable
+  }
+
+  /**
    * Sets the editable state of the editor.
+   * Emits an `editable` event when the editor `editable` change.
    *
    * @example
    * ```ts
@@ -666,6 +675,11 @@ export class Dactylo {
    * ```
    */
   setEditable(editable: boolean): void {
+    /** no-op if the value is the same as the current `editable` state. */
+    if (this.#editable === editable) {
+      return
+    }
+
     this.#editable = editable
     this.#eventSources.editable.notify({ editable: this.#editable })
   }
