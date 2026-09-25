@@ -21,11 +21,8 @@ import {
   COMPOSER_ROOT_ATTR,
   COMPOSER_ROOT_NAME,
 } from './internals/constants'
-import {
-  useComposableRefs,
-  useIsomorphicLayoutEffect,
-  useStableValue,
-} from './internals/hooks'
+import { useIsomorphicLayoutEffect, useStableValue } from './internals/hooks'
+import { mergeRefs } from './internals/utils'
 import type {
   ComposerRootProps,
   ComposerEditableProps,
@@ -73,7 +70,7 @@ const ComposerParagraphBlock = forwardRef<
   const id = useId()
 
   const ref = useRef<HTMLDivElement>(null)
-  const mergedRefs = useComposableRefs(forwardedRef, ref)
+  const mergedRefs = mergeRefs(forwardedRef, ref)
 
   const canEdit = useCanEdit()
 
