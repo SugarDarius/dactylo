@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useId, useMemo } from 'react'
+import { forwardRef, useId, useMemo, useRef } from 'react'
 
 import { Dactylo } from '../dactylo'
 import {
@@ -21,7 +21,11 @@ import {
   COMPOSER_ROOT_ATTR,
   COMPOSER_ROOT_NAME,
 } from './internals/constants'
-import { useIsomorphicLayoutEffect, useStableValue } from './internals/hooks'
+import {
+  useComposableRefs,
+  useIsomorphicLayoutEffect,
+  useStableValue,
+} from './internals/hooks'
 import type {
   ComposerRootProps,
   ComposerEditableProps,
@@ -67,6 +71,10 @@ const ComposerParagraphBlock = forwardRef<
   ComposerParagraphBlockProps
 >(({ block, ...attributes }, forwardedRef) => {
   const id = useId()
+
+  const ref = useRef<HTMLDivElement>(null)
+  const mergedRefs = useComposableRefs(forwardedRef, ref)
+
   const canEdit = useCanEdit()
 
   // @todo: add active state and handlers
@@ -75,7 +83,7 @@ const ComposerParagraphBlock = forwardRef<
   return (
     <div
       {...attributes}
-      ref={forwardedRef}
+      ref={mergedRefs}
       {...{
         [COMPOSER_PARAGRAPH_BLOCK_ATTR]: '',
         [COMPOSER_PARAGRAPH_BLOCK_ID_ATTR]: block.id,
