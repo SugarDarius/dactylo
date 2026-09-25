@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  description: 'A playground for the Auth SDK',
-  title: 'Auth SDK Kitchen Sink',
+  description: 'A playground for Dactylo',
+  title: 'Dactylo Next.js Kitchen Sink',
 }
 
 export default function RootLayout({
