@@ -15,7 +15,8 @@ import {
   COMPOSER_EDITABLE_ATTR,
   COMPOSER_EDITABLE_NAME,
   COMPOSER_PARAGRAPH_BLOCK_ATTR,
-  COMPOSER_PARAGRAPH_BLOCK_ATTR_ID,
+  COMPOSER_PARAGRAPH_BLOCK_ID_ATTR,
+  COMPOSER_PARAGRAPH_BLOCK_CONTENT_ATTR,
   COMPOSER_PARAGRAPH_BLOCK_NAME,
   COMPOSER_ROOT_ATTR,
   COMPOSER_ROOT_NAME,
@@ -77,7 +78,7 @@ const ComposerParagraphBlock = forwardRef<
       ref={forwardedRef}
       {...{
         [COMPOSER_PARAGRAPH_BLOCK_ATTR]: '',
-        [COMPOSER_PARAGRAPH_BLOCK_ATTR_ID]: block.id,
+        [COMPOSER_PARAGRAPH_BLOCK_ID_ATTR]: block.id,
       }}
     >
       <div
@@ -87,7 +88,10 @@ const ComposerParagraphBlock = forwardRef<
         aria-multiline={canEdit ? 'true' : undefined}
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
-        {...{ [COMPOSER_CONTENT_EDITABLE_ATTR]: canEdit ? 'true' : 'false' }}
+        {...{
+          [COMPOSER_CONTENT_EDITABLE_ATTR]: canEdit ? 'true' : 'false',
+          [COMPOSER_PARAGRAPH_BLOCK_CONTENT_ATTR]: '',
+        }}
       >
         {/** @todo add placeholder and inline content. */}
       </div>
