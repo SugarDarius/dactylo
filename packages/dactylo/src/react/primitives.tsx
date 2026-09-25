@@ -34,13 +34,13 @@ export const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
     { children, editable = true, placeholder, config, ...props },
     forwardedRef,
   ) => {
-    const editor = useStableValue(
-      new Dactylo({ config, editable, placeholder }),
-    )
+    const ctx = useStableValue({
+      editor: new Dactylo({ config, editable, placeholder }),
+    })
 
     return (
       <div {...props} ref={forwardedRef} dactylo-composer-root=''>
-        <DactyloProvider value={editor}>{children}</DactyloProvider>
+        <DactyloProvider value={ctx}>{children}</DactyloProvider>
       </div>
     )
   },
@@ -67,7 +67,7 @@ export const ComposerEditable = forwardRef<
   HTMLDivElement,
   ComposerEditableProps
 >(({ children, autoFocus, translate = 'no', ...props }, forwardedRef) => {
-  const editor = useDactylo()
+  const { editor } = useDactylo()
 
   const canEdit = useCanEdit()
   const isFocused = useIsFocused()

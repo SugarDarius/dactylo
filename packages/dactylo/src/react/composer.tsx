@@ -6,11 +6,17 @@ import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
 import { useStableCallback } from './internals/hooks'
 
-/** @internal */
+/** @private */
 type OnStoreChange = () => void
 
+/** Dactylo context. */
+export interface DactyloContext {
+  /** The editor instance. */
+  editor: Dactylo
+}
+
 export const { Provider: DactyloProvider, useContext: useDactylo } =
-  createSafeContext<Dactylo>({
+  createSafeContext<DactyloContext>({
     errorMsg: `\`<${COMPOSER_ROOT_NAME} />\` is missing. Did you forget to wrap your component with it?`,
   })
 
@@ -24,10 +30,10 @@ export const { Provider: DactyloProvider, useContext: useDactylo } =
  * ```
  */
 export function useEditorContext(): EditorContext {
-  const editor = useDactylo()
+  const { editor } = useDactylo()
 
-  const subscribe = useStableCallback((onStoreChange: OnStoreChange) =>
-    editor.subscribe(onStoreChange),
+  const subscribe = useStableCallback((cb: OnStoreChange) =>
+    editor.subscribe(() => cb()),
   )
   const getSnapshot = useStableCallback(() => editor.getContextSnapshot())
 
@@ -44,10 +50,10 @@ export function useEditorContext(): EditorContext {
  * ```
  */
 export function useIsFocused(): boolean {
-  const editor = useDactylo()
+  const { editor } = useDactylo()
 
-  const subscribe = useStableCallback((onStoreChange: OnStoreChange) =>
-    editor.subscribe(onStoreChange),
+  const subscribe = useStableCallback((cb: OnStoreChange) =>
+    editor.subscribe(() => cb()),
   )
   const getSnapshot = useStableCallback(() =>
     editor.selection.isFocused(editor.getContextSnapshot()),
@@ -65,9 +71,11 @@ export function useIsFocused(): boolean {
  * ```
  */
 export function useCanEdit(): boolean {
-  const editor = useDactylo()
+  const { editor } = useDactylo()
 
-  const subscribe = useStableCallback(editor.events.editable.subscribe)
+  const subscribe = useStableCallback((cb: OnStoreChange) =>
+    editor.events.editable.subscribe(() => cb()),
+  )
   const getSnapshot = useStableCallback(() => editor.canEdit())
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)

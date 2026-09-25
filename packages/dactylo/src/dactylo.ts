@@ -677,6 +677,7 @@ export class Dactylo {
   setEditable(editable: boolean): void {
     /** no-op if the value is the same as the current `editable` state. */
     if (this.#editable === editable) {
+      // @todo: add warn once
       return
     }
 
