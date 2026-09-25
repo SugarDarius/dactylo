@@ -1,5 +1,5 @@
 import type { DactyloOptions } from '../dactylo'
-import type { BlockId } from '../internals/blocks'
+import type { ParagraphBlock } from '../internals/blocks'
 
 // --- Composer.Root ─────────────────────────────────────────-------
 
@@ -12,7 +12,7 @@ export interface ComposerRootProps
 /** Props for declaring a block component. */
 export interface ComposerBlockProps {
   /** Block id rendered by this surface. */
-  blockId: BlockId
+  block: ParagraphBlock
 }
 
 /** Props for declaring a paragraph block component. */

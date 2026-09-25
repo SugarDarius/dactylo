@@ -64,18 +64,12 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 const ComposerParagraphBlock = forwardRef<
   HTMLDivElement,
   ComposerParagraphBlockProps
->(({ blockId, ...attributes }, forwardedRef) => {
+>(({ block, ...attributes }, forwardedRef) => {
   const id = useId()
-  const { state } = useEditorContext()
   const canEdit = useCanEdit()
 
   // @todo: add active state and handlers
   // @todo: add sync selection
-
-  const block = state.blocks.get(blockId)
-  if (!block) {
-    return null
-  }
 
   return (
     <div
@@ -83,7 +77,7 @@ const ComposerParagraphBlock = forwardRef<
       ref={forwardedRef}
       {...{
         [COMPOSER_PARAGRAPH_BLOCK_ATTR]: '',
-        [COMPOSER_PARAGRAPH_BLOCK_ATTR_ID]: blockId,
+        [COMPOSER_PARAGRAPH_BLOCK_ATTR_ID]: block.id,
       }}
     >
       <div
@@ -122,7 +116,7 @@ function Blocks(attributes: React.HTMLAttributes<HTMLDivElement>) {
           items.push(
             <ComposerParagraphBlock
               key={blockId}
-              blockId={blockId}
+              block={block}
               {...attributes}
             />,
           )
