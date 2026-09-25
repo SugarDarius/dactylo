@@ -10,11 +10,20 @@ import {
   useSelectionCommands,
 } from './composer'
 import {
+  COMPOSER_EDITABLE_ATTR,
   COMPOSER_EDITABLE_NAME,
+  COMPOSER_PARAGRAPH_BLOCK_ATTR,
+  COMPOSER_PARAGRAPH_BLOCK_ATTR_ID,
+  COMPOSER_PARAGRAPH_BLOCK_NAME,
+  COMPOSER_ROOT_ATTR,
   COMPOSER_ROOT_NAME,
 } from './internals/constants'
 import { useIsomorphicLayoutEffect, useStableValue } from './internals/hooks'
-import type { ComposerRootProps, ComposerEditableProps } from './types'
+import type {
+  ComposerRootProps,
+  ComposerEditableProps,
+  ComposerParagraphBlockProps,
+} from './types'
 
 // --- Composer.Root ─────────────────────────────────────────-------
 
@@ -39,7 +48,7 @@ export const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
     })
 
     return (
-      <div {...props} ref={forwardedRef} dactylo-composer-root=''>
+      <div {...props} ref={forwardedRef} {...{ [COMPOSER_ROOT_ATTR]: '' }}>
         <DactyloProvider value={ctx}>{children}</DactyloProvider>
       </div>
     )
@@ -49,6 +58,34 @@ export const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
 ComposerRoot.displayName = COMPOSER_ROOT_NAME
 
 // --- Composer.Editable ─────────────────────────────────────────---
+
+/** Adds a paragraph block to the composer. */
+export const ComposerParagraphBlock = forwardRef<
+  HTMLDivElement,
+  ComposerParagraphBlockProps
+>(({ children, blockId, ...props }, forwardedRef) => {
+  const canEdit = useCanEdit()
+
+  // @todo: add active state and handlers
+  // @todo: add sync selection
+
+  return (
+    <div
+      {...props}
+      ref={forwardedRef}
+      {...{
+        [COMPOSER_PARAGRAPH_BLOCK_ATTR]: '',
+        [COMPOSER_PARAGRAPH_BLOCK_ATTR_ID]: blockId,
+      }}
+      contentEditable={canEdit ? 'true' : undefined}
+      suppressContentEditableWarning
+    >
+      {children}
+    </div>
+  )
+})
+
+ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
 /**
  * Adds the editable area of the composer.
@@ -83,7 +120,7 @@ export const ComposerEditable = forwardRef<
     <div
       {...props}
       ref={forwardedRef}
-      dactylo-composer-editable=''
+      {...{ [COMPOSER_EDITABLE_ATTR]: '' }}
       role={canEdit ? 'textbox' : undefined}
       aria-multiline={canEdit ? 'true' : undefined}
       translate={translate}
@@ -95,4 +132,8 @@ export const ComposerEditable = forwardRef<
 
 ComposerEditable.displayName = COMPOSER_EDITABLE_NAME
 
-export { ComposerRoot as Root, ComposerEditable as Editable }
+export {
+  ComposerRoot as Root,
+  ComposerEditable as Editable,
+  ComposerParagraphBlock as ParagraphBlock,
+}

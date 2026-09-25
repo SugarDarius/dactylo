@@ -1,4 +1,8 @@
-export type { ComposerRootProps, ComposerEditableProps } from './types'
+export type {
+  ComposerRootProps,
+  ComposerEditableProps,
+  ComposerParagraphBlockProps,
+} from './types'
 export * as Composer from './primitives'
 export {
   useDactylo,
