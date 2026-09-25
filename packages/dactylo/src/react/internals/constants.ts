@@ -16,3 +16,7 @@ export const COMPOSER_PARAGRAPH_BLOCK_NAME = 'Composer.ParagraphBlock'
 export const COMPOSER_PARAGRAPH_BLOCK_ATTR = 'dactylo-composer-paragraph-block'
 export const COMPOSER_PARAGRAPH_BLOCK_ATTR_ID =
   'dactylo-composer-paragraph-block-id'
+
+/** The attribute of a composer content editable component. */
+export const COMPOSER_CONTENT_EDITABLE_ATTR =
+  'dactylo-composer-content-editable'

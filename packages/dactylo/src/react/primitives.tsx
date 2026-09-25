@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useMemo } from 'react'
+import { forwardRef, useId, useMemo } from 'react'
 
 import { Dactylo } from '../dactylo'
 import {
@@ -11,6 +11,7 @@ import {
   useSelectionCommands,
 } from './composer'
 import {
+  COMPOSER_CONTENT_EDITABLE_ATTR,
   COMPOSER_EDITABLE_ATTR,
   COMPOSER_EDITABLE_NAME,
   COMPOSER_PARAGRAPH_BLOCK_ATTR,
@@ -63,7 +64,8 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 const ComposerParagraphBlock = forwardRef<
   HTMLDivElement,
   ComposerParagraphBlockProps
->(({ children, blockId, ...props }, forwardedRef) => {
+>(({ blockId, ...attributes }, forwardedRef) => {
+  const id = useId()
   const { state } = useEditorContext()
   const canEdit = useCanEdit()
 
@@ -77,17 +79,24 @@ const ComposerParagraphBlock = forwardRef<
 
   return (
     <div
-      {...props}
+      {...attributes}
       ref={forwardedRef}
       {...{
         [COMPOSER_PARAGRAPH_BLOCK_ATTR]: '',
         [COMPOSER_PARAGRAPH_BLOCK_ATTR_ID]: blockId,
       }}
-      contentEditable={canEdit ? 'true' : undefined}
-      suppressContentEditableWarning
-      style={{ outlineColor: 'transparent' }}
     >
-      {children}
+      <div
+        id={id}
+        role={canEdit ? 'textbox' : undefined}
+        aria-roledescription='paragraph'
+        aria-multiline={canEdit ? 'true' : undefined}
+        contentEditable={canEdit ? 'true' : undefined}
+        suppressContentEditableWarning
+        {...{ [COMPOSER_CONTENT_EDITABLE_ATTR]: canEdit ? 'true' : 'false' }}
+      >
+        {/** @todo add placeholder and inline content. */}
+      </div>
     </div>
   )
 })
@@ -95,7 +104,7 @@ const ComposerParagraphBlock = forwardRef<
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
 /** Renders the composed blocks. */
-function Blocks() {
+function Blocks(attributes: React.HTMLAttributes<HTMLDivElement>) {
   const { state } = useEditorContext()
 
   // @todo: add performance rendering optimization
@@ -110,17 +119,23 @@ function Blocks() {
 
       switch (block.__type) {
         case 'paragraph': {
-          items.push(<ComposerParagraphBlock key={blockId} blockId={blockId} />)
+          items.push(
+            <ComposerParagraphBlock
+              key={blockId}
+              blockId={blockId}
+              {...attributes}
+            />,
+          )
           break
         }
         default: {
-          continue
+          break
         }
       }
     }
 
     return items
-  }, [state.blockOrderById, state.blocks])
+  }, [state.blockOrderById, state.blocks, attributes])
 
   return blocks
 }
@@ -139,7 +154,16 @@ function Blocks() {
  * ```
  */
 const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
-  ({ children, autoFocus, translate = 'no', ...props }, forwardedRef) => {
+  (
+    {
+      children,
+      autoFocus,
+      translate = 'no',
+      spellCheck = 'true',
+      ...attributes
+    },
+    forwardedRef,
+  ) => {
     const canEdit = useCanEdit()
     const isFocused = useIsFocused()
 
@@ -154,14 +178,13 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
 
     return (
       <div
-        {...props}
+        {...attributes}
         ref={forwardedRef}
         {...{ [COMPOSER_EDITABLE_ATTR]: '' }}
-        role={canEdit ? 'textbox' : undefined}
-        aria-multiline={canEdit ? 'true' : undefined}
         translate={translate}
+        spellCheck={spellCheck}
       >
-        <Blocks />
+        <Blocks translate={translate} spellCheck={spellCheck} />
         {children}
       </div>
     )
