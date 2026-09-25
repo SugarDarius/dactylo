@@ -6,8 +6,8 @@ import { Dactylo } from '../dactylo'
 import {
   DactyloProvider,
   useCanEdit,
-  useDactylo,
   useIsFocused,
+  useSelectionCommands,
 } from './composer'
 import {
   COMPOSER_EDITABLE_NAME,
@@ -67,15 +67,15 @@ export const ComposerEditable = forwardRef<
   HTMLDivElement,
   ComposerEditableProps
 >(({ children, autoFocus, translate = 'no', ...props }, forwardedRef) => {
-  const { editor } = useDactylo()
-
   const canEdit = useCanEdit()
   const isFocused = useIsFocused()
+
+  const { focus } = useSelectionCommands()
 
   /** Focus the editor after initial mount if `autoFocus` is true. */
   useIsomorphicLayoutEffect(() => {
     if (autoFocus && !isFocused && canEdit) {
-      editor.selection.focus()
+      focus()
     }
   }, [canEdit, isFocused])
 

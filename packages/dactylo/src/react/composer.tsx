@@ -33,7 +33,9 @@ export function useEditorContext(): EditorContext {
   const { editor } = useDactylo()
 
   const subscribe = useStableCallback((cb: OnStoreChange) =>
-    editor.subscribe(() => cb()),
+    editor.subscribe(() => {
+      cb()
+    }),
   )
   const getSnapshot = useStableCallback(() => editor.getContextSnapshot())
 
@@ -53,7 +55,9 @@ export function useIsFocused(): boolean {
   const { editor } = useDactylo()
 
   const subscribe = useStableCallback((cb: OnStoreChange) =>
-    editor.subscribe(() => cb()),
+    editor.subscribe(() => {
+      cb()
+    }),
   )
   const getSnapshot = useStableCallback(() => editor.selection.isFocused())
 
@@ -72,9 +76,32 @@ export function useCanEdit(): boolean {
   const { editor } = useDactylo()
 
   const subscribe = useStableCallback((cb: OnStoreChange) =>
-    editor.events.editable.subscribe(() => cb()),
+    editor.events.editable.subscribe(() => {
+      cb()
+    }),
   )
   const getSnapshot = useStableCallback(() => editor.canEdit())
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns the selection commands.
+ *
+ * @example
+ * ```tsx
+ * const { focus } = useSelectionCommands()
+ *
+ * useLayoutEffect(() => {
+ *  focus()
+ * }, [])
+ * ```
+ */
+export function useSelectionCommands() {
+  const { editor } = useDactylo()
+
+  const focus = useStableCallback(() => editor.selection.focus())
+  const blur = useStableCallback(() => editor.selection.blur())
+
+  return { blur, focus } as const
 }

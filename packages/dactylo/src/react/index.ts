@@ -5,4 +5,5 @@ export {
   useEditorContext,
   useIsFocused,
   useCanEdit,
+  useSelectionCommands,
 } from './composer'
