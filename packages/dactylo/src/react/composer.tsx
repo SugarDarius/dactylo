@@ -1,7 +1,9 @@
 import { useSyncExternalStore } from 'react'
 
 import type { Dactylo } from '../dactylo'
+import type { BlockId } from '../internals/blocks'
 import type { EditorContext } from '../internals/editor-context'
+import { isCursorSelection } from '../internals/selection'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
 import { useStableCallback } from './internals/hooks'
@@ -39,6 +41,31 @@ export function useEditorContext(): EditorContext {
   )
   const getSnapshot = useStableCallback(() => editor.getContext())
 
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns whether the block with the given ID has an active cursor.
+ *
+ * @example
+ * ```tsx
+ * const withActiveCursor = useIsBlockWithActiveCursor(blockId)
+ * console.log(isActive)
+ * ```
+ */
+export function useIsBlockWithActiveCursor(blockId: BlockId): boolean {
+  const { editor } = useDactylo()
+
+  const subscribe = useStableCallback((cb: OnStoreChange) =>
+    editor.subscribe(() => {
+      cb()
+    }),
+  )
+  const getSnapshot = useStableCallback(() => {
+    const { selection } = editor.getContext()
+
+    return isCursorSelection(selection) && selection.anchor.blockId === blockId
+  })
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 

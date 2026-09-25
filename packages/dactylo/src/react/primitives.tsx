@@ -7,6 +7,7 @@ import {
   DactyloProvider,
   useCanEdit,
   useEditorContext,
+  useIsBlockWithActiveCursor,
   useIsFocused,
   useSelectionCommands,
 } from './composer'
@@ -20,6 +21,8 @@ import {
   COMPOSER_PARAGRAPH_BLOCK_NAME,
   COMPOSER_ROOT_ATTR,
   COMPOSER_ROOT_NAME,
+  COMPOSER_BLOCKS_NAME,
+  COMPOSER_BLOCKS_ATTR,
 } from './internals/constants'
 import { useIsomorphicLayoutEffect, useStableValue } from './internals/hooks'
 import { mergeRefs } from './internals/utils'
@@ -66,25 +69,27 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 const ComposerParagraphBlock = forwardRef<
   HTMLDivElement,
   ComposerParagraphBlockProps
->(({ block, ...attributes }, forwardedRef) => {
+>(({ block, ...props }, forwardedRef) => {
   const id = useId()
 
   const ref = useRef<HTMLDivElement>(null)
   const mergedRefs = mergeRefs(forwardedRef, ref)
 
   const canEdit = useCanEdit()
+  const withActiveCursor = useIsBlockWithActiveCursor(block.id)
 
-  // @todo: add active state and handlers
-  // @todo: add sync selection
+  // @todo: add handlers
+  // @todo: add sync selection and reconciliation
 
   return (
     <div
-      {...attributes}
+      {...props}
       ref={mergedRefs}
       {...{
         [COMPOSER_PARAGRAPH_BLOCK_ATTR]: '',
         [COMPOSER_PARAGRAPH_BLOCK_ID_ATTR]: block.id,
       }}
+      data-active={withActiveCursor ?? undefined}
     >
       <div
         id={id}
@@ -107,7 +112,10 @@ const ComposerParagraphBlock = forwardRef<
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
 /** Renders the composed blocks. */
-function Blocks(attributes: React.HTMLAttributes<HTMLDivElement>) {
+const ComposerBlocks = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>((props, forwardedRef) => {
   const { state } = useEditorContext()
 
   // @todo: add performance rendering optimization
@@ -123,11 +131,7 @@ function Blocks(attributes: React.HTMLAttributes<HTMLDivElement>) {
       switch (block.__type) {
         case 'paragraph': {
           items.push(
-            <ComposerParagraphBlock
-              key={blockId}
-              block={block}
-              {...attributes}
-            />,
+            <ComposerParagraphBlock key={blockId} block={block} {...props} />,
           )
           break
         }
@@ -138,10 +142,15 @@ function Blocks(attributes: React.HTMLAttributes<HTMLDivElement>) {
     }
 
     return items
-  }, [state.blockOrderById, state.blocks, attributes])
+  }, [state.blockOrderById, state.blocks, props])
 
-  return blocks
-}
+  return (
+    <div ref={forwardedRef} {...props} {...{ [COMPOSER_BLOCKS_ATTR]: '' }}>
+      {blocks}
+    </div>
+  )
+})
+ComposerBlocks.displayName = COMPOSER_BLOCKS_NAME
 
 /**
  * Adds the editable area of the composer.
@@ -158,13 +167,7 @@ function Blocks(attributes: React.HTMLAttributes<HTMLDivElement>) {
  */
 const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
   (
-    {
-      children,
-      autoFocus,
-      translate = 'no',
-      spellCheck = 'true',
-      ...attributes
-    },
+    { children, autoFocus, translate = 'no', spellCheck = 'true', ...props },
     forwardedRef,
   ) => {
     const canEdit = useCanEdit()
@@ -181,23 +184,18 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
 
     return (
       <div
-        {...attributes}
+        {...props}
         ref={forwardedRef}
         {...{ [COMPOSER_EDITABLE_ATTR]: '' }}
         translate={translate}
         spellCheck={spellCheck}
       >
-        <Blocks translate={translate} spellCheck={spellCheck} />
+        <ComposerBlocks translate={translate} spellCheck={spellCheck} />
         {children}
       </div>
     )
   },
 )
-
 ComposerEditable.displayName = COMPOSER_EDITABLE_NAME
 
-export {
-  ComposerRoot as Root,
-  ComposerEditable as Editable,
-  ComposerParagraphBlock as ParagraphBlock,
-}
+export { ComposerRoot as Root, ComposerEditable as Editable }

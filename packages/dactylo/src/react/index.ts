@@ -10,4 +10,5 @@ export {
   useIsFocused,
   useCanEdit,
   useSelectionCommands,
+  useIsBlockWithActiveCursor,
 } from './composer'
