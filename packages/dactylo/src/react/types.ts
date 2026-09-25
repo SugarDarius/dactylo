@@ -9,15 +9,11 @@ export interface ComposerRootProps
 
 // --- Composer.Editable ─────────────────────────────────────────---
 
-/** Props for declaring a block component. */
-export interface ComposerBlockProps {
-  /** Block id rendered by this surface. */
+/** Props for declaring a paragraph block component. */
+export interface ComposerParagraphBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** The paragraph block to render. */
   block: ParagraphBlock
 }
-
-/** Props for declaring a paragraph block component. */
-export interface ComposerParagraphBlockProps
-  extends React.HTMLAttributes<HTMLDivElement>, ComposerBlockProps {}
 
 /** Props for declaring the composer editable component. */
 export interface ComposerEditableProps extends React.HTMLAttributes<HTMLDivElement> {
