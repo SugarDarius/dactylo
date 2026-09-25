@@ -24,7 +24,11 @@ import {
   COMPOSER_BLOCKS_NAME,
   COMPOSER_BLOCKS_ATTR,
 } from './internals/constants'
-import { useIsomorphicLayoutEffect, useStableValue } from './internals/hooks'
+import {
+  useIsMounted,
+  useIsomorphicLayoutEffect,
+  useStableValue,
+} from './internals/hooks'
 import { mergeRefs } from './internals/utils'
 import type {
   ComposerRootProps,
@@ -47,12 +51,24 @@ import type {
  */
 const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
   (
-    { children, editable = true, placeholder, config, ...props },
+    {
+      children,
+      clientOnly = false,
+      editable = true,
+      placeholder,
+      config,
+      ...props
+    },
     forwardedRef,
   ) => {
+    const isMounted = useIsMounted()
     const ctx = useStableValue({
       editor: new Dactylo({ config, editable, placeholder }),
     })
+
+    if (!isMounted && clientOnly) {
+      return null
+    }
 
     return (
       <div {...props} ref={forwardedRef} {...{ [COMPOSER_ROOT_ATTR]: '' }}>

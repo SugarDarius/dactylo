@@ -1,6 +1,13 @@
 'use client'
 
-import { useMemo, useLayoutEffect, useEffect, useRef, useCallback } from 'react'
+import {
+  useMemo,
+  useLayoutEffect,
+  useEffect,
+  useRef,
+  useCallback,
+  useState,
+} from 'react'
 
 /** Prevents warning on SSR by falling back to `useEffect` when DOM isn't available. */
 export const useIsomorphicLayoutEffect =
@@ -29,4 +36,16 @@ export function useStableCallback<A extends unknown[], C>(
   })
 
   return useCallback((...args: A): C => callbackRef.current(...args), [])
+}
+
+/** Determines whether the component is mounted. */
+export function useIsMounted(): boolean {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect
+    setMounted(true)
+  }, [])
+
+  return mounted
 }

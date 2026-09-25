@@ -6,7 +6,14 @@ import type { ParagraphBlock } from '../internals/blocks'
 /** Props for declaring the composer root component. */
 export interface ComposerRootProps
   extends React.HTMLAttributes<HTMLDivElement>, DactyloOptions {
-  // @todo: immediately render
+  /**
+   * Whether to render the composer root only on the client side.
+   * 👉🏻 Set it to `false` if there is server-side rendering in the app
+   * you're building the composer for to avoid hydration issues.
+   *
+   * Defaults to `false`.
+   */
+  clientOnly?: boolean
 }
 
 // --- Composer.Editable ─────────────────────────────────────────---
@@ -19,6 +26,6 @@ export interface ComposerParagraphBlockProps extends React.HTMLAttributes<HTMLDi
 
 /** Props for declaring the composer editable component. */
 export interface ComposerEditableProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Whether to place the cursor in the editor at the document end  after initial mount. */
+  /** Whether to place the cursor in the editor at the document end after initial mount. */
   autoFocus?: boolean
 }
