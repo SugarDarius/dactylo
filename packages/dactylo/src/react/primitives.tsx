@@ -6,6 +6,7 @@ import { Dactylo } from '../dactylo'
 import {
   DactyloProvider,
   useCanEdit,
+  useEditorContext,
   useIsFocused,
   useSelectionCommands,
 } from './composer'
@@ -38,7 +39,7 @@ import type {
  * </Composer.Root>
  * ```
  */
-export const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
+const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
   (
     { children, editable = true, placeholder, config, ...props },
     forwardedRef,
@@ -54,20 +55,25 @@ export const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
     )
   },
 )
-
 ComposerRoot.displayName = COMPOSER_ROOT_NAME
 
 // --- Composer.Editable ─────────────────────────────────────────---
 
 /** Adds a paragraph block to the composer. */
-export const ComposerParagraphBlock = forwardRef<
+const ComposerParagraphBlock = forwardRef<
   HTMLDivElement,
   ComposerParagraphBlockProps
 >(({ children, blockId, ...props }, forwardedRef) => {
+  const { state } = useEditorContext()
   const canEdit = useCanEdit()
 
   // @todo: add active state and handlers
   // @todo: add sync selection
+
+  const block = state.blocks.get(blockId)
+  if (!block) {
+    return null
+  }
 
   return (
     <div
@@ -87,6 +93,13 @@ export const ComposerParagraphBlock = forwardRef<
 
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
+/** Renders the composed blocks. */
+function ComposerBlocks() {
+  // const { state } = useEditorContext()
+
+  return null
+}
+
 /**
  * Adds the editable area of the composer.
  * @example
@@ -100,35 +113,35 @@ ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
  * </Composer.Root>
  * ```
  */
-export const ComposerEditable = forwardRef<
-  HTMLDivElement,
-  ComposerEditableProps
->(({ children, autoFocus, translate = 'no', ...props }, forwardedRef) => {
-  const canEdit = useCanEdit()
-  const isFocused = useIsFocused()
+const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
+  ({ children, autoFocus, translate = 'no', ...props }, forwardedRef) => {
+    const canEdit = useCanEdit()
+    const isFocused = useIsFocused()
 
-  const { focus } = useSelectionCommands()
+    const { focus } = useSelectionCommands()
 
-  /** Focus the editor after initial mount if `autoFocus` is true. */
-  useIsomorphicLayoutEffect(() => {
-    if (autoFocus && !isFocused && canEdit) {
-      focus()
-    }
-  }, [canEdit, isFocused])
+    /** Focus the editor after initial mount if `autoFocus` is true. */
+    useIsomorphicLayoutEffect(() => {
+      if (autoFocus && !isFocused && canEdit) {
+        focus()
+      }
+    }, [canEdit, isFocused])
 
-  return (
-    <div
-      {...props}
-      ref={forwardedRef}
-      {...{ [COMPOSER_EDITABLE_ATTR]: '' }}
-      role={canEdit ? 'textbox' : undefined}
-      aria-multiline={canEdit ? 'true' : undefined}
-      translate={translate}
-    >
-      {children}
-    </div>
-  )
-})
+    return (
+      <div
+        {...props}
+        ref={forwardedRef}
+        {...{ [COMPOSER_EDITABLE_ATTR]: '' }}
+        role={canEdit ? 'textbox' : undefined}
+        aria-multiline={canEdit ? 'true' : undefined}
+        translate={translate}
+      >
+        <ComposerBlocks />
+        {children}
+      </div>
+    )
+  },
+)
 
 ComposerEditable.displayName = COMPOSER_EDITABLE_NAME
 

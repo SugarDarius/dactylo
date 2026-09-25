@@ -549,7 +549,7 @@ export class Dactylo {
        *
        * @example
        * ```ts
-       * const isBoldActive = editor.marks.isActive('bold', editor.getContextSnapshot())
+       * const isBoldActive = editor.marks.isActive('bold')
        * ```
        */
       isActive: (mark: MarkKey): boolean =>
@@ -680,20 +680,18 @@ export class Dactylo {
   }
 
   /**
-   * Returns the current editor context snapshot from the transaction pipeline.
+   * Returns the current editor context from the transaction pipeline.
    *
    * @example
    * ```ts
-   * const context = editor.getContextSnapshot()
+   * const context = editor.getContext()
    * console.log(context.state.blocks)
    * ```
    */
-  getContextSnapshot(): EditorContext {
+  getContext(): EditorContext {
     return this.#safeExecuteCommand(
       'editor-context/get-snapshot',
-      () => ({
-        ...this.#pipeline.context,
-      }),
+      () => this.#pipeline.context,
       {
         /**
          * Bypassing as in any case we should be able to get the context snapshot

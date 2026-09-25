@@ -7,7 +7,7 @@ import { createSafeContext } from './internals/context'
 import { useStableCallback } from './internals/hooks'
 
 /** @private */
-type OnStoreChange = () => void
+export type OnStoreChange = () => void
 
 /** Dactylo context. */
 export interface DactyloContext {
@@ -37,7 +37,7 @@ export function useEditorContext(): EditorContext {
       cb()
     }),
   )
-  const getSnapshot = useStableCallback(() => editor.getContextSnapshot())
+  const getSnapshot = useStableCallback(() => editor.getContext())
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }

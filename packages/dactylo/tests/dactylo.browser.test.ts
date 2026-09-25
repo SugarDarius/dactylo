@@ -6,7 +6,7 @@ describe('Dactylo', () => {
   const fixture = makeFixtureSetupApi()
 
   test('editor should be empty when initialized', () => {
-    const context = fixture.dactylo.getContextSnapshot()
+    const context = fixture.dactylo.getContext()
 
     expect(context.state.blockOrderById.length).toBe(1)
   })
