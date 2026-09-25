@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 
 import type { Dactylo } from '../dactylo'
 import type { BlockId } from '../internals/blocks'
@@ -76,7 +76,8 @@ export function useSelection(): Selection | null {
 }
 
 /**
- * Returns whether the block with the given ID has an active cursor.
+ * Returns whether the block with the given ID is with
+ * and active text cursor in it.
  *
  * @example
  * ```tsx
@@ -84,20 +85,14 @@ export function useSelection(): Selection | null {
  * console.log(isActive)
  * ```
  */
-export function useIsBlockWithActiveCursor(blockId: BlockId): boolean {
-  const { editor } = useDactylo()
-
-  const subscribe = useStableCallback((cb: OnStoreChange) =>
-    editor.subscribe(() => {
-      cb()
-    }),
+export function useWithActiveTextCursorInBlock(blockId: BlockId): boolean {
+  const selection = useSelection()
+  const withActiveCursor = useMemo(
+    () => isCursorSelection(selection) && selection.anchor.blockId === blockId,
+    [selection, blockId],
   )
-  const getSnapshot = useStableCallback(() => {
-    const { selection } = editor.getContext()
 
-    return isCursorSelection(selection) && selection.anchor.blockId === blockId
-  })
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  return withActiveCursor
 }
 
 /**

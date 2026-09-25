@@ -7,7 +7,7 @@ import {
   DactyloProvider,
   useCanEdit,
   useDocumentState,
-  useIsBlockWithActiveCursor,
+  useWithActiveTextCursorInBlock,
   useIsFocused,
   useSelectionCommands,
 } from './composer'
@@ -76,7 +76,7 @@ const ComposerParagraphBlock = forwardRef<
   const mergedRefs = mergeRefs(forwardedRef, ref)
 
   const canEdit = useCanEdit()
-  const withActiveCursor = useIsBlockWithActiveCursor(block.id)
+  const withActiveCursor = useWithActiveTextCursorInBlock(block.id)
 
   // @todo: add handlers
   // @todo: add sync selection and reconciliation

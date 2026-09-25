@@ -9,6 +9,6 @@ export {
   useIsFocused,
   useCanEdit,
   useSelectionCommands,
-  useIsBlockWithActiveCursor,
+  useWithActiveTextCursorInBlock,
   useDocumentState,
 } from './composer'
