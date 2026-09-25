@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef } from 'react'
+import { forwardRef, useMemo } from 'react'
 
 import { Dactylo } from '../dactylo'
 import {
@@ -85,6 +85,7 @@ const ComposerParagraphBlock = forwardRef<
       }}
       contentEditable={canEdit ? 'true' : undefined}
       suppressContentEditableWarning
+      style={{ outlineColor: 'transparent' }}
     >
       {children}
     </div>
@@ -94,10 +95,34 @@ const ComposerParagraphBlock = forwardRef<
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
 /** Renders the composed blocks. */
-function ComposerBlocks() {
-  // const { state } = useEditorContext()
+function Blocks() {
+  const { state } = useEditorContext()
 
-  return null
+  // @todo: add performance rendering optimization
+  const blocks = useMemo(() => {
+    const items = []
+
+    for (const blockId of state.blockOrderById) {
+      const block = state.blocks.get(blockId)
+      if (!block) {
+        continue
+      }
+
+      switch (block.__type) {
+        case 'paragraph': {
+          items.push(<ComposerParagraphBlock key={blockId} blockId={blockId} />)
+          break
+        }
+        default: {
+          continue
+        }
+      }
+    }
+
+    return items
+  }, [state.blockOrderById, state.blocks])
+
+  return blocks
 }
 
 /**
@@ -136,7 +161,7 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
         aria-multiline={canEdit ? 'true' : undefined}
         translate={translate}
       >
-        <ComposerBlocks />
+        <Blocks />
         {children}
       </div>
     )
