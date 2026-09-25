@@ -5,7 +5,9 @@ import type { ParagraphBlock } from '../internals/blocks'
 
 /** Props for declaring the composer root component. */
 export interface ComposerRootProps
-  extends React.HTMLAttributes<HTMLDivElement>, DactyloOptions {}
+  extends React.HTMLAttributes<HTMLDivElement>, DactyloOptions {
+  // @todo: immediately render
+}
 
 // --- Composer.Editable ─────────────────────────────────────────---
 

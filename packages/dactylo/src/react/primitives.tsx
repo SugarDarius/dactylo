@@ -6,7 +6,7 @@ import { Dactylo } from '../dactylo'
 import {
   DactyloProvider,
   useCanEdit,
-  useEditorContext,
+  useDocumentState,
   useIsBlockWithActiveCursor,
   useIsFocused,
   useSelectionCommands,
@@ -116,14 +116,14 @@ const ComposerBlocks = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >((props, forwardedRef) => {
-  const { state } = useEditorContext()
+  const { blockOrderById, blocks } = useDocumentState()
 
   // @todo: add performance rendering optimization
-  const blocks = useMemo(() => {
+  const children = useMemo(() => {
     const items = []
 
-    for (const blockId of state.blockOrderById) {
-      const block = state.blocks.get(blockId)
+    for (const blockId of blockOrderById) {
+      const block = blocks.get(blockId)
       if (!block) {
         continue
       }
@@ -142,11 +142,11 @@ const ComposerBlocks = forwardRef<
     }
 
     return items
-  }, [state.blockOrderById, state.blocks, props])
+  }, [blockOrderById, blocks, props])
 
   return (
     <div ref={forwardedRef} {...props} {...{ [COMPOSER_BLOCKS_ATTR]: '' }}>
-      {blocks}
+      {children}
     </div>
   )
 })

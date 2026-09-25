@@ -2,8 +2,9 @@ import { useSyncExternalStore } from 'react'
 
 import type { Dactylo } from '../dactylo'
 import type { BlockId } from '../internals/blocks'
-import type { EditorContext } from '../internals/editor-context'
+import type { DocumentState } from '../internals/document'
 import { isCursorSelection } from '../internals/selection'
+import type { Selection } from '../internals/selection'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
 import { useStableCallback } from './internals/hooks'
@@ -23,15 +24,15 @@ export const { Provider: DactyloProvider, useContext: useDactylo } =
   })
 
 /**
- * Returns the editor context {@link EditorContext}.
+ * Returns the {@link DocumentState} from the {@link EditorContext}.
  *
  * @example
  * ```tsx
- * const context = useEditorContext()
- * console.log(context)
+ * const state = useDocumentState()
+ * console.log(state)
  * ```
  */
-export function useEditorContext(): EditorContext {
+export function useDocumentState(): DocumentState {
   const { editor } = useDactylo()
 
   const subscribe = useStableCallback((cb: OnStoreChange) =>
@@ -39,7 +40,37 @@ export function useEditorContext(): EditorContext {
       cb()
     }),
   )
-  const getSnapshot = useStableCallback(() => editor.getContext())
+  const getSnapshot = useStableCallback(() => {
+    const { state } = editor.getContext()
+
+    return state
+  })
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns the {@link Selection} or `null`from the {@link EditorContext}.
+ *
+ * @example
+ * ```tsx
+ * const selection = useSelection()
+ * console.log(selection)
+ * ```
+ */
+export function useSelection(): Selection | null {
+  const { editor } = useDactylo()
+
+  const subscribe = useStableCallback((cb: OnStoreChange) =>
+    editor.subscribe(() => {
+      cb()
+    }),
+  )
+  const getSnapshot = useStableCallback(() => {
+    const { selection } = editor.getContext()
+
+    return selection
+  })
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }

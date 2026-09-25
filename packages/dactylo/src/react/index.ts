@@ -6,9 +6,9 @@ export type {
 export * as Composer from './primitives'
 export {
   useDactylo,
-  useEditorContext,
   useIsFocused,
   useCanEdit,
   useSelectionCommands,
   useIsBlockWithActiveCursor,
+  useDocumentState,
 } from './composer'
