@@ -55,9 +55,7 @@ export function useIsFocused(): boolean {
   const subscribe = useStableCallback((cb: OnStoreChange) =>
     editor.subscribe(() => cb()),
   )
-  const getSnapshot = useStableCallback(() =>
-    editor.selection.isFocused(editor.getContextSnapshot()),
-  )
+  const getSnapshot = useStableCallback(() => editor.selection.isFocused())
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }

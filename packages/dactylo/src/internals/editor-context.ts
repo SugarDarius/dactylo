@@ -202,7 +202,7 @@ export function updateBlockWithInlineContent(
  */
 export function isMarkActiveInContext(
   context: EditorContext,
-  markKey: MarkKey,
+  mark: MarkKey,
 ): boolean {
   const { selection, activeMarks } = context
 
@@ -211,7 +211,7 @@ export function isMarkActiveInContext(
   }
 
   if (selection.__type === 'cursor') {
-    return isMarkEnabled(activeMarks, markKey)
+    return isMarkEnabled(activeMarks, mark)
   } else if (selection.__type === 'range') {
     const normalized = normalizeRange(context.state, selection)
     const spans = collectTextSpansInRange(context.state, normalized)
@@ -228,7 +228,7 @@ export function isMarkActiveInContext(
         return false
       }
 
-      return isMarkEnabled(found.node.marks, markKey)
+      return isMarkEnabled(found.node.marks, mark)
     })
   }
 

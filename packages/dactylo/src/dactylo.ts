@@ -152,15 +152,17 @@ export interface DactyloHistoryCommands {
 export interface DactyloMarksCommands {
   /** Toggle a mark on or off via the transaction pipeline. */
   readonly toggle: (
-    markKey: MarkKey,
+    mark: MarkKey,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 
   /**
    * Whether a mark is active or not depending on the current current selection.
    * 👉🏻 A toolbar button for a mark that should appear pressed or not.
+   *
+   * This is a pure function that does not mutate the editor context.
    */
-  readonly isActive: (markKey: MarkKey, context: EditorContext) => boolean
+  readonly isActive: (mark: MarkKey) => boolean
 }
 
 /** Commands to interact with the composer of the editor. */
@@ -197,12 +199,9 @@ export interface DactyloSelectionCommands {
 
   /**
    * Whether the editor is focused or not.
-   *
    * This is a pure function that does not mutate the editor context.
-   * To check if the editor is focused or not you need to call this function with
-   * the current editor context after each updates.
    */
-  readonly isFocused: (context: EditorContext) => boolean
+  readonly isFocused: () => boolean
 }
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -547,19 +546,17 @@ export class Dactylo {
        * 👉🏻  A toolbar button for a mark that should appear pressed or not.
        *
        * This is a pure function that does not mutate the editor context.
-       * To check if a mark is active or not you need to call this function with
-       * the current editor context after each updates.
        *
        * @example
        * ```ts
        * const isBoldActive = editor.marks.isActive('bold', editor.getContextSnapshot())
        * ```
        */
-      isActive: (markKey: MarkKey, context: EditorContext): boolean =>
+      isActive: (mark: MarkKey): boolean =>
         this.#safeExecuteCommand(
           'marks/is-active',
-          () => isMarkActiveInContext(context, markKey),
-          { payload: { mark: markKey } },
+          () => isMarkActiveInContext(this.#pipeline.context, mark),
+          { payload: { mark } },
         ),
 
       /**
@@ -635,19 +632,16 @@ export class Dactylo {
         ),
       /**
        * Whether the selection is active or not.
-       *
        * This is a pure function that does not mutate the editor context.
-       * To check if the editor is focused or not you need to call this function with
-       * the current editor context after each updates.
        *
        * @example
        * ```ts
-       * const isFocused = editor.selection.isFocused(editor.getContextSnapshot())
+       * const isFocused = editor.selection.isFocused()
        * ```
        */
-      isFocused: (context: EditorContext): boolean =>
+      isFocused: (): boolean =>
         this.#safeExecuteCommand('selection/is-focused', () =>
-          isSelectionActive(context),
+          isSelectionActive(this.#pipeline.context),
         ),
     }
   }
