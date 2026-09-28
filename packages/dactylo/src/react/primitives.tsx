@@ -10,6 +10,7 @@ import {
   PARAGRAPH_BLOCK_ATTR_NAME,
   PARAGRAPH_BLOCK_CONTENT_ATTR_NAME,
   PARAGRAPH_BLOCK_ID_ATTR_NAME,
+  PARAGRAPH_BLOCK_PLACEHOLDER_ATTR_NAME,
   ROOT_ATTR_NAME,
 } from '../internals/constants'
 import {
@@ -19,6 +20,7 @@ import {
   useWithActiveTextCursorInBlock,
   useIsFocused,
   useSelectionCommands,
+  useEditorConfig,
 } from './composer'
 import {
   COMPOSER_EDITABLE_NAME,
@@ -93,11 +95,15 @@ const ComposerParagraphBlock = forwardRef<
   const ref = useRef<HTMLDivElement>(null)
   const mergedRefs = mergeRefs(forwardedRef, ref)
 
+  const editableRef = useRef<HTMLDivElement>(null)
+
+  const { paragraph } = useEditorConfig()
   const canEdit = useCanEdit()
   const withActiveCursor = useWithActiveTextCursorInBlock(block.id)
 
   // @todo: add handlers
   // @todo: add sync selection and reconciliation
+  // @todo: add custom hook + request animation frame
 
   return (
     <div
@@ -111,14 +117,17 @@ const ComposerParagraphBlock = forwardRef<
     >
       <div
         id={id}
+        ref={editableRef}
         role={canEdit ? 'textbox' : undefined}
         aria-roledescription='paragraph'
         aria-multiline={canEdit ? 'true' : undefined}
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
+        data-active={withActiveCursor ?? undefined}
         {...{
           [CONTENT_EDITABLE_ATTR_NAME]: canEdit ? 'true' : 'false',
           [PARAGRAPH_BLOCK_CONTENT_ATTR_NAME]: '',
+          [PARAGRAPH_BLOCK_PLACEHOLDER_ATTR_NAME]: paragraph.placeholder,
         }}
       >
         {/** @todo add placeholder and inline content. */}

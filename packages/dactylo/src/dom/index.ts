@@ -1,0 +1,1 @@
+export { syncTextCursorPositionInDOM } from './cursor'

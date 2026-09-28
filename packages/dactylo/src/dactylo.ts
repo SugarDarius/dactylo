@@ -292,7 +292,7 @@ export class Dactylo {
   #editable: boolean
 
   /** Static configuration for the editor. */
-  readonly #staticConfig: DactyloStaticConfig
+  readonly #config: DactyloStaticConfig
 
   /** Transaction pipeline to use for the editor */
   readonly #pipeline: TransactionPipeline
@@ -302,7 +302,7 @@ export class Dactylo {
 
   constructor(options: DactyloOptions = {}) {
     this.#editable = options.editable ?? true
-    this.#staticConfig = {
+    this.#config = {
       heading: {
         placeholder:
           options.config?.editor?.heading?.placeholder ??
@@ -404,7 +404,7 @@ export class Dactylo {
    * ```
    */
   get config(): DactyloStaticConfig {
-    return this.#staticConfig
+    return this.#config
   }
 
   /** Returns the Api to interact with the events of the editor. */
@@ -602,7 +602,7 @@ export class Dactylo {
     }
   }
 
-  /**  Returns the commands to interact with the selection of the editor. */
+  /** Returns the commands to interact with the selection of the editor. */
   get selection(): DactyloSelectionCommands {
     return {
       /**

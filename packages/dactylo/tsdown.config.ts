@@ -5,9 +5,11 @@ export default defineConfig({
   clean: true,
   dts: true,
   entry: [
-    /** main package entry point. */
+    /** Main package entry point. */
     'src/index.ts',
-    /** React entry point. */
+    /** DOM entry sub-module entry point. */
+    'src/dom/index.ts',
+    /** React sub-module entry point. */
     'src/react/index.ts',
   ],
   format: ['esm', 'cjs'],

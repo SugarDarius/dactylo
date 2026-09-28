@@ -1,13 +1,13 @@
 import { useMemo, useSyncExternalStore } from 'react'
 
-import type { Dactylo } from '../dactylo'
+import type { Dactylo, DactyloStaticConfig } from '../dactylo'
 import type { BlockId } from '../internals/blocks'
 import type { DocumentState } from '../internals/document'
 import { isCursorSelection } from '../internals/selection'
 import type { Selection } from '../internals/selection'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
-import { useStableCallback } from './internals/hooks'
+import { useStableCallback, useStableValue } from './internals/hooks'
 
 /** @private */
 export type OnStoreChange = () => void
@@ -22,6 +22,22 @@ export const { Provider: DactyloProvider, useContext: useDactylo } =
   createSafeContext<DactyloContext>({
     errorMsg: `\`<${COMPOSER_ROOT_NAME} />\` is missing. Did you forget to wrap your component with it?`,
   })
+
+/**
+ * Returns the editor {@link DactyloStaticConfig}.
+ *
+ * @example
+ * ```tsx
+ * const config = useEditorConfig()
+ * console.log(config)
+ * ```
+ */
+export function useEditorConfig(): DactyloStaticConfig {
+  const { editor } = useDactylo()
+  const config = useStableValue(editor.config)
+
+  return config
+}
 
 /**
  * Returns the {@link DocumentState} from the {@link EditorContext}.
