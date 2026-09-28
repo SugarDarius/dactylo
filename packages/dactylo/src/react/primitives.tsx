@@ -4,6 +4,15 @@ import { forwardRef, useId, useMemo, useRef } from 'react'
 
 import { Dactylo } from '../dactylo'
 import {
+  BLOCKS_ATTR_NAME,
+  CONTENT_EDITABLE_ATTR_NAME,
+  EDITABLE_ATTR_NAME,
+  PARAGRAPH_BLOCK_ATTR_NAME,
+  PARAGRAPH_BLOCK_CONTENT_ATTR_NAME,
+  PARAGRAPH_BLOCK_ID_ATTR_NAME,
+  ROOT_ATTR_NAME,
+} from '../internals/constants'
+import {
   DactyloProvider,
   useCanEdit,
   useDocumentState,
@@ -12,17 +21,10 @@ import {
   useSelectionCommands,
 } from './composer'
 import {
-  COMPOSER_CONTENT_EDITABLE_ATTR,
-  COMPOSER_EDITABLE_ATTR,
   COMPOSER_EDITABLE_NAME,
-  COMPOSER_PARAGRAPH_BLOCK_ATTR,
-  COMPOSER_PARAGRAPH_BLOCK_ID_ATTR,
-  COMPOSER_PARAGRAPH_BLOCK_CONTENT_ATTR,
   COMPOSER_PARAGRAPH_BLOCK_NAME,
-  COMPOSER_ROOT_ATTR,
   COMPOSER_ROOT_NAME,
   COMPOSER_BLOCKS_NAME,
-  COMPOSER_BLOCKS_ATTR,
 } from './internals/constants'
 import {
   useIsMounted,
@@ -71,7 +73,7 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
     }
 
     return (
-      <div {...props} ref={forwardedRef} {...{ [COMPOSER_ROOT_ATTR]: '' }}>
+      <div {...props} ref={forwardedRef} {...{ [ROOT_ATTR_NAME]: '' }}>
         <DactyloProvider value={ctx}>{children}</DactyloProvider>
       </div>
     )
@@ -102,8 +104,8 @@ const ComposerParagraphBlock = forwardRef<
       {...props}
       ref={mergedRefs}
       {...{
-        [COMPOSER_PARAGRAPH_BLOCK_ATTR]: '',
-        [COMPOSER_PARAGRAPH_BLOCK_ID_ATTR]: block.id,
+        [PARAGRAPH_BLOCK_ATTR_NAME]: '',
+        [PARAGRAPH_BLOCK_ID_ATTR_NAME]: block.id,
       }}
       data-active={withActiveCursor ?? undefined}
     >
@@ -115,8 +117,8 @@ const ComposerParagraphBlock = forwardRef<
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
         {...{
-          [COMPOSER_CONTENT_EDITABLE_ATTR]: canEdit ? 'true' : 'false',
-          [COMPOSER_PARAGRAPH_BLOCK_CONTENT_ATTR]: '',
+          [CONTENT_EDITABLE_ATTR_NAME]: canEdit ? 'true' : 'false',
+          [PARAGRAPH_BLOCK_CONTENT_ATTR_NAME]: '',
         }}
       >
         {/** @todo add placeholder and inline content. */}
@@ -160,7 +162,7 @@ const ComposerBlocks = forwardRef<
   }, [blockOrderById, blocks, props])
 
   return (
-    <div ref={forwardedRef} {...props} {...{ [COMPOSER_BLOCKS_ATTR]: '' }}>
+    <div ref={forwardedRef} {...props} {...{ [BLOCKS_ATTR_NAME]: '' }}>
       {children}
     </div>
   )
@@ -201,7 +203,7 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
       <div
         {...props}
         ref={forwardedRef}
-        {...{ [COMPOSER_EDITABLE_ATTR]: '' }}
+        {...{ [EDITABLE_ATTR_NAME]: '' }}
         translate={translate}
         spellCheck={spellCheck}
       >
