@@ -124,7 +124,6 @@ const ComposerParagraphBlock = forwardRef<
     </div>
   )
 })
-
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
 /** Renders the composed blocks. */
