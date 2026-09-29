@@ -1,6 +1,10 @@
 'use client'
 
-import { Composer, useCommandsListener } from '@sugardarius/dactylo/react'
+import {
+  Composer,
+  useCommandsListener,
+  useToolsListener,
+} from '@sugardarius/dactylo/react'
 
 import { toast } from '~/components/ui/toast'
 import { cn } from '~/lib/utils'
@@ -19,6 +23,18 @@ function CommandsListener() {
   return null
 }
 
+function ToolsListener() {
+  useToolsListener(({ tool, status }) => {
+    const id = toast.add({
+      description: `Tool ${tool} ${status}`,
+      onClose: () => {
+        toast.close(id)
+      },
+    })
+  })
+  return null
+}
+
 export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div className={cn('relative w-full', className)} {...props}>
@@ -28,6 +44,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         className='relative w-full'
       >
         <Composer.Editable autoFocus className='relative w-full' />
+        <ToolsListener />
         <CommandsListener />
       </Composer.Root>
     </div>

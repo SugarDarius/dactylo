@@ -4,6 +4,7 @@ import type {
   Dactylo,
   DactyloCommandEvent,
   DactyloStaticConfig,
+  DactyloToolEvent,
 } from '../dactylo'
 import type { BlockId } from '../internals/blocks'
 import type { DocumentState } from '../internals/document'
@@ -187,6 +188,28 @@ export function useSelectionFocus() {
 }
 
 // --- Listeners ------─────────────────────────────────────────-----
+
+/**
+ * Get informed when a tool is executed successfully or not.
+ *
+ * @example
+ * ```tsx
+ * useToolsListener(({ tool, status }) => {
+ *   console.log(tool, status)
+ * })
+ * ```
+ */
+export function useToolsListener(
+  listener: (event: DactyloToolEvent) => void,
+): void {
+  const { editor } = useDactylo()
+  const stableListener = useStableCallback(listener)
+
+  useEffect(
+    () => editor.events.tools.subscribe(stableListener),
+    [editor, stableListener],
+  )
+}
 
 /**
  * Get informed when a command is executed successfully or not.

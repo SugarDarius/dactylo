@@ -12,4 +12,5 @@ export {
   useIsWithActiveCursor,
   useDocumentState,
   useCommandsListener,
+  useToolsListener,
 } from './composer'
