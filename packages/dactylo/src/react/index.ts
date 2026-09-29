@@ -8,7 +8,7 @@ export {
   useDactylo,
   useIsFocused,
   useCanEdit,
-  useSelectionFocus,
+  useSelectionCommands,
   useIsWithActiveCursor,
   useDocumentState,
   useCommandsListener,

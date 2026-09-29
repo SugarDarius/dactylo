@@ -19,7 +19,7 @@ import {
   useDocumentState,
   useIsWithActiveCursor,
   useIsFocused,
-  useSelectionFocus,
+  useSelectionCommands,
   useEditorConfig,
 } from './composer'
 import {
@@ -197,15 +197,13 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
   ) => {
     const canEdit = useCanEdit()
     const focused = useIsFocused()
+    const { focus } = useSelectionCommands()
 
-    const focus = useSelectionFocus()
-
-    /** Focus the editor after initial mount if `autoFocus` is true. */
     useIsomorphicLayoutEffect(() => {
       if (autoFocus && !focused && canEdit) {
         focus()
       }
-    }, [canEdit, focused])
+    }, [autoFocus, canEdit, focused, focus])
 
     return (
       <div

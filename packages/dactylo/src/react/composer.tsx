@@ -9,6 +9,7 @@ import type {
 import type { BlockId } from '../internals/blocks'
 import type { DocumentState } from '../internals/document'
 import type { Selection } from '../internals/selection'
+import type { TransactionSource } from '../internals/transaction'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
 import { useStableCallback, useStableValue } from './internals/hooks'
@@ -66,6 +67,28 @@ export function useCanEdit(): boolean {
   const getSnapshot = useStableCallback(() => editor.canEdit())
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns a function to set the editor to editable or not.
+ *
+ * @example
+ * ```tsx
+ * const setEditable = useSetEditable()
+ * setEditable(true)
+ * setEditable(false, 'ai-agent')
+ * ```
+ */
+export function useSetEditable() {
+  const { editor } = useDactylo()
+  return useStableCallback(
+    (
+      next: boolean,
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ): void => {
+      editor.setEditable(next, source)
+    },
+  )
 }
 
 // --- Document State ─────────────────────────────────────────------
@@ -175,16 +198,26 @@ export function useIsFocused(): boolean {
  *
  * @example
  * ```tsx
- * const focus = useSelectionFocus()
+ * const { focus } = useSelectionCommands()
  *
  * useLayoutEffect(() => {
  *  focus()
  * }, [])
  * ```
  */
-export function useSelectionFocus() {
+export function useSelectionCommands() {
   const { editor } = useDactylo()
-  return useStableCallback(() => editor.selection.commands.focus())
+  const focus = useStableCallback(
+    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.selection.commands.focus(source),
+  )
+
+  const blur = useStableCallback(
+    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.selection.commands.blur(source),
+  )
+
+  return { blur, focus } as const
 }
 
 // --- Listeners ------─────────────────────────────────────────-----
