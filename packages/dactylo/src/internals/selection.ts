@@ -113,11 +113,26 @@ export interface RangeSelection {
 /** Discriminated union of all supported selection shapes in Dactylo. */
 export type Selection = Relax<CursorSelection | RangeSelection>
 
+/** Checks if the selection is active or not. */
+export function isSelectionActive(
+  selection: Selection | null,
+): selection is Selection {
+  return selection !== null
+}
+
 /** Checks if a selection is a collapsed cursor selection. */
 export function isCursorSelection(
   selection: Selection | null,
 ): selection is CursorSelection {
-  return selection !== null && selection.__type === 'cursor'
+  return isSelectionActive(selection) && selection.__type === 'cursor'
+}
+
+/** Checks if a block has an active cursor selection within. */
+export function isBlockWithActiveCursor(
+  selection: Selection | null,
+  blockId: BlockId,
+): boolean {
+  return isCursorSelection(selection) && selection.anchor.blockId === blockId
 }
 
 /** A contiguous `[from, to)` slice inside one text node, part of a larger range. */

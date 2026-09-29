@@ -234,8 +234,3 @@ export function isMarkActiveInContext(
 
   return false
 }
-
-/** Whether the selection is active or not. */
-export function isSelectionActive(context: EditorContext): boolean {
-  return context.selection !== null
-}

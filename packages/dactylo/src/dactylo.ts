@@ -1,12 +1,10 @@
+import type { BlockId } from './internals/blocks'
 import { error, warn } from './internals/console'
 import {
   DEFAULT_HEADING_PLACEHOLDER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
 } from './internals/constants'
-import {
-  isMarkActiveInContext,
-  isSelectionActive,
-} from './internals/editor-context'
+import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
 import { DactyloError } from './internals/errors'
 import type {
@@ -17,6 +15,10 @@ import type {
 import { EventSource } from './internals/event-source'
 import type { HistoryEvent } from './internals/history'
 import type { MarkKey } from './internals/marks'
+import {
+  isBlockWithActiveCursor,
+  isSelectionActive,
+} from './internals/selection'
 import { TransactionPipeline } from './internals/transaction'
 import type { Transaction, TransactionSource } from './internals/transaction'
 
@@ -58,6 +60,8 @@ export type DactyloCommand =
   | 'selection/focus'
   | 'selection/blur'
   | 'selection/is-focused'
+  | 'selection/block-with-active-cursor'
+
 /** Event emitted when a command is executed */
 export interface DactyloCommandEvent {
   /** The command that was executed. */
@@ -196,6 +200,12 @@ export interface DactyloSelectionCommands {
    * Call when the user leaves the editor surface (blur, tab) so keyboard input does not apply.
    */
   readonly blur: () => void
+
+  /**
+   * Whether the block with the given ID is with an active cursor selection within.
+   * This is a pure function that does not mutate the editor context.
+   */
+  readonly isBlockWithActiveCursor: (blockId: BlockId) => boolean
 
   /**
    * Whether the editor is focused or not.
@@ -630,6 +640,21 @@ export class Dactylo {
         this.#safeExecuteCommand('selection/focus', () =>
           this.#pipeline.putCursorSelectionAtDocumentEnd('user'),
         ),
+
+      /**
+       * Whether the block with the given ID is with an active cursor selection within.
+       * This is a pure function that does not mutate the editor context.
+       *
+       * @example
+       * ```ts
+       * const withActiveCursor = editor.selection.isBlockWithActiveCursor(blockId)
+       * ```
+       */
+      isBlockWithActiveCursor: (blockId: BlockId): boolean =>
+        this.#safeExecuteCommand('selection/block-with-active-cursor', () =>
+          isBlockWithActiveCursor(this.#pipeline.context.selection, blockId),
+        ),
+
       /**
        * Whether the selection is active or not.
        * This is a pure function that does not mutate the editor context.
@@ -641,7 +666,7 @@ export class Dactylo {
        */
       isFocused: (): boolean =>
         this.#safeExecuteCommand('selection/is-focused', () =>
-          isSelectionActive(this.#pipeline.context),
+          isSelectionActive(this.#pipeline.context.selection),
         ),
     }
   }
@@ -676,6 +701,7 @@ export class Dactylo {
     }
 
     this.#editable = editable
+    // @todo: add clear selection when the editor is not editable
     this.#eventSources.editable.notify({ editable: this.#editable })
   }
 

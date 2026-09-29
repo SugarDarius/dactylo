@@ -3,7 +3,6 @@ import { useEffect, useMemo, useSyncExternalStore } from 'react'
 import type {
   Dactylo,
   DactyloCommandEvent,
-  DactyloSelectionCommands,
   DactyloStaticConfig,
 } from '../dactylo'
 import type { BlockId } from '../internals/blocks'
@@ -181,14 +180,13 @@ export function useIsFocused(): boolean {
  * }, [])
  * ```
  */
-export function useSelectionCommands(): DactyloSelectionCommands {
+export function useSelectionCommands() {
   const { editor } = useDactylo()
 
   const focus = useStableCallback(() => editor.selection.focus())
   const blur = useStableCallback(() => editor.selection.blur())
-  const isFocused = useStableCallback(() => editor.selection.isFocused())
 
-  return { blur, focus, isFocused }
+  return { blur, focus } as const
 }
 
 // --- Listeners ------─────────────────────────────────────────-----
