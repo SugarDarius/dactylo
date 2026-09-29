@@ -148,6 +148,7 @@ const ComposerBlocks = forwardRef<
     for (const blockId of blockOrderById) {
       const block = blocks.get(blockId)
       if (!block) {
+        /** Skip blocks that are not in the document. It should never happen. */
         continue
       }
 

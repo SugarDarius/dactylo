@@ -7,8 +7,11 @@ import { cn } from '~/lib/utils'
 
 function CommandsListener() {
   useCommandsListener(({ command, status }) => {
-    toast.add({
+    const id = toast.add({
       description: `Command ${command} ${status}`,
+      onClose: () => {
+        toast.close(id)
+      },
       title: `Command ${command} ${status}`,
       type: status === 'success' ? 'success' : 'error',
     })

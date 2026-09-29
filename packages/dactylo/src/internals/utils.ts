@@ -10,3 +10,7 @@ export function assertNever(value: never, opts: { hint?: string } = {}): never {
 
   throw new Error(message)
 }
+
+/** No-op function. */
+// oxlint-disable-next-line no-empty-function
+export function noop(): void {}

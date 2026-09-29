@@ -552,13 +552,10 @@ export class TransactionPipeline {
       return
     }
 
-    this.#dispatch({
-      ops: [...entry.inverseOps],
-      policy: {
-        label: transactionPolicyLabel('history', 'undo'),
-        pushToHistory: false,
-        source: 'undo',
-      },
+    this.#commit([...entry.inverseOps], {
+      label: transactionPolicyLabel('history', 'undo'),
+      pushToHistory: false,
+      source: 'undo',
     })
 
     this.#eventSources.history.notify({
@@ -581,13 +578,10 @@ export class TransactionPipeline {
       return
     }
 
-    this.#dispatch({
-      ops: [...entry.ops],
-      policy: {
-        label: transactionPolicyLabel('history', 'redo'),
-        pushToHistory: false,
-        source: 'redo',
-      },
+    this.#commit([...entry.ops], {
+      label: transactionPolicyLabel('history', 'redo'),
+      pushToHistory: false,
+      source: 'redo',
     })
 
     this.#eventSources.history.notify({

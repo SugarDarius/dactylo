@@ -1,5 +1,5 @@
 import type { BlockId } from './internals/blocks'
-import { error } from './internals/console'
+import { error, warnOnce } from './internals/console'
 import {
   DEFAULT_HEADING_PLACEHOLDER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
@@ -21,6 +21,17 @@ import {
 } from './internals/selection'
 import { TransactionPipeline } from './internals/transaction'
 import type { Transaction, TransactionSource } from './internals/transaction'
+import type { Relax } from './internals/types'
+import { noop } from './internals/utils'
+
+/** Api to interact with one aspect of the editor. */
+export interface DactyloAspectApi<A, C> {
+  /** Tools to query one aspect of the editor.*/
+  readonly tools: A
+
+  /** Commands to mutate one aspect of the editor. */
+  readonly commands: C
+}
 
 /** Static configuration for the editor. */
 export interface DactyloStaticConfig {
@@ -37,21 +48,27 @@ export interface DactyloStaticConfig {
   }
 }
 
-/** Discriminated union of commands that can be executed by the user/ai-agent. */
-export type DactyloCommand =
-  /** Editor context commands */
-  | 'editor-context/get-snapshot'
-  | 'editor-context/subscribe'
-
-  /** History commands */
-  | 'history/undo'
-  | 'history/redo'
+/** Discriminated union of tools that can be executed by the user/ai-agent. */
+export type DactyloTool =
+  /** History tools */
   | 'history/can-undo'
   | 'history/can-redo'
 
+  /** Marks tools */
+  | 'marks/is-active'
+
+  /** Selection tools */
+  | 'selection/is-block-with-active-cursor'
+  | 'selection/is-focused'
+
+/** Discriminated union of commands that can be executed by the user/ai-agent. */
+export type DactyloCommand =
+  /** History commands */
+  | 'history/undo'
+  | 'history/redo'
+
   /** Marks commands */
   | 'marks/toggle'
-  | 'marks/is-active'
 
   /** Composer commands */
   | 'composer/send-input'
@@ -59,8 +76,6 @@ export type DactyloCommand =
   /** Selection commands */
   | 'selection/focus'
   | 'selection/blur'
-  | 'selection/is-focused'
-  | 'selection/block-with-active-cursor'
 
 /** Event emitted when a command is executed */
 export interface DactyloCommandEvent {
@@ -83,20 +98,47 @@ export interface DactyloCommandEvent {
   readonly payload?: Record<string, unknown>
 }
 
-/** Event emitted when an error is thrown from a command. */
-export interface DactyloErrorEvent {
-  /** The command that caused the error. */
-  readonly command: DactyloCommand
+/** Event emitted when a tool is executed by the user/ai-agent. */
+export interface DactyloToolEvent {
+  /** The tool that was executed. */
+  readonly tool: DactyloTool
 
-  /** The error thrown from the command. */
-  readonly error: DactyloError
+  /** The status of the tool. */
+  readonly status: 'success' | 'error'
 
-  /** The duration of the command in milliseconds. */
+  /** The result of the tool on success. */
+  readonly result?: unknown
+
+  /** The error thrown from the command on failure. Also delivered to {@link DactyloErrorEvent}. */
+  readonly error?: DactyloError
+
+  /** The duration of the tool in milliseconds. */
   readonly durationMs: number
 
-  /** The optional payload of the command. */
+  /** The optional payload of the tool. */
   readonly payload?: Record<string, unknown>
 }
+
+/** Event emitted when an error is thrown from a command or a tool. */
+export type DactyloErrorEvent = {
+  /** The error thrown from the command or tool. */
+  readonly error: DactyloError
+
+  /** The duration of the command or tool in milliseconds. */
+  readonly durationMs: number
+
+  /** The optional payload of the command or tool. */
+  readonly payload?: Record<string, unknown>
+} & Relax<
+  | {
+      /** The command  that caused the error. */
+      readonly command: DactyloCommand
+    }
+  | {
+      /** The tool that caused the error. */
+      readonly tool: DactyloTool
+    }
+>
 
 /** Event emitted when the `editable` state changes in the editor. */
 export interface DactyloEditableEvent {
@@ -112,16 +154,25 @@ export interface DactyloEventsApi {
   /** Subscribes to the commands executed by the user/ai-agent. */
   readonly commands: Observable<DactyloCommandEvent>
 
-  /** Subscribes to the errors thrown from commands. */
+  /** Subscribes to the tools executed by the user/ai-agent. */
+  readonly tools: Observable<DactyloToolEvent>
+
+  /** Subscribes to the errors thrown from commands or tools. */
   readonly errors: Observable<DactyloErrorEvent>
 
   /** Subscribes to the history stack changes. */
   readonly history: Observable<HistoryEvent>
 
-  /** Subscribes to applied transactions. */
+  /**
+   * Subscribes to applied transactions.
+   * 👉🏻 Useful for low-level debugging and tracing.
+   */
   readonly transactionDidApply: Observable<Transaction>
 
-  /** Subscribes to rejected transactions. */
+  /**
+   * Subscribes to rejected transactions.
+   * 👉🏻 Useful for low-level debugging and tracing.
+   */
   readonly transactionDidReject: Observable<Transaction>
 }
 
@@ -133,18 +184,24 @@ export interface DactyloEventSources {
   /** The event source for the commands executed by the user/ai-agent. */
   readonly commands: EventSource<DactyloCommandEvent>
 
+  /** The event source for the tools executed by the user/ai-agent. */
+  readonly tools: EventSource<DactyloToolEvent>
+
   /** The event source for the errors thrown from commands. */
   readonly errors: EventSource<DactyloErrorEvent>
 }
 
-/** Commands to interact with the history of the editor. */
-export interface DactyloHistoryCommands {
+/** Tools to query the history of the editor. */
+export interface DactyloHistoryTools {
   /** Whether at least one undo entry is available. */
   readonly canUndo: () => boolean
 
   /** Whether at least one redo entry is available. */
   readonly canRedo: () => boolean
+}
 
+/** Commands to mutate the history of the editor. */
+export interface DactyloHistoryCommands {
   /** Applies the newest undo entry via the transaction pipeline. */
   readonly undo: () => void
 
@@ -152,14 +209,14 @@ export interface DactyloHistoryCommands {
   readonly redo: () => void
 }
 
-/** Commands to interact with the marks of the editor. */
-export interface DactyloMarksCommands {
-  /** Toggle a mark on or off via the transaction pipeline. */
-  readonly toggle: (
-    mark: MarkKey,
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+/** Api to interact with the history of the editor. */
+export type DactyloHistoryApi = DactyloAspectApi<
+  DactyloHistoryTools,
+  DactyloHistoryCommands
+>
 
+/** Tools to query the marks of the editor. */
+export interface DactyloMarksTools {
   /**
    * Whether a mark is active or not depending on the current current selection.
    * 👉🏻 A toolbar button for a mark that should appear pressed or not.
@@ -169,7 +226,26 @@ export interface DactyloMarksCommands {
   readonly isActive: (mark: MarkKey) => boolean
 }
 
-/** Commands to interact with the composer of the editor. */
+/** Commands to mutate the marks of the editor. */
+export interface DactyloMarksCommands {
+  /** Toggle a mark on or off via the transaction pipeline. */
+  readonly toggle: (
+    mark: MarkKey,
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+}
+
+/** Api to interact with the marks of the editor. */
+export type DactyloMarksApi = DactyloAspectApi<
+  DactyloMarksTools,
+  DactyloMarksCommands
+>
+
+/** Tools to query the composer of the editor. */
+// oxlint-disable-next-line typescript/no-empty-interface typescript/no-empty-object-type
+export interface DactyloComposerTools {}
+
+/** Commands to mutate the {@link DocumentState} of the editor. */
 export interface DactyloComposerCommands {
   /**
    * Sends an input event to the editor and returns a boolean indicating whether the event was processed or not.
@@ -187,20 +263,14 @@ export interface DactyloComposerCommands {
   readonly sendInput: (event: InputEvent) => boolean
 }
 
-/** Commands to interact with the selection of the editor, */
-export interface DactyloSelectionCommands {
-  /**
-   * Focus the editor by placing a collapsed cursor at the end of the document.
-   * Call when the user enters the editor surface (click, tab) so keyboard input applies.
-   */
-  readonly focus: () => void
+/** Api to interact with the composer of the editor. */
+export type DactyloComposerApi = DactyloAspectApi<
+  DactyloComposerTools,
+  DactyloComposerCommands
+>
 
-  /**
-   * Blurs the editor by clearing the selection.
-   * Call when the user leaves the editor surface (blur, tab) so keyboard input does not apply.
-   */
-  readonly blur: () => void
-
+/** Tools to query the selection of the editor. */
+export interface DactyloSelectionTools {
   /**
    * Whether the block with the given ID is with an active cursor selection within.
    * This is a pure function that does not mutate the editor context.
@@ -213,6 +283,21 @@ export interface DactyloSelectionCommands {
    */
   readonly isFocused: () => boolean
 }
+
+/** Commands to mutate the selection of the editor. */
+export interface DactyloSelectionCommands {
+  /** Focus the editor by placing a collapsed cursor at the end of the document. */
+  readonly focus: () => void
+
+  /** Blur the editor by clearing the selection. */
+  readonly blur: () => void
+}
+
+/** Api to interact with the selection of the editor. */
+export type DactyloSelectionApi = DactyloAspectApi<
+  DactyloSelectionTools,
+  DactyloSelectionCommands
+>
 
 /** Config options to use for the internal components and delegates of the editor. */
 export interface DactyloConfigOptions {
@@ -333,11 +418,19 @@ export class Dactylo {
       commands: new EventSource<DactyloCommandEvent>(),
       editable: new EventSource<DactyloEditableEvent>(),
       errors: new EventSource<DactyloErrorEvent>(),
+      tools: new EventSource<DactyloToolEvent>(),
     }
   }
 
   /**
-   * Safely executes a command and handle gracefully errors.
+   * Safely executes a command based on the `editable` state of the editor
+   * and handle gracefully errors.
+   *
+   * When the editor is not editable, the command is executed with a fallback executor,
+   * allowing to return a default value without throwing an error and crashing UI libraries
+   * using the editor.
+   * In most cases, the fallback executor either returns `false` or `void` as a no-op.
+   *
    * When it rejects, the error is wrapped into a {@link DactyloError} and re-thrown,
    * and the event `errors` is emitted with it.
    * Emits a `commands` event when it settles.
@@ -345,24 +438,24 @@ export class Dactylo {
   #safeExecuteCommand<T>(
     command: DactyloCommand,
     executor: () => T,
+    fallback: () => T,
     opts?: {
-      /** Whether the command should bypass the `editable` guard */
-      bypassEditableGuard?: boolean
       payload?: Record<string, unknown>
     },
   ): T {
-    const bypass = opts?.bypassEditableGuard ?? false
-    if (!this.#editable && !bypass) {
-      throw DactyloError.from({
-        code: 'EDITOR_NOT_EDITABLE',
-        message: `Cannot perform command \`${command}\` as editor is not editable. To make it editable please call the method \`.setEditable(true)\`.`,
-        payload: opts?.payload,
-      })
+    const startedAt = Date.now()
+
+    let $executor = executor
+    if (!this.#editable) {
+      // @todo: add debug mode.
+      warnOnce(
+        `Command \`${command}\` cannot perform any transactions or operations as editor is not editable. To make it editable please call the method \`.setEditable(true)\`. Fallback executor is used instead.`,
+      )
+      $executor = fallback
     }
 
-    const startedAt = Date.now()
     try {
-      const result = executor()
+      const result = $executor()
       const durationMs = Date.now() - startedAt
 
       this.#eventSources.commands.notify({
@@ -399,6 +492,72 @@ export class Dactylo {
   }
 
   /**
+   * Safely executes a tool based on the `editable` state of the editor
+   * and handle gracefully errors.
+   *
+   * When the editor is not editable, the tool is executed with a fallback executor,
+   * allowing to return a default value without throwing an error and crashing UI libraries
+   * using the editor.
+   * In most cases, the fallback executor either returns `false` or `void` as a no-op.
+   *
+   * When it rejects, the error is wrapped into a {@link DactyloError} and re-thrown,
+   * and the event `errors` is emitted with it.
+   * Emits a `tools` event when it settles.
+   */
+  #safeExecuteTool<T>(
+    tool: DactyloTool,
+    executor: () => T,
+    fallback: () => T,
+    opts?: { payload?: Record<string, unknown> },
+  ): T {
+    const startedAt = Date.now()
+
+    let $executor = executor
+    if (!this.#editable) {
+      // @todo: add debug mode.
+      warnOnce(
+        `Tool \`${tool}\` cannot be executed as editor is not editable. To make it editable please call the method \`.setEditable(true)\`. Fallback executor is used instead.`,
+      )
+      $executor = fallback
+    }
+
+    try {
+      const result = $executor()
+      const durationMs = Date.now() - startedAt
+
+      this.#eventSources.tools.notify({
+        durationMs,
+        payload: opts?.payload,
+        result,
+        status: 'success',
+        tool,
+      })
+
+      return result
+    } catch (err) {
+      const wrapped = DactyloError.wrap(err)
+      const durationMs = Date.now() - startedAt
+
+      error(wrapped.message, wrapped.stack)
+
+      this.#eventSources.errors.notify({
+        durationMs,
+        error: wrapped,
+        payload: opts?.payload,
+        tool,
+      })
+      this.#eventSources.tools.notify({
+        durationMs,
+        error: wrapped,
+        payload: opts?.payload,
+        status: 'error',
+        tool,
+      })
+
+      throw wrapped
+    }
+  }
+  /**
    * Returns the static configuration for the editor.
    *
    * @example
@@ -427,6 +586,7 @@ export class Dactylo {
        * ```
        */
       commands: this.#eventSources.commands.observable,
+
       /**
        * Subscribe to the `editable` changes.
        *
@@ -438,6 +598,7 @@ export class Dactylo {
        * ```
        */
       editable: this.#eventSources.editable.observable,
+
       /**
        * Subscribes to the errors thrown from executed commands.
        *
@@ -449,6 +610,7 @@ export class Dactylo {
        * ```
        */
       errors: this.#eventSources.errors.observable,
+
       /**
        * Subscribes to the history stack changes.
        *
@@ -460,8 +622,22 @@ export class Dactylo {
        * ```
        */
       history: this.#pipeline.events.history,
+
+      /**
+       * Subscribes to the tools executed by the user/ai-agent.
+       *
+       * @example
+       * ```ts
+       * const unsub = editor.events.tools.subscribe((event) => {
+       *  console.log(event.tool, event.status)
+       * })
+       * ```
+       */
+      tools: this.#eventSources.tools.observable,
+
       /**
        * Subscribes to applied transactions.
+       * 👉🏻 Useful for low-level debugging and tracing.
        *
        * @example
        * ```ts
@@ -471,8 +647,10 @@ export class Dactylo {
        * ```
        */
       transactionDidApply: this.#pipeline.events.transactionDidApply,
+
       /**
        * Subscribes to rejected transactions.
+       * 👉🏻 Useful for low-level debugging and tracing.
        *
        * @example
        * ```ts
@@ -485,185 +663,225 @@ export class Dactylo {
     }
   }
 
-  /** Returns the commands to interact with the history of the editor. */
-  get history(): DactyloHistoryCommands {
+  /** Returns the Api to interact with the history of the editor. */
+  get history(): DactyloHistoryApi {
     return {
-      /**
-       * Whether at least one redo entry is available.
-       *
-       * @example
-       * ```ts
-       * const canRedo = editor.history.canRedo()
-       * if (canRedo) {
-       *  editor.history.redo()
-       * }
-       * ```
-       */
-      canRedo: (): boolean =>
-        this.#safeExecuteCommand('history/can-redo', () =>
-          this.#pipeline.canRedo(),
-        ),
+      commands: {
+        /**
+         * Re-applies the newest redo entry via the transaction pipeline.
+         *
+         * @example
+         * ```ts
+         * editor.history.commands.redo()
+         * ```
+         */
+        redo: (): void =>
+          this.#safeExecuteCommand(
+            'history/redo',
+            () => this.#pipeline.redo(),
+            noop,
+          ),
 
-      /**
-       * Whether at least one undo entry is available.
-       *
-       * @example
-       * ```ts
-       * const canUndo = editor.history.canUndo()
-       * if (canUndo) {
-       *  editor.history.undo()
-       * }
-       * ```
-       */
-      canUndo: (): boolean =>
-        this.#safeExecuteCommand('history/can-undo', () =>
-          this.#pipeline.canUndo(),
-        ),
+        /**
+         * Applies the newest undo entry via the transaction pipeline.
+         *
+         * @example
+         * ```ts
+         * editor.history.commands.undo()
+         * ```
+         */
+        undo: (): void =>
+          this.#safeExecuteCommand(
+            'history/undo',
+            () => this.#pipeline.undo(),
+            noop,
+          ),
+      },
+      tools: {
+        /**
+         * Whether at least one redo entry is available.
+         *
+         * @example
+         * ```ts
+         * const canRedo = editor.history.tools.canRedo()
+         * if (canRedo) {
+         *  editor.history.commands.redo()
+         * }
+         * ```
+         */
+        canRedo: (): boolean =>
+          this.#safeExecuteTool(
+            'history/can-redo',
+            () => this.#pipeline.canRedo(),
+            () => false,
+          ),
 
-      /**
-       * Re-applies the newest redo entry via the transaction pipeline.
-       *
-       * @example
-       * ```ts
-       * editor.history.redo()
-       * ```
-       */
-      redo: (): void =>
-        this.#safeExecuteCommand('history/redo', () => this.#pipeline.redo()),
-
-      /**
-       * Applies the newest undo entry via the transaction pipeline.
-       *
-       * @example
-       * ```ts
-       * editor.history.undo()
-       * ```
-       */
-      undo: (): void =>
-        this.#safeExecuteCommand('history/undo', () => this.#pipeline.undo()),
+        /**
+         * Whether at least one undo entry is available.
+         *
+         * @example
+         * ```ts
+         * const canUndo = editor.history.tools.canUndo()
+         * if (canUndo) {
+         *  editor.history.commands.undo()
+         * }
+         * ```
+         */
+        canUndo: (): boolean =>
+          this.#safeExecuteTool(
+            'history/can-undo',
+            () => this.#pipeline.canUndo(),
+            () => false,
+          ),
+      },
     }
   }
 
-  /** Returns the commands to interact with the marks of the editor. */
-  get marks(): DactyloMarksCommands {
+  /** Returns the Api to interact with the marks of the editor. */
+  get marks(): DactyloMarksApi {
     return {
-      /**
-       * Whether a mark is active or not depending from the selection on the given editor context.
-       * 👉🏻  A toolbar button for a mark that should appear pressed or not.
-       *
-       * This is a pure function that does not mutate the editor context.
-       *
-       * @example
-       * ```ts
-       * const isBoldActive = editor.marks.isActive('bold')
-       * ```
-       */
-      isActive: (mark: MarkKey): boolean =>
-        this.#safeExecuteCommand(
-          'marks/is-active',
-          () => isMarkActiveInContext(this.#pipeline.context, mark),
-          { payload: { mark } },
-        ),
-
-      /**
-       * Toggle a mark on or off via the pipeline.
-       *
-       * @example
-       * ```ts
-       * editor.marks.toggle('bold')
-       * ```
-       */
-      toggle: (
-        markKey: MarkKey,
-        source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-      ): void =>
-        this.#safeExecuteCommand(
-          'marks/toggle',
-          () => this.#pipeline.toggleMark(markKey, source),
-          { payload: { mark: markKey, source } },
-        ),
+      commands: {
+        /**
+         * Toggle a mark on or off via the pipeline.
+         *
+         * @example
+         * ```ts
+         * editor.marks.commands.toggle('bold')
+         * ```
+         */
+        toggle: (
+          markKey: MarkKey,
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ): void =>
+          this.#safeExecuteCommand(
+            'marks/toggle',
+            () => this.#pipeline.toggleMark(markKey, source),
+            noop,
+            { payload: { mark: markKey, source } },
+          ),
+      },
+      tools: {
+        /**
+         * Whether a mark is active or not depending from the selection on the given editor context.
+         * 👉🏻  A toolbar button for a mark that should appear pressed or not.
+         *
+         * This is a pure function that does not mutate the editor context.
+         *
+         * @example
+         * ```ts
+         * const isBoldActive = editor.marks.tools.isActive('bold')
+         * ```
+         */
+        isActive: (mark: MarkKey): boolean =>
+          this.#safeExecuteTool(
+            'marks/is-active',
+            () => isMarkActiveInContext(this.#pipeline.context, mark),
+            () => false,
+            { payload: { mark } },
+          ),
+      },
     }
   }
 
-  /** Returns the commands to interact with the composer of the editor. */
-  get composer(): DactyloComposerCommands {
+  /** Returns the Api to interact with the composer of the editor. */
+  get composer(): DactyloComposerApi {
     return {
-      /**
-       * Sends an input event to the editor and returns a boolean indicating whether the event was processed or not.
-       * @example
-       * ```ts
-       *
-       * const handleBeforeInput = (event: InputEvent) => {
-       *  editor.composer.sendInput(event)
-       * }
-       * <div onKeyDown={handleBeforeInput} contentEditable={true} />
-       * ```
-       */
-      sendInput: (event: InputEvent): boolean =>
-        this.#safeExecuteCommand(
-          'composer/send-input',
-          () => this.#pipeline.digestInputEvent(event),
-          { payload: { event } },
-        ),
+      commands: {
+        /**
+         * Sends an input event to the editor and returns a boolean indicating whether the event was processed or not.
+         * @example
+         * ```ts
+         *
+         * const handleBeforeInput = (event: InputEvent) => {
+         *  editor.composer.commands.sendInput(event)
+         * }
+         * <div onKeyDown={handleBeforeInput} contentEditable={true} />
+         * ```
+         */
+        sendInput: (event: InputEvent): boolean =>
+          this.#safeExecuteCommand(
+            'composer/send-input',
+            () => this.#pipeline.digestInputEvent(event),
+            () => false,
+            { payload: { event } },
+          ),
+      },
+      // @todo: add tools for the composer
+      tools: {},
     }
   }
 
-  /** Returns the commands to interact with the selection of the editor. */
-  get selection(): DactyloSelectionCommands {
+  /** Returns the Api to interact with the selection of the editor. */
+  get selection(): DactyloSelectionApi {
     return {
-      /**
-       * Blurs the editor by clearing the selection.
-       *
-       * @example
-       * ```ts
-       * editor.selection.blur()
-       * ```
-       */
-      blur: (): void =>
-        this.#safeExecuteCommand('selection/blur', () =>
-          this.#pipeline.clearSelection('user'),
-        ),
+      commands: {
+        /**
+         * Blurs the editor by clearing the selection.
+         *
+         * @example
+         * ```ts
+         * editor.selection.commands.blur()
+         * ```
+         */
+        blur: (): void =>
+          this.#safeExecuteCommand(
+            'selection/blur',
+            () => this.#pipeline.clearSelection('user'),
+            noop,
+          ),
 
-      /**
-       * Focus the editor by placing a collapsed cursor at the end of the document.
-       *
-       * @example
-       * ```ts
-       * editor.selection.focus()
-       * ```
-       */
-      focus: (): void =>
-        this.#safeExecuteCommand('selection/focus', () =>
-          this.#pipeline.putCursorSelectionAtDocumentEnd('user'),
-        ),
+        /**
+         * Focus the editor by placing a collapsed cursor at the end of the document.
+         *
+         * @example
+         * ```ts
+         * editor.selection.commands.focus()
+         * ```
+         */
+        focus: (): void =>
+          this.#safeExecuteCommand(
+            'selection/focus',
+            () => this.#pipeline.putCursorSelectionAtDocumentEnd('user'),
+            noop,
+          ),
+      },
+      tools: {
+        /**
+         * Whether the block with the given ID is with an active cursor selection within.
+         * This is a pure function that does not mutate the editor context.
+         *
+         * @example
+         * ```ts
+         * const withActiveCursor = editor.selection.tools.isBlockWithActiveCursor(blockId)
+         * ```
+         */
+        isBlockWithActiveCursor: (blockId: BlockId): boolean =>
+          this.#safeExecuteTool(
+            'selection/is-block-with-active-cursor',
+            () =>
+              isBlockWithActiveCursor(
+                this.#pipeline.context.selection,
+                blockId,
+              ),
+            () => false,
+          ),
 
-      /**
-       * Whether the block with the given ID is with an active cursor selection within.
-       * This is a pure function that does not mutate the editor context.
-       *
-       * @example
-       * ```ts
-       * const withActiveCursor = editor.selection.isBlockWithActiveCursor(blockId)
-       * ```
-       */
-      isBlockWithActiveCursor: (blockId: BlockId): boolean =>
-        this.#safeExecuteCommand('selection/block-with-active-cursor', () =>
-          isBlockWithActiveCursor(this.#pipeline.context.selection, blockId),
-        ),
-
-      /**
-       * Whether the selection is active or not.
-       * This is a pure function that does not mutate the editor context.
-       *
-       * @example
-       * ```ts
-       * const isFocused = editor.selection.isFocused()
-       * ```
-       */
-      isFocused: (): boolean =>
-        this.#safeExecuteCommand('selection/is-focused', () =>
-          isSelectionActive(this.#pipeline.context.selection),
-        ),
+        /**
+         * Whether the selection is active or not.
+         * This is a pure function that does not mutate the editor context.
+         *
+         * @example
+         * ```ts
+         * const isFocused = editor.selection.tools.isFocused()
+         * ```
+         */
+        isFocused: (): boolean =>
+          this.#safeExecuteTool(
+            'selection/is-focused',
+            () => isSelectionActive(this.#pipeline.context.selection),
+            () => false,
+          ),
+      },
     }
   }
 
@@ -689,16 +907,17 @@ export class Dactylo {
    * editor.setEditable(true)
    * ```
    */
-  setEditable(editable: boolean): void {
+  setEditable(next: boolean): void {
+    const current = this.#editable
     /** no-op if the value is the same as the current `editable` state. */
-    if (this.#editable === editable) {
-      // @todo: add warn once
+    if (current === next) {
+      warnOnce(`Editor is already ${current ? 'editable' : 'not editable'}.`)
       return
     }
 
-    this.#editable = editable
+    this.#editable = next
     // @todo: add clear selection when the editor is not editable
-    this.#eventSources.editable.notify({ editable: this.#editable })
+    this.#eventSources.editable.notify({ editable: next })
   }
 
   /**
@@ -711,17 +930,8 @@ export class Dactylo {
    * ```
    */
   getContext(): EditorContext {
-    return this.#safeExecuteCommand(
-      'editor-context/get-snapshot',
-      () => this.#pipeline.context,
-      {
-        /**
-         * Bypassing as in any case we should be able to get the context snapshot
-         * as a not editable editor is a readonly instance.
-         */
-        bypassEditableGuard: true,
-      },
-    )
+    /** Passthrough for DX convenience. */
+    return this.#pipeline.context
   }
 
   /**
@@ -736,16 +946,7 @@ export class Dactylo {
    * ```
    */
   subscribe(callback: SubscriberCallback<EditorContext>): UnsubscribeCallback {
-    return this.#safeExecuteCommand(
-      'editor-context/subscribe',
-      () => this.#pipeline.events.context.subscribe(callback),
-      {
-        /**
-         * Bypassing to avoid to crash UI libraries when subscribing
-         * at the first render as a not editable editor is a readonly instance.
-         */
-        bypassEditableGuard: true,
-      },
-    )
+    /** Passthrough for DX convenience. */
+    return this.#pipeline.events.context.subscribe(callback)
   }
 }

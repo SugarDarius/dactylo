@@ -136,7 +136,7 @@ export function useSelection(): Selection | null {
 export function useIsWithActiveCursor(blockId: BlockId): boolean {
   const { editor } = useDactylo()
   const withActiveCursor = useMemo(
-    () => editor.selection.isBlockWithActiveCursor(blockId),
+    () => editor.selection.tools.isBlockWithActiveCursor(blockId),
     [editor, blockId],
   )
 
@@ -160,7 +160,9 @@ export function useIsFocused(): boolean {
       cb()
     }),
   )
-  const getSnapshot = useStableCallback(() => editor.selection.isFocused())
+  const getSnapshot = useStableCallback(() =>
+    editor.selection.tools.isFocused(),
+  )
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
@@ -181,7 +183,7 @@ export function useIsFocused(): boolean {
  */
 export function useSelectionFocus() {
   const { editor } = useDactylo()
-  return useStableCallback(() => editor.selection.focus())
+  return useStableCallback(() => editor.selection.commands.focus())
 }
 
 // --- Listeners ------─────────────────────────────────────────-----
