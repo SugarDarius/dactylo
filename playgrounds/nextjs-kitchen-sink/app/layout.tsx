@@ -2,6 +2,8 @@ import '~/app/globals.css'
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 
+import { Toaster } from '~/components/ui/toast'
+
 const geistSans = Geist({
   subsets: ['latin'],
   variable: '--font-sans',
@@ -26,7 +28,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased`}
       suppressHydrationWarning
     >
-      <body className='relative min-h-screen'>{children}</body>
+      <body className='relative min-h-screen'>
+        {children}
+        <Toaster />
+      </body>
     </html>
   )
 }

@@ -30,3 +30,4 @@ export type {
   TextNode,
 } from './internals/nodes'
 export type { HistoryEvent } from './internals/history'
+export type { Transaction, TransactionSource } from './internals/transaction'

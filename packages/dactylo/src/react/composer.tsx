@@ -1,6 +1,11 @@
-import { useMemo, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useSyncExternalStore } from 'react'
 
-import type { Dactylo, DactyloStaticConfig } from '../dactylo'
+import type {
+  Dactylo,
+  DactyloCommandEvent,
+  DactyloSelectionCommands,
+  DactyloStaticConfig,
+} from '../dactylo'
 import type { BlockId } from '../internals/blocks'
 import type { DocumentState } from '../internals/document'
 import { isCursorSelection } from '../internals/selection'
@@ -12,16 +17,20 @@ import { useStableCallback, useStableValue } from './internals/hooks'
 /** @private */
 export type OnStoreChange = () => void
 
-/** Dactylo context. */
+// --- Main Context ─────────────────────────────────────────--------
+
+/** Main Dactylo context. */
 export interface DactyloContext {
-  /** The editor instance. */
+  /** The {@link Dactylo} editor instance. */
   editor: Dactylo
 }
 
 export const { Provider: DactyloProvider, useContext: useDactylo } =
   createSafeContext<DactyloContext>({
-    errorMsg: `\`<${COMPOSER_ROOT_NAME} />\` is missing. Did you forget to wrap your component with it?`,
+    errorMsg: `\`<${COMPOSER_ROOT_NAME} />\` is missing. Did you forget to wrap your component within it?`,
   })
+
+// --- Editor ─────────────────────────────────────────--------------
 
 /**
  * Returns the editor {@link DactyloStaticConfig}.
@@ -38,6 +47,29 @@ export function useEditorConfig(): DactyloStaticConfig {
 
   return config
 }
+
+/**
+ * Returns whether the editor is editable.
+ *
+ * @example
+ * ```tsx
+ * const canEdit = useCanEdit()
+ * ```
+ */
+export function useCanEdit(): boolean {
+  const { editor } = useDactylo()
+
+  const subscribe = useStableCallback((cb: OnStoreChange) =>
+    editor.events.editable.subscribe(() => {
+      cb()
+    }),
+  )
+  const getSnapshot = useStableCallback(() => editor.canEdit())
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+// --- Editor Context ─────────────────────────────────────────------
 
 /**
  * Returns the {@link DocumentState} from the {@link EditorContext}.
@@ -133,26 +165,7 @@ export function useIsFocused(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
-/**
- * Returns whether the editor is editable.
- *
- * @example
- * ```tsx
- * const canEdit = useCanEdit()
- * ```
- */
-export function useCanEdit(): boolean {
-  const { editor } = useDactylo()
-
-  const subscribe = useStableCallback((cb: OnStoreChange) =>
-    editor.events.editable.subscribe(() => {
-      cb()
-    }),
-  )
-  const getSnapshot = useStableCallback(() => editor.canEdit())
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
-}
+// --- Commands ------─────────────────────────────────────────------
 
 /**
  * Returns the selection commands.
@@ -166,11 +179,36 @@ export function useCanEdit(): boolean {
  * }, [])
  * ```
  */
-export function useSelectionCommands() {
+export function useSelectionCommands(): DactyloSelectionCommands {
   const { editor } = useDactylo()
 
   const focus = useStableCallback(() => editor.selection.focus())
   const blur = useStableCallback(() => editor.selection.blur())
+  const isFocused = useStableCallback(() => editor.selection.isFocused())
 
-  return { blur, focus } as const
+  return { blur, focus, isFocused }
+}
+
+// --- Listeners ------─────────────────────────────────────────-----
+
+/**
+ * Get informed when a command is executed successfully or not.
+ *
+ * @example
+ * ```tsx
+ * useCommandsListener(({ command, status }) => {
+ *   console.log(command, status)
+ * })
+ * ```
+ */
+export function useCommandsListener(
+  listener: (event: DactyloCommandEvent) => void,
+): void {
+  const { editor } = useDactylo()
+  const stableListener = useStableCallback(listener)
+
+  useEffect(
+    () => editor.events.commands.subscribe(stableListener),
+    [editor, stableListener],
+  )
 }

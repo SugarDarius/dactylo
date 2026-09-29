@@ -645,7 +645,7 @@ export class TransactionPipeline {
   // --- Composing operations ─────────────────────────────────────────
 
   /**
-   * Digests and translates and input event into operations.
+   * Digests and translates an input event into operations.
    * Enforces core constraints invariants:
    * - `Enter` → new block
    * - `shift+Enter` → soft line break node

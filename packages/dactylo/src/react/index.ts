@@ -11,4 +11,5 @@ export {
   useSelectionCommands,
   useWithActiveTextCursorInBlock,
   useDocumentState,
+  useCommandsListener,
 } from './composer'
