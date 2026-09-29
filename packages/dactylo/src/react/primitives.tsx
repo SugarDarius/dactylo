@@ -59,6 +59,7 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
       children,
       clientOnly = false,
       editable = true,
+      debug = false,
       placeholder,
       config,
       ...props
@@ -67,7 +68,7 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
   ) => {
     const isMounted = useIsMounted()
     const ctx = useStableValue({
-      editor: new Dactylo({ config, editable, placeholder }),
+      editor: new Dactylo({ config, debug, editable, placeholder }),
     })
 
     if (!isMounted && clientOnly) {
