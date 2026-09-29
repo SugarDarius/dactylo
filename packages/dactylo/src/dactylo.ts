@@ -1,5 +1,5 @@
 import type { BlockId } from './internals/blocks'
-import { error, warnOnce } from './internals/console'
+import { error, warnOnceIf } from './internals/console'
 import {
   DEFAULT_HEADING_PLACEHOLDER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
@@ -350,6 +350,12 @@ export interface DactyloOptions {
 
   /** Config options to use for the internal components and delegates of the editor. */
   config?: DactyloConfigOptions
+
+  /**
+   * Whether to enable debug mode.
+   * Defaults to `false`
+   */
+  debug?: boolean
 }
 
 /**
@@ -386,6 +392,9 @@ export class Dactylo {
   /** Whether the editor is editable or not. */
   #editable: boolean
 
+  /** Whether to enable debug mode. */
+  readonly #debug: boolean
+
   /** Static configuration for the editor. */
   readonly #config: DactyloStaticConfig
 
@@ -397,6 +406,7 @@ export class Dactylo {
 
   constructor(options: DactyloOptions = {}) {
     this.#editable = options.editable ?? true
+    this.#debug = options.debug ?? false
     this.#config = {
       heading: {
         placeholder:
@@ -447,8 +457,8 @@ export class Dactylo {
 
     let $executor = executor
     if (!this.#editable) {
-      // @todo: add debug mode.
-      warnOnce(
+      warnOnceIf(
+        this.#debug,
         `Command \`${command}\` cannot perform any transactions or operations as editor is not editable. To make it editable please call the method \`.setEditable(true)\`. Fallback executor is used instead.`,
       )
       $executor = fallback
@@ -514,8 +524,8 @@ export class Dactylo {
 
     let $executor = executor
     if (!this.#editable) {
-      // @todo: add debug mode.
-      warnOnce(
+      warnOnceIf(
+        this.#debug,
         `Tool \`${tool}\` cannot be executed as editor is not editable. To make it editable please call the method \`.setEditable(true)\`. Fallback executor is used instead.`,
       )
       $executor = fallback
@@ -911,7 +921,10 @@ export class Dactylo {
     const current = this.#editable
     /** no-op if the value is the same as the current `editable` state. */
     if (current === next) {
-      warnOnce(`Editor is already ${current ? 'editable' : 'not editable'}.`)
+      warnOnceIf(
+        this.#debug,
+        `Editor is already ${current ? 'editable' : 'not editable'}.`,
+      )
       return
     }
 
