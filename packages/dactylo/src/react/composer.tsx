@@ -168,24 +168,20 @@ export function useIsFocused(): boolean {
 // --- Commands ------─────────────────────────────────────────------
 
 /**
- * Returns the selection commands.
+ * Returns the selection focus command.
  *
  * @example
  * ```tsx
- * const { focus } = useSelectionCommands()
+ * const focus = useSelectionFocus()
  *
  * useLayoutEffect(() => {
  *  focus()
  * }, [])
  * ```
  */
-export function useSelectionCommands() {
+export function useSelectionFocus() {
   const { editor } = useDactylo()
-
-  const focus = useStableCallback(() => editor.selection.focus())
-  const blur = useStableCallback(() => editor.selection.blur())
-
-  return { blur, focus } as const
+  return useStableCallback(() => editor.selection.focus())
 }
 
 // --- Listeners ------─────────────────────────────────────────-----
