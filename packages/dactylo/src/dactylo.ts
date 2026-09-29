@@ -398,7 +398,7 @@ export class Dactylo {
         status: 'error',
       })
 
-      throw err
+      throw wrapped
     }
   }
 
