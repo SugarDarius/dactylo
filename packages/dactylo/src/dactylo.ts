@@ -1,5 +1,5 @@
 import type { BlockId } from './internals/blocks'
-import { error, warn } from './internals/console'
+import { error } from './internals/console'
 import {
   DEFAULT_HEADING_PLACEHOLDER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
@@ -353,13 +353,9 @@ export class Dactylo {
   ): T {
     const bypass = opts?.bypassEditableGuard ?? false
     if (!this.#editable && !bypass) {
-      warn(
-        `Cannot perform command \`${command}\` as editor is not editable. To make it editable please call the method \`.setEditable(true)\``,
-      )
-
       throw DactyloError.from({
         code: 'EDITOR_NOT_EDITABLE',
-        message: `Cannot perform command \`${command}\` as editor is not editable.`,
+        message: `Cannot perform command \`${command}\` as editor is not editable. To make it editable please call the method \`.setEditable(true)\`.`,
         payload: opts?.payload,
       })
     }
