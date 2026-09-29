@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useId, useMemo, useRef } from 'react'
+import { forwardRef, useMemo, useRef } from 'react'
 
 import { Dactylo } from '../dactylo'
 import {
@@ -17,10 +17,10 @@ import {
   DactyloProvider,
   useCanEdit,
   useDocumentState,
-  useIsWithActiveCursor,
   useIsFocused,
   useSelectionCommands,
   useEditorConfig,
+  useEditableBlock,
 } from './composer'
 import {
   COMPOSER_EDITABLE_NAME,
@@ -91,18 +91,14 @@ const ComposerParagraphBlock = forwardRef<
   HTMLDivElement,
   ComposerParagraphBlockProps
 >(({ block, ...props }, forwardedRef) => {
-  const id = useId()
-
   const ref = useRef<HTMLDivElement>(null)
   const mergedRefs = mergeRefs(forwardedRef, ref)
 
   const { paragraph } = useEditorConfig()
-  const canEdit = useCanEdit()
-  const withActiveCursor = useIsWithActiveCursor(block.id)
+  const { canEdit, editableId, editableRef, withActiveCursor } =
+    useEditableBlock(block.id)
 
-  // @todo: add handlers
-  // @todo: add sync selection and reconciliation
-  // @todo: add custom hook + request animation frame
+  const isActive = canEdit && withActiveCursor
 
   return (
     <div
@@ -112,16 +108,17 @@ const ComposerParagraphBlock = forwardRef<
         [PARAGRAPH_BLOCK_ATTR_NAME]: '',
         [PARAGRAPH_BLOCK_ID_ATTR_NAME]: block.id,
       }}
-      data-active={withActiveCursor ?? undefined}
+      data-active={isActive ?? undefined}
     >
       <div
-        id={id}
+        ref={editableRef}
+        id={editableId}
         role={canEdit ? 'textbox' : undefined}
         aria-roledescription='paragraph'
         aria-multiline={canEdit ? 'true' : undefined}
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
-        data-active={withActiveCursor ?? undefined}
+        data-active={isActive ?? undefined}
         {...{
           [CONTENT_EDITABLE_ATTR_NAME]: canEdit ? 'true' : 'false',
           [PARAGRAPH_BLOCK_CONTENT_ATTR_NAME]: '',
@@ -198,6 +195,8 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
     const canEdit = useCanEdit()
     const focused = useIsFocused()
     const { focus } = useSelectionCommands()
+
+    // @todo: add handlers and DOM events
 
     useIsomorphicLayoutEffect(() => {
       if (autoFocus && !focused && canEdit) {

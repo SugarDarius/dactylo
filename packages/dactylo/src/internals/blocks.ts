@@ -181,6 +181,7 @@ export function findFirstTextNodeInBlock(
 }
 
 /** Finds the last text node in a block. */
+// @todo: handle links and mentions
 export function findLastTextNodeInBlock(
   block: BlockWithInlineContent,
 ): TextNode | null {

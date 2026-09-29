@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from 'react'
+import { useEffect, useId, useRef, useSyncExternalStore } from 'react'
 
 import type {
   Dactylo,
@@ -12,7 +12,11 @@ import type { Selection } from '../internals/selection'
 import type { TransactionSource } from '../internals/transaction'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
-import { useStableCallback, useStableValue } from './internals/hooks'
+import {
+  useIsomorphicLayoutEffect,
+  useStableCallback,
+  useStableValue,
+} from './internals/hooks'
 
 // --- Main Context ─────────────────────────────────────────--------
 
@@ -175,6 +179,30 @@ export function useIsFocused(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
+// --- Editable ------─────────────────────────────────────────------
+
+/**
+ * Wires a block's `contentEditable` surface to {@link Dactylo}.
+ * @private
+ */
+export function useEditableBlock(blockId: BlockId) {
+  const editableId = useId()
+  const editableRef = useRef<HTMLDivElement>(null)
+
+  const canEdit = useCanEdit()
+  const withActiveCursor = useIsWithActiveCursor(blockId)
+
+  // @todo: add handlers
+  // @todo: add request animation frame for putting cursor in DOM at position
+  useIsomorphicLayoutEffect(() => {
+    if (editableRef.current && canEdit && withActiveCursor) {
+      // @todo: add put cursor in DOM at position
+    }
+  }, [canEdit, withActiveCursor])
+
+  return { canEdit, editableId, editableRef, withActiveCursor } as const
+}
+
 // --- Commands ------─────────────────────────────────────────------
 
 /**
@@ -191,6 +219,7 @@ export function useIsFocused(): boolean {
  */
 export function useSelectionCommands() {
   const { editor } = useDactylo()
+
   const focus = useStableCallback(
     (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
       editor.selection.commands.focus(source),

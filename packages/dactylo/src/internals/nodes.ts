@@ -83,10 +83,10 @@ export interface MentionNode extends INode {
      * in UI libraries for the mention.
      */
     readonly type: string
-
-    /** The text to display for the mention */
-    readonly text: string
   }
+
+  /** The text to display for the mention */
+  readonly text: string
 }
 
 /** Node representing a like break (soft break, shift+enter) inside a block. */
