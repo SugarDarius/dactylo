@@ -17,7 +17,7 @@ import {
   DactyloProvider,
   useCanEdit,
   useDocumentState,
-  useWithActiveCursor,
+  useIsWithActiveCursor,
   useIsFocused,
   useSelectionCommands,
   useEditorConfig,
@@ -97,7 +97,7 @@ const ComposerParagraphBlock = forwardRef<
 
   const { paragraph } = useEditorConfig()
   const canEdit = useCanEdit()
-  const withActiveCursor = useWithActiveCursor(block.id)
+  const withActiveCursor = useIsWithActiveCursor(block.id)
 
   // @todo: add handlers
   // @todo: add sync selection and reconciliation

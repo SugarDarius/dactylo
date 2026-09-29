@@ -7,7 +7,6 @@ import type {
 } from '../dactylo'
 import type { BlockId } from '../internals/blocks'
 import type { DocumentState } from '../internals/document'
-import { isCursorSelection } from '../internals/selection'
 import type { Selection } from '../internals/selection'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
@@ -130,15 +129,15 @@ export function useSelection(): Selection | null {
  *
  * @example
  * ```tsx
- * const withActiveCursor = useWithActiveCursor(blockId)
+ * const withActiveCursor = useIsWithActiveCursor(blockId)
  * console.log(withActiveCursor)
  * ```
  */
-export function useWithActiveCursor(blockId: BlockId): boolean {
-  const selection = useSelection()
+export function useIsWithActiveCursor(blockId: BlockId): boolean {
+  const { editor } = useDactylo()
   const withActiveCursor = useMemo(
-    () => isCursorSelection(selection) && selection.anchor.blockId === blockId,
-    [selection, blockId],
+    () => editor.selection.isBlockWithActiveCursor(blockId),
+    [editor, blockId],
   )
 
   return withActiveCursor
