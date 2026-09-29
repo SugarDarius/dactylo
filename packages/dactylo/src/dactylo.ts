@@ -287,10 +287,14 @@ export interface DactyloSelectionTools {
 /** Commands to mutate the selection of the editor. */
 export interface DactyloSelectionCommands {
   /** Focus the editor by placing a collapsed cursor at the end of the document. */
-  readonly focus: () => void
+  readonly focus: (
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
 
   /** Blur the editor by clearing the selection. */
-  readonly blur: () => void
+  readonly blur: (
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
 }
 
 /** Api to interact with the selection of the editor. */
@@ -760,14 +764,14 @@ export class Dactylo {
          * ```
          */
         toggle: (
-          markKey: MarkKey,
+          mark: MarkKey,
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ): void =>
           this.#safeExecuteCommand(
             'marks/toggle',
-            () => this.#pipeline.toggleMark(markKey, source),
+            () => this.#pipeline.toggleMark(mark, source),
             noop,
-            { payload: { mark: markKey, source } },
+            { payload: { mark, source } },
           ),
       },
       tools: {
@@ -833,10 +837,12 @@ export class Dactylo {
          * editor.selection.commands.blur()
          * ```
          */
-        blur: (): void =>
+        blur: (
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ): void =>
           this.#safeExecuteCommand(
             'selection/blur',
-            () => this.#pipeline.clearSelection('user'),
+            () => this.#pipeline.clearSelection(source),
             noop,
           ),
 
@@ -848,10 +854,12 @@ export class Dactylo {
          * editor.selection.commands.focus()
          * ```
          */
-        focus: (): void =>
+        focus: (
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ): void =>
           this.#safeExecuteCommand(
             'selection/focus',
-            () => this.#pipeline.putCursorSelectionAtDocumentEnd('user'),
+            () => this.#pipeline.putCursorSelectionAtDocumentEnd(source),
             noop,
           ),
       },
@@ -910,14 +918,20 @@ export class Dactylo {
 
   /**
    * Sets the editable state of the editor.
+   *
+   * Clears the selection when the editor is set to not editable.
    * Emits an `editable` event when the editor `editable` change.
    *
    * @example
    * ```ts
    * editor.setEditable(true)
+   * editor.setEditable(false, 'ai-agent')
    * ```
    */
-  setEditable(next: boolean): void {
+  setEditable(
+    next: boolean,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+  ): void {
     const current = this.#editable
     /** no-op if the value is the same as the current `editable` state. */
     if (current === next) {
@@ -929,7 +943,9 @@ export class Dactylo {
     }
 
     this.#editable = next
-    // @todo: add clear selection when the editor is not editable
+    if (next === false) {
+      this.#pipeline.clearSelection(source)
+    }
     this.#eventSources.editable.notify({ editable: next })
   }
 

@@ -36,11 +36,13 @@ function ToolsListener() {
 }
 
 export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
+  const debug = process.env.NODE_ENV === 'development'
   return (
     <div className={cn('relative w-full', className)} {...props}>
       <Composer.Root
         placeholder='Write something…'
         clientOnly={true}
+        debug={debug}
         className='relative w-full'
       >
         <Composer.Editable autoFocus className='relative w-full' />
