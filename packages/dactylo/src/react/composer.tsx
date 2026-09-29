@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 
 import type {
   Dactylo,
@@ -13,9 +13,6 @@ import type { TransactionSource } from '../internals/transaction'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
 import { useStableCallback, useStableValue } from './internals/hooks'
-
-/** @private */
-export type OnStoreChange = () => void
 
 // --- Main Context ─────────────────────────────────────────--------
 
@@ -59,10 +56,8 @@ export function useEditorConfig(): DactyloStaticConfig {
 export function useCanEdit(): boolean {
   const { editor } = useDactylo()
 
-  const subscribe = useStableCallback((cb: OnStoreChange) =>
-    editor.events.editable.subscribe(() => {
-      cb()
-    }),
+  const subscribe = useStableCallback(
+    editor.events.editable.subscribe.bind(editor),
   )
   const getSnapshot = useStableCallback(() => editor.canEdit())
 
@@ -105,11 +100,7 @@ export function useSetEditable() {
 export function useDocumentState(): DocumentState {
   const { editor } = useDactylo()
 
-  const subscribe = useStableCallback((cb: OnStoreChange) =>
-    editor.subscribe(() => {
-      cb()
-    }),
-  )
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() => {
     const { state } = editor.getContext()
 
@@ -133,11 +124,7 @@ export function useDocumentState(): DocumentState {
 export function useSelection(): Selection | null {
   const { editor } = useDactylo()
 
-  const subscribe = useStableCallback((cb: OnStoreChange) =>
-    editor.subscribe(() => {
-      cb()
-    }),
-  )
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() => {
     const { selection } = editor.getContext()
 
@@ -159,12 +146,13 @@ export function useSelection(): Selection | null {
  */
 export function useIsWithActiveCursor(blockId: BlockId): boolean {
   const { editor } = useDactylo()
-  const withActiveCursor = useMemo(
-    () => editor.selection.tools.isBlockWithActiveCursor(blockId),
-    [editor, blockId],
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.selection.tools.isBlockWithActiveCursor(blockId),
   )
 
-  return withActiveCursor
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
 /**
@@ -179,11 +167,7 @@ export function useIsWithActiveCursor(blockId: BlockId): boolean {
 export function useIsFocused(): boolean {
   const { editor } = useDactylo()
 
-  const subscribe = useStableCallback((cb: OnStoreChange) =>
-    editor.subscribe(() => {
-      cb()
-    }),
-  )
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() =>
     editor.selection.tools.isFocused(),
   )
