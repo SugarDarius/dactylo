@@ -10,14 +10,14 @@ import {
   PARAGRAPH_BLOCK_ATTR_NAME,
   PARAGRAPH_BLOCK_CONTENT_ATTR_NAME,
   PARAGRAPH_BLOCK_ID_ATTR_NAME,
-  PARAGRAPH_BLOCK_PLACEHOLDER_ATTR_NAME,
+  BLOCK_PLACEHOLDER_ATTR_NAME,
   ROOT_ATTR_NAME,
 } from '../internals/constants'
 import {
   DactyloProvider,
   useCanEdit,
   useDocumentState,
-  useWithActiveTextCursorInBlock,
+  useWithActiveCursor,
   useIsFocused,
   useSelectionCommands,
   useEditorConfig,
@@ -95,11 +95,9 @@ const ComposerParagraphBlock = forwardRef<
   const ref = useRef<HTMLDivElement>(null)
   const mergedRefs = mergeRefs(forwardedRef, ref)
 
-  const editableRef = useRef<HTMLDivElement>(null)
-
   const { paragraph } = useEditorConfig()
   const canEdit = useCanEdit()
-  const withActiveCursor = useWithActiveTextCursorInBlock(block.id)
+  const withActiveCursor = useWithActiveCursor(block.id)
 
   // @todo: add handlers
   // @todo: add sync selection and reconciliation
@@ -117,7 +115,6 @@ const ComposerParagraphBlock = forwardRef<
     >
       <div
         id={id}
-        ref={editableRef}
         role={canEdit ? 'textbox' : undefined}
         aria-roledescription='paragraph'
         aria-multiline={canEdit ? 'true' : undefined}
@@ -127,10 +124,10 @@ const ComposerParagraphBlock = forwardRef<
         {...{
           [CONTENT_EDITABLE_ATTR_NAME]: canEdit ? 'true' : 'false',
           [PARAGRAPH_BLOCK_CONTENT_ATTR_NAME]: '',
-          [PARAGRAPH_BLOCK_PLACEHOLDER_ATTR_NAME]: paragraph.placeholder,
+          [BLOCK_PLACEHOLDER_ATTR_NAME]: paragraph.placeholder,
         }}
       >
-        {/** @todo add placeholder and inline content. */}
+        {/** @todo add inline content. */}
       </div>
     </div>
   )
@@ -197,16 +194,16 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
     forwardedRef,
   ) => {
     const canEdit = useCanEdit()
-    const isFocused = useIsFocused()
+    const focused = useIsFocused()
 
     const { focus } = useSelectionCommands()
 
     /** Focus the editor after initial mount if `autoFocus` is true. */
     useIsomorphicLayoutEffect(() => {
-      if (autoFocus && !isFocused && canEdit) {
+      if (autoFocus && !focused && canEdit) {
         focus()
       }
-    }, [canEdit, isFocused])
+    }, [canEdit, focused])
 
     return (
       <div
@@ -215,6 +212,8 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
         {...{ [EDITABLE_ATTR_NAME]: '' }}
         translate={translate}
         spellCheck={spellCheck}
+        data-disabled={!canEdit || undefined}
+        data-focused={focused || undefined}
       >
         <ComposerBlocks translate={translate} spellCheck={spellCheck} />
         {children}

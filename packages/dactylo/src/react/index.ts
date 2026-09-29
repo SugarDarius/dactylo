@@ -9,7 +9,7 @@ export {
   useIsFocused,
   useCanEdit,
   useSelectionCommands,
-  useWithActiveTextCursorInBlock,
+  useWithActiveCursor,
   useDocumentState,
   useCommandsListener,
 } from './composer'

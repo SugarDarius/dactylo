@@ -69,7 +69,7 @@ export function useCanEdit(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
-// --- Editor Context ─────────────────────────────────────────------
+// --- Document State ─────────────────────────────────────────------
 
 /**
  * Returns the {@link DocumentState} from the {@link EditorContext}.
@@ -96,6 +96,8 @@ export function useDocumentState(): DocumentState {
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
+
+// --- Selection ─────────────────────────────────────────-----------
 
 /**
  * Returns the {@link Selection} or `null`from the {@link EditorContext}.
@@ -125,15 +127,15 @@ export function useSelection(): Selection | null {
 
 /**
  * Returns whether the block with the given ID is with
- * and active text cursor in it.
+ * an active text cursor in it.
  *
  * @example
  * ```tsx
- * const withActiveCursor = useIsBlockWithActiveCursor(blockId)
- * console.log(isActive)
+ * const withActiveCursor = useWithActiveCursor(blockId)
+ * console.log(withActiveCursor)
  * ```
  */
-export function useWithActiveTextCursorInBlock(blockId: BlockId): boolean {
+export function useWithActiveCursor(blockId: BlockId): boolean {
   const selection = useSelection()
   const withActiveCursor = useMemo(
     () => isCursorSelection(selection) && selection.anchor.blockId === blockId,
