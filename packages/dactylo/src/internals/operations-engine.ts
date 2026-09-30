@@ -67,9 +67,9 @@ import { assertNever } from './utils'
 export function validationError(message: string, op: Operation): never {
   throw DactyloError.from({
     code: 'VALIDATE_TRANSACTION_OPERATIONS',
-    hint: 'OperationsEngine/validateOps',
+    hint: 'OperationsEngine/validateOp',
     message,
-    payload: { op },
+    payload: { op: JSON.stringify(op, null, 2) },
   })
 }
 
@@ -136,6 +136,7 @@ export function assertRangeInText(
 }
 
 /** Validates a text cursor by checking its type and offset. */
+// @todo: handle links and mentions
 export function validateTextCursor(
   state: DocumentState,
   cursor: TextCursor,
@@ -369,62 +370,57 @@ export function validateRemoveInlineNodeOp(
 }
 
 /**
- * Validates a batch of operations against current state.
- * Throws when operations do no respects the rules implemented in the editor.
+ * Validates an operation against current state.
+ * Throws when operation does not respect the rules implemented in the editor.
  */
-export function validateOps(
-  context: EditorContext,
-  ops: readonly Operation[],
-): void {
-  for (const op of ops) {
-    const type = op.__type
-    switch (type) {
-      case 'insert_block': {
-        validateInsertBlockOp(context, op)
-        break
-      }
-      case 'delete_block': {
-        validateDeleteBlockOp(context, op)
-        break
-      }
-      case 'split_block': {
-        validateSplitBlockOp(context, op)
-        break
-      }
-      case 'merge_blocks': {
-        validateMergeBlocksOp(context, op)
-        break
-      }
-      case 'insert_text': {
-        validateInsertTextOp(context, op)
-        break
-      }
-      case 'delete_text': {
-        validateDeleteTextOp(context, op)
-        break
-      }
-      case 'insert_inline_node': {
-        validateInsertInlineNodeOp(context, op)
-        break
-      }
-      case 'remove_inline_node': {
-        validateRemoveInlineNodeOp(context, op)
-        break
-      }
-      case 'set_marks': {
-        validateSetMarksOp(context, op)
-        break
-      }
-      case 'set_selection': {
-        validateSetSelectionOp(context, op)
-        break
-      }
-      case 'set_active_marks': {
-        break
-      }
-      default: {
-        assertNever(type, { hint: 'OperationsEngine/validateOps' })
-      }
+export function validateOp(context: EditorContext, op: Operation): void {
+  const type = op.__type
+  switch (type) {
+    case 'insert_block': {
+      validateInsertBlockOp(context, op)
+      break
+    }
+    case 'delete_block': {
+      validateDeleteBlockOp(context, op)
+      break
+    }
+    case 'split_block': {
+      validateSplitBlockOp(context, op)
+      break
+    }
+    case 'merge_blocks': {
+      validateMergeBlocksOp(context, op)
+      break
+    }
+    case 'insert_text': {
+      validateInsertTextOp(context, op)
+      break
+    }
+    case 'delete_text': {
+      validateDeleteTextOp(context, op)
+      break
+    }
+    case 'insert_inline_node': {
+      validateInsertInlineNodeOp(context, op)
+      break
+    }
+    case 'remove_inline_node': {
+      validateRemoveInlineNodeOp(context, op)
+      break
+    }
+    case 'set_marks': {
+      validateSetMarksOp(context, op)
+      break
+    }
+    case 'set_selection': {
+      validateSetSelectionOp(context, op)
+      break
+    }
+    case 'set_active_marks': {
+      break
+    }
+    default: {
+      assertNever(type, { hint: 'OperationsEngine/validateOp' })
     }
   }
 }
@@ -433,7 +429,7 @@ export function validateOps(
 export function applyError(message: string, op: Operation): never {
   throw DactyloError.from({
     code: 'APPLY_TRANSACTION_OPERATIONS',
-    hint: 'OperationsEngine/applyOps',
+    hint: 'OperationsEngine/applyOp',
     message,
     payload: { op },
   })
@@ -552,6 +548,7 @@ export function applyNormalizedMarks(
 }
 
 /** Applies an `insert_text` operation to the editor context. */
+// @todo: handle links and mentions
 export function applyInsertTextOp(
   context: EditorContext,
   op: InsertTextOp,
@@ -762,164 +759,125 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
   }
 }
 
-/**
- * Apply operations in order, left to right.
- * Pure - no history, no events.
- */
-export function applyOps(
-  context: EditorContext,
-  ops: readonly Operation[],
-): EditorContext {
-  let next = { ...context }
-
-  for (const op of ops) {
-    next = applyOp(next, op)
-  }
-
-  return next
-}
-
 export function invertError(message: string, op: Operation): never {
   throw DactyloError.from({
     code: 'INVERT_TRANSACTION_OPERATIONS',
-    hint: 'OperationsEngine/invertOps',
+    hint: 'OperationsEngine/invertOp',
     message,
     payload: { op },
   })
 }
 
-/**
- * Inverts a batch of operations in reverse application order
- * to restore the prior context.
- *
- */
-export function invertOps(ops: readonly Operation[]): readonly Operation[] {
-  const reversed = ops.toReversed()
-  const invertedOps: Operation[] = []
-
-  for (const op of reversed) {
-    const type = op.__type
-    switch (type) {
-      case 'insert_block': {
-        invertedOps.push({
-          __type: 'delete_block',
-          afterBlockId: op.afterBlockId,
-          blockId: op.block.id,
-          snapshot: op.block,
-        })
-        break
-      }
-      case 'delete_block': {
-        invertedOps.push({
-          __type: 'insert_block',
-          afterBlockId: op.afterBlockId,
-          block: op.snapshot,
-        })
-        break
-      }
-      case 'split_block': {
-        invertedOps.push({
-          __type: 'merge_blocks',
-          atIndex: op.atIndex,
-          mergedTailSnapshot: [...op.tailSnapshot],
-          sourceBlockId: op.newBlock.id,
-          sourceSnapshot: op.newBlock,
-          splitAtNodeId: op.atNodeId,
-          splitAtOffset: op.atOffset,
-          targetBlockId: op.blockId,
-        })
-        break
-      }
-      case 'merge_blocks': {
-        invertedOps.push({
-          __type: 'split_block',
-          atIndex: op.atIndex,
-          atNodeId: op.splitAtNodeId,
-          atOffset: op.splitAtOffset,
-          blockId: op.targetBlockId,
-          newBlock: op.sourceSnapshot,
-          tailSnapshot: [...op.mergedTailSnapshot],
-        })
-        break
-      }
-      case 'insert_text': {
-        invertedOps.push({
-          __type: 'delete_text',
-          blockId: op.blockId,
-          length: op.text.length,
-          nodeId: op.nodeId,
-          offset: op.offset,
-          snapshot: {
-            marks: op.marks,
-            text: op.text,
-          },
-        })
-        break
-      }
-      case 'delete_text': {
-        invertedOps.push({
-          __type: 'insert_text',
-          blockId: op.blockId,
-          marks: op.snapshot.marks,
-          nodeId: op.nodeId,
-          offset: op.offset,
-          text: op.snapshot.text,
-        })
-        break
-      }
-      case 'insert_inline_node': {
-        invertedOps.push({
-          __type: 'remove_inline_node',
-          blockId: op.blockId,
-          index: op.index,
-          snapshot: op.node,
-        })
-        break
-      }
-      case 'remove_inline_node': {
-        invertedOps.push({
-          __type: 'insert_inline_node',
-          blockId: op.blockId,
-          index: op.index,
-          node: op.snapshot,
-        })
-        break
-      }
-      case 'set_active_marks': {
-        invertedOps.push({
-          __type: 'set_active_marks',
-          activeMarks: op.prevActiveMarks,
-          prevActiveMarks: op.activeMarks,
-        })
-        break
-      }
-      case 'set_marks': {
-        invertedOps.push({
-          __type: 'set_marks',
-          blockId: op.blockId,
-          from: op.from,
-          nextMarks: op.prevMarks,
-          nodeId: op.nodeId,
-          prevMarks: op.nextMarks,
-          to: op.to,
-        })
-        break
-      }
-      case 'set_selection': {
-        invertedOps.push({
-          __type: 'set_selection',
-          next: op.prev,
-          prev: op.next,
-        })
-        break
-      }
-      default: {
-        assertNever(type, { hint: 'OperationsEngine/invertOps' })
+/** Reverts an operation to restore the prior context. */
+export function invertOp(op: Operation): Operation {
+  const type = op.__type
+  switch (type) {
+    case 'insert_block': {
+      return {
+        __type: 'delete_block',
+        afterBlockId: op.afterBlockId,
+        blockId: op.block.id,
+        snapshot: op.block,
       }
     }
+    case 'delete_block': {
+      return {
+        __type: 'insert_block',
+        afterBlockId: op.afterBlockId,
+        block: op.snapshot,
+      }
+    }
+    case 'split_block': {
+      return {
+        __type: 'merge_blocks',
+        atIndex: op.atIndex,
+        mergedTailSnapshot: [...op.tailSnapshot],
+        sourceBlockId: op.newBlock.id,
+        sourceSnapshot: op.newBlock,
+        splitAtNodeId: op.atNodeId,
+        splitAtOffset: op.atOffset,
+        targetBlockId: op.blockId,
+      }
+    }
+    case 'merge_blocks': {
+      return {
+        __type: 'split_block',
+        atIndex: op.atIndex,
+        atNodeId: op.splitAtNodeId,
+        atOffset: op.splitAtOffset,
+        blockId: op.targetBlockId,
+        newBlock: op.sourceSnapshot,
+        tailSnapshot: [...op.mergedTailSnapshot],
+      }
+    }
+    case 'insert_text': {
+      return {
+        __type: 'delete_text',
+        blockId: op.blockId,
+        length: op.text.length,
+        nodeId: op.nodeId,
+        offset: op.offset,
+        snapshot: {
+          marks: op.marks,
+          text: op.text,
+        },
+      }
+    }
+    case 'delete_text': {
+      return {
+        __type: 'insert_text',
+        blockId: op.blockId,
+        marks: op.snapshot.marks,
+        nodeId: op.nodeId,
+        offset: op.offset,
+        text: op.snapshot.text,
+      }
+    }
+    case 'insert_inline_node': {
+      return {
+        __type: 'remove_inline_node',
+        blockId: op.blockId,
+        index: op.index,
+        snapshot: op.node,
+      }
+    }
+    case 'remove_inline_node': {
+      return {
+        __type: 'insert_inline_node',
+        blockId: op.blockId,
+        index: op.index,
+        node: op.snapshot,
+      }
+    }
+    case 'set_active_marks': {
+      return {
+        __type: 'set_active_marks',
+        activeMarks: op.prevActiveMarks,
+        prevActiveMarks: op.activeMarks,
+      }
+    }
+    case 'set_marks': {
+      return {
+        __type: 'set_marks',
+        blockId: op.blockId,
+        from: op.from,
+        nextMarks: op.prevMarks,
+        nodeId: op.nodeId,
+        prevMarks: op.nextMarks,
+        to: op.to,
+      }
+    }
+    case 'set_selection': {
+      return {
+        __type: 'set_selection',
+        next: op.prev,
+        prev: op.next,
+      }
+    }
+    default: {
+      assertNever(type, { hint: 'OperationsEngine/invertOp' })
+    }
   }
-
-  return invertedOps
 }
 
 /** Throws a build error {@link DactyloError} when something goes wrong while building operations. */
@@ -1192,7 +1150,7 @@ export function buildTypedCharOps(
       blockId: block.id,
       marks: context.activeMarks,
       nodeId: cursor.nodeId,
-      offset: 0,
+      offset: cursor.offset,
       text: char,
     },
     {
@@ -1210,7 +1168,8 @@ export function buildTypedCharOps(
     return { coalesce: true, label: `insert-char:${char}`, ops }
   }
 
-  //@todo: detects markdown shortcut
+  //@todo: handle markdown shortcut
+  // @todo: handle mentions and slash command
 
   return { coalesce: false, label: `[TBD]`, ops }
 }

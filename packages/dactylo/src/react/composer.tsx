@@ -249,10 +249,9 @@ export function useEditableBlock(blockId: BlockId) {
     ? isBlockWithActiveCursor(blockId)
     : false
 
-  const onBeforeInput = useStableCallback((event: InputEvent) => {
-    console.log('event', event)
-    return editor.composer.commands.sendInput(event)
-  })
+  const onBeforeInput = useStableCallback((event: InputEvent) =>
+    editor.composer.commands.sendInput(event),
+  )
 
   useEffect(() => {
     const editable = editableRef.current

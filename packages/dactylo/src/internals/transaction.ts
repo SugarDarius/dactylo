@@ -11,7 +11,7 @@ import type { HistoryEvent } from './history'
 import type { MarkKey } from './marks'
 import type { Operation, InsertBlockOpPosition } from './operations'
 import {
-  applyOps,
+  applyOp,
   buildClearSelectionOps,
   buildCursorBackspaceOps,
   buildDeleteBlockOps,
@@ -21,8 +21,8 @@ import {
   buildSetMarksOps,
   buildSoftBreakOps,
   buildTypedCharOps,
-  invertOps,
-  validateOps,
+  invertOp,
+  validateOp,
 } from './operations-engine'
 import { isCursorSelection } from './selection'
 import { assertNever } from './utils'
@@ -472,17 +472,20 @@ export class TransactionPipeline {
       return
     }
 
-    try {
-      validateOps(this.#context, ops)
-    } catch (err) {
-      this.#eventSources.transactionDidReject.notify(transaction)
-      throw DactyloError.wrap(err)
-    }
-
     let next = { ...this.#context }
+    const inverseOps: Operation[] = []
 
-    next = applyOps(this.#context, ops)
-    const inverseOps = invertOps(ops)
+    for (const op of ops) {
+      try {
+        validateOp(next, op)
+      } catch (err) {
+        this.#eventSources.transactionDidReject.notify(transaction)
+        throw DactyloError.wrap(err)
+      }
+
+      next = applyOp(next, op)
+      inverseOps.push(invertOp(op))
+    }
 
     this.#context = next
 

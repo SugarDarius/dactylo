@@ -189,7 +189,6 @@ export function updateBlockWithInlineContent(
     content: coalesceInlineNodes(content),
   }
   const next = touchBlock(updated)
-
   return withDocumentState(context, replaceBlock(context.state, blockId, next))
 }
 
