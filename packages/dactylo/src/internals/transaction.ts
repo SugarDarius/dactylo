@@ -10,20 +10,8 @@ import { HistoryStack } from './history'
 import type { HistoryEvent } from './history'
 import type { MarkKey } from './marks'
 import type { Operation, InsertBlockOpPosition } from './operations'
-import {
-  applyOp,
-  buildClearSelectionOps,
-  buildCursorBackspaceOps,
-  buildDeleteBlockOps,
-  buildHardBreakOps,
-  buildInsertBlockOps,
-  buildPutCursorSelectionAtDocumentEndOps,
-  buildSetMarksOps,
-  buildSoftBreakOps,
-  buildTypedCharOps,
-  invertOp,
-  validateOp,
-} from './operations-engine'
+import { OperationsEngine } from './operations-engine'
+import type { OperationsEngineOptions } from './operations-engine'
 import { isCursorSelection } from './selection'
 import { assertNever } from './utils'
 
@@ -345,6 +333,12 @@ export interface TransactionPipelineOptions {
 
   /** Max undo entries retained by {@link HistoryStack}. */
   historyMaxDepth?: number
+
+  /** Configuration for the operations. */
+  operations: {
+    /** Configuration for the operations engine. */
+    engine: OperationsEngineOptions
+  }
 }
 
 /**
@@ -399,6 +393,9 @@ export class TransactionPipeline {
   /** Current editor context */
   #context: EditorContext
 
+  /** The operations engine to use for the transaction pipeline. */
+  readonly #operationsEngine: OperationsEngine
+
   /** The history stack to use for the transaction pipeline */
   readonly #history: HistoryStack
 
@@ -429,6 +426,7 @@ export class TransactionPipeline {
           policy: { source: 'editor', ...policy },
         }),
     })
+    this.#operationsEngine = new OperationsEngine(options.operations.engine)
     this.#history = new HistoryStack({
       maxDepth: options.historyMaxDepth,
     })
@@ -477,14 +475,14 @@ export class TransactionPipeline {
 
     for (const op of ops) {
       try {
-        validateOp(next, op)
+        this.#operationsEngine.validateOp(next, op)
       } catch (err) {
         this.#eventSources.transactionDidReject.notify(transaction)
         throw DactyloError.wrap(err)
       }
 
-      next = applyOp(next, op)
-      inverseOps.push(invertOp(op))
+      next = this.#operationsEngine.applyOp(next, op)
+      inverseOps.push(this.#operationsEngine.invertOp(op))
     }
 
     this.#context = next
@@ -601,7 +599,10 @@ export class TransactionPipeline {
     markKey: MarkKey,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    const intent = buildSetMarksOps(this.#context, markKey)
+    const intent = this.#operationsEngine.buildSetMarksOps(
+      this.#context,
+      markKey,
+    )
 
     /** No-op if we don't detect any active selection. */
     if (intent === null) {
@@ -715,10 +716,11 @@ export class TransactionPipeline {
         if (isCursorSelection(this.#context.selection)) {
           prevent()
 
-          const { ops, label, coalesce } = buildSoftBreakOps(
-            this.#context,
-            this.#context.selection.anchor,
-          )
+          const { ops, label, coalesce } =
+            this.#operationsEngine.buildSoftBreakOps(
+              this.#context,
+              this.#context.selection.anchor,
+            )
 
           this.#commit(ops, {
             coalesce,
@@ -736,10 +738,11 @@ export class TransactionPipeline {
         if (isCursorSelection(this.#context.selection)) {
           prevent()
 
-          const { ops, label, coalesce } = buildHardBreakOps(
-            this.#context,
-            this.#context.selection.anchor,
-          )
+          const { ops, label, coalesce } =
+            this.#operationsEngine.buildHardBreakOps(
+              this.#context,
+              this.#context.selection.anchor,
+            )
 
           this.#commit(ops, {
             coalesce,
@@ -756,7 +759,7 @@ export class TransactionPipeline {
         if (isCursorSelection(this.#context.selection)) {
           prevent()
 
-          const intent = buildCursorBackspaceOps(
+          const intent = this.#operationsEngine.buildCursorBackspaceOps(
             this.#context,
             this.#context.selection.anchor,
           )
@@ -787,11 +790,12 @@ export class TransactionPipeline {
           if (data && data.length === 1) {
             prevent()
 
-            const { ops, label, coalesce } = buildTypedCharOps(
-              this.#context,
-              this.#context.selection.anchor,
-              data,
-            )
+            const { ops, label, coalesce } =
+              this.#operationsEngine.buildTypedCharOps(
+                this.#context,
+                this.#context.selection.anchor,
+                data,
+              )
 
             this.#commit(ops, {
               coalesce,
@@ -842,7 +846,9 @@ export class TransactionPipeline {
   putCursorSelectionAtDocumentEnd(
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    const ops = buildPutCursorSelectionAtDocumentEndOps(this.#context)
+    const ops = this.#operationsEngine.buildPutCursorSelectionAtDocumentEndOps(
+      this.#context,
+    )
     if (ops === null) {
       return
     }
@@ -861,7 +867,7 @@ export class TransactionPipeline {
   clearSelection(
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    const ops = buildClearSelectionOps(this.#context)
+    const ops = this.#operationsEngine.buildClearSelectionOps(this.#context)
     if (ops === null) {
       return
     }
@@ -882,7 +888,11 @@ export class TransactionPipeline {
     block: BlockWithoutPosKey,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    const ops = buildInsertBlockOps(this.#context, pos, block)
+    const ops = this.#operationsEngine.buildInsertBlockOps(
+      this.#context,
+      pos,
+      block,
+    )
     this.#commit(ops, {
       label: transactionPolicyLabel('blocks', 'insert'),
       pushToHistory: true,
@@ -896,7 +906,10 @@ export class TransactionPipeline {
     blockId: BlockId,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    const ops = buildDeleteBlockOps(this.#context, blockId)
+    const ops = this.#operationsEngine.buildDeleteBlockOps(
+      this.#context,
+      blockId,
+    )
     this.#commit(ops, {
       label: transactionPolicyLabel('blocks', 'delete'),
       pushToHistory: true,

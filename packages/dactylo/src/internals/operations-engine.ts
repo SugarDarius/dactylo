@@ -61,7 +61,7 @@ import { createCursor, cursorAtBlockEnd, cursorAtBlockStart } from './selection'
 import type { TextCursor } from './selection'
 import { assertNever } from './utils'
 
-// --- Core engine ─────────────────────────────────────────---------
+// --- Validate ─────────────────────────────────────────------------
 
 /** Throws a validation {@link DactyloError} for a failed op check. */
 export function validationError(message: string, op: Operation): never {
@@ -369,61 +369,7 @@ export function validateRemoveInlineNodeOp(
   }
 }
 
-/**
- * Validates an operation against current state.
- * Throws when operation does not respect the rules implemented in the editor.
- */
-export function validateOp(context: EditorContext, op: Operation): void {
-  const type = op.__type
-  switch (type) {
-    case 'insert_block': {
-      validateInsertBlockOp(context, op)
-      break
-    }
-    case 'delete_block': {
-      validateDeleteBlockOp(context, op)
-      break
-    }
-    case 'split_block': {
-      validateSplitBlockOp(context, op)
-      break
-    }
-    case 'merge_blocks': {
-      validateMergeBlocksOp(context, op)
-      break
-    }
-    case 'insert_text': {
-      validateInsertTextOp(context, op)
-      break
-    }
-    case 'delete_text': {
-      validateDeleteTextOp(context, op)
-      break
-    }
-    case 'insert_inline_node': {
-      validateInsertInlineNodeOp(context, op)
-      break
-    }
-    case 'remove_inline_node': {
-      validateRemoveInlineNodeOp(context, op)
-      break
-    }
-    case 'set_marks': {
-      validateSetMarksOp(context, op)
-      break
-    }
-    case 'set_selection': {
-      validateSetSelectionOp(context, op)
-      break
-    }
-    case 'set_active_marks': {
-      break
-    }
-    default: {
-      assertNever(type, { hint: 'OperationsEngine/validateOp' })
-    }
-  }
-}
+// --- Apply ─────────────────────────────────────────---------------
 
 /** Throws an apply {@link DactyloError} for a failed op check. */
 export function applyError(message: string, op: Operation): never {
@@ -716,48 +662,7 @@ export function applyRemoveInlineNodeOp(
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
-/** Applies a single operation to the editor context. */
-export function applyOp(context: EditorContext, op: Operation): EditorContext {
-  const type = op.__type
-  switch (type) {
-    case 'insert_block': {
-      return applyInsertBlockOp(context, op)
-    }
-    case 'delete_block': {
-      return applyDeleteBlockOp(context, op)
-    }
-    case 'split_block': {
-      return applySplitBlockOp(context, op)
-    }
-    case 'merge_blocks': {
-      return applyMergeBlocksOp(context, op)
-    }
-    case 'insert_text': {
-      return applyInsertTextOp(context, op)
-    }
-    case 'delete_text': {
-      return applyDeleteTextOp(context, op)
-    }
-    case 'insert_inline_node': {
-      return applyInsertInlineNodeOp(context, op)
-    }
-    case 'remove_inline_node': {
-      return applyRemoveInlineNodeOp(context, op)
-    }
-    case 'set_active_marks': {
-      return withActiveMarks(context, op.activeMarks)
-    }
-    case 'set_marks': {
-      return applySetMarksOp(context, op)
-    }
-    case 'set_selection': {
-      return withSelection(context, op.next)
-    }
-    default: {
-      assertNever(type, { hint: 'OperationsEngine/applyOp' })
-    }
-  }
-}
+// --- Invert ─────────────────────────────────────────--------------
 
 export function invertError(message: string, op: Operation): never {
   throw DactyloError.from({
@@ -765,127 +670,6 @@ export function invertError(message: string, op: Operation): never {
     hint: 'OperationsEngine/invertOp',
     message,
     payload: { op },
-  })
-}
-
-/** Reverts an operation to restore the prior context. */
-export function invertOp(op: Operation): Operation {
-  const type = op.__type
-  switch (type) {
-    case 'insert_block': {
-      return {
-        __type: 'delete_block',
-        afterBlockId: op.afterBlockId,
-        blockId: op.block.id,
-        snapshot: op.block,
-      }
-    }
-    case 'delete_block': {
-      return {
-        __type: 'insert_block',
-        afterBlockId: op.afterBlockId,
-        block: op.snapshot,
-      }
-    }
-    case 'split_block': {
-      return {
-        __type: 'merge_blocks',
-        atIndex: op.atIndex,
-        mergedTailSnapshot: [...op.tailSnapshot],
-        sourceBlockId: op.newBlock.id,
-        sourceSnapshot: op.newBlock,
-        splitAtNodeId: op.atNodeId,
-        splitAtOffset: op.atOffset,
-        targetBlockId: op.blockId,
-      }
-    }
-    case 'merge_blocks': {
-      return {
-        __type: 'split_block',
-        atIndex: op.atIndex,
-        atNodeId: op.splitAtNodeId,
-        atOffset: op.splitAtOffset,
-        blockId: op.targetBlockId,
-        newBlock: op.sourceSnapshot,
-        tailSnapshot: [...op.mergedTailSnapshot],
-      }
-    }
-    case 'insert_text': {
-      return {
-        __type: 'delete_text',
-        blockId: op.blockId,
-        length: op.text.length,
-        nodeId: op.nodeId,
-        offset: op.offset,
-        snapshot: {
-          marks: op.marks,
-          text: op.text,
-        },
-      }
-    }
-    case 'delete_text': {
-      return {
-        __type: 'insert_text',
-        blockId: op.blockId,
-        marks: op.snapshot.marks,
-        nodeId: op.nodeId,
-        offset: op.offset,
-        text: op.snapshot.text,
-      }
-    }
-    case 'insert_inline_node': {
-      return {
-        __type: 'remove_inline_node',
-        blockId: op.blockId,
-        index: op.index,
-        snapshot: op.node,
-      }
-    }
-    case 'remove_inline_node': {
-      return {
-        __type: 'insert_inline_node',
-        blockId: op.blockId,
-        index: op.index,
-        node: op.snapshot,
-      }
-    }
-    case 'set_active_marks': {
-      return {
-        __type: 'set_active_marks',
-        activeMarks: op.prevActiveMarks,
-        prevActiveMarks: op.activeMarks,
-      }
-    }
-    case 'set_marks': {
-      return {
-        __type: 'set_marks',
-        blockId: op.blockId,
-        from: op.from,
-        nextMarks: op.prevMarks,
-        nodeId: op.nodeId,
-        prevMarks: op.nextMarks,
-        to: op.to,
-      }
-    }
-    case 'set_selection': {
-      return {
-        __type: 'set_selection',
-        next: op.prev,
-        prev: op.next,
-      }
-    }
-    default: {
-      assertNever(type, { hint: 'OperationsEngine/invertOp' })
-    }
-  }
-}
-
-/** Throws a build error {@link DactyloError} when something goes wrong while building operations. */
-export function buildError(message: string, hint: string): never {
-  throw DactyloError.from({
-    code: 'BUILD_TRANSACTION_OPERATIONS',
-    hint,
-    message,
   })
 }
 
@@ -984,141 +768,17 @@ export function computeSplitTailSnapshot(
   return tailNodes
 }
 
-// --- Marks operations ─────────────────────────────────────────----
-
-/**
- * Builds the operations to toggle a mark on or off
- * and indicates if we should push the operation to the history stack.
- *
- * Returns `set_active_marks` operation when the selection is a cursor.
- * Returns `set_marks` operation when the selection is a range.
- * Returns `null` when the selection is null.
- */
-export function buildSetMarksOps(
-  context: EditorContext,
-  markKey: MarkKey,
-): {
-  /** The operations to apply. */
-  ops: Operation[]
-  /** The kind of the operation. */
-  kind: 'set_active_marks' | 'set_marks'
-} | null {
-  const { selection, state } = context
-
-  /** When we don't have any selection it's a no-op. */
-  if (selection === null) {
-    return null
-  }
-
-  /**
-   * When the selection is a cursor, we enable the active mark for the given mark key
-   * for the whole document (e.g the mark is active on typing).
-   */
-  if (selection.__type === 'cursor') {
-    const prev = context.activeMarks
-    const next = toggleMarkFlag(prev, markKey)
-
-    return {
-      kind: 'set_active_marks',
-      ops: [
-        {
-          __type: 'set_active_marks',
-          activeMarks: next,
-          prevActiveMarks: prev,
-        },
-      ],
-    }
-  }
-  /**
-   * When the selection is a range, we enable the active mark for the given mark key
-   * only for the range of text nodes.
-   */
-  else if (selection.__type === 'range') {
-    const normalized = normalizeRange(state, selection)
-    const { anchor, focus } = normalized
-
-    /**
-     * Anchor must precede focus in document order.
-     * We cannot accept this case as it's a contract-violation
-     * because a {@link RangeSelection} is a non-empty text range.
-     */
-    if (compareTextCursors(state, anchor, focus) >= 0) {
-      throw DactyloError.from({
-        code: 'RANGE_SELECTION_COLLAPSED',
-        hint: 'Use selection.__type === "cursor" (or toggleMark with a collapsed caret) to change activeMarks in editor context.',
-        message:
-          'Range selection is collapsed; expected anchor to precede focus.',
-      })
-    }
-
-    /**
-     * Collecting text spans must yield at least one text slice.
-     * An empty span list is also a contract-violation (collapsed range stored as `range`, stale cursors,
-     * or range or non-text-only inline nodes) - not a cue to toggle {@link EditorContext} active marks.
-     *
-     * Use only `selection.__type === 'cursor'` to toggle active marks.
-     */
-    const spans = collectTextSpansInRange(state, normalized)
-    if (spans.length <= 0) {
-      throw DactyloError.from({
-        code: 'RANGE_SELECTION_NO_TEXT_SPANS',
-        hint: 'Ensure the range covers at least one text node with non-zero length.',
-        message: 'Range selection produced no text spans.',
-      })
-    }
-
-    const enabling = spans.every((span) => {
-      const block = getBlockWithInlineContent(state, span.blockId)
-      const found = findNodeInBlockWithInlineContent(block, span.nodeId)
-
-      if (!found || found.node.__type !== 'text') {
-        return false
-      }
-
-      return isMarkEnabled(found.node.marks, markKey)
-    })
-
-    const ops: Operation[] = []
-
-    for (const span of spans) {
-      const block = getBlockWithInlineContent(state, span.blockId)
-      const found = findNodeInBlockWithInlineContent(block, span.nodeId)
-
-      if (!found || found.node.__type !== 'text') {
-        continue
-      }
-
-      const { node } = found
-      const nextMarks: Marks = { ...node.marks }
-
-      if (enabling) {
-        nextMarks[markKey] = true
-      }
-
-      ops.push({
-        __type: 'set_marks',
-        blockId: span.blockId,
-        from: span.from,
-        nextMarks,
-        nodeId: span.nodeId,
-        prevMarks: { ...node.marks },
-        to: span.to,
-      })
-    }
-
-    return {
-      kind: 'set_marks',
-      ops,
-    }
-  }
-
-  return null
+/** Throws a build error {@link DactyloError} when something goes wrong while building operations. */
+export function buildError(message: string, hint: string): never {
+  throw DactyloError.from({
+    code: 'BUILD_TRANSACTION_OPERATIONS',
+    hint,
+    message,
+  })
 }
 
-// --- Keyboard operations ─────────────────────────────────────────-
-
-/** Intent for building keyboard operations. */
-export interface KeyboardOpsIntent {
+/** Intent for building composing operations. */
+export interface ComposingOpsIntent {
   /** The operations to apply. */
   ops: Operation[]
   /** The kind for the intent. */
@@ -1127,359 +787,735 @@ export interface KeyboardOpsIntent {
   coalesce: boolean
 }
 
-/**
- * Builds operations for a single typed character at the current cursor position.
- * When the typed character is a `space` checks for markdown shortcut triggers.
- */
-// @todo: handle coalesce behaviors
-export function buildTypedCharOps(
-  context: EditorContext,
-  /** Collapsed cursor anchor for the pending edit. */
-  cursor: TextCursor,
-  /** The character to insert. */
-  char: string,
-): KeyboardOpsIntent {
-  const { state } = context
-
-  let ops: Operation[] = []
-  const block = getBlockWithInlineContent(state, cursor.blockId)
-
-  ops = [
-    {
-      __type: 'insert_text',
-      blockId: block.id,
-      marks: context.activeMarks,
-      nodeId: cursor.nodeId,
-      offset: cursor.offset,
-      text: char,
-    },
-    {
-      __type: 'set_selection',
-      next: createCursor({
-        blockId: block.id,
-        nodeId: cursor.nodeId,
-        offset: cursor.offset + char.length,
-      }),
-      prev: context.selection,
-    },
-  ]
-
-  // oxlint-disable-next-line no-negated-condition no-else-return unicorn/prefer-ternary
-  if (char === ' ') {
-    // @todo: handle markdown shortcut
-    return { coalesce: true, label: `insert-char:${char}`, ops }
-  } else if (char === '@') {
-    // @todo: handle mentions
-    return { coalesce: true, label: `mention`, ops }
-  } else if (char === '/') {
-    // @todo: handle slash command
-    return { coalesce: true, label: `slash-command`, ops }
+/** Options for constructing a {@link OperationsEngine} instance. */
+export interface OperationsEngineOptions {
+  /** Configuration for mentions. */
+  mentions: {
+    character: string
   }
-
-  return { coalesce: true, label: `insert-char:${char}`, ops }
+  /** Configuration for slash command. */
+  slashCommand: {
+    character: string
+  }
 }
 
 /**
- * Builds operations when user presses `Backspace` key,
- * to delete the previous typed character or merge with previous block at block start.
+ * Engine to build operations for the editor.
+ * It is responsible for building the operations for the editor
+ * based on the current state and the input events for:
+ *  - Validating operations
+ *  - Applying operations
+ *  - Inverting operations
+ *
+ * It allows to handle inline composition with mentions and slash command
  */
-// @todo: handle coalesce behaviors
-// @todo: handle links, mentions, and line breaks.
-export function buildCursorBackspaceOps(
-  context: EditorContext,
-  /** Collapsed cursor anchor for the pending edit. */
-  cursor: TextCursor,
-): KeyboardOpsIntent | null {
-  /** Merges the current block into the previous block when backspacing at block start. */
-  if (cursor.offset === 0) {
-    const index = context.state.blockOrderById.indexOf(cursor.blockId)
-    /**
-     * 👉🏻 Expected UX:
-     * At the very start of the document (first block, offset = 0), `Backspace` key typically
-     * deletes nothing. We are not at "delete the character before the cursor" (→ offset - 1),
-     * because we already took the block-start branch and there is no previous block to join with.
-     */
-    if (index <= 0) {
+export class OperationsEngine {
+  /** Options for the operations engine. */
+  #options: OperationsEngineOptions
+
+  constructor(options: OperationsEngineOptions) {
+    this.#options = options
+  }
+
+  // --- Core engine ─────────────────────────────────────────---------
+
+  /**
+   * Validates an operation against current state.
+   * Throws when operation does not respect the rules implemented in the editor.
+   */
+  validateOp(context: EditorContext, op: Operation): void {
+    const type = op.__type
+    switch (type) {
+      case 'insert_block': {
+        validateInsertBlockOp(context, op)
+        break
+      }
+      case 'delete_block': {
+        validateDeleteBlockOp(context, op)
+        break
+      }
+      case 'split_block': {
+        validateSplitBlockOp(context, op)
+        break
+      }
+      case 'merge_blocks': {
+        validateMergeBlocksOp(context, op)
+        break
+      }
+      case 'insert_text': {
+        validateInsertTextOp(context, op)
+        break
+      }
+      case 'delete_text': {
+        validateDeleteTextOp(context, op)
+        break
+      }
+      case 'insert_inline_node': {
+        validateInsertInlineNodeOp(context, op)
+        break
+      }
+      case 'remove_inline_node': {
+        validateRemoveInlineNodeOp(context, op)
+        break
+      }
+      case 'set_marks': {
+        validateSetMarksOp(context, op)
+        break
+      }
+      case 'set_selection': {
+        validateSetSelectionOp(context, op)
+        break
+      }
+      case 'set_active_marks': {
+        break
+      }
+      default: {
+        assertNever(type, { hint: 'OperationsEngine/validateOp' })
+      }
+    }
+  }
+
+  /** Applies a single operation to the editor context. */
+  applyOp(context: EditorContext, op: Operation): EditorContext {
+    const type = op.__type
+    switch (type) {
+      case 'insert_block': {
+        return applyInsertBlockOp(context, op)
+      }
+      case 'delete_block': {
+        return applyDeleteBlockOp(context, op)
+      }
+      case 'split_block': {
+        return applySplitBlockOp(context, op)
+      }
+      case 'merge_blocks': {
+        return applyMergeBlocksOp(context, op)
+      }
+      case 'insert_text': {
+        return applyInsertTextOp(context, op)
+      }
+      case 'delete_text': {
+        return applyDeleteTextOp(context, op)
+      }
+      case 'insert_inline_node': {
+        return applyInsertInlineNodeOp(context, op)
+      }
+      case 'remove_inline_node': {
+        return applyRemoveInlineNodeOp(context, op)
+      }
+      case 'set_active_marks': {
+        return withActiveMarks(context, op.activeMarks)
+      }
+      case 'set_marks': {
+        return applySetMarksOp(context, op)
+      }
+      case 'set_selection': {
+        return withSelection(context, op.next)
+      }
+      default: {
+        assertNever(type, { hint: 'OperationsEngine/applyOp' })
+      }
+    }
+  }
+
+  /** Reverts an operation to restore the prior context. */
+  invertOp(op: Operation): Operation {
+    const type = op.__type
+    switch (type) {
+      case 'insert_block': {
+        return {
+          __type: 'delete_block',
+          afterBlockId: op.afterBlockId,
+          blockId: op.block.id,
+          snapshot: op.block,
+        }
+      }
+      case 'delete_block': {
+        return {
+          __type: 'insert_block',
+          afterBlockId: op.afterBlockId,
+          block: op.snapshot,
+        }
+      }
+      case 'split_block': {
+        return {
+          __type: 'merge_blocks',
+          atIndex: op.atIndex,
+          mergedTailSnapshot: [...op.tailSnapshot],
+          sourceBlockId: op.newBlock.id,
+          sourceSnapshot: op.newBlock,
+          splitAtNodeId: op.atNodeId,
+          splitAtOffset: op.atOffset,
+          targetBlockId: op.blockId,
+        }
+      }
+      case 'merge_blocks': {
+        return {
+          __type: 'split_block',
+          atIndex: op.atIndex,
+          atNodeId: op.splitAtNodeId,
+          atOffset: op.splitAtOffset,
+          blockId: op.targetBlockId,
+          newBlock: op.sourceSnapshot,
+          tailSnapshot: [...op.mergedTailSnapshot],
+        }
+      }
+      case 'insert_text': {
+        return {
+          __type: 'delete_text',
+          blockId: op.blockId,
+          length: op.text.length,
+          nodeId: op.nodeId,
+          offset: op.offset,
+          snapshot: {
+            marks: op.marks,
+            text: op.text,
+          },
+        }
+      }
+      case 'delete_text': {
+        return {
+          __type: 'insert_text',
+          blockId: op.blockId,
+          marks: op.snapshot.marks,
+          nodeId: op.nodeId,
+          offset: op.offset,
+          text: op.snapshot.text,
+        }
+      }
+      case 'insert_inline_node': {
+        return {
+          __type: 'remove_inline_node',
+          blockId: op.blockId,
+          index: op.index,
+          snapshot: op.node,
+        }
+      }
+      case 'remove_inline_node': {
+        return {
+          __type: 'insert_inline_node',
+          blockId: op.blockId,
+          index: op.index,
+          node: op.snapshot,
+        }
+      }
+      case 'set_active_marks': {
+        return {
+          __type: 'set_active_marks',
+          activeMarks: op.prevActiveMarks,
+          prevActiveMarks: op.activeMarks,
+        }
+      }
+      case 'set_marks': {
+        return {
+          __type: 'set_marks',
+          blockId: op.blockId,
+          from: op.from,
+          nextMarks: op.prevMarks,
+          nodeId: op.nodeId,
+          prevMarks: op.nextMarks,
+          to: op.to,
+        }
+      }
+      case 'set_selection': {
+        return {
+          __type: 'set_selection',
+          next: op.prev,
+          prev: op.next,
+        }
+      }
+      default: {
+        assertNever(type, { hint: 'OperationsEngine/invertOp' })
+      }
+    }
+  }
+
+  // --- Marks operations ─────────────────────────────────────────----
+
+  /**
+   * Builds the operations to toggle a mark on or off
+   * and indicates if we should push the operation to the history stack.
+   *
+   * Returns `set_active_marks` operation when the selection is a cursor.
+   * Returns `set_marks` operation when the selection is a range.
+   * Returns `null` when the selection is null.
+   */
+  buildSetMarksOps(
+    context: EditorContext,
+    markKey: MarkKey,
+  ): {
+    /** The operations to apply. */
+    ops: Operation[]
+    /** The kind of the operation. */
+    kind: 'set_active_marks' | 'set_marks'
+  } | null {
+    const { selection, state } = context
+
+    /** When we don't have any selection it's a no-op. */
+    if (selection === null) {
       return null
     }
 
-    const prevBlockId = context.state.blockOrderById[index - 1]
-    if (prevBlockId === undefined) {
-      buildError(
-        `Previous block ID is not found for block ${cursor.blockId}`,
-        'OperationsEngine/buildCursorBackspaceOps',
-      )
+    /**
+     * When the selection is a cursor, we enable the active mark for the given mark key
+     * for the whole document (e.g the mark is active on typing).
+     */
+    if (selection.__type === 'cursor') {
+      const prev = context.activeMarks
+      const next = toggleMarkFlag(prev, markKey)
+
+      return {
+        kind: 'set_active_marks',
+        ops: [
+          {
+            __type: 'set_active_marks',
+            activeMarks: next,
+            prevActiveMarks: prev,
+          },
+        ],
+      }
     }
+    /**
+     * When the selection is a range, we enable the active mark for the given mark key
+     * only for the range of text nodes.
+     */
+    else if (selection.__type === 'range') {
+      const normalized = normalizeRange(state, selection)
+      const { anchor, focus } = normalized
 
-    const prevBlock = getBlockWithInlineContent(context.state, prevBlockId)
-    const sourceBlock = getBlockWithInlineContent(context.state, cursor.blockId)
+      /**
+       * Anchor must precede focus in document order.
+       * We cannot accept this case as it's a contract-violation
+       * because a {@link RangeSelection} is a non-empty text range.
+       */
+      if (compareTextCursors(state, anchor, focus) >= 0) {
+        throw DactyloError.from({
+          code: 'RANGE_SELECTION_COLLAPSED',
+          hint: 'Use selection.__type === "cursor" (or toggleMark with a collapsed caret) to change activeMarks in editor context.',
+          message:
+            'Range selection is collapsed; expected anchor to precede focus.',
+        })
+      }
 
-    const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
-      sourceBlock,
-      prevBlock,
-      context.activeMarks,
-    )
+      /**
+       * Collecting text spans must yield at least one text slice.
+       * An empty span list is also a contract-violation (collapsed range stored as `range`, stale cursors,
+       * or range or non-text-only inline nodes) - not a cue to toggle {@link EditorContext} active marks.
+       *
+       * Use only `selection.__type === 'cursor'` to toggle active marks.
+       */
+      const spans = collectTextSpansInRange(state, normalized)
+      if (spans.length <= 0) {
+        throw DactyloError.from({
+          code: 'RANGE_SELECTION_NO_TEXT_SPANS',
+          hint: 'Ensure the range covers at least one text node with non-zero length.',
+          message: 'Range selection produced no text spans.',
+        })
+      }
 
-    const endSelection =
-      cursorAtBlockEnd(prevBlockId, prevBlock) ??
-      createCursor({
-        blockId: prevBlockId,
-        nodeId: prevBlock.content.at(-1)?.id ?? cursor.nodeId,
-        offset: 0,
+      const enabling = spans.every((span) => {
+        const block = getBlockWithInlineContent(state, span.blockId)
+        const found = findNodeInBlockWithInlineContent(block, span.nodeId)
+
+        if (!found || found.node.__type !== 'text') {
+          return false
+        }
+
+        return isMarkEnabled(found.node.marks, markKey)
       })
 
-    const ops: Operation[] = [
+      const ops: Operation[] = []
+
+      for (const span of spans) {
+        const block = getBlockWithInlineContent(state, span.blockId)
+        const found = findNodeInBlockWithInlineContent(block, span.nodeId)
+
+        if (!found || found.node.__type !== 'text') {
+          continue
+        }
+
+        const { node } = found
+        const nextMarks: Marks = { ...node.marks }
+
+        if (enabling) {
+          nextMarks[markKey] = true
+        }
+
+        ops.push({
+          __type: 'set_marks',
+          blockId: span.blockId,
+          from: span.from,
+          nextMarks,
+          nodeId: span.nodeId,
+          prevMarks: { ...node.marks },
+          to: span.to,
+        })
+      }
+
+      return {
+        kind: 'set_marks',
+        ops,
+      }
+    }
+
+    return null
+  }
+
+  // --- Composing operations ─────────────────────────────────────────
+
+  /**
+   * Builds operations for a single typed character at the current cursor position.
+   * When the typed character is a `space` checks for markdown shortcut triggers.
+   */
+  // @todo: handle coalesce behaviors
+  buildTypedCharOps(
+    context: EditorContext,
+    /** Collapsed cursor anchor for the pending edit. */
+    cursor: TextCursor,
+    /** The character to insert. */
+    char: string,
+  ): ComposingOpsIntent {
+    const { state } = context
+
+    let ops: Operation[] = []
+    const block = getBlockWithInlineContent(state, cursor.blockId)
+
+    ops = [
       {
-        __type: 'merge_blocks',
-        atIndex: prevBlock.content.length,
-        mergedTailSnapshot: [...sourceBlock.content],
-        sourceBlockId: cursor.blockId,
-        sourceSnapshot: sourceBlock,
-        splitAtNodeId,
-        splitAtOffset,
-        targetBlockId: prevBlockId,
+        __type: 'insert_text',
+        blockId: block.id,
+        marks: context.activeMarks,
+        nodeId: cursor.nodeId,
+        offset: cursor.offset,
+        text: char,
       },
       {
         __type: 'set_selection',
-        next: endSelection,
+        next: createCursor({
+          blockId: block.id,
+          nodeId: cursor.nodeId,
+          offset: cursor.offset + char.length,
+        }),
         prev: context.selection,
       },
     ]
 
-    return {
-      coalesce: true,
-      label: `merge-blocks`,
-      ops,
+    // oxlint-disable-next-line no-negated-condition no-else-return unicorn/prefer-ternary
+    if (char === ' ') {
+      // @todo: handle markdown shortcut
+      return { coalesce: true, label: `insert-char:${char}`, ops }
+    } else if (char === this.#options.mentions.character) {
+      // @todo: handle mentions
+      return { coalesce: true, label: `mention`, ops }
+    } else if (char === this.#options.slashCommand.character) {
+      // @todo: handle slash command
+      return { coalesce: true, label: `slash-command`, ops }
     }
+
+    return { coalesce: true, label: `insert-char:${char}`, ops }
   }
 
-  const { state } = context
+  /**
+   * Builds operations when user presses `Backspace` key,
+   * to delete the previous typed character or merge with previous block at block start.
+   */
+  // @todo: handle coalesce behaviors
+  // @todo: handle links, mentions, and line breaks.
+  buildCursorBackspaceOps(
+    context: EditorContext,
+    /** Collapsed cursor anchor for the pending edit. */
+    cursor: TextCursor,
+  ): ComposingOpsIntent | null {
+    /** Merges the current block into the previous block when backspacing at block start. */
+    if (cursor.offset === 0) {
+      const index = context.state.blockOrderById.indexOf(cursor.blockId)
+      /**
+       * 👉🏻 Expected UX:
+       * At the very start of the document (first block, offset = 0), `Backspace` key typically
+       * deletes nothing. We are not at "delete the character before the cursor" (→ offset - 1),
+       * because we already took the block-start branch and there is no previous block to join with.
+       */
+      if (index <= 0) {
+        return null
+      }
 
-  const block = getBlockWithInlineContent(state, cursor.blockId)
-  const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+      const prevBlockId = context.state.blockOrderById[index - 1]
+      if (prevBlockId === undefined) {
+        buildError(
+          `Previous block ID is not found for block ${cursor.blockId}`,
+          'OperationsEngine/buildCursorBackspaceOps',
+        )
+      }
 
-  if (!found || found.node.__type !== 'text') {
-    buildError(
-      `Node ${cursor.nodeId} not found in block ${block.id}`,
-      'OperationsEngine/buildDeletePreviousTypedCharOps',
-    )
-  }
+      const prevBlock = getBlockWithInlineContent(context.state, prevBlockId)
+      const sourceBlock = getBlockWithInlineContent(
+        context.state,
+        cursor.blockId,
+      )
 
-  const { node } = found
+      const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
+        sourceBlock,
+        prevBlock,
+        context.activeMarks,
+      )
 
-  const ops: Operation[] = [
-    {
-      __type: 'delete_text',
-      blockId: cursor.blockId,
-      length: 1,
-      nodeId: cursor.nodeId,
-      offset: cursor.offset - 1,
-      snapshot: {
-        marks: node.marks,
-        text: node.text[cursor.offset - 1] ?? '',
-      },
-    },
-    {
-      __type: 'set_selection',
-      next: createCursor({
+      const endSelection =
+        cursorAtBlockEnd(prevBlockId, prevBlock) ??
+        createCursor({
+          blockId: prevBlockId,
+          nodeId: prevBlock.content.at(-1)?.id ?? cursor.nodeId,
+          offset: 0,
+        })
+
+      const ops: Operation[] = [
+        {
+          __type: 'merge_blocks',
+          atIndex: prevBlock.content.length,
+          mergedTailSnapshot: [...sourceBlock.content],
+          sourceBlockId: cursor.blockId,
+          sourceSnapshot: sourceBlock,
+          splitAtNodeId,
+          splitAtOffset,
+          targetBlockId: prevBlockId,
+        },
+        {
+          __type: 'set_selection',
+          next: endSelection,
+          prev: context.selection,
+        },
+      ]
+
+      return {
+        coalesce: true,
+        label: `merge-blocks`,
+        ops,
+      }
+    }
+
+    const { state } = context
+
+    const block = getBlockWithInlineContent(state, cursor.blockId)
+    const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+
+    if (!found || found.node.__type !== 'text') {
+      buildError(
+        `Node ${cursor.nodeId} not found in block ${block.id}`,
+        'OperationsEngine/buildDeletePreviousTypedCharOps',
+      )
+    }
+
+    const { node } = found
+
+    const ops: Operation[] = [
+      {
+        __type: 'delete_text',
         blockId: cursor.blockId,
+        length: 1,
         nodeId: cursor.nodeId,
         offset: cursor.offset - 1,
-      }),
-      prev: context.selection,
-    },
-  ]
+        snapshot: {
+          marks: node.marks,
+          text: node.text[cursor.offset - 1] ?? '',
+        },
+      },
+      {
+        __type: 'set_selection',
+        next: createCursor({
+          blockId: cursor.blockId,
+          nodeId: cursor.nodeId,
+          offset: cursor.offset - 1,
+        }),
+        prev: context.selection,
+      },
+    ]
 
-  return { coalesce: true, label: 'delete-character', ops }
-}
-
-/** Builds operations when user presses `Enter` key as a hard break. */
-// @todo: handle special node splits like links
-// @todo: handle other upcoming blocks like lists, quotes, ...
-export function buildHardBreakOps(
-  context: EditorContext,
-  cursor: TextCursor,
-): KeyboardOpsIntent {
-  const block = getBlockWithInlineContent(context.state, cursor.blockId)
-
-  const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
-  if (!found || found.node.__type !== 'text') {
-    buildError(
-      `Node ${cursor.nodeId} not found in block ${block.id}`,
-      'OperationsEngine/buildHardBreakOps',
-    )
+    return { coalesce: true, label: 'delete-character', ops }
   }
 
-  const { node, index } = found
+  /** Builds operations when user presses `Enter` key as a hard break. */
+  // @todo: handle special node splits like links
+  // @todo: handle other upcoming blocks like lists, quotes, ...
+  buildHardBreakOps(
+    context: EditorContext,
+    cursor: TextCursor,
+  ): ComposingOpsIntent {
+    const block = getBlockWithInlineContent(context.state, cursor.blockId)
 
-  const tailSnapshot = computeSplitTailSnapshot(block, node.id, cursor.offset)
-  const insertedBlock = createParagraphBlockAfter(block, tailSnapshot)
+    const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+    if (!found || found.node.__type !== 'text') {
+      buildError(
+        `Node ${cursor.nodeId} not found in block ${block.id}`,
+        'OperationsEngine/buildHardBreakOps',
+      )
+    }
 
-  const startSelection = cursorAtBlockStart(insertedBlock.id, insertedBlock)
+    const { node, index } = found
 
-  if (!startSelection) {
-    buildError(
-      `Failed to create start selection for inserted block ${insertedBlock.id}`,
-      'OperationsEngine/buildHardBreakOps',
-    )
+    const tailSnapshot = computeSplitTailSnapshot(block, node.id, cursor.offset)
+    const insertedBlock = createParagraphBlockAfter(block, tailSnapshot)
+
+    const startSelection = cursorAtBlockStart(insertedBlock.id, insertedBlock)
+
+    if (!startSelection) {
+      buildError(
+        `Failed to create start selection for inserted block ${insertedBlock.id}`,
+        'OperationsEngine/buildHardBreakOps',
+      )
+    }
+
+    const ops: Operation[] = [
+      {
+        __type: 'split_block',
+        atIndex: index,
+        atNodeId: cursor.nodeId,
+        atOffset: cursor.offset,
+        blockId: block.id,
+        newBlock: insertedBlock,
+        tailSnapshot,
+      },
+      {
+        __type: 'set_selection',
+        next: startSelection,
+        prev: context.selection,
+      },
+    ]
+
+    return { coalesce: false, label: 'split-block', ops }
   }
 
-  const ops: Operation[] = [
-    {
-      __type: 'split_block',
-      atIndex: index,
-      atNodeId: cursor.nodeId,
-      atOffset: cursor.offset,
-      blockId: block.id,
-      newBlock: insertedBlock,
-      tailSnapshot,
-    },
-    {
-      __type: 'set_selection',
-      next: startSelection,
-      prev: context.selection,
-    },
-  ]
+  /** Builds operations when user presses `shift+Enter` key as a soft break. */
+  // @todo: handle special node splits like links
+  // @todo: handle other upcoming blocks like lists, quotes, ...
+  buildSoftBreakOps(
+    context: EditorContext,
+    cursor: TextCursor,
+  ): ComposingOpsIntent {
+    const block = getBlockWithInlineContent(context.state, cursor.blockId)
 
-  return { coalesce: false, label: 'split-block', ops }
-}
+    const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+    if (!found || found.node.__type !== 'text') {
+      buildError(
+        `Node ${cursor.nodeId} not found in block ${block.id}`,
+        'OperationsEngine/buildSoftBreakOps',
+      )
+    }
 
-/** Builds operations when user presses `shift+Enter` key as a soft break. */
-// @todo: handle special node splits like links
-// @todo: handle other upcoming blocks like lists, quotes, ...
-export function buildSoftBreakOps(
-  context: EditorContext,
-  cursor: TextCursor,
-): KeyboardOpsIntent {
-  const block = getBlockWithInlineContent(context.state, cursor.blockId)
+    const { index } = found
+    const insertedLineBreak = createLineBreakNode()
 
-  const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
-  if (!found || found.node.__type !== 'text') {
-    buildError(
-      `Node ${cursor.nodeId} not found in block ${block.id}`,
-      'OperationsEngine/buildSoftBreakOps',
-    )
+    const ops: Operation[] = [
+      {
+        __type: 'insert_inline_node',
+        blockId: block.id,
+        index: index + 1,
+        node: insertedLineBreak,
+      },
+      {
+        __type: 'set_selection',
+        next: createCursor({
+          blockId: cursor.blockId,
+          nodeId: insertedLineBreak.id,
+          offset: 0,
+        }),
+        prev: context.selection,
+      },
+    ]
+
+    return { coalesce: false, label: 'insert-line-break-node', ops }
   }
 
-  const { index } = found
-  const insertedLineBreak = createLineBreakNode()
+  // --- Selection operations ─────────────────────────────────────────
 
-  const ops: Operation[] = [
-    {
-      __type: 'insert_inline_node',
-      blockId: block.id,
-      index: index + 1,
-      node: insertedLineBreak,
-    },
-    {
-      __type: 'set_selection',
-      next: createCursor({
-        blockId: cursor.blockId,
-        nodeId: insertedLineBreak.id,
-        offset: 0,
-      }),
-      prev: context.selection,
-    },
-  ]
+  /**
+   * Builds the operations to set the selection to the end of the last block in document order.
+   * Returns `null` when the selection is already set so we can skip it.
+   */
+  buildPutCursorSelectionAtDocumentEndOps(
+    context: EditorContext,
+  ): Operation[] | null {
+    const next = createCursorAtDocumentEnd(context.state)
+    if (!next) {
+      buildError(
+        'Failed to create cursor selection at document end',
+        'OperationsEngine/buildPutCursorSelectionAtDocumentEndOps',
+      )
+    }
 
-  return { coalesce: false, label: 'insert-line-break-node', ops }
-}
+    const prev = context.selection
 
-// --- Selection operations ─────────────────────────────────────────
+    /** Skip if the selection is already at the end of the document. */
+    if (
+      prev?.__type === 'cursor' &&
+      prev.anchor.blockId === next.anchor.blockId &&
+      prev.anchor.nodeId === next.anchor.nodeId &&
+      prev.anchor.offset === next.anchor.offset
+    ) {
+      return null
+    }
 
-/**
- * Builds the operations to set the selection to the end of the last block in document order.
- * Returns `null` when the selection is already set so we can skip it.
- */
-export function buildPutCursorSelectionAtDocumentEndOps(
-  context: EditorContext,
-): Operation[] | null {
-  const next = createCursorAtDocumentEnd(context.state)
-  if (!next) {
-    buildError(
-      'Failed to create cursor selection at document end',
-      'OperationsEngine/buildPutCursorSelectionAtDocumentEndOps',
-    )
+    return [
+      {
+        __type: 'set_selection',
+        next,
+        prev,
+      },
+    ]
   }
 
-  const prev = context.selection
+  /** Builds the operations to clear the selection. */
+  buildClearSelectionOps(context: EditorContext): Operation[] | null {
+    const { selection } = context
 
-  /** Skip if the selection is already at the end of the document. */
-  if (
-    prev?.__type === 'cursor' &&
-    prev.anchor.blockId === next.anchor.blockId &&
-    prev.anchor.nodeId === next.anchor.nodeId &&
-    prev.anchor.offset === next.anchor.offset
-  ) {
-    return null
+    /** Skip if the selection is already set to `null`. */
+    if (!selection) {
+      return null
+    }
+
+    return [
+      {
+        __type: 'set_selection',
+        next: null,
+        prev: selection,
+      },
+    ]
   }
 
-  return [
-    {
-      __type: 'set_selection',
-      next,
-      prev,
-    },
-  ]
-}
+  // --- Blocks operations ─────────────────────────────────────────---
 
-/** Builds the operations to clear the selection. */
-export function buildClearSelectionOps(
-  context: EditorContext,
-): Operation[] | null {
-  const { selection } = context
+  /** Builds the operations to insert a block at the given position. */
+  buildInsertBlockOps(
+    context: EditorContext,
+    insertPos: InsertBlockOpPosition,
+    block: BlockWithoutPosKey,
+  ): Operation[] {
+    const { state } = context
 
-  /** Skip if the selection is already set to `null`. */
-  if (!selection) {
-    return null
+    const afterBlockId = resolveInsertAfterBlockId(state, insertPos)
+    const posKey = computeInsertBlockPosKey(state, insertPos)
+
+    const blockWithPosKey: Block = { ...block, posKey }
+
+    return [
+      {
+        __type: 'insert_block',
+        afterBlockId,
+        block: blockWithPosKey,
+      },
+    ]
   }
 
-  return [
-    {
-      __type: 'set_selection',
-      next: null,
-      prev: selection,
-    },
-  ]
-}
-// --- Blocks operations ─────────────────────────────────────────---
+  /** Builds the operations to delete a block by ID. */
+  // @todo: add invariant check to ensure the block is not the last block in the document.
+  buildDeleteBlockOps(context: EditorContext, blockId: BlockId): Operation[] {
+    const { state } = context
+    const block = getBlock(state, blockId)
+    const idx = state.blockOrderById.indexOf(blockId)
 
-/** Builds the operations to insert a block at the given position. */
-export function buildInsertBlockOps(
-  context: EditorContext,
-  insertPos: InsertBlockOpPosition,
-  block: BlockWithoutPosKey,
-): Operation[] {
-  const { state } = context
+    let afterBlockId: BlockId | null = null
+    if (idx > 0) {
+      afterBlockId = state.blockOrderById[idx - 1] ?? null
+    }
 
-  const afterBlockId = resolveInsertAfterBlockId(state, insertPos)
-  const posKey = computeInsertBlockPosKey(state, insertPos)
-
-  const blockWithPosKey: Block = { ...block, posKey }
-
-  return [
-    {
-      __type: 'insert_block',
-      afterBlockId,
-      block: blockWithPosKey,
-    },
-  ]
-}
-
-/** Builds the operations to delete a block by ID. */
-// @todo: add invariant check to ensure the block is not the last block in the document.
-export function buildDeleteBlockOps(
-  context: EditorContext,
-  blockId: BlockId,
-): Operation[] {
-  const { state } = context
-  const block = getBlock(state, blockId)
-  const idx = state.blockOrderById.indexOf(blockId)
-
-  let afterBlockId: BlockId | null = null
-  if (idx > 0) {
-    afterBlockId = state.blockOrderById[idx - 1] ?? null
+    return [{ __type: 'delete_block', afterBlockId, blockId, snapshot: block }]
   }
-
-  return [{ __type: 'delete_block', afterBlockId, blockId, snapshot: block }]
 }

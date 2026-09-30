@@ -475,6 +475,16 @@ export class Dactylo {
     this.#pipeline = new TransactionPipeline({
       batchMaxSize: options.config?.pipeline?.batchMaxSize,
       historyMaxDepth: options.config?.pipeline?.historyMaxDepth,
+      operations: {
+        engine: {
+          mentions: {
+            character: this.#config.mentions.character,
+          },
+          slashCommand: {
+            character: this.#config.slashCommand.character,
+          },
+        },
+      },
     })
     this.#eventSources = {
       commands: new EventSource<DactyloCommandEvent>(),
