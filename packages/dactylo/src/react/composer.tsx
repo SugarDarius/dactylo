@@ -237,6 +237,8 @@ export function useIsFocused(): boolean {
  * @private
  */
 export function useEditableBlock(blockId: BlockId) {
+  const { editor } = useDactylo()
+
   const editableId = useId()
   const editableRef = useRef<HTMLDivElement>(null)
 
@@ -247,7 +249,24 @@ export function useEditableBlock(blockId: BlockId) {
     ? isBlockWithActiveCursor(blockId)
     : false
 
-  // @todo: add handlers
+  const onBeforeInput = useStableCallback((event: InputEvent) => {
+    console.log('event', event)
+    return editor.composer.commands.sendInput(event)
+  })
+
+  useEffect(() => {
+    const editable = editableRef.current
+    if (!editable) {
+      return
+    }
+
+    /**
+     * Attach a native DOM event handler for `beforeinput` as React build-in `onBeforeInput`
+     * is returning a `TextEvent` as native event instead of an `InputEvent`.
+     */
+    editable.addEventListener('beforeinput', onBeforeInput)
+    return () => editable.removeEventListener('beforeinput', onBeforeInput)
+  }, [onBeforeInput])
 
   /** Put the cursor caret in the DOM at the position of the cursor selection. */
   useIsomorphicLayoutEffect(() => {
@@ -268,7 +287,13 @@ export function useEditableBlock(blockId: BlockId) {
     return () => cancelAnimationFrame(id)
   }, [canEdit, withActiveCursor, cursorSelection])
 
-  return { canEdit, editableId, editableRef, withActiveCursor } as const
+  return {
+    canEdit,
+    editableId,
+    editableRef,
+    onBeforeInput,
+    withActiveCursor,
+  } as const
 }
 
 // --- Listeners ------─────────────────────────────────────────-----
