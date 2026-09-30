@@ -30,4 +30,4 @@ export const PARAGRAPH_BLOCK_CONTENT_ATTR_NAME =
   'dactylo-paragraph-block-content'
 
 export const TEXT_NODE_ATTR_NAME = 'dactylo-text-node'
-export const TEXT_NODE_ID_DATE_NAME = 'data-dactylo-text-node-id'
+export const TEXT_NODE_ID_DATA_NAME = 'data-dactylo-text-node-id'

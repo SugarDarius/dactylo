@@ -13,7 +13,7 @@ import {
   BLOCK_PLACEHOLDER_ATTR_NAME,
   ROOT_ATTR_NAME,
   TEXT_NODE_ATTR_NAME,
-  TEXT_NODE_ID_DATE_NAME,
+  TEXT_NODE_ID_DATA_NAME,
 } from '../internals/constants'
 import {
   DactyloProvider,
@@ -99,8 +99,9 @@ const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
       ref={forwardedRef}
       {...{
         [TEXT_NODE_ATTR_NAME]: '',
-        [TEXT_NODE_ID_DATE_NAME]: node.id,
+        [TEXT_NODE_ID_DATA_NAME]: node.id,
       }}
+      // @todo: handle marks
     >
       {node.text}
     </span>
