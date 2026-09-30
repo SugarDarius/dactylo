@@ -15,7 +15,6 @@ import {
   TEXT_NODE_ATTR_NAME,
   TEXT_NODE_ID_DATE_NAME,
 } from '../internals/constants'
-import type { InlineNode } from '../internals/nodes'
 import {
   DactyloProvider,
   useCanEdit,
