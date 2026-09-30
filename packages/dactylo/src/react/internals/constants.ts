@@ -9,3 +9,6 @@ export const COMPOSER_BLOCKS_NAME = 'Composer.Blocks'
 
 /** The name of the composer paragraph block component. */
 export const COMPOSER_PARAGRAPH_BLOCK_NAME = 'Composer.ParagraphBlock'
+
+/** The name of the composer text node component. */
+export const COMPOSER_TEXT_NODE_NAME = 'Composer.TextNode'

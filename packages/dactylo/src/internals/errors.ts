@@ -12,26 +12,28 @@ export function isDactyloError(err: unknown): err is DactyloError {
 export type DactyloErrorCode =
   /** Unexpected failure; default when {@link DactyloError.wrap} receives a non-`DactyloError`. */
   | 'UNKNOWN'
-  /** Unexpected fractional position error when computing a position key */
+  /** Unexpected fractional position error when computing a position key. */
   | 'FRACTIONAL_POSITION'
-  /** Unexpected collapsed range selection */
+  /** Unexpected collapsed range selection. */
   | 'RANGE_SELECTION_COLLAPSED'
-  /** Unexpected range selection with no text spans */
+  /** Unexpected range selection with no text spans. */
   | 'RANGE_SELECTION_NO_TEXT_SPANS'
-  /** Failed to validate a transaction operations */
+  /** Failed to validate a transaction operations. */
   | 'VALIDATE_TRANSACTION_OPERATIONS'
-  /** Failed to apply a transaction operations */
+  /** Failed to apply a transaction operations. */
   | 'APPLY_TRANSACTION_OPERATIONS'
-  /** Failed to invert a transaction operations */
+  /** Failed to invert a transaction operations. */
   | 'INVERT_TRANSACTION_OPERATIONS'
-  /** Failed to build a transaction operations */
+  /** Failed to build a transaction operations. */
   | 'BUILD_TRANSACTION_OPERATIONS'
-  /** Block is not allowed to have inline content */
+  /** Block is not allowed to have inline content. */
   | 'BLOCK_NOT_ALLOWED_TO_HAVE_INLINE_CONTENT'
-  /** History is not allowed to execute */
+  /** History is not allowed to execute. */
   | 'HISTORY_NOT_ALLOWED'
-  /** Failed to resolve a block in the document */
+  /** Failed to resolve a block in the document. */
   | 'UNKNOWN_BLOCK_IN_DOCUMENT'
+  /** No window selection found. */
+  | 'NO_WINDOW_SELECTION'
 
 /**
  * Typed error for Dactylo operations.

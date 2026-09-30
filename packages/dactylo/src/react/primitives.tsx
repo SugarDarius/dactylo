@@ -5,14 +5,17 @@ import { forwardRef, useMemo, useRef } from 'react'
 import { Dactylo } from '../dactylo'
 import {
   BLOCKS_ATTR_NAME,
-  CONTENT_EDITABLE_ATTR_NAME,
+  BLOCK_CONTENT_EDITABLE_ATTR_NAME,
   EDITABLE_ATTR_NAME,
   PARAGRAPH_BLOCK_ATTR_NAME,
   PARAGRAPH_BLOCK_CONTENT_ATTR_NAME,
   PARAGRAPH_BLOCK_ID_ATTR_NAME,
   BLOCK_PLACEHOLDER_ATTR_NAME,
   ROOT_ATTR_NAME,
+  TEXT_NODE_ATTR_NAME,
+  TEXT_NODE_ID_DATE_NAME,
 } from '../internals/constants'
+import type { InlineNode } from '../internals/nodes'
 import {
   DactyloProvider,
   useCanEdit,
@@ -27,6 +30,7 @@ import {
   COMPOSER_PARAGRAPH_BLOCK_NAME,
   COMPOSER_ROOT_NAME,
   COMPOSER_BLOCKS_NAME,
+  COMPOSER_TEXT_NODE_NAME,
 } from './internals/constants'
 import {
   useIsMounted,
@@ -38,6 +42,8 @@ import type {
   ComposerRootProps,
   ComposerEditableProps,
   ComposerParagraphBlockProps,
+  ComposerTextNodeProps,
+  ComposerInlineContentProps,
 } from './types'
 
 // --- Composer.Root ─────────────────────────────────────────-------
@@ -86,6 +92,47 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 
 // --- Composer.Editable ─────────────────────────────────────────---
 
+/** Adds a text node to the composer. */
+const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
+  ({ node, ...props }, forwardedRef) => (
+    <span
+      {...props}
+      ref={forwardedRef}
+      {...{
+        [TEXT_NODE_ATTR_NAME]: '',
+        [TEXT_NODE_ID_DATE_NAME]: node.id,
+      }}
+    >
+      {node.text}
+    </span>
+  ),
+)
+ComposerTextNode.displayName = COMPOSER_TEXT_NODE_NAME
+
+/** Adds inline content for a block to the composer. */
+const ComposerInlineContent = ({ content }: ComposerInlineContentProps) => {
+  // @todo: add performance rendering optimization
+  const children = useMemo(() => {
+    const items = []
+
+    for (const node of content) {
+      switch (node.__type) {
+        case 'text': {
+          items.push(<ComposerTextNode key={node.id} node={node} />)
+          break
+        }
+        default: {
+          break
+        }
+      }
+    }
+
+    return items
+  }, [content])
+
+  return children
+}
+
 /** Adds a paragraph block to the composer. */
 const ComposerParagraphBlock = forwardRef<
   HTMLDivElement,
@@ -97,6 +144,8 @@ const ComposerParagraphBlock = forwardRef<
   const { paragraph } = useEditorConfig()
   const { canEdit, editableId, editableRef, withActiveCursor } =
     useEditableBlock(block.id)
+
+  const content = useMemo(() => [...block.content], [block.content])
 
   const isActive = canEdit && withActiveCursor
 
@@ -120,12 +169,12 @@ const ComposerParagraphBlock = forwardRef<
         suppressContentEditableWarning
         data-active={isActive ?? undefined}
         {...{
-          [CONTENT_EDITABLE_ATTR_NAME]: canEdit ? 'true' : 'false',
+          [BLOCK_CONTENT_EDITABLE_ATTR_NAME]: canEdit ? 'true' : 'false',
           [PARAGRAPH_BLOCK_CONTENT_ATTR_NAME]: '',
           [BLOCK_PLACEHOLDER_ATTR_NAME]: paragraph.placeholder,
         }}
       >
-        {/** @todo add inline content. */}
+        <ComposerInlineContent content={content} />
       </div>
     </div>
   )
@@ -222,4 +271,9 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
 )
 ComposerEditable.displayName = COMPOSER_EDITABLE_NAME
 
-export { ComposerRoot as Root, ComposerEditable as Editable }
+export {
+  ComposerRoot as Root,
+  ComposerEditable as Editable,
+  ComposerParagraphBlock as ParagraphBlock,
+  ComposerTextNode as TextNode,
+}

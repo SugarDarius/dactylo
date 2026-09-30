@@ -1,5 +1,6 @@
 import type { DactyloOptions } from '../dactylo'
 import type { ParagraphBlock } from '../internals/blocks'
+import type { InlineNode, TextNode } from '../internals/nodes'
 
 // --- Composer.Root ─────────────────────────────────────────-------
 
@@ -17,6 +18,19 @@ export interface ComposerRootProps
 }
 
 // --- Composer.Editable ─────────────────────────────────────────---
+
+/** Props for declaring a text node component. */
+export interface ComposerTextNodeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  /** The text node to render. */
+  node: TextNode
+}
+
+/** Props for declaring an inline content component. */
+export interface ComposerInlineContentProps {
+  /** The inline content to render. */
+  content: InlineNode[]
+  // @todo: add custom components
+}
 
 /** Props for declaring a paragraph block component. */
 export interface ComposerParagraphBlockProps extends React.HTMLAttributes<HTMLDivElement> {

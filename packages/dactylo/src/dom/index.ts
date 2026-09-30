@@ -1,1 +1,1 @@
-export { syncTextCursorPositionInDOM } from './cursor'
+export { putCursorCaretAtPositionInDOM } from './cursor'

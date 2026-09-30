@@ -6,9 +6,10 @@ import type {
   DactyloStaticConfig,
   DactyloToolEvent,
 } from '../dactylo'
+import { putCursorCaretAtPositionInDOM } from '../dom/cursor'
 import type { BlockId } from '../internals/blocks'
 import type { DocumentState } from '../internals/document'
-import type { Selection } from '../internals/selection'
+import type { CursorSelection, Selection } from '../internals/selection'
 import type { TransactionSource } from '../internals/transaction'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
@@ -131,6 +132,30 @@ export function useSelection(): Selection | null {
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() => {
     const { selection } = editor.getContext()
+    return selection
+  })
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns the {@link CursorSelection} or `null` from the {@link EditorContext}.
+ *
+ * @example
+ * ```tsx
+ * const cursorSelection = useCursorSelection()
+ * console.log(cursorSelection)
+ * ```
+ */
+export function useCursorSelection(): CursorSelection | null {
+  const { editor } = useDactylo()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() => {
+    const { selection } = editor.getContext()
+    if (selection?.__type !== 'cursor') {
+      return null
+    }
 
     return selection
   })
@@ -139,24 +164,50 @@ export function useSelection(): Selection | null {
 }
 
 /**
- * Returns whether the block with the given ID is with
- * an active text cursor in it.
+ * Returns the selection tools.
  *
  * @example
  * ```tsx
- * const withActiveCursor = useIsWithActiveCursor(blockId)
- * console.log(withActiveCursor)
+ * const { isBlockWithActiveCursor } = useSelectionTools()
+ * console.log(isBlockWithActiveCursor(blockId))
  * ```
  */
-export function useIsWithActiveCursor(blockId: BlockId): boolean {
+export function useSelectionTools() {
   const { editor } = useDactylo()
 
-  const subscribe = useStableCallback(editor.subscribe.bind(editor))
-  const getSnapshot = useStableCallback(() =>
+  const isBlockWithActiveCursor = useStableCallback((blockId: BlockId) =>
     editor.selection.tools.isBlockWithActiveCursor(blockId),
   )
 
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  return { isBlockWithActiveCursor } as const
+}
+
+/**
+ * Returns the selection focus command.
+ *
+ * @example
+ * ```tsx
+ * const { focus } = useSelectionCommands()
+ *
+ * useLayoutEffect(() => {
+ *  focus()
+ * }, [])
+ * ```
+ */
+export function useSelectionCommands() {
+  const { editor } = useDactylo()
+
+  const focus = useStableCallback(
+    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.selection.commands.focus(source),
+  )
+
+  const blur = useStableCallback(
+    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.selection.commands.blur(source),
+  )
+
+  return { blur, focus } as const
 }
 
 /**
@@ -190,47 +241,34 @@ export function useEditableBlock(blockId: BlockId) {
   const editableRef = useRef<HTMLDivElement>(null)
 
   const canEdit = useCanEdit()
-  const withActiveCursor = useIsWithActiveCursor(blockId)
+  const { isBlockWithActiveCursor } = useSelectionTools()
+  const cursorSelection = useCursorSelection()
+  const withActiveCursor = cursorSelection
+    ? isBlockWithActiveCursor(blockId)
+    : false
 
   // @todo: add handlers
-  // @todo: add request animation frame for putting cursor in DOM at position
+
+  /** Put the cursor caret in the DOM at the position of the cursor selection. */
   useIsomorphicLayoutEffect(() => {
-    if (editableRef.current && canEdit && withActiveCursor) {
-      // @todo: add put cursor in DOM at position
+    if (
+      !editableRef.current ||
+      !canEdit ||
+      !cursorSelection ||
+      !withActiveCursor
+    ) {
+      return
     }
-  }, [canEdit, withActiveCursor])
+
+    const editable = editableRef.current
+    const id = requestAnimationFrame(() => {
+      putCursorCaretAtPositionInDOM(editable, cursorSelection.anchor)
+    })
+
+    return () => cancelAnimationFrame(id)
+  }, [canEdit, withActiveCursor, cursorSelection])
 
   return { canEdit, editableId, editableRef, withActiveCursor } as const
-}
-
-// --- Commands ------─────────────────────────────────────────------
-
-/**
- * Returns the selection focus command.
- *
- * @example
- * ```tsx
- * const { focus } = useSelectionCommands()
- *
- * useLayoutEffect(() => {
- *  focus()
- * }, [])
- * ```
- */
-export function useSelectionCommands() {
-  const { editor } = useDactylo()
-
-  const focus = useStableCallback(
-    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
-      editor.selection.commands.focus(source),
-  )
-
-  const blur = useStableCallback(
-    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
-      editor.selection.commands.blur(source),
-  )
-
-  return { blur, focus } as const
 }
 
 // --- Listeners ------─────────────────────────────────────────-----

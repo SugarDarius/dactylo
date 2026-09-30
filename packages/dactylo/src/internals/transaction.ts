@@ -418,6 +418,7 @@ export class TransactionPipeline {
      * TODO: handle initial content from props
      *  - from JSON
      *  - from markdown string
+     *  - path if no inline content is provided for a block with inline content
      */
     this.#context = createInitialEditorContext()
     this.#batch = new Batch({
