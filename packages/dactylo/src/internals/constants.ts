@@ -31,3 +31,7 @@ export const PARAGRAPH_BLOCK_CONTENT_ATTR_NAME =
 
 export const TEXT_NODE_ATTR_NAME = 'dactylo-text-node'
 export const TEXT_NODE_ID_DATA_NAME = 'data-dactylo-text-node-id'
+
+/** DOM paint characters. */
+export const DOM_PAINT_SPACE_CHARACTER = '\u00A0'
+export const DOM_PAINT_CARET_ANCHOR = '\u200B'

@@ -14,6 +14,8 @@ import {
   ROOT_ATTR_NAME,
   TEXT_NODE_ATTR_NAME,
   TEXT_NODE_ID_DATA_NAME,
+  DOM_PAINT_SPACE_CHARACTER,
+  DOM_PAINT_CARET_ANCHOR,
 } from '../internals/constants'
 import {
   DactyloProvider,
@@ -91,21 +93,57 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 
 // --- Composer.Editable ─────────────────────────────────────────---
 
+/**
+ * Renders the text with DOM paint characters.
+ * @private
+ */
+function useRenderText(text: string) {
+  return useMemo(() => {
+    let rendered = ''
+
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i]
+
+      // oxlint-disable-next-line unicorn/prefer-ternary
+      const isSpace =
+        char === ' ' &&
+        (i === 0 ||
+          text.length - 1 === i ||
+          text[i - 1] === ' ' ||
+          text[i + 1] === ' ')
+      rendered += isSpace ? DOM_PAINT_SPACE_CHARACTER : char
+    }
+
+    if (
+      rendered.endsWith(DOM_PAINT_SPACE_CHARACTER) ||
+      rendered.endsWith(' ')
+    ) {
+      rendered += DOM_PAINT_CARET_ANCHOR
+    }
+
+    return rendered
+  }, [text])
+}
+
 /** Adds a text node to the composer. */
 const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
-  ({ node, ...props }, forwardedRef) => (
-    <span
-      {...props}
-      ref={forwardedRef}
-      {...{
-        [TEXT_NODE_ATTR_NAME]: '',
-        [TEXT_NODE_ID_DATA_NAME]: node.id,
-      }}
-      // @todo: handle marks
-    >
-      {node.text}
-    </span>
-  ),
+  ({ node, ...props }, forwardedRef) => {
+    const rendered = useRenderText(node.text)
+
+    return (
+      <span
+        {...props}
+        ref={forwardedRef}
+        {...{
+          [TEXT_NODE_ATTR_NAME]: '',
+          [TEXT_NODE_ID_DATA_NAME]: node.id,
+        }}
+        // @todo: handle marks
+      >
+        {rendered}
+      </span>
+    )
+  },
 )
 ComposerTextNode.displayName = COMPOSER_TEXT_NODE_NAME
 
