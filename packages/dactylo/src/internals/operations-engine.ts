@@ -1164,14 +1164,19 @@ export function buildTypedCharOps(
     },
   ]
 
-  if (char !== ' ') {
+  // oxlint-disable-next-line no-negated-condition no-else-return unicorn/prefer-ternary
+  if (char === ' ') {
+    // @todo: handle markdown shortcut
     return { coalesce: true, label: `insert-char:${char}`, ops }
+  } else if (char === '@') {
+    // @todo: handle mentions
+    return { coalesce: true, label: `mention`, ops }
+  } else if (char === '/') {
+    // @todo: handle slash command
+    return { coalesce: true, label: `slash-command`, ops }
   }
 
-  //@todo: handle markdown shortcut
-  // @todo: handle mentions and slash command
-
-  return { coalesce: false, label: `[TBD]`, ops }
+  return { coalesce: true, label: `insert-char:${char}`, ops }
 }
 
 /**
