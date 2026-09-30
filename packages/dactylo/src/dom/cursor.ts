@@ -1,5 +1,8 @@
+import { DactyloError } from '../internals/errors'
 import type { TextCursor } from '../internals/selection'
+import { clampOffset, findTextNode } from './nodes'
 import type { DOMPoint } from './point'
+import { isCaretAt } from './window-selection'
 
 /**
  * Maps a {@link TextCursor} to the DOM point inside `editable`.
@@ -16,10 +19,35 @@ import type { DOMPoint } from './point'
 export function getDOMPointFromTextCursor(
   editable: HTMLDivElement,
   cursor: TextCursor,
-): DOMPoint {
+): DOMPoint | null {
   const { nodeId } = cursor
-
   // @todo: handle link nodes, line breaks and mentions
+  const node = findTextNode(editable, nodeId)
+
+  if (!node) {
+    if (editable.childNodes.length === 0) {
+      return { node: editable, offset: 0 }
+    }
+    return null
+  }
+
+  /**
+   * One model text node can be several DOM text nodes once marks, or the
+   * browser, split it. Walk only inside this host and consume `offset`.
+   */
+  const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
+  let remaining = cursor.offset
+  let text = walker.nextNode() as Text | null
+
+  while (text) {
+    if (remaining <= text.length) {
+      return { node: text, offset: remaining }
+    }
+    remaining -= text.length
+    text = walker.nextNode() as Text | null
+  }
+
+  return { node, offset: cursor.offset }
 }
 
 /**
@@ -30,5 +58,36 @@ export function putCursorCaretAtPositionInDOM(
   editable: HTMLDivElement,
   cursor: TextCursor,
 ): void {
-  // @todo: implement
+  const point = getDOMPointFromTextCursor(editable, cursor)
+  if (!point) {
+    // @todo: improve this
+    throw new Error('No point found')
+  }
+  const clamped = { ...point, offset: clampOffset(point.node, point.offset) }
+
+  const domSelection = window.getSelection()
+  if (!domSelection) {
+    throw DactyloError.from({
+      code: 'NO_WINDOW_SELECTION',
+      hint: 'dom/#putCursorCaretAtPositionInDOM',
+      message: 'No window selection found',
+    })
+  }
+
+  /** Skip resetting the selection if the caret is already at the position. */
+  if (document.activeElement === editable && isCaretAt(domSelection, clamped)) {
+    return
+  }
+
+  const range = document.createRange()
+  range.setStart(clamped.node, clamped.offset)
+  range.collapse(true)
+
+  /** Focus the editable if it is not already focused. */
+  if (document.activeElement !== editable) {
+    editable.focus({ preventScroll: true })
+  }
+
+  domSelection.removeAllRanges()
+  domSelection.addRange(range)
 }
