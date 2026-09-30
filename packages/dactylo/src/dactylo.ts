@@ -2,7 +2,9 @@ import type { BlockId } from './internals/blocks'
 import { error, warnOnceIf } from './internals/console'
 import {
   DEFAULT_HEADING_PLACEHOLDER,
+  DEFAULT_MENTION_CHARACTER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
+  DEFAULT_SLASH_COMMAND_CHARACTER,
 } from './internals/constants'
 import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
@@ -35,6 +37,24 @@ export interface DactyloAspectApi<A, C> {
 
 /** Static configuration for the editor. */
 export interface DactyloStaticConfig {
+  /** Configuration for mentions. */
+  mentions: {
+    /**
+     * The character to trigger a mention.
+     * Defaults to `@`
+     */
+    character: string
+  }
+
+  /** Configuration for slash command. */
+  slashCommand: {
+    /**
+     * The character to trigger a slash command.
+     * Defaults to `/`
+     */
+    character: string
+  }
+
   /** Configuration for the headings */
   heading: {
     /** Placeholder text when a heading is created or empty. */
@@ -307,6 +327,24 @@ export type DactyloSelectionApi = DactyloAspectApi<
 export interface DactyloConfigOptions {
   /** Configuration for te editor */
   editor?: {
+    /** Configuration for mentions. */
+    mentions?: {
+      /**
+       * The character to trigger a mention.
+       * Defaults to `@`
+       */
+      character?: string
+    }
+
+    /** Configuration for slash command. */
+    slashCommand?: {
+      /**
+       * The character to trigger a slash command.
+       * Defaults to `/`
+       */
+      character?: string
+    }
+
     /** Configuration for the paragraphs */
     paragraph?: {
       /**
@@ -417,11 +455,21 @@ export class Dactylo {
           options.config?.editor?.heading?.placeholder ??
           DEFAULT_HEADING_PLACEHOLDER,
       },
+      mentions: {
+        character:
+          options.config?.editor?.mentions?.character ??
+          DEFAULT_MENTION_CHARACTER,
+      },
       paragraph: {
         placeholder:
           options.placeholder ??
           options.config?.editor?.paragraph?.placeholder ??
           DEFAULT_PARAGRAPH_PLACEHOLDER,
+      },
+      slashCommand: {
+        character:
+          options.config?.editor?.slashCommand?.character ??
+          DEFAULT_SLASH_COMMAND_CHARACTER,
       },
     }
     this.#pipeline = new TransactionPipeline({

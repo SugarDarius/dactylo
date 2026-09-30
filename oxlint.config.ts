@@ -8,6 +8,7 @@ export default defineConfig({
   ignorePatterns: core.ignorePatterns,
   rules: {
     'eslint/class-methods-use-this': 'off',
+    'eslint/complexity': 'off',
     'eslint/func-style': 'off',
     'eslint/max-classes-per-file': 'off',
     'eslint/no-await-in-loop': 'off',
