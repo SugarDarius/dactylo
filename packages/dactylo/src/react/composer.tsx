@@ -262,8 +262,27 @@ export function useHistoryCommands() {
 export function useHistoryTools() {
   const { editor } = useDactylo()
 
-  const canUndo = useStableCallback(() => editor.history.tools.canUndo())
-  const canRedo = useStableCallback(() => editor.history.tools.canRedo())
+  const subscribe = useStableCallback(
+    editor.events.history.subscribe.bind(editor),
+  )
+
+  const getSnapshotCanUndo = useStableCallback(() =>
+    editor.history.tools.canUndo(),
+  )
+  const getSnapshotCanRedo = useStableCallback(() =>
+    editor.history.tools.canRedo(),
+  )
+
+  const canUndo = useSyncExternalStore(
+    subscribe,
+    getSnapshotCanUndo,
+    getSnapshotCanUndo,
+  )
+  const canRedo = useSyncExternalStore(
+    subscribe,
+    getSnapshotCanRedo,
+    getSnapshotCanRedo,
+  )
 
   return { canRedo, canUndo } as const
 }

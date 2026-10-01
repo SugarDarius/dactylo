@@ -310,10 +310,10 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
 
         const shortcut = detectPlatformShortcut(event.nativeEvent)
         if (shortcut !== null) {
-          if (shortcut === 'undo' && canUndo()) {
+          if (shortcut === 'undo' && canUndo) {
             prevent()
             undo()
-          } else if (shortcut === 'redo' && canRedo()) {
+          } else if (shortcut === 'redo' && canRedo) {
             prevent()
             redo()
           }

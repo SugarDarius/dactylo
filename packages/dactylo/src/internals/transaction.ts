@@ -446,6 +446,14 @@ export class TransactionPipeline {
 
   // ─── Core pipeline ────────────────────────────────────────────────
 
+  /** Notifies the history stack changes. */
+  #notifyHistory(): void {
+    this.#eventSources.history.notify({
+      canRedo: this.#history.canRedo(),
+      canUndo: this.#history.canUndo(),
+    })
+  }
+
   /** Runs the transaction pipeline and updates editor context. */
   /**
    * Dispatches a transaction by running the full pipeline:
@@ -499,6 +507,8 @@ export class TransactionPipeline {
 
     this.#eventSources.context.notify(next)
     this.#eventSources.transactionDidApply.notify(transaction)
+
+    this.#notifyHistory()
   }
 
   /**
@@ -561,10 +571,7 @@ export class TransactionPipeline {
       source: 'undo',
     })
 
-    this.#eventSources.history.notify({
-      canRedo: this.#history.canRedo(),
-      canUndo: this.#history.canUndo(),
-    })
+    this.#notifyHistory()
   }
 
   /** Re-applies the newest redo entry's forward operations. */
@@ -587,10 +594,7 @@ export class TransactionPipeline {
       source: 'redo',
     })
 
-    this.#eventSources.history.notify({
-      canRedo: this.#history.canRedo(),
-      canUndo: this.#history.canUndo(),
-    })
+    this.#notifyHistory()
   }
 
   // --- Marks operations ─────────────────────────────────────────----
@@ -701,7 +705,7 @@ export class TransactionPipeline {
     // @todo: handle composition input types
     // @todo: handle clipboard input types
     switch (inputType) {
-      /** Not handled input types bucket */
+      /** Not handled input types bucket. */
       case 'historyUndo':
       case 'historyRedo': {
         warnHistoryInputType(inputType)
