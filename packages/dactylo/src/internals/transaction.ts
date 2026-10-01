@@ -1,5 +1,5 @@
 import type { BlockId, BlockWithoutPosKey } from './blocks'
-import { warn, warnOnce } from './console'
+import { warn } from './console'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
 import { createInitialEditorContext } from './editor-context'
 import type { EditorContext } from './editor-context'
@@ -14,6 +14,7 @@ import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
 import { isCursorSelection } from './selection'
 import { assertNever } from './utils'
+import { warnHistoryInputType } from './warnings'
 
 /** The source of a transaction. */
 export type TransactionSource =
@@ -682,6 +683,12 @@ export class TransactionPipeline {
    * EventSources.context.notify(context)
    *
    * By design, recognized intents are prevented by default.
+   *
+   * As we prevent by default input events like `insertText`, no native
+   * browser history entry is pushed. It means that UI libraries has to
+   * handle the history events themselves by defining keyboard event handlers
+   * to then call the appropriate history commands from {@Dactylo}.
+   *
    * Returns a boolean indicating whether the event was handled or not.
    */
   digestInputEvent(event: InputEvent): boolean {
@@ -695,19 +702,11 @@ export class TransactionPipeline {
     // @todo: handle clipboard input types
     switch (inputType) {
       /** Not handled input types bucket */
-      case 'historyUndo': {
-        warnOnce(
-          '`historyUndo` input type is not handled yet by the transaction pipeline. Please use `Dactylo.history.commands.undo()` instead.',
-        )
+      case 'historyUndo':
+      case 'historyRedo': {
+        warnHistoryInputType(inputType)
 
         return false
-      }
-      case 'historyRedo': {
-        warnOnce(
-          '`historyRedo` input type is not handled yet by the transaction pipeline. Please use `Dactylo.history.commands.redo()` instead.',
-        )
-
-        return true
       }
 
       /** Typing commands input types bucket. */

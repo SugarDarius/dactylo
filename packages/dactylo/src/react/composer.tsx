@@ -257,8 +257,6 @@ export function useEditableBlock(blockId: BlockId) {
    *  - `insertParagraph` (`Enter` → hard break)
    *  - `deleteContentBackward` (`Backspace` → delete char for cursor selection or  range of chars for range selection)
    *  - `insertText` (`Typing` → insert text)
-   *  - `historyUndo` (undo history action)
-   *  - `historyRedo` (redo history action)
    */
   const onBeforeInput = useStableCallback((event: InputEvent) =>
     editor.composer.commands.sendInput(event),
