@@ -230,6 +230,44 @@ export function useIsFocused(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
+// --- History ------─────────────────────────────────────────-------
+
+/**
+ * Returns the history commands.
+ *
+ * @example
+ * ```tsx
+ * const { undo, redo } = useHistoryCommands()
+ * console.log(undo, redo)
+ * ```
+ */
+export function useHistoryCommands() {
+  const { editor } = useDactylo()
+
+  const undo = useStableCallback(() => editor.history.commands.undo())
+  const redo = useStableCallback(() => editor.history.commands.redo())
+
+  return { redo, undo } as const
+}
+
+/**
+ * Returns the history tools.
+ *
+ * @example
+ * ```tsx
+ * const { canUndo, canRedo } = useHistoryTools()
+ * console.log(canUndo, canRedo)
+ * ```
+ */
+export function useHistoryTools() {
+  const { editor } = useDactylo()
+
+  const canUndo = useStableCallback(() => editor.history.tools.canUndo())
+  const canRedo = useStableCallback(() => editor.history.tools.canRedo())
+
+  return { canRedo, canUndo } as const
+}
+
 // --- Editable ------─────────────────────────────────────────------
 
 /**

@@ -9,6 +9,8 @@ export {
   useDactylo,
   useIsFocused,
   useCanEdit,
+  useHistoryCommands,
+  useHistoryTools,
   useSelection,
   useCursorSelection,
   useSelectionTools,
