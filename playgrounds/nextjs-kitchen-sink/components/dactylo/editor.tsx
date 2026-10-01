@@ -28,7 +28,10 @@ export function Toolbar() {
 
 export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <div className={cn('relative flex w-full flex-col', className)} {...props}>
+    <div
+      className={cn('relative flex w-full max-w-6xl flex-col', className)}
+      {...props}
+    >
       <Composer.Root
         placeholder='Write something…'
         clientOnly={true}
