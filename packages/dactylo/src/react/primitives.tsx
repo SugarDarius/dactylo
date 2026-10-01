@@ -300,6 +300,10 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
 
     const handleKeyDown = useStableCallback(
       (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.isDefaultPrevented()) {
+          return
+        }
+
         const prevent = () => {
           event.preventDefault()
         }
