@@ -17,6 +17,7 @@ import {
   DOM_PAINT_SPACE_CHARACTER,
   DOM_PAINT_CARET_ANCHOR,
 } from '../internals/constants'
+import { detectPlatformShortcut } from '../internals/keyboard'
 import {
   DactyloProvider,
   useCanEdit,
@@ -25,6 +26,8 @@ import {
   useSelectionCommands,
   useEditorConfig,
   useEditableBlock,
+  useHistoryCommands,
+  useHistoryTools,
 } from './composer'
 import {
   COMPOSER_EDITABLE_NAME,
@@ -36,6 +39,7 @@ import {
 import {
   useIsMounted,
   useIsomorphicLayoutEffect,
+  useStableCallback,
   useStableValue,
 } from './internals/hooks'
 import { mergeRefs } from './internals/utils'
@@ -83,7 +87,12 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
     }
 
     return (
-      <div {...props} ref={forwardedRef} {...{ [ROOT_ATTR_NAME]: '' }}>
+      <div
+        {...props}
+        ref={forwardedRef}
+        {...{ [ROOT_ATTR_NAME]: '' }}
+        aria-roledescription='composer'
+      >
         <DactyloProvider value={ctx}>{children}</DactyloProvider>
       </div>
     )
@@ -138,6 +147,7 @@ const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
           [TEXT_NODE_ATTR_NAME]: '',
           [TEXT_NODE_ID_DATA_NAME]: node.id,
         }}
+        aria-roledescription='text-node'
         // @todo: handle marks
       >
         {rendered}
@@ -196,12 +206,13 @@ const ComposerParagraphBlock = forwardRef<
         [PARAGRAPH_BLOCK_ID_ATTR_NAME]: block.id,
       }}
       data-active={isActive ?? undefined}
+      aria-roledescription='paragraph-block'
     >
       <div
         ref={editableRef}
         id={editableId}
         role={canEdit ? 'textbox' : undefined}
-        aria-roledescription='paragraph'
+        aria-roledescription='paragraph-block-editable'
         aria-multiline={canEdit ? 'true' : undefined}
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
@@ -211,6 +222,7 @@ const ComposerParagraphBlock = forwardRef<
           [PARAGRAPH_BLOCK_CONTENT_ATTR_NAME]: '',
           [BLOCK_PLACEHOLDER_ATTR_NAME]: paragraph.placeholder,
         }}
+        tabIndex={canEdit ? 0 : undefined}
       >
         <ComposerInlineContent content={content} />
       </div>
@@ -283,7 +295,27 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
     const focused = useIsFocused()
     const { focus } = useSelectionCommands()
 
-    // @todo: add handlers and DOM events
+    const { canUndo, canRedo } = useHistoryTools()
+    const { undo, redo } = useHistoryCommands()
+
+    const handleKeyDown = useStableCallback(
+      (event: React.KeyboardEvent<HTMLDivElement>) => {
+        const prevent = () => {
+          event.preventDefault()
+        }
+
+        const shortcut = detectPlatformShortcut(event.nativeEvent)
+        if (shortcut !== null) {
+          if (shortcut === 'undo' && canUndo()) {
+            prevent()
+            undo()
+          } else if (shortcut === 'redo' && canRedo()) {
+            prevent()
+            redo()
+          }
+        }
+      },
+    )
 
     useIsomorphicLayoutEffect(() => {
       if (autoFocus && !focused && canEdit) {
@@ -300,6 +332,9 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
         spellCheck={spellCheck}
         data-disabled={!canEdit || undefined}
         data-focused={focused || undefined}
+        onKeyDown={handleKeyDown}
+        role='group'
+        aria-roledescription='editable'
       >
         <ComposerBlocks translate={translate} spellCheck={spellCheck} />
         {children}

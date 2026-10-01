@@ -889,6 +889,7 @@ export class Dactylo {
   /** Returns the Api to interact with the selection of the editor. */
   get selection(): DactyloSelectionApi {
     return {
+      // @todo: add select-all and deselect commands
       commands: {
         /**
          * Blurs the editor by clearing the selection.
