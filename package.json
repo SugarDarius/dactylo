@@ -17,7 +17,7 @@
     "@types/node": "catalog:",
     "happy-dom": "catalog:",
     "oxfmt": "catalog:",
-    "oxlint": "^1.86.0",
+    "oxlint": "catalog:",
     "publint": "catalog:",
     "syncpack": "catalog:",
     "tsdown": "catalog:",
@@ -29,5 +29,5 @@
   "engines": {
     "node": ">=24.x"
   },
-  "packageManager": "pnpm@12.8.1"
+  "packageManager": "pnpm@12.5.1"
 }
