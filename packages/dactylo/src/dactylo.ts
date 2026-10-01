@@ -325,7 +325,7 @@ export type DactyloSelectionApi = DactyloAspectApi<
 
 /** Config options to use for the internal components and delegates of the editor. */
 export interface DactyloConfigOptions {
-  /** Configuration for te editor */
+  /** Configuration for the editor */
   editor?: {
     /** Configuration for mentions. */
     mentions?: {
@@ -863,11 +863,14 @@ export class Dactylo {
          * Sends an input event to the editor and returns a boolean indicating whether the event was processed or not.
          * @example
          * ```ts
-         *
          * const handleBeforeInput = (event: InputEvent) => {
          *  editor.composer.commands.sendInput(event)
          * }
-         * <div onKeyDown={handleBeforeInput} contentEditable={true} />
+         *
+         * const editable = document.getElementById('editable')
+         * editable?.addEventListener('beforeinput', handleBeforeInput)
+         *
+         * <div id='editable' contentEditable={true} />
          * ```
          */
         sendInput: (event: InputEvent): boolean =>

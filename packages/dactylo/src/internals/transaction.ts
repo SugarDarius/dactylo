@@ -690,7 +690,8 @@ export class TransactionPipeline {
       event.preventDefault()
     }
 
-    // @todo: handle composition
+    // @todo: handle composition input types
+    // @todo: handle clipboard input types
     switch (inputType) {
       /** History commands bucket */
       case 'historyUndo': {
@@ -806,7 +807,6 @@ export class TransactionPipeline {
         }
         return false
       }
-
       default: {
         return false
       }
