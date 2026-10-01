@@ -1,5 +1,5 @@
 import type { BlockId, BlockWithoutPosKey } from './blocks'
-import { warn } from './console'
+import { warn, warnOnce } from './console'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
 import { createInitialEditorContext } from './editor-context'
 import type { EditorContext } from './editor-context'
@@ -663,6 +663,7 @@ export class TransactionPipeline {
    * where detection is pure and dispatch splits into buckets:
    *  1. Clipboard commands (paste, cut, …)
    *  2. Typing commands (text, line break, paragraph, heading, etc.)
+   *  3. Not handled input types (historyUndo, historyRedo, …)
    *
    * ```
    * Input → context → operations
@@ -693,24 +694,23 @@ export class TransactionPipeline {
     // @todo: handle composition input types
     // @todo: handle clipboard input types
     switch (inputType) {
-      /** History commands bucket */
+      /** Not handled input types bucket */
       case 'historyUndo': {
-        prevent()
-        this.undo()
+        warnOnce(
+          '`historyUndo` input type is not handled yet by the transaction pipeline. Please use `Dactylo.history.commands.undo()` instead.',
+        )
 
-        return true
+        return false
       }
       case 'historyRedo': {
-        prevent()
-        this.redo()
+        warnOnce(
+          '`historyRedo` input type is not handled yet by the transaction pipeline. Please use `Dactylo.history.commands.redo()` instead.',
+        )
 
         return true
       }
 
-      // @todo: cut and paste
-      /** Clipboard commands bucket */
-
-      /** Typing commands bucket */
+      /** Typing commands input types bucket. */
       case 'insertLineBreak': {
         /** `shift+Enter` is considered as a soft break. */
         if (isCursorSelection(this.#context.selection)) {
@@ -811,29 +811,6 @@ export class TransactionPipeline {
         return false
       }
     }
-
-    /**
-     * ⚠️ OLD AND DEAD CODE BELOW ⚠️
-     * This first intent wasn't the good one to use in rich text editors.
-     */
-    // const shortcut = detectPlatformKeyboardShortcut(event)
-    // if (shortcut !== null) {
-    //   switch (shortcut) {
-    //     // @todo: to be handled
-    //     // @note: decides if we either handle here or directly through DOM events
-    //     case 'copy':
-    //     case 'paste':
-    //     case 'cut':
-    //     case 'select-all':
-    //     case 'deselect': {
-    //       return false
-    //     }
-    //     default: {
-    //       /** Unrecognized shortcuts are not handled. */
-    //       return false
-    //     }
-    //   }
-    // }
   }
 
   // --- Selection operations ─────────────────────────────────────────
