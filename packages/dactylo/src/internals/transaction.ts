@@ -660,10 +660,9 @@ export class TransactionPipeline {
    * - `history`
    *
    * Platform chords are detected before structural keys (`Enter`, `Backspace`, typing)
-   * where detection is pure and dispatch splits intro buckets:
-   *  1. History commands (undo/redo)
-   *  2. Clipboard commands (paste, and cut)
-   *  3. Typing commands (text, line break, paragraph, heading, etc.)
+   * where detection is pure and dispatch splits into buckets:
+   *  1. Clipboard commands (paste, cut, …)
+   *  2. Typing commands (text, line break, paragraph, heading, etc.)
    *
    * ```
    * Input → context → operations
@@ -675,8 +674,8 @@ export class TransactionPipeline {
    *      ▼
    * TransactionPipeline.digestInputEvent(event)
    *      |
-   *      ├ ─ detects shortcuts  (e.g. history, pasting)
-   *      ├ ─ builds keyboard operations → #commit (`Enter`, `Backspace`, typing....)
+   *      ├ ─ detects shortcuts  (e.g. Clipboard, …)
+   *      ├ ─ builds typing operations → #commit (`Enter`, `Backspace`, character, …)
    *      |
    *      ▼
    * EventSources.context.notify(context)

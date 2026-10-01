@@ -249,6 +249,17 @@ export function useEditableBlock(blockId: BlockId) {
     ? isBlockWithActiveCursor(blockId)
     : false
 
+  // @todo: add show placeholder
+
+  /**
+   * `beforeinput` event handled used to capture the following input types:
+   *  - `insertLineBreak` (`shift+Enter` → soft break)
+   *  - `insertParagraph` (`Enter` → hard break)
+   *  - `deleteContentBackward` (`Backspace` → delete char for cursor selection or  range of chars for range selection)
+   *  - `insertText` (`Typing` → insert text)
+   *  - `historyUndo` (undo history action)
+   *  - `historyRedo` (redo history action)
+   */
   const onBeforeInput = useStableCallback((event: InputEvent) =>
     editor.composer.commands.sendInput(event),
   )
@@ -290,7 +301,6 @@ export function useEditableBlock(blockId: BlockId) {
     canEdit,
     editableId,
     editableRef,
-    onBeforeInput,
     withActiveCursor,
   } as const
 }
