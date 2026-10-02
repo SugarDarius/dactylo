@@ -212,7 +212,6 @@ export function cursorAtBlockEnd(
     return null
   }
 
-  // @todo: handle line breaks
   let offset = 0
 
   if (last.__type === 'text') {
@@ -221,6 +220,8 @@ export function cursorAtBlockEnd(
     offset = last.textNode.text.length
   } else if (last.__type === 'mention') {
     offset = last.text.length
+  } else if (last.__type === 'line_break') {
+    offset = 0
   }
 
   return createCursor({ blockId, nodeId: last.id, offset })
@@ -235,8 +236,6 @@ export function cursorAtBlockStart(
   if (!first) {
     return null
   }
-
-  // @todo: handle line breaks
 
   return createCursor({ blockId, nodeId: first.id, offset: 0 })
 }

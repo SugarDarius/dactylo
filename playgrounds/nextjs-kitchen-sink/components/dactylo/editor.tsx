@@ -42,7 +42,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         <Composer.Editable
           autoFocus
           className={cn(
-            'relative flex w-full flex-col px-1.5 py-2',
+            'relative flex w-full flex-col px-6 py-2',
             // @note: for DX convenience add custom components
             '**:[[dactylo-paragraph-block-content]]:outline-0',
             `[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:[content:attr(dactylo-block-placeholder)/'']`,

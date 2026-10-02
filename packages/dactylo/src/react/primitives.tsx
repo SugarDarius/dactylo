@@ -112,6 +112,11 @@ function useRenderText(text: string) {
   return useMemo(() => {
     let rendered = ''
 
+    if (text.length === 0) {
+      rendered += DOM_PAINT_CARET_ANCHOR
+      return rendered
+    }
+
     for (let i = 0; i < text.length; i += 1) {
       const char = text[i]
 
