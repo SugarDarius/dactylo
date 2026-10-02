@@ -341,7 +341,7 @@ export interface DactyloBlocksTools {
 
 /** Commands to mutate the {@link DocumentState} blocks of the editor. */
 export interface DactyloBlocksCommands {
-  /** Deletes a block by ID. */
+  /** Deletes a {@link Block} from the document state by ID. */
   delete: (
     blockId: BlockId,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -1001,7 +1001,7 @@ export class Dactylo {
     return {
       commands: {
         /**
-         * Deletes a block by ID.
+         * Deletes a {@link Block} from the document state by ID.
          *
          * @example
          * ```ts

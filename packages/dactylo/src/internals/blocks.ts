@@ -2,9 +2,11 @@
  * Catalog of all blocks supported by Dactylo.
  *
  * Blocks are the fundamental units of the document.
- * Each block owns an inline content tree (not a flat string with offsets).
- * Text is stored in text nodes: structural inline elements (soft line breaks, inline code spans, ...)
+ * They can own an inline content tree (not a flat string with offsets).
+ * In that case, text is stored in text nodes: structural inline elements (soft line breaks, inline code spans, ...)
  * that are typed inline nodes.
+ *
+ * @todo supports parents/nested blocks
  */
 
 import { nanoid } from 'nanoid'
@@ -93,6 +95,9 @@ export type BlockWithoutPosKey = Relax<
   | Omit<ParagraphBlock, 'posKey'>
   | Omit<DividerBlock, 'posKey'>
 >
+
+/** Discriminated union of all existing block types in Dactylo. */
+export type BlockType = Block['__type']
 
 /** Generates a 24 characters long unique block ID */
 export function generateBlockId(): BlockId {

@@ -31,6 +31,7 @@ export type {
   BlockId,
   BlockWithoutPosKey,
   BlockWithInlineContent,
+  BlockType,
   HeadingBlock,
   IBlock,
   ParagraphBlock,
