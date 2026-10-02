@@ -1,6 +1,6 @@
 import type { DactyloOptions } from '../dactylo'
 import type { ParagraphBlock } from '../internals/blocks'
-import type { InlineNode, TextNode } from '../internals/nodes'
+import type { InlineNode, LineBreakNode, TextNode } from '../internals/nodes'
 
 // --- Composer.Root ─────────────────────────────────────────-------
 
@@ -23,6 +23,12 @@ export interface ComposerRootProps
 export interface ComposerTextNodeProps extends React.HTMLAttributes<HTMLSpanElement> {
   /** The text node to render. */
   node: TextNode
+}
+
+/** Props for declaring a line break node component. */
+export interface ComposerLineBreakNodeProps extends React.HTMLAttributes<HTMLBRElement> {
+  /** The line break node to render. */
+  node: LineBreakNode
 }
 
 /** Props for declaring an inline content component. */

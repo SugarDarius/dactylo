@@ -12,3 +12,6 @@ export const COMPOSER_PARAGRAPH_BLOCK_NAME = 'Composer.ParagraphBlock'
 
 /** The name of the composer text node component. */
 export const COMPOSER_TEXT_NODE_NAME = 'Composer.TextNode'
+
+/** The name of the composer line break node component. */
+export const COMPOSER_LINE_BREAK_NODE_NAME = 'Composer.LineBreakNode'

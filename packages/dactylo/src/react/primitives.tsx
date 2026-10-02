@@ -16,6 +16,8 @@ import {
   TEXT_NODE_ID_DATA_NAME,
   DOM_PAINT_SPACE_CHARACTER,
   DOM_PAINT_CARET_ANCHOR,
+  LINE_BREAK_NODE_ATTR_NAME,
+  LINE_BREAK_NODE_ID_DATA_NAME,
 } from '../internals/constants'
 import {
   DactyloProvider,
@@ -33,6 +35,7 @@ import {
   COMPOSER_ROOT_NAME,
   COMPOSER_BLOCKS_NAME,
   COMPOSER_TEXT_NODE_NAME,
+  COMPOSER_LINE_BREAK_NODE_NAME,
 } from './internals/constants'
 import {
   useIsMounted,
@@ -47,6 +50,7 @@ import type {
   ComposerParagraphBlockProps,
   ComposerTextNodeProps,
   ComposerInlineContentProps,
+  ComposerLineBreakNodeProps,
 } from './types'
 
 // --- Composer.Root ─────────────────────────────────────────-------
@@ -155,6 +159,23 @@ const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
 )
 ComposerTextNode.displayName = COMPOSER_TEXT_NODE_NAME
 
+/** Adds a line break to the composer. */
+export const ComposerLineBreakNode = forwardRef<
+  HTMLBRElement,
+  ComposerLineBreakNodeProps
+>(({ node, ...props }, forwardedRef) => (
+  <br
+    {...props}
+    ref={forwardedRef}
+    {...{
+      [LINE_BREAK_NODE_ATTR_NAME]: '',
+      [LINE_BREAK_NODE_ID_DATA_NAME]: node.id,
+    }}
+    aria-roledescription='line-break-node'
+  />
+))
+ComposerLineBreakNode.displayName = COMPOSER_LINE_BREAK_NODE_NAME
+
 /** Adds inline content for a block to the composer. */
 const ComposerInlineContent = ({ content }: ComposerInlineContentProps) => {
   // @todo: add performance rendering optimization
@@ -165,6 +186,10 @@ const ComposerInlineContent = ({ content }: ComposerInlineContentProps) => {
       switch (node.__type) {
         case 'text': {
           items.push(<ComposerTextNode key={node.id} node={node} />)
+          break
+        }
+        case 'line_break': {
+          items.push(<ComposerLineBreakNode key={node.id} node={node} />)
           break
         }
         default: {
@@ -344,4 +369,5 @@ export {
   ComposerEditable as Editable,
   ComposerParagraphBlock as ParagraphBlock,
   ComposerTextNode as TextNode,
+  ComposerLineBreakNode as LineBreakNode,
 }
