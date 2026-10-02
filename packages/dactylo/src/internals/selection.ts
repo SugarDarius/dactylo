@@ -1,4 +1,4 @@
-import { findFirstTextNodeInBlock, findLastTextNodeInBlock } from './blocks'
+import { findFirstInlineNodeInBlock, findLastInlineNodeInBlock } from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
 import type { InlineNode, NodeId } from './nodes'
 import type { Relax } from './types'
@@ -207,13 +207,23 @@ export function cursorAtBlockEnd(
   blockId: BlockId,
   block: BlockWithInlineContent,
 ): CursorSelection | null {
-  // @todo: handle links and mentions
-  const last = findLastTextNodeInBlock(block)
+  const last = findLastInlineNodeInBlock(block)
   if (!last) {
     return null
   }
 
-  return createCursor({ blockId, nodeId: last.id, offset: last.text.length })
+  // @todo: handle line breaks
+  let offset = 0
+
+  if (last.__type === 'text') {
+    offset = last.text.length
+  } else if (last.__type === 'link') {
+    offset = last.textNode.text.length
+  } else if (last.__type === 'mention') {
+    offset = last.text.length
+  }
+
+  return createCursor({ blockId, nodeId: last.id, offset })
 }
 
 /** Places a collapsed cursor at the start of the first text node in a block. */
@@ -221,11 +231,12 @@ export function cursorAtBlockStart(
   blockId: BlockId,
   block: BlockWithInlineContent,
 ): CursorSelection | null {
-  // @todo: handle links and mentions
-  const first = findFirstTextNodeInBlock(block)
+  const first = findFirstInlineNodeInBlock(block)
   if (!first) {
     return null
   }
+
+  // @todo: handle line breaks
 
   return createCursor({ blockId, nodeId: first.id, offset: 0 })
 }

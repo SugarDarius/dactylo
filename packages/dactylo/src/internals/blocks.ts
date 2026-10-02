@@ -11,7 +11,7 @@
 
 import { nanoid } from 'nanoid'
 
-import type { InlineNode, NodeId, TextNode } from './nodes'
+import type { InlineNode, NodeId } from './nodes'
 import { makePosition } from './position'
 import type { PosKey } from './position'
 import type { Brand, Relax, Metadata } from './types'
@@ -178,21 +178,18 @@ export function findNodeInBlockWithInlineContent(
   return { index, node }
 }
 
-/** Finds the first text node in a block. */
-export function findFirstTextNodeInBlock(
+/** Finds the first inline node in a block. */
+export function findFirstInlineNodeInBlock(
   block: BlockWithInlineContent,
-): TextNode | null {
-  return block.content.find((n): n is TextNode => n.__type === 'text') ?? null
+): InlineNode | null {
+  const [first] = block.content
+  return first ?? null
 }
 
-/** Finds the last text node in a block. */
-// @todo: handle links and mentions
-export function findLastTextNodeInBlock(
+/** Finds the last inline node in a block. */
+export function findLastInlineNodeInBlock(
   block: BlockWithInlineContent,
-): TextNode | null {
-  return (
-    block.content
-      .toReversed()
-      .find((n): n is TextNode => n.__type === 'text') ?? null
-  )
+): InlineNode | null {
+  const last = block.content[block.content.length - 1]
+  return last ?? null
 }
