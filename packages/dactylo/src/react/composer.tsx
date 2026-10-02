@@ -416,6 +416,7 @@ export function useEditableBlock(blockId: BlockId) {
     /**
      * Attach a native DOM event handler for `beforeinput` as React build-in `onBeforeInput`
      * is returning a `TextEvent` as native event instead of an `InputEvent`.
+     * We want real Level 2 DOM events.
      */
     editable.addEventListener('beforeinput', onBeforeInput)
     return () => editable.removeEventListener('beforeinput', onBeforeInput)
