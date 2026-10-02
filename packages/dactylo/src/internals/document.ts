@@ -220,6 +220,15 @@ export function getBlockWithInlineContent(
   return block
 }
 
+/** Checks whether a block content is empty. */
+export function isBlockWithInlineContentEmpty(
+  state: DocumentState,
+  blockId: BlockId,
+): boolean {
+  const block = getBlockWithInlineContent(state, blockId)
+  return block.content.length === 0
+}
+
 /** Immutable update: replace one block in document state. */
 export function replaceBlock(
   state: DocumentState,

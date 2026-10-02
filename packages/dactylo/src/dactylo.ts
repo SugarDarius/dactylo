@@ -6,6 +6,7 @@ import {
   DEFAULT_PARAGRAPH_PLACEHOLDER,
   DEFAULT_SLASH_COMMAND_CHARACTER,
 } from './internals/constants'
+import { isBlockWithInlineContentEmpty } from './internals/document'
 import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
 import { DactyloError } from './internals/errors'
@@ -24,7 +25,7 @@ import {
 import { TransactionPipeline } from './internals/transaction'
 import type { Transaction, TransactionSource } from './internals/transaction'
 import type { Relax } from './internals/types'
-import { noop } from './internals/utils'
+import { negate, noop } from './internals/utils'
 
 /** Api to interact with one aspect of the editor. */
 export interface DactyloAspectApi<A, C> {
@@ -80,6 +81,9 @@ export type DactyloTool =
   /** Selection tools */
   | 'selection/is-block-with-active-cursor'
   | 'selection/is-focused'
+
+  /** Blocks tools */
+  | 'blocks/is-with-empty-inline-content'
 
 /** Discriminated union of commands that can be executed by the user/ai-agent. */
 export type DactyloCommand =
@@ -265,7 +269,7 @@ export type DactyloMarksApi = DactyloAspectApi<
 // oxlint-disable-next-line typescript/no-empty-interface typescript/no-empty-object-type
 export interface DactyloComposerTools {}
 
-/** Commands to mutate the {@link DocumentState} of the editor. */
+/** Commands to mutate the {@link DocumentState} of the editor from UI events. */
 export interface DactyloComposerCommands {
   /**
    * Sends an input event to the editor and returns a boolean indicating whether the event was processed or not.
@@ -321,6 +325,25 @@ export interface DactyloSelectionCommands {
 export type DactyloSelectionApi = DactyloAspectApi<
   DactyloSelectionTools,
   DactyloSelectionCommands
+>
+
+/** Tools to query the {@link DocumentState} blocks of the editor. */
+export interface DactyloBlocksTools {
+  /**
+   * Whether the block with the given ID is with empty inline content.
+   * This is a pure function that does not mutate the editor context.
+   */
+  readonly isWithEmptyInlineContent: (blockId: BlockId) => boolean
+}
+
+/** Commands to mutate the {@link DocumentState} blocks of the editor. */
+// oxlint-disable-next-line typescript/no-empty-interface typescript/no-empty-object-type
+export interface DactyloBlocksCommands {}
+
+/** Api to interact with the {@link DocumentState} blocks of the editor. */
+export type DactyloBlocksApi = DactyloAspectApi<
+  DactyloBlocksTools,
+  DactyloBlocksCommands
 >
 
 /** Config options to use for the internal components and delegates of the editor. */
@@ -785,7 +808,7 @@ export class Dactylo {
           this.#safeExecuteTool(
             'history/can-redo',
             () => this.#pipeline.canRedo(),
-            () => false,
+            negate,
           ),
 
         /**
@@ -803,7 +826,7 @@ export class Dactylo {
           this.#safeExecuteTool(
             'history/can-undo',
             () => this.#pipeline.canUndo(),
-            () => false,
+            negate,
           ),
       },
     }
@@ -848,7 +871,7 @@ export class Dactylo {
           this.#safeExecuteTool(
             'marks/is-active',
             () => isMarkActiveInContext(this.#pipeline.context, mark),
-            () => false,
+            negate,
             { payload: { mark } },
           ),
       },
@@ -877,7 +900,7 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'composer/send-input',
             () => this.#pipeline.digestInputEvent(event),
-            () => false,
+            negate,
             { payload: { event } },
           ),
       },
@@ -943,7 +966,7 @@ export class Dactylo {
                 this.#pipeline.context.selection,
                 blockId,
               ),
-            () => false,
+            negate,
           ),
 
         /**
@@ -959,7 +982,36 @@ export class Dactylo {
           this.#safeExecuteTool(
             'selection/is-focused',
             () => isSelectionActive(this.#pipeline.context.selection),
-            () => false,
+            negate,
+          ),
+      },
+    }
+  }
+
+  /** Returns the Api to interact with the {@link DocumentState} blocks of the editor. */
+  get blocks(): DactyloBlocksApi {
+    return {
+      // @todo: add commands for the blocks
+      commands: {},
+      tools: {
+        /**
+         * Whether the block with the given ID is with empty inline content.
+         * This is a pure function that does not mutate the editor context.
+         *
+         * @example
+         * ```ts
+         * const isEmpty = editor.blocks.tools.isWithEmptyInlineContent(blockId)
+         * ```
+         */
+        isWithEmptyInlineContent: (blockId: BlockId): boolean =>
+          this.#safeExecuteTool(
+            'blocks/is-with-empty-inline-content',
+            () =>
+              isBlockWithInlineContentEmpty(
+                this.#pipeline.context.state,
+                blockId,
+              ),
+            negate,
           ),
       },
     }

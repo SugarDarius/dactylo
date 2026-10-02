@@ -266,7 +266,13 @@ const ComposerBlocks = forwardRef<
   }, [blockOrderById, blocks, props])
 
   return (
-    <div ref={forwardedRef} {...props} {...{ [BLOCKS_ATTR_NAME]: '' }}>
+    <div
+      ref={forwardedRef}
+      {...props}
+      {...{ [BLOCKS_ATTR_NAME]: '' }}
+      role='group'
+      aria-roledescription='blocks'
+    >
       {children}
     </div>
   )

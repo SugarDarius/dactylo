@@ -22,6 +22,9 @@ export {
   type DactyloComposerTools,
   type DactyloComposerCommands,
   type DactyloComposerApi,
+  type DactyloBlocksTools,
+  type DactyloBlocksCommands,
+  type DactyloBlocksApi,
 } from './dactylo'
 export type {
   Block,
