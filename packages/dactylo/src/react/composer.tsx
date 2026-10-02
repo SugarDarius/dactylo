@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useId, useMemo, useRef, useSyncExternalStore } from 'react'
 
 import type {
   Dactylo,
@@ -230,6 +230,67 @@ export function useIsFocused(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
+// --- Composer ------─────────────────────────────────────────------
+
+/**
+ * Returns the composer commands.
+ *
+ * @example
+ * ```tsx
+ * const { sendInput } = useComposerCommands()
+ * console.log(sendInput)
+ * ```
+ */
+export function useComposerCommands() {
+  const { editor } = useDactylo()
+
+  const sendInput = useStableCallback((event: InputEvent) =>
+    editor.composer.commands.sendInput(event),
+  )
+
+  return { sendInput } as const
+}
+
+// --- Blocks ------─────────────────────────────────────────--------
+
+/**
+ * Returns the blocks tools.
+ *
+ * @example
+ * ```tsx
+ * const { isWithEmptyInlineContent } = useBlocksTools()
+ * console.log(isWithEmptyInlineContent(blockId))
+ * ```
+ */
+export function useBlocksTools() {
+  const { editor } = useDactylo()
+
+  const isWithEmptyInlineContent = useStableCallback((blockId: BlockId) =>
+    editor.blocks.tools.isWithEmptyInlineContent(blockId),
+  )
+
+  return { isWithEmptyInlineContent } as const
+}
+
+/**
+ * Returns the blocks commands.
+ *
+ * @example
+ * ```tsx
+ * const { delete } = useBlocksCommands()
+ * delete(blockId)
+ * ```
+ */
+export function useBlocksCommands() {
+  const { editor } = useDactylo()
+
+  const $delete = useStableCallback((blockId: BlockId) =>
+    editor.blocks.commands.delete(blockId),
+  )
+
+  return { delete: $delete } as const
+}
+
 // --- History ------─────────────────────────────────────────-------
 
 /**
@@ -291,32 +352,59 @@ export function useHistoryTools() {
 
 /**
  * Wires a block's `contentEditable` surface to {@link Dactylo}.
+ * Works only for blocks with inline content.
+ *
+ * @example
+ * ```tsx
+ * const { canEdit, editableId, editableRef, withActiveCursor } = useEditableBlock(blockId)
+ * console.log(canEdit, editableId, editableRef, withActiveCursor)
+ * ```
  * @private
  */
 export function useEditableBlock(blockId: BlockId) {
-  const { editor } = useDactylo()
-
   const editableId = useId()
   const editableRef = useRef<HTMLDivElement>(null)
 
   const canEdit = useCanEdit()
-  const { isBlockWithActiveCursor } = useSelectionTools()
-  const cursorSelection = useCursorSelection()
-  const withActiveCursor = cursorSelection
-    ? isBlockWithActiveCursor(blockId)
-    : false
 
-  // @todo: add show placeholder
+  const cursorSelection = useCursorSelection()
+  const { isBlockWithActiveCursor } = useSelectionTools()
+  const { sendInput } = useComposerCommands()
+  const { isWithEmptyInlineContent } = useBlocksTools()
+
+  const isEmpty = useMemo(
+    () => isWithEmptyInlineContent(blockId),
+    [blockId, isWithEmptyInlineContent],
+  )
+
+  const withActiveCursor = useMemo(
+    () => (cursorSelection ? isBlockWithActiveCursor(blockId) : false),
+    [cursorSelection, blockId, isBlockWithActiveCursor],
+  )
 
   /**
-   * `beforeinput` event handled used to capture the following input types:
+   * `beforeinput` event handler used to capture the following input types:
    *  - `insertLineBreak` (`shift+Enter` → soft break)
    *  - `insertParagraph` (`Enter` → hard break)
    *  - `deleteContentBackward` (`Backspace` → delete char for cursor selection or  range of chars for range selection)
    *  - `insertText` (`Typing` → insert text)
+   *
+   * `input` event fires too late for how {@link Dactylo} works.
+   * The `sendInput` command treats the `InputEvent` as a user-intent and then calls
+   * `event.preventDefault()` for the cases it owns.
+   *
+   * That only works because `beforeinput` event runs before the browser mutates the `contentEditable` DOM.
+   * The model {@link DocumentState} stays the source of truth, and the caret is written back afterwards.
+   *
+   * `input` event runs after the DOM mutation. So we cannot cancel it properly. The browser would have already
+   * inserted the character, or a line break, and we would be reconciling DIRTY DOM instead of applying the intent
+   * to the document.
+   *
+   * `beforeinput` event is also used for IME and mobile keyboard edits reporting to "what is being inserted?"
+   * before the DOM changes.
    */
   const onBeforeInput = useStableCallback((event: InputEvent) =>
-    editor.composer.commands.sendInput(event),
+    sendInput(event),
   )
 
   useEffect(() => {
@@ -356,6 +444,7 @@ export function useEditableBlock(blockId: BlockId) {
     canEdit,
     editableId,
     editableRef,
+    isEmpty,
     withActiveCursor,
   } as const
 }
