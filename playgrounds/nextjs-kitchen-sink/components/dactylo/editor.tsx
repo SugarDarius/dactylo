@@ -33,7 +33,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
       {...props}
     >
       <Composer.Root
-        placeholder='Welcome to Dactylo!, Start writing something…'
+        placeholder='Welcome to Dactylo! Start writing something…'
         clientOnly={true}
         debug={true}
         className='relative flex w-full flex-col gap-2 rounded-md shadow-sm'
@@ -43,7 +43,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
           autoFocus
           className={cn(
             'relative flex w-full flex-col px-1.5 py-2',
-            // @note: for DX convenience it might be to add custom components
+            // @note: for DX convenience add custom components
             '**:[[dactylo-paragraph-block-content]]:outline-0',
             `[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:[content:attr(dactylo-block-placeholder)/'']`,
             '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:pointer-events-none',

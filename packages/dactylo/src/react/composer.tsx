@@ -248,7 +248,11 @@ export function useComposerCommands() {
     editor.composer.commands.sendInput(event),
   )
 
-  return { sendInput } as const
+  const sendKeydown = useStableCallback((event: KeyboardEvent) =>
+    editor.composer.commands.sendKeydown(event),
+  )
+
+  return { sendInput, sendKeydown } as const
 }
 
 // --- Blocks ------─────────────────────────────────────────--------

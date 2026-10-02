@@ -17,7 +17,6 @@ import {
   DOM_PAINT_SPACE_CHARACTER,
   DOM_PAINT_CARET_ANCHOR,
 } from '../internals/constants'
-import { detectPlatformShortcut } from '../internals/keyboard'
 import {
   DactyloProvider,
   useCanEdit,
@@ -26,8 +25,7 @@ import {
   useSelectionCommands,
   useEditorConfig,
   useEditableBlock,
-  useHistoryCommands,
-  useHistoryTools,
+  useComposerCommands,
 } from './composer'
 import {
   COMPOSER_EDITABLE_NAME,
@@ -300,10 +298,9 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
   ) => {
     const canEdit = useCanEdit()
     const focused = useIsFocused()
-    const { focus } = useSelectionCommands()
 
-    const { canUndo, canRedo } = useHistoryTools()
-    const { undo, redo } = useHistoryCommands()
+    const { focus } = useSelectionCommands()
+    const { sendKeydown } = useComposerCommands()
 
     const handleKeyDown = useStableCallback(
       (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -311,20 +308,7 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
           return
         }
 
-        const prevent = () => {
-          event.preventDefault()
-        }
-
-        const shortcut = detectPlatformShortcut(event.nativeEvent)
-        if (shortcut !== null) {
-          if (shortcut === 'undo' && canUndo) {
-            prevent()
-            undo()
-          } else if (shortcut === 'redo' && canRedo) {
-            prevent()
-            redo()
-          }
-        }
+        sendKeydown(event.nativeEvent)
       },
     )
 

@@ -866,13 +866,17 @@ export class TransactionPipeline {
     switch (shortcut) {
       case 'undo': {
         prevent()
-        this.undo()
+        if (this.canUndo()) {
+          this.undo()
+        }
 
         return true
       }
       case 'redo': {
         prevent()
-        this.redo()
+        if (this.canRedo()) {
+          this.redo()
+        }
 
         return true
       }
