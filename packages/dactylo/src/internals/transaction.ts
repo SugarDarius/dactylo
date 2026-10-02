@@ -879,8 +879,7 @@ export class TransactionPipeline {
     })
   }
 
-  /** Removes a block by ID.  This method is intended to be used from server code and Ai agents. */
-  // @todo: to be updated according to the new upcoming blocks API
+  /** Removes a block by ID. */
   deleteBlock(
     blockId: BlockId,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,

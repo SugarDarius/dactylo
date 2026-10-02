@@ -101,6 +101,9 @@ export type DactyloCommand =
   | 'selection/focus'
   | 'selection/blur'
 
+  /** Blocks commands */
+  | 'blocks/delete'
+
 /** Event emitted when a command is executed */
 export interface DactyloCommandEvent {
   /** The command that was executed. */
@@ -337,8 +340,13 @@ export interface DactyloBlocksTools {
 }
 
 /** Commands to mutate the {@link DocumentState} blocks of the editor. */
-// oxlint-disable-next-line typescript/no-empty-interface typescript/no-empty-object-type
-export interface DactyloBlocksCommands {}
+export interface DactyloBlocksCommands {
+  /** Deletes a block by ID. */
+  delete: (
+    blockId: BlockId,
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+}
 
 /** Api to interact with the {@link DocumentState} blocks of the editor. */
 export type DactyloBlocksApi = DactyloAspectApi<
@@ -991,8 +999,27 @@ export class Dactylo {
   /** Returns the Api to interact with the {@link DocumentState} blocks of the editor. */
   get blocks(): DactyloBlocksApi {
     return {
-      // @todo: add commands for the blocks
-      commands: {},
+      commands: {
+        /**
+         * Deletes a block by ID.
+         *
+         * @example
+         * ```ts
+         * editor.blocks.commands.delete(blockId)
+         * editor.blocks.commands.delete(blockId, 'ai-agent')
+         * ```
+         */
+        delete: (
+          blockId: BlockId,
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/delete',
+            () => this.#pipeline.deleteBlock(blockId, source),
+            noop,
+            { payload: { blockId, source } },
+          ),
+      },
       tools: {
         /**
          * Whether the block with the given ID is with empty inline content.
