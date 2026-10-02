@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useId, useRef, useSyncExternalStore } from 'react'
 
 import type {
   Dactylo,
@@ -372,15 +372,10 @@ export function useEditableBlock(blockId: BlockId) {
   const { sendInput } = useComposerCommands()
   const { isWithEmptyInlineContent } = useBlocksTools()
 
-  const isEmpty = useMemo(
-    () => isWithEmptyInlineContent(blockId),
-    [blockId, isWithEmptyInlineContent],
-  )
-
-  const withActiveCursor = useMemo(
-    () => (cursorSelection ? isBlockWithActiveCursor(blockId) : false),
-    [cursorSelection, blockId, isBlockWithActiveCursor],
-  )
+  const isEmpty = isWithEmptyInlineContent(blockId)
+  const withActiveCursor = cursorSelection
+    ? isBlockWithActiveCursor(blockId)
+    : false
 
   /**
    * `beforeinput` event handler used to capture the following input types:

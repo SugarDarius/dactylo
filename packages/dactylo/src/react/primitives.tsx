@@ -190,7 +190,7 @@ const ComposerParagraphBlock = forwardRef<
   const mergedRefs = mergeRefs(forwardedRef, ref)
 
   const { paragraph } = useEditorConfig()
-  const { canEdit, editableId, editableRef, withActiveCursor } =
+  const { canEdit, editableId, editableRef, withActiveCursor, isEmpty } =
     useEditableBlock(block.id)
 
   const content = useMemo(() => [...block.content], [block.content])
@@ -217,6 +217,7 @@ const ComposerParagraphBlock = forwardRef<
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
         data-active={isActive ?? undefined}
+        data-empty={isEmpty ?? undefined}
         {...{
           [BLOCK_CONTENT_EDITABLE_ATTR_NAME]: canEdit ? 'true' : 'false',
           [PARAGRAPH_BLOCK_CONTENT_ATTR_NAME]: '',

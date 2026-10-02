@@ -2,7 +2,7 @@ import { createParagraphBlock, isBlockWithInlineContent } from './blocks'
 import type { Block, BlockId, BlockWithInlineContent } from './blocks'
 import { DactyloError } from './errors'
 import type { Marks } from './marks'
-import { createTextNode } from './nodes'
+import { createTextNode, getInlineNodeTextLength } from './nodes'
 import type { InsertBlockOpPosition } from './operations'
 import {
   after,
@@ -226,7 +226,13 @@ export function isBlockWithInlineContentEmpty(
   blockId: BlockId,
 ): boolean {
   const block = getBlockWithInlineContent(state, blockId)
-  return block.content.length === 0
+  for (const node of block.content) {
+    if (getInlineNodeTextLength(node) > 0) {
+      return false
+    }
+  }
+
+  return true
 }
 
 /** Immutable update: replace one block in document state. */

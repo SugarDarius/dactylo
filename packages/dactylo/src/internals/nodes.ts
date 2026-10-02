@@ -13,6 +13,7 @@ import { nanoid } from 'nanoid'
 import { isMarksEqual } from './marks'
 import type { Marks } from './marks'
 import type { Brand, Relax, Metadata } from './types'
+import { assertNever } from './utils'
 
 /**
  * Brand type for node unique IDs.
@@ -237,4 +238,25 @@ export function splitTextNodeAt(
   }
 
   return replacement
+}
+
+/** Returns the text length of an inline node. */
+export function getInlineNodeTextLength(node: InlineNode): number {
+  switch (node.__type) {
+    case 'text': {
+      return node.text.length
+    }
+    case 'link': {
+      return node.textNode.text.length
+    }
+    case 'mention': {
+      return node.text.length
+    }
+    case 'line_break': {
+      return 0
+    }
+    default: {
+      assertNever(node, { hint: 'InlineNode/#getInlineNodeTextLength' })
+    }
+  }
 }
