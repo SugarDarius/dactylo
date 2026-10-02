@@ -96,6 +96,7 @@ export type DactyloCommand =
 
   /** Composer commands */
   | 'composer/send-input'
+  | 'composer/send-keydown'
 
   /** Selection commands */
   | 'selection/focus'
@@ -278,16 +279,28 @@ export interface DactyloComposerCommands {
    * Sends an input event to the editor and returns a boolean indicating whether the event was processed or not.
    * Input events are triggered by user actions such as typing, pasting, or selecting text.
    *
-   * Use it to handle events like `onBeforeInput` or `onInput` to get real user intent and get:
-   *  - inserted characters
-   *  - delete intents
-   *  - data transfer from copy/paste
+   * Use it to handle `beforeinput` event to get real user intent and get:
+   *  - inserted characters from typing
+   *  - delete intents from cut/delete
+   *  - data transfer from paste
    *
-   * Using input events is meant to be used with the `onBeforeInput` event handler
+   * Using `beforeinput` event handler is meant to be used to get intent before mutating DOM and
    * for IME composition and be compliant with virtual mobile keyboards (iOS and Android)
    * by telling us "What's being inserted", not just "What's being pressed".
    */
   readonly sendInput: (event: InputEvent) => boolean
+
+  /**
+   * Send a keydown event to the editor and returns a boolean indicating whether the event was processed or not.
+   * Keydown events are triggered by user actions such as undo/redo, copy, select-all, …
+   *
+   * Use it to handle events like `onKeyDown` to get real user intent and get:
+   *  - undo/redo from history
+   *  - copy intents from clipboard
+   *  - select-all/deselect from keyboard
+   *  - arrow navigation from keyboard
+   */
+  readonly sendKeydown: (event: KeyboardEvent) => boolean
 }
 
 /** Api to interact with the composer of the editor. */
@@ -908,6 +921,25 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'composer/send-input',
             () => this.#pipeline.digestInputEvent(event),
+            negate,
+            { payload: { event } },
+          ),
+        /**
+         * Sends a keydown event to the editor and returns a boolean indicating whether the event was processed or not.
+         * @example
+         * ```ts
+         * const handleKeyDown = (event: KeyboardEvent) => {
+         *  editor.composer.commands.sendKeydown(event)
+         * }
+         *
+         * const editable = document.getElementById('editable')
+         * editable?.addEventListener('keydown', handleKeyDown)
+         * ```
+         */
+        sendKeydown: (event: KeyboardEvent): boolean =>
+          this.#safeExecuteCommand(
+            'composer/send-keydown',
+            () => this.#pipeline.digestKeydownEvent(event),
             negate,
             { payload: { event } },
           ),

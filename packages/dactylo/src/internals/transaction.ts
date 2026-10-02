@@ -8,6 +8,7 @@ import type { Observable } from './event-source'
 import { EventSource } from './event-source'
 import { HistoryStack } from './history'
 import type { HistoryEvent } from './history'
+import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
 import type { Operation, InsertBlockOpPosition } from './operations'
 import { OperationsEngine } from './operations-engine'
@@ -689,9 +690,7 @@ export class TransactionPipeline {
    * By design, recognized intents are prevented by default.
    *
    * As we prevent by default input events like `insertText`, no native
-   * browser history entry is pushed. It means that UI libraries has to
-   * handle the history events themselves by defining keyboard event handlers
-   * to then call the appropriate history commands from {@Dactylo}.
+   * browser history entry is pushed. This part is handled by the `digestKeydownEvent` method.
    *
    * Returns a boolean indicating whether the event was handled or not.
    */
@@ -703,7 +702,7 @@ export class TransactionPipeline {
     }
 
     // @todo: handle composition input types
-    // @todo: handle clipboard input types
+    // @todo: handle clipboard input types `deleteFromCut`, `insertFromPaste`
     switch (inputType) {
       /** Not handled input types bucket. */
       case 'historyUndo':
@@ -808,6 +807,79 @@ export class TransactionPipeline {
             })
           }
         }
+        return false
+      }
+      default: {
+        return false
+      }
+    }
+  }
+
+  /**
+   *
+   * Regarding to `digestInputEvent` method, as we prevent `input` events
+   * by design like `insertText`, no native browser history entry is pushed.
+   *
+   * It means that UI libraries has to handle keydown the make work the following buckets:
+   *  1. History (undo/redo)
+   *  2. Arrow navigation in editable content.
+   *
+   * Platform chords are detected internally by design like `Mod+Z` for undo/redo,
+   * to then dispatch the appropriate operations.
+   *
+   * Notifies subscribers for the following events:
+   * - `context`
+   * - `history`
+   *
+   * ```
+   * Keydown → context → operations
+   * KeyboardEvent
+   *      |
+   *      ▼
+   * Dactylo.composer.sendKeydown(event)
+   *      |
+   *      ▼
+   * TransactionPipeline.digestKeydownEvent(event)
+   *      |
+   *      ├ ─ detects shortcuts  (e.g. Mod+Z, …)
+   *      ├ ─ builds history operations → #commit (`undo`, `redo`, …)
+   *      ├ ─ builds arrow navigation operations → #commit (`ArrowUp`, `ArrowDown`, …)
+   *      ├ ─ …
+   *      |
+   *      ▼
+   * EventSources.context.notify(context)
+   *      |
+   *      ▼
+   * EventSources.history.notify(history)
+   * ```
+   *
+   * By design, recognized intents are prevented by default.
+   *
+   * Returns a boolean indicating whether the event was handled or not.
+   */
+  digestKeydownEvent(event: KeyboardEvent): boolean {
+    const prevent = () => {
+      event.preventDefault()
+    }
+
+    const shortcut = detectPlatformShortcut(event)
+    switch (shortcut) {
+      case 'undo': {
+        prevent()
+        this.undo()
+
+        return true
+      }
+      case 'redo': {
+        prevent()
+        this.redo()
+
+        return true
+      }
+      case 'copy':
+      case 'deselect':
+      case 'select-all': {
+        warn(`\`${shortcut}\` shortcut is not is not implemented yet.`)
         return false
       }
       default: {

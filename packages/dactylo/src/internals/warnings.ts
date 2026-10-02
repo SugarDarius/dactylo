@@ -5,6 +5,6 @@ export function warnHistoryInputType(
   inputType: 'historyUndo' | 'historyRedo',
 ): void {
   warnOnce(
-    `\`${inputType}\` input type is not handled Dactylo. Please use \`Dactylo.history.commands.${inputType === 'historyUndo' ? 'undo' : 'redo'}()\` instead.`,
+    `\`${inputType}\` input type is not handled Dactylo. Please use \`Dactylo.composer.commands.sendKeydownEvent(event)\` instead.`,
   )
 }
