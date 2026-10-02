@@ -35,6 +35,7 @@ export const TEXT_NODE_ID_DATA_NAME = 'data-dactylo-text-node-id'
 export const LINE_BREAK_NODE_ATTR_NAME = 'dactylo-line-break-node'
 export const LINE_BREAK_NODE_ID_DATA_NAME = 'data-dactylo-line-break-node-id'
 
-/** DOM paint characters. */
+/** DOM paint space character. */
 export const DOM_PAINT_SPACE_CHARACTER = '\u00A0'
+/** DOM pain zero width space character. */
 export const DOM_PAINT_CARET_ANCHOR = '\u200B'
