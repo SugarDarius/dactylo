@@ -1401,20 +1401,29 @@ export class OperationsEngine {
     }
 
     const { index } = found
-    const insertedLineBreak = createLineBreakNode()
+    const insertedText = createTextNode({
+      marks: context.activeMarks,
+      text: '',
+    })
 
     const ops: Operation[] = [
       {
         __type: 'insert_inline_node',
         blockId: block.id,
         index: index + 1,
-        node: insertedLineBreak,
+        node: createLineBreakNode(),
+      },
+      {
+        __type: 'insert_inline_node',
+        blockId: block.id,
+        index: index + 2,
+        node: insertedText,
       },
       {
         __type: 'set_selection',
         next: createCursor({
           blockId: cursor.blockId,
-          nodeId: insertedLineBreak.id,
+          nodeId: insertedText.id,
           offset: 0,
         }),
         prev: context.selection,
