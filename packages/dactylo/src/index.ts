@@ -49,3 +49,8 @@ export type { HistoryEvent } from './internals/history'
 export type { Transaction, TransactionSource } from './internals/transaction'
 export type { PlatformShortcut } from './internals/keyboard'
 export { detectPlatformShortcut } from './internals/keyboard'
+export {
+  BLOCK_CONTENT_EDITABLE_ATTR_NAME,
+  PARAGRAPH_BLOCK_CONTENT_ATTR_NAME,
+  BLOCK_PLACEHOLDER_ATTR_NAME,
+} from './internals/constants'

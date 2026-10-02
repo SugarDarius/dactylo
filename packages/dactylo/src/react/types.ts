@@ -36,6 +36,7 @@ export interface ComposerInlineContentProps {
 export interface ComposerParagraphBlockProps extends React.HTMLAttributes<HTMLDivElement> {
   /** The paragraph block to render. */
   block: ParagraphBlock
+  // @todo: add custom components.
 }
 
 /** Props for declaring the composer editable component. */

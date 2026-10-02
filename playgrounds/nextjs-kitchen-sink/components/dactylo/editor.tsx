@@ -41,7 +41,20 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         <Toolbar />
         <Composer.Editable
           autoFocus
-          className='relative flex w-full flex-col px-1.5 py-2'
+          className={cn(
+            'relative flex w-full flex-col px-1.5 py-2',
+            // @note: for DX convenience it might be to add custom components
+            '**:[[dactylo-paragraph-block-content]]:outline-0',
+            `[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:[content:attr(dactylo-block-placeholder)/'']`,
+            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:pointer-events-none',
+            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:max-w-full',
+            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:max-w-full',
+            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:min-h-[1em]',
+            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:p-0',
+            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:text-muted-foreground',
+            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:whitespace-break-spaces',
+            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:wrap-break-word',
+          )}
         />
       </Composer.Root>
     </div>
