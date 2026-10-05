@@ -61,7 +61,12 @@ import type {
   SetSelectionOp,
   SplitBlockOp,
 } from './operations'
-import { createCursor, cursorAtBlockEnd, cursorAtBlockStart } from './selection'
+import {
+  createCursor,
+  cursorAtBlockEnd,
+  cursorAtBlockStart,
+  isCursorAtBlockEnd,
+} from './selection'
 import type { TextCursor } from './selection'
 import { assertNever } from './utils'
 
@@ -747,15 +752,11 @@ export function resolvesMergeBlocksUndoFields(
  */
 export function computeSplitTailSnapshot(
   block: BlockWithInlineContent,
-  atNodeId: NodeId,
+  atNode: { node: InlineNode; index: number },
   atOffset: number,
 ): InlineNode[] {
-  const found = findNodeInBlockWithInlineContent(block, atNodeId)
-  if (!found) {
-    return []
-  }
-
-  const { node, index } = found
+  const { node, index } = atNode
+  // @todo: handle links and mentions
   if (node.__type !== 'text') {
     return []
   }
@@ -1412,8 +1413,6 @@ export class OperationsEngine {
   }
 
   /** Builds operations when user presses `Enter` key as a hard break. */
-  // @todo: handle special node splits like links
-  // @todo: handle other upcoming blocks like lists, quotes, ...
   buildHardBreakOps(
     context: EditorContext,
     cursor: TextCursor,
@@ -1428,24 +1427,37 @@ export class OperationsEngine {
       )
     }
 
-    const { node, index } = found
+    const isBlockEnd = isCursorAtBlockEnd(cursor, block)
 
-    const tailSnapshot = computeSplitTailSnapshot(block, node.id, cursor.offset)
-    const insertedBlock = createParagraphBlockAfter(block, tailSnapshot)
+    /** At block end we just insert a new block after the current one. */
+    if (isBlockEnd) {
+      const insertedBlock = createParagraphBlockAfter(block, [
+        createTextNode({ marks: context.activeMarks, text: '' }),
+      ])
+      const ops: Operation[] = [
+        {
+          __type: 'insert_block',
+          afterBlockId: block.id,
+          block: insertedBlock,
+        },
+        {
+          __type: 'set_selection',
+          next: cursorAtBlockStart(insertedBlock.id, insertedBlock),
+          prev: context.selection,
+        },
+      ]
 
-    const startSelection = cursorAtBlockStart(insertedBlock.id, insertedBlock)
-
-    if (!startSelection) {
-      buildError(
-        `Failed to create start selection for inserted block ${insertedBlock.id}`,
-        'OperationsEngine/buildHardBreakOps',
-      )
+      return { coalesce: false, label: 'insert-block', ops }
     }
+
+    /** Otherwise we split the block at the cursor position. */
+    const tailSnapshot = computeSplitTailSnapshot(block, found, cursor.offset)
+    const insertedBlock = createParagraphBlockAfter(block, tailSnapshot)
 
     const ops: Operation[] = [
       {
         __type: 'split_block',
-        atIndex: index,
+        atIndex: found.index,
         atNodeId: cursor.nodeId,
         atOffset: cursor.offset,
         blockId: block.id,
@@ -1454,7 +1466,7 @@ export class OperationsEngine {
       },
       {
         __type: 'set_selection',
-        next: startSelection,
+        next: cursorAtBlockStart(insertedBlock.id, insertedBlock),
         prev: context.selection,
       },
     ]

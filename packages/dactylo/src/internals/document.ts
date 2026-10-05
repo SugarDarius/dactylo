@@ -33,7 +33,7 @@ import { assertNever } from './utils'
  * It's the authoritative source of truth (data) that all of of thins are derived from.
  *
  * ┌─────────────────────────────────────────────────────────┐
- * │  DocumentState ← THE source of truth (in memory/RAM)    │
+ * │  DocumentState ← The source of truth (in-memory/RAM)    │
  * └─────────────────────────────────────────────────────────┘
  * ┌─────────────────────────────────────────────────--------┐
  * │  │ Block "bl_1"  key: "a0"  type: heading          │    │

@@ -28,10 +28,14 @@ export type DactyloErrorCode =
   | 'BUILD_TRANSACTION_OPERATIONS'
   /** Block is not allowed to have inline content. */
   | 'BLOCK_NOT_ALLOWED_TO_HAVE_INLINE_CONTENT'
+  /* Block has no content. */
+  | 'BLOCK_HAS_NO_CONTENT'
   /** History is not allowed to execute. */
   | 'HISTORY_NOT_ALLOWED'
   /** Failed to resolve a block in the document. */
   | 'UNKNOWN_BLOCK_IN_DOCUMENT'
+  /** Node is not found in the block. */
+  | 'UNKNOWN_NODE_IN_BLOCK'
   /** No window selection found. */
   | 'NO_WINDOW_SELECTION'
 

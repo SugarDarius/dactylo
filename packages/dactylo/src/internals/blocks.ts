@@ -11,6 +11,7 @@
 
 import { nanoid } from 'nanoid'
 
+import { DactyloError } from './errors'
 import type { InlineNode, NodeId } from './nodes'
 import { makePosition } from './position'
 import type { PosKey } from './position'
@@ -181,15 +182,33 @@ export function findNodeInBlockWithInlineContent(
 /** Finds the first inline node in a block. */
 export function findFirstInlineNodeInBlock(
   block: BlockWithInlineContent,
-): InlineNode | null {
+): InlineNode {
   const [first] = block.content
-  return first ?? null
+  if (!first) {
+    throw DactyloError.from({
+      code: 'BLOCK_HAS_NO_CONTENT',
+      hint: 'Blocks/findFirstInlineNodeInBlock',
+      message: 'No first inline node found in block',
+      payload: { block },
+    })
+  }
+
+  return first
 }
 
 /** Finds the last inline node in a block. */
 export function findLastInlineNodeInBlock(
   block: BlockWithInlineContent,
-): InlineNode | null {
+): InlineNode {
   const last = block.content[block.content.length - 1]
-  return last ?? null
+  if (!last) {
+    throw DactyloError.from({
+      code: 'UNKNOWN_NODE_IN_BLOCK',
+      hint: 'Blocks/findLastInlineNodeInBlock',
+      message: 'No last inline node found in block',
+      payload: { block },
+    })
+  }
+
+  return last
 }

@@ -1,5 +1,6 @@
 import { findFirstInlineNodeInBlock, findLastInlineNodeInBlock } from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
+import { getInlineNodeTextLength } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
 import type { Relax } from './types'
 
@@ -206,13 +207,9 @@ export function createCursor(anchor: TextCursor): CursorSelection {
 export function cursorAtBlockEnd(
   blockId: BlockId,
   block: BlockWithInlineContent,
-): CursorSelection | null {
-  const last = findLastInlineNodeInBlock(block)
-  if (!last) {
-    return null
-  }
-
+): CursorSelection {
   let offset = 0
+  const last = findLastInlineNodeInBlock(block)
 
   if (last.__type === 'text') {
     offset = last.text.length
@@ -227,15 +224,22 @@ export function cursorAtBlockEnd(
   return createCursor({ blockId, nodeId: last.id, offset })
 }
 
+/** Checks whether is a {@link TextCursor} is at block end. */
+export function isCursorAtBlockEnd(
+  cursor: TextCursor,
+  block: BlockWithInlineContent,
+): boolean {
+  const last = findLastInlineNodeInBlock(block)
+  const length = getInlineNodeTextLength(last)
+
+  return cursor.offset === length
+}
+
 /** Places a collapsed cursor at the start of the first text node in a block. */
 export function cursorAtBlockStart(
   blockId: BlockId,
   block: BlockWithInlineContent,
 ): CursorSelection | null {
   const first = findFirstInlineNodeInBlock(block)
-  if (!first) {
-    return null
-  }
-
   return createCursor({ blockId, nodeId: first.id, offset: 0 })
 }
