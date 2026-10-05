@@ -1293,13 +1293,9 @@ export class OperationsEngine {
     /** Looks at within which blocks the cursor is. */
     const block = getBlockWithInlineContent(context.state, cursor.blockId)
     const blockIndex = getBlockIndex(context.state, block.id)
-    const isContentEmpty = isBlockWithInlineContentEmpty(
-      context.state,
-      block.id,
-    )
 
     /** Cursor is at the start of an empty block. */
-    if (cursor.offset === 0 && isContentEmpty) {
+    if (cursor.offset === 0) {
       /** Case there is only one block in the document. */
       if (blockIndex === 0) {
         /**
@@ -1321,9 +1317,7 @@ export class OperationsEngine {
         )
       }
 
-      // @todo: update with getting the previous block with inline content
       const prevBlock = getBlockWithInlineContent(context.state, neighbors.prev)
-
       const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
         block,
         prevBlock,

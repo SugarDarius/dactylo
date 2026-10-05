@@ -702,13 +702,19 @@ export class TransactionPipeline {
     }
 
     // @todo: handle composition input types
-    // @todo: handle clipboard input types `deleteFromCut`, `insertFromPaste`
     switch (inputType) {
       /** Not handled input types bucket. */
       case 'historyUndo':
       case 'historyRedo': {
         warnHistoryInputType(inputType)
 
+        return false
+      }
+
+      // @todo: handle clipboard input types `deleteFromCut`, `insertFromPaste`
+      case 'deleteFromCut':
+      case 'insertFromPaste': {
+        prevent()
         return false
       }
 
