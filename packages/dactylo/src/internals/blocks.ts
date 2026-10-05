@@ -160,7 +160,7 @@ export function sortBlockOrder(blocks: ReadonlyMap<BlockId, Block>): BlockId[] {
     .map((b) => b.id)
 }
 
-/* Finds a node inside a block's content array. */
+/** Finds a node inside a block's content array. */
 export function findNodeInBlockWithInlineContent(
   block: BlockWithInlineContent,
   nodeId: NodeId,

@@ -18,8 +18,11 @@ import {
   createCursorAtDocumentEnd,
   deleteBlock,
   getBlock,
+  getBlockIndex,
+  getBlockNeighbors,
   getBlockWithInlineContent,
   insertBlock,
+  isBlockWithInlineContentEmpty,
   normalizeRange,
   removeBlock,
   replaceBlock,
@@ -40,6 +43,7 @@ import {
   coalesceInlineNodes,
   createLineBreakNode,
   createTextNode,
+  getInlineNodeTextLength,
   splitTextNodeAt,
 } from './nodes'
 import type { InlineNode, NodeId, TextNode } from './nodes'
@@ -1214,55 +1218,60 @@ export class OperationsEngine {
 
     return { coalesce: true, label: `insert-char:${char}`, ops }
   }
-
   /**
    * Builds operations when user presses `Backspace` key,
    * to delete the previous typed character or merge with previous block at block start.
    */
-  // @todo: handle coalesce behaviors
-  // @todo: handle links, mentions, and line breaks.
+  // @todo: handle links, mentions
   buildCursorBackspaceOps(
     context: EditorContext,
     /** Collapsed cursor anchor for the pending edit. */
     cursor: TextCursor,
   ): ComposingOpsIntent | null {
-    /** Merges the current block into the previous block when backspacing at block start. */
-    if (cursor.offset === 0) {
-      const index = context.state.blockOrderById.indexOf(cursor.blockId)
-      /**
-       * 👉🏻 Expected UX:
-       * At the very start of the document (first block, offset = 0), `Backspace` key typically
-       * deletes nothing. We are not at "delete the character before the cursor" (→ offset - 1),
-       * because we already took the block-start branch and there is no previous block to join with.
-       */
-      if (index <= 0) {
+    /** Looks at within which blocks the cursor is. */
+    const block = getBlockWithInlineContent(context.state, cursor.blockId)
+    const blockIndex = getBlockIndex(context.state, block.id)
+    const isContentEmpty = isBlockWithInlineContentEmpty(
+      context.state,
+      block.id,
+    )
+
+    /** Cursor is at the start of an empty block. */
+    if (cursor.offset === 0 && isContentEmpty) {
+      /** Case there is only one block in the document. */
+      if (blockIndex === 0) {
+        /**
+         * 👉🏻 Expected UX:
+         * At the very start of the document (first block, offset = 0), `Backspace` key typically
+         * deletes nothing. We are not at "delete the character before the cursor" (→ offset - 1),
+         * because we already took the block-start branch and there is no previous block to join with.
+         */
         return null
       }
 
-      const prevBlockId = context.state.blockOrderById[index - 1]
-      if (prevBlockId === undefined) {
+      /** Merges the current block into the previous block when backspacing at block start. */
+      const neighbors = getBlockNeighbors(context.state, block.id)
+      /** Should not happen as we already checked if there is only one block in the document. */
+      if (neighbors.prev === null) {
         buildError(
           `Previous block ID is not found for block ${cursor.blockId}`,
           'OperationsEngine/buildCursorBackspaceOps',
         )
       }
 
-      const prevBlock = getBlockWithInlineContent(context.state, prevBlockId)
-      const sourceBlock = getBlockWithInlineContent(
-        context.state,
-        cursor.blockId,
-      )
+      // @todo: update with getting the previous block with inline content
+      const prevBlock = getBlockWithInlineContent(context.state, neighbors.prev)
 
       const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
-        sourceBlock,
+        block,
         prevBlock,
         context.activeMarks,
       )
 
       const endSelection =
-        cursorAtBlockEnd(prevBlockId, prevBlock) ??
+        cursorAtBlockEnd(prevBlock.id, prevBlock) ??
         createCursor({
-          blockId: prevBlockId,
+          blockId: prevBlock.id,
           nodeId: prevBlock.content.at(-1)?.id ?? cursor.nodeId,
           offset: 0,
         })
@@ -1271,12 +1280,12 @@ export class OperationsEngine {
         {
           __type: 'merge_blocks',
           atIndex: prevBlock.content.length,
-          mergedTailSnapshot: [...sourceBlock.content],
-          sourceBlockId: cursor.blockId,
-          sourceSnapshot: sourceBlock,
+          mergedTailSnapshot: [...block.content],
+          sourceBlockId: block.id,
+          sourceSnapshot: block,
           splitAtNodeId,
           splitAtOffset,
-          targetBlockId: prevBlockId,
+          targetBlockId: prevBlock.id,
         },
         {
           __type: 'set_selection',
@@ -1292,11 +1301,8 @@ export class OperationsEngine {
       }
     }
 
-    const { state } = context
-
-    const block = getBlockWithInlineContent(state, cursor.blockId)
+    /** Cursor is somewhere inside the block. */
     const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
-
     if (!found || found.node.__type !== 'text') {
       buildError(
         `Node ${cursor.nodeId} not found in block ${block.id}`,
@@ -1304,8 +1310,81 @@ export class OperationsEngine {
       )
     }
 
-    const { node } = found
+    const { node, index } = found
 
+    /** When the cursor is at the start of the node. */
+    if (cursor.offset === 0) {
+      const ops: Operation[] = [
+        {
+          __type: 'remove_inline_node',
+          blockId: block.id,
+          index,
+          snapshot: node,
+        },
+      ]
+
+      const prevNode = block.content[index - 1]
+      /** Should not happen. */
+      if (!prevNode) {
+        buildError(
+          `Previous node not found for block ${block.id} at index ${index}`,
+          'OperationsEngine/buildCursorBackspaceOps',
+        )
+      }
+
+      switch (prevNode.__type) {
+        case 'line_break': {
+          const lineBreakIndex = index - 1
+          ops.push({
+            __type: 'remove_inline_node',
+            blockId: block.id,
+            index: lineBreakIndex,
+            snapshot: prevNode,
+          })
+
+          const beforeLineBreakNode = block.content[lineBreakIndex - 1]
+          if (!beforeLineBreakNode) {
+            buildError(
+              `Before line break node not found for block ${block.id} at index ${lineBreakIndex}`,
+              'OperationsEngine/buildCursorBackspaceOps',
+            )
+          }
+
+          const offset = getInlineNodeTextLength(beforeLineBreakNode)
+
+          ops.push({
+            __type: 'set_selection',
+            next: createCursor({
+              blockId: block.id,
+              nodeId: beforeLineBreakNode.id,
+              offset,
+            }),
+            prev: context.selection,
+          })
+
+          break
+        }
+        default: {
+          const offset = getInlineNodeTextLength(prevNode)
+
+          ops.push({
+            __type: 'set_selection',
+            next: createCursor({
+              blockId: block.id,
+              nodeId: prevNode.id,
+              offset,
+            }),
+            prev: context.selection,
+          })
+
+          break
+        }
+      }
+
+      return { coalesce: true, label: 'delete-character', ops }
+    }
+
+    /** When the cursor is somewhere inside the node. */
     const ops: Operation[] = [
       {
         __type: 'delete_text',

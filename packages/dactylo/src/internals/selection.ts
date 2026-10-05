@@ -110,7 +110,7 @@ export interface RangeSelection {
   readonly focus: TextCursor
 }
 
-/** Discriminated union of all supported selection shapes in Dactylo. */
+/** Discriminated union of all supported selection shapes in {@link Dactylo}. */
 export type Selection = Relax<CursorSelection | RangeSelection>
 
 /** Checks if the selection is active or not. */

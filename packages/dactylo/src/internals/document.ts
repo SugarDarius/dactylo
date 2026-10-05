@@ -156,13 +156,21 @@ export function removeBlock(
   }
 }
 
-/**
- * Returns adjacent block IDs in document order.
- *
- * @param state - Current document state.
- * @param blockId - ID of the reference block.
- * @returns Previous and next block IDs, or `null` when absent.
- */
+/** Returns the block index in the document state. */
+export function getBlockIndex(state: DocumentState, blockId: BlockId): number {
+  const index = state.blockOrderById.indexOf(blockId)
+  if (index === -1) {
+    throw DactyloError.from({
+      code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
+      hint: 'DocumentState/#getBlockIndex',
+      message: `Block ${blockId} not found in document from block order by ID.`,
+    })
+  }
+
+  return index
+}
+
+/** Returns adjacent block IDs in document order. */
 export function getBlockNeighbors(
   state: DocumentState,
   blockId: BlockId,
@@ -196,7 +204,7 @@ export function getBlock(state: DocumentState, blockId: BlockId): Block {
     throw DactyloError.from({
       code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
       hint: 'DocumentState/#getBlock',
-      message: `Block ${blockId} not found in document`,
+      message: `Block ${blockId} not found in document from blocks map.`,
     })
   }
 
