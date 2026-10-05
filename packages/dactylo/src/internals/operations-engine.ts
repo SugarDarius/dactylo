@@ -1593,11 +1593,19 @@ export class OperationsEngine {
   }
 
   /** Builds the operations to delete a block by ID. */
-  // @todo: add invariant check to ensure the block is not the last block in the document.
-  buildDeleteBlockOps(context: EditorContext, blockId: BlockId): Operation[] {
+  buildDeleteBlockOps(
+    context: EditorContext,
+    blockId: BlockId,
+  ): Operation[] | null {
     const { state } = context
     const block = getBlock(state, blockId)
-    const idx = state.blockOrderById.indexOf(blockId)
+    const idx = getBlockIndex(state, blockId)
+    const isEmpty = isBlockWithInlineContentEmpty(state, blockId)
+
+    /** Invariant: skip deletion of the first empty block. */
+    if (idx === 0 && isEmpty) {
+      return null
+    }
 
     let afterBlockId: BlockId | null = null
     if (idx > 0) {

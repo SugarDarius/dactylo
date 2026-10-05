@@ -1,5 +1,5 @@
 import type { BlockId, BlockWithoutPosKey } from './blocks'
-import { warn } from './console'
+import { warn, warnOnce } from './console'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
 import { createInitialEditorContext } from './editor-context'
 import type { EditorContext } from './editor-context'
@@ -964,6 +964,12 @@ export class TransactionPipeline {
       this.#context,
       blockId,
     )
+    if (ops === null) {
+      warnOnce(
+        `Skipping deletion of block ${blockId} because it is the first empty block.`,
+      )
+      return
+    }
     this.#commit(ops, {
       label: transactionPolicyLabel('blocks', 'delete'),
       pushToHistory: true,
