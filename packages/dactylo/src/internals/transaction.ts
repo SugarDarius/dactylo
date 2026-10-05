@@ -863,33 +863,37 @@ export class TransactionPipeline {
     }
 
     const shortcut = detectPlatformShortcut(event)
-    switch (shortcut) {
-      case 'undo': {
-        prevent()
-        if (this.canUndo()) {
-          this.undo()
-        }
+    if (shortcut !== null) {
+      switch (shortcut) {
+        case 'undo': {
+          prevent()
+          if (this.canUndo()) {
+            this.undo()
+          }
 
-        return true
-      }
-      case 'redo': {
-        prevent()
-        if (this.canRedo()) {
-          this.redo()
+          return true
         }
+        case 'redo': {
+          prevent()
+          if (this.canRedo()) {
+            this.redo()
+          }
 
-        return true
-      }
-      case 'copy':
-      case 'deselect':
-      case 'select-all': {
-        warn(`\`${shortcut}\` shortcut is not is not implemented yet.`)
-        return false
-      }
-      default: {
-        return false
+          return true
+        }
+        case 'copy':
+        case 'escape':
+        case 'select-all': {
+          warn(`\`${shortcut}\` shortcut is not is not implemented yet.`)
+          return false
+        }
+        default: {
+          return false
+        }
       }
     }
+
+    return false
   }
 
   // --- Selection operations ─────────────────────────────────────────

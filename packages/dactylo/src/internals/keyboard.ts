@@ -11,7 +11,7 @@ export type PlatformShortcut =
   | 'paste'
   | 'cut'
   | 'select-all'
-  | 'deselect'
+  | 'escape'
 
 /**
  * Detects a platform shortcut from a key event
@@ -26,7 +26,7 @@ export type PlatformShortcut =
  * | Paste      | `Mod+V`  | `paste`                      |
  * | Cut        | `Mod+X`  | `cut`                        |
  * | Select all | `Mode+A` | `select-all`                 |
- * | Deselect   | `Escape` | `deselect`                   |
+ * | Escape     | `Escape` | `escape`                     |
  *
  * Mod = `metaKey || ctrlKey`.
  * Letter chords use `event.code`(`KeyZ`, `KeyC`, …) so shortcuts stay on physical keys across layouts;
@@ -40,10 +40,6 @@ export function detectPlatformShortcut(
 ): PlatformShortcut | null {
   if (event.altKey) {
     return null
-  }
-
-  if (event.key === 'Escape' && !isModKey(event)) {
-    return 'deselect'
   }
 
   if (isModKey(event)) {
@@ -72,7 +68,7 @@ export function detectPlatformShortcut(
       }
     }
   } else if (event.key === 'Escape') {
-    return 'deselect'
+    return 'escape'
   }
 
   return null
