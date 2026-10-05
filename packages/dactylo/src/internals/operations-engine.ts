@@ -27,6 +27,7 @@ import {
   removeBlock,
   replaceBlock,
   resolveInsertAfterBlockId,
+  stepTextCursor,
 } from './document'
 import type { DocumentState } from './document'
 import {
@@ -37,6 +38,7 @@ import {
 } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
+import type { ArrowDirection } from './keyboard'
 import { isMarkEnabled, isMarksEqual, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
 import {
@@ -63,10 +65,15 @@ import type {
   SplitBlockOp,
 } from './operations'
 import {
+  areSelectionsEqual,
   createCursor,
+  createRange,
   cursorAtBlockEnd,
   cursorAtBlockStart,
   isCursorAtBlockEnd,
+  isCursorSelection,
+  isRangeSelection,
+  isSelectionActive,
 } from './selection'
 import type { TextCursor } from './selection'
 import { assertNever } from './utils'
@@ -1601,6 +1608,88 @@ export class OperationsEngine {
   }
 
   // --- Selection operations ─────────────────────────────────────────
+
+  /**
+   * Builds the operations to navigate the selection with arrow keys.
+   * Extends the existing selection when `extend` is `true`.
+   *
+   * Returns `null` when the selection would not change.
+   */
+  buildArrowNavigationOps(
+    context: EditorContext,
+    direction: ArrowDirection,
+    extend: boolean,
+  ): Operation[] | null {
+    if (!isSelectionActive(context.selection)) {
+      return null
+    }
+
+    let origin: TextCursor
+    let rangeAnchor: TextCursor | undefined
+
+    if (isCursorSelection(context.selection)) {
+      origin = context.selection.anchor
+      rangeAnchor = extend ? context.selection.anchor : undefined
+    } else {
+      const normalized = normalizeRange(context.state, context.selection)
+      if (extend) {
+        origin = context.selection.focus
+        rangeAnchor = context.selection.anchor
+      } else {
+        const collapseToStart = direction === 'left' || direction === 'up'
+        origin = collapseToStart ? normalized.anchor : normalized.focus
+        rangeAnchor = undefined
+      }
+    }
+
+    const nextFocus = stepTextCursor(context.state, origin, direction)
+    if (!nextFocus) {
+      if (!extend && isRangeSelection(context.selection)) {
+        const collapsed = createCursor(origin)
+        const isEqual = areSelectionsEqual(
+          {
+            anchor: collapsed.anchor,
+          },
+          { anchor: context.selection.anchor, focus: context.selection.focus },
+        )
+
+        if (isEqual) {
+          return null
+        }
+
+        const ops: Operation[] = [
+          {
+            __type: 'set_selection',
+            next: collapsed,
+            prev: context.selection,
+          },
+        ]
+
+        return ops
+      }
+      return null
+    }
+
+    const next =
+      extend && rangeAnchor
+        ? createRange(rangeAnchor, nextFocus)
+        : createCursor(nextFocus)
+
+    const isEqual = areSelectionsEqual(context.selection, next)
+    if (isEqual) {
+      return null
+    }
+
+    const ops: Operation[] = [
+      {
+        __type: 'set_selection',
+        next,
+        prev: context.selection,
+      },
+    ]
+
+    return ops
+  }
 
   /**
    * Builds the operations to set the selection to the end of the last block in document order.

@@ -14,7 +14,7 @@ export type PlatformShortcut =
   | 'escape'
 
 /**
- * Detects a platform shortcut from a key event
+ * Detects a platform shortcut from a key event.
  * Using under-the-hood the physical key to ensure we always are layout-independent
  * to correctly detect those shortcuts.
  *
@@ -72,4 +72,49 @@ export function detectPlatformShortcut(
   }
 
   return null
+}
+
+/** Discriminated union for arrow directions. */
+export type ArrowDirection = 'up' | 'down' | 'left' | 'right'
+
+/**
+ * Detects arrow direction a key event.
+ * Using under-the-hood the physical key to ensure we always are layout-independent
+ * to correctly detect those directions.
+ *
+ * | Direction | Chord         | `ArrowDirection`   |
+ * | --------- | ------------- | ------------------ |
+ * | Up        | `ArrowUp`     | `up`               |
+ * | Down      | `ArrowDown`   | `down`             |
+ * | Left      | `ArrowLeft`   | `left`             |
+ * | Right     | `ArrowRight`  | `right`            |
+ *
+ * Alt chords are ignored for now in v1 to avoid AltGr conflicts on European layouts.
+ *
+ * Returns `null` when the event is not a handled arrow direction.
+ */
+export function detectArrowDirection(
+  event: KeyboardEvent,
+): ArrowDirection | null {
+  if (event.altKey || isModKey(event)) {
+    return null
+  }
+  const keyCode = event.code
+  switch (keyCode) {
+    case 'ArrowUp': {
+      return 'up'
+    }
+    case 'ArrowDown': {
+      return 'down'
+    }
+    case 'ArrowLeft': {
+      return 'left'
+    }
+    case 'ArrowRight': {
+      return 'right'
+    }
+    default: {
+      return null
+    }
+  }
 }

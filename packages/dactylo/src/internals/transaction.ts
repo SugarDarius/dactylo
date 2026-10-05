@@ -8,12 +8,12 @@ import type { Observable } from './event-source'
 import { EventSource } from './event-source'
 import { HistoryStack } from './history'
 import type { HistoryEvent } from './history'
-import { detectPlatformShortcut } from './keyboard'
+import { detectArrowDirection, detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
 import type { Operation, InsertBlockOpPosition } from './operations'
 import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
-import { isCursorSelection } from './selection'
+import { isCursorSelection, isSelectionActive } from './selection'
 import { assertNever } from './utils'
 import { warnHistoryInputType } from './warnings'
 
@@ -891,6 +891,29 @@ export class TransactionPipeline {
           return false
         }
       }
+    }
+
+    const arrowDirection = detectArrowDirection(event)
+    if (arrowDirection !== null && isSelectionActive(this.#context.selection)) {
+      const ops = this.#operationsEngine.buildArrowNavigationOps(
+        this.#context,
+        arrowDirection,
+        event.shiftKey,
+      )
+      if (ops === null) {
+        return false
+      }
+
+      this.#commit(ops, {
+        coalesce: false,
+        label: transactionPolicyLabel(
+          'input',
+          'digest-event',
+          `arrow-navigation-${arrowDirection}`,
+        ),
+        pushToHistory: false,
+        source: 'user',
+      })
     }
 
     return false

@@ -1,6 +1,11 @@
-import { createParagraphBlock, isBlockWithInlineContent } from './blocks'
+import {
+  createParagraphBlock,
+  findNodeInBlockWithInlineContent,
+  isBlockWithInlineContent,
+} from './blocks'
 import type { Block, BlockId, BlockWithInlineContent } from './blocks'
 import { DactyloError } from './errors'
+import type { ArrowDirection } from './keyboard'
 import type { Marks } from './marks'
 import { createTextNode, getInlineNodeTextLength } from './nodes'
 import type { InsertBlockOpPosition } from './operations'
@@ -16,6 +21,11 @@ import {
   appendTextSpansInRangeFromBlock,
   createRange,
   cursorAtBlockEnd,
+  cursorAtBlockStart,
+  cursorAtInlineNodeEnd,
+  cursorAtInlineNodeStart,
+  cursorFromLinearOffsetInBlock,
+  getLinearOffsetInBlock,
 } from './selection'
 import type {
   CursorSelection,
@@ -348,6 +358,38 @@ export function resolveInsertAfterBlockId(
   }
 }
 
+/** Returns the next block with inline content, or `null` if already at the boundary. */
+export function resolveNextInlineBlock(
+  state: DocumentState,
+  blockId: BlockId,
+): BlockWithInlineContent | null {
+  let { next } = getBlockNeighbors(state, blockId)
+  while (next) {
+    const block = getBlock(state, next)
+    if (isBlockWithInlineContent(block)) {
+      return block
+    }
+    ;({ next } = getBlockNeighbors(state, next))
+  }
+  return null
+}
+
+/** Returns the previous block with inline content, or `null` if already at the boundary. */
+export function resolvePrevInlineBlock(
+  state: DocumentState,
+  blockId: BlockId,
+): BlockWithInlineContent | null {
+  let { prev } = getBlockNeighbors(state, blockId)
+  while (prev) {
+    const block = getBlock(state, prev)
+    if (isBlockWithInlineContent(block)) {
+      return block
+    }
+    ;({ prev } = getBlockNeighbors(state, prev))
+  }
+  return null
+}
+
 // --------Selection--------
 
 /**
@@ -542,4 +584,125 @@ export function createCursorAtDocumentEnd(
 
   const block = getBlockWithInlineContent(state, lastBlockId)
   return cursorAtBlockEnd(block.id, block)
+}
+
+/** Returns the previous caret position at left, or `null` if already at the boundary. */
+export function stepCursorLeft(
+  state: DocumentState,
+  cursor: TextCursor,
+): TextCursor | null {
+  const block = getBlockWithInlineContent(state, cursor.blockId)
+  const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+  if (!found) {
+    return null
+  }
+  const { node, index } = found
+  if (node.__type === 'text' && cursor.offset > 0) {
+    return { ...cursor, offset: cursor.offset - 1 }
+  }
+  if (node.__type === 'line_break' && cursor.offset === 0) {
+    const prevNode = block.content[index - 1]
+    if (!prevNode) {
+      const prevBlock = resolvePrevInlineBlock(state, block.id)
+      if (!prevBlock) {
+        return null
+      }
+      return cursorAtBlockEnd(prevBlock.id, prevBlock).anchor
+    }
+    return cursorAtInlineNodeEnd(block.id, prevNode)
+  }
+  if (cursor.offset === 0) {
+    const prevNode = block.content[index - 1]
+    if (prevNode) {
+      if (prevNode.__type === 'line_break') {
+        return cursorAtInlineNodeStart(block.id, prevNode)
+      }
+      return cursorAtInlineNodeEnd(block.id, prevNode)
+    }
+    const prevBlock = resolvePrevInlineBlock(state, block.id)
+    if (!prevBlock) {
+      return null
+    }
+    return cursorAtBlockEnd(prevBlock.id, prevBlock).anchor
+  }
+  return null
+}
+
+/** Returns the next caret position at right, or `null` if already at the boundary. */
+export function stepCursorRight(
+  state: DocumentState,
+  cursor: TextCursor,
+): TextCursor | null {
+  const block = getBlockWithInlineContent(state, cursor.blockId)
+  const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+  if (!found) {
+    return null
+  }
+  const { node, index } = found
+  if (node.__type === 'text' && cursor.offset < node.text.length) {
+    return { ...cursor, offset: cursor.offset + 1 }
+  }
+  const nextNode = block.content[index + 1]
+  if (nextNode) {
+    return cursorAtInlineNodeStart(block.id, nextNode)
+  }
+  const nextBlock = resolveNextInlineBlock(state, block.id)
+  if (!nextBlock) {
+    return null
+  }
+  const atStart = cursorAtBlockStart(nextBlock.id, nextBlock)
+  return atStart?.anchor ?? null
+}
+
+/** Returns the previous caret position at up, or `null` if already at the boundary. */
+export function stepCursorUp(
+  state: DocumentState,
+  cursor: TextCursor,
+): TextCursor | null {
+  const block = getBlockWithInlineContent(state, cursor.blockId)
+  const prevBlock = resolvePrevInlineBlock(state, block.id)
+  if (!prevBlock) {
+    return null
+  }
+  const linear = getLinearOffsetInBlock(block, cursor)
+  return cursorFromLinearOffsetInBlock(prevBlock.id, prevBlock, linear)
+}
+
+/** Returns the next caret position at down, or `null` if already at the boundary. */
+export function stepCursorDown(
+  state: DocumentState,
+  cursor: TextCursor,
+): TextCursor | null {
+  const block = getBlockWithInlineContent(state, cursor.blockId)
+  const nextBlock = resolveNextInlineBlock(state, block.id)
+  if (!nextBlock) {
+    return null
+  }
+  const linear = getLinearOffsetInBlock(block, cursor)
+  return cursorFromLinearOffsetInBlock(nextBlock.id, nextBlock, linear)
+}
+
+/** Returns the next caret position, or `null` if already at the boundary. */
+export function stepTextCursor(
+  state: DocumentState,
+  cursor: TextCursor,
+  direction: ArrowDirection,
+): TextCursor | null {
+  switch (direction) {
+    case 'left': {
+      return stepCursorLeft(state, cursor)
+    }
+    case 'right': {
+      return stepCursorRight(state, cursor)
+    }
+    case 'up': {
+      return stepCursorUp(state, cursor)
+    }
+    case 'down': {
+      return stepCursorDown(state, cursor)
+    }
+    default: {
+      return null
+    }
+  }
 }

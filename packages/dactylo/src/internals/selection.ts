@@ -128,6 +128,13 @@ export function isCursorSelection(
   return isSelectionActive(selection) && selection.__type === 'cursor'
 }
 
+/** Checks wether a selection is a range selection. */
+export function isRangeSelection(
+  selection: Selection | null,
+): selection is RangeSelection {
+  return isSelectionActive(selection) && selection.__type === 'range'
+}
+
 /** Checks if a block has an active cursor selection within. */
 export function isBlockWithActiveCursor(
   selection: Selection | null,
@@ -242,4 +249,100 @@ export function cursorAtBlockStart(
 ): CursorSelection | null {
   const first = findFirstInlineNodeInBlock(block)
   return createCursor({ blockId, nodeId: first.id, offset: 0 })
+}
+
+/** Returns the linear offset of a cursor in a block. */
+export function getLinearOffsetInBlock(
+  block: BlockWithInlineContent,
+  cursor: TextCursor,
+): number {
+  let linear = 0
+  for (const node of block.content) {
+    if (node.id === cursor.nodeId) {
+      if (node.__type === 'text') {
+        return linear + cursor.offset
+      }
+      return linear
+    }
+    linear += getInlineNodeTextLength(node)
+  }
+  return linear
+}
+
+/** Places a collapsed cursor at the start of an inline node. */
+export function cursorAtInlineNodeStart(
+  blockId: BlockId,
+  node: InlineNode,
+): TextCursor {
+  return { blockId, nodeId: node.id, offset: 0 }
+}
+
+/** Places a collapsed cursor at the end of an inline node. */
+export function cursorAtInlineNodeEnd(
+  blockId: BlockId,
+  node: InlineNode,
+): TextCursor {
+  if (node.__type === 'line_break') {
+    return { blockId, nodeId: node.id, offset: 0 }
+  }
+  if (node.__type === 'text') {
+    return { blockId, nodeId: node.id, offset: node.text.length }
+  }
+  return { blockId, nodeId: node.id, offset: getInlineNodeTextLength(node) }
+}
+
+/** Creates a cursor from a linear offset in a block. */
+export function cursorFromLinearOffsetInBlock(
+  blockId: BlockId,
+  block: BlockWithInlineContent,
+  linear: number,
+): TextCursor {
+  let remaining = Math.max(0, linear)
+  for (const node of block.content) {
+    if (node.__type === 'text') {
+      if (remaining <= node.text.length) {
+        return { blockId, nodeId: node.id, offset: remaining }
+      }
+      remaining -= node.text.length
+      continue
+    }
+    if (node.__type === 'line_break') {
+      if (remaining === 0) {
+        return cursorAtInlineNodeStart(blockId, node)
+      }
+      continue
+    }
+    const len = getInlineNodeTextLength(node)
+    if (remaining <= len) {
+      return cursorAtInlineNodeEnd(blockId, node)
+    }
+    remaining -= len
+  }
+  return cursorAtBlockEnd(blockId, block).anchor
+}
+
+/** Checks if two selections are equal. */
+export function areSelectionsEqual(
+  a: { anchor: TextCursor; focus?: TextCursor } | null,
+  b: { anchor: TextCursor; focus?: TextCursor } | null,
+): boolean {
+  if (a === null && b === null) {
+    return true
+  }
+
+  if (a === null || b === null) {
+    return false
+  }
+
+  const aFocus = a.focus ?? a.anchor
+  const bFocus = b.focus ?? b.anchor
+
+  return (
+    a.anchor.blockId === b.anchor.blockId &&
+    a.anchor.nodeId === b.anchor.nodeId &&
+    a.anchor.offset === b.anchor.offset &&
+    aFocus.blockId === bFocus.blockId &&
+    aFocus.nodeId === bFocus.nodeId &&
+    aFocus.offset === bFocus.offset
+  )
 }
