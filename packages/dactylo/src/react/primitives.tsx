@@ -3,6 +3,7 @@
 import { forwardRef, useMemo, useRef } from 'react'
 
 import { Dactylo } from '../dactylo'
+import { paintTextForDOM } from '../dom/text'
 import {
   BLOCKS_ATTR_NAME,
   BLOCK_CONTENT_EDITABLE_ATTR_NAME,
@@ -14,8 +15,6 @@ import {
   ROOT_ATTR_NAME,
   TEXT_NODE_ATTR_NAME,
   TEXT_NODE_ID_DATA_NAME,
-  DOM_SPACE_UNICODE_CODEPOINT,
-  DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT,
   LINE_BREAK_NODE_ATTR_NAME,
   LINE_BREAK_NODE_ID_DATA_NAME,
 } from '../internals/constants'
@@ -104,47 +103,10 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 
 // --- Composer.Editable ─────────────────────────────────────────---
 
-/**
- * Renders the text with DOM paint characters.
- * @private
- */
-function useRenderText(text: string) {
-  return useMemo(() => {
-    let rendered = ''
-
-    if (text.length === 0) {
-      rendered += DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT
-      return rendered
-    }
-
-    for (let i = 0; i < text.length; i += 1) {
-      const char = text[i]
-
-      // oxlint-disable-next-line unicorn/prefer-ternary
-      const isSpace =
-        char === ' ' &&
-        (i === 0 ||
-          text.length - 1 === i ||
-          text[i - 1] === ' ' ||
-          text[i + 1] === ' ')
-      rendered += isSpace ? DOM_SPACE_UNICODE_CODEPOINT : char
-    }
-
-    if (
-      rendered.endsWith(DOM_SPACE_UNICODE_CODEPOINT) ||
-      rendered.endsWith(' ')
-    ) {
-      rendered += DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT
-    }
-
-    return rendered
-  }, [text])
-}
-
 /** Adds a text node to the composer. */
 const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
   ({ node, ...props }, forwardedRef) => {
-    const rendered = useRenderText(node.text)
+    const rendered = useMemo(() => paintTextForDOM(node.text), [node.text])
 
     return (
       <span
