@@ -474,7 +474,7 @@ export class TransactionPipeline {
      */
     if (ops.length === 0) {
       warn(
-        'TransactionPipeline/#dispatch: empty operations in transaction',
+        'TransactionPipeline/#dispatch: no operations defined in transaction.',
         JSON.stringify(transaction, null, 2),
       )
       return

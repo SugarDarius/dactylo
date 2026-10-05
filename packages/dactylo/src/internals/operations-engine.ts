@@ -463,18 +463,11 @@ export function applySplitBlockOp(
   switch (type) {
     case 'text': {
       const headText = node.text.slice(0, op.atOffset)
-      const tailText = node.text.slice(op.atOffset)
 
       const headNodes: InlineNode[] = content.slice(0, index)
       if (headText.length > 0 || headNodes.length === 0) {
         headNodes.push({ ...node, text: headText, updatedAt: new Date() })
       }
-
-      const tailNodes: InlineNode[] = []
-      if (tailText.length > 0) {
-        tailNodes.push(createTextNode({ marks: node.marks, text: tailText }))
-      }
-      tailNodes.push(...content.slice(index + 1))
 
       const updatedOriginal = touchBlock({
         ...block,
@@ -484,7 +477,7 @@ export function applySplitBlockOp(
       let doc = replaceBlock(context.state, op.blockId, updatedOriginal)
       const newBlock: BlockWithInlineContent = {
         ...op.newBlock,
-        content: coalesceInlineNodes(tailNodes),
+        content: coalesceInlineNodes(op.newBlock.content),
       }
       doc = insertBlock(doc, newBlock)
 
@@ -492,7 +485,6 @@ export function applySplitBlockOp(
     }
     case 'link': {
       const headText = node.textNode.text.slice(0, op.atOffset)
-      const tailText = node.textNode.text.slice(op.atOffset)
 
       const headNodes: InlineNode[] = content.slice(0, index)
       if (headText.length > 0 || headNodes.length === 0) {
@@ -504,20 +496,6 @@ export function applySplitBlockOp(
         })
       }
 
-      const tailNodes: InlineNode[] = []
-      if (tailText.length > 0) {
-        tailNodes.push(
-          createLinkNode({
-            textNode: createTextNode({
-              marks: node.textNode.marks,
-              text: tailText,
-            }),
-            url: node.url,
-          }),
-        )
-      }
-      tailNodes.push(...content.slice(index + 1))
-
       const updatedOriginal = touchBlock({
         ...block,
         content: coalesceInlineNodes(headNodes),
@@ -526,7 +504,7 @@ export function applySplitBlockOp(
       let doc = replaceBlock(context.state, op.blockId, updatedOriginal)
       const newBlock: BlockWithInlineContent = {
         ...op.newBlock,
-        content: coalesceInlineNodes(tailNodes),
+        content: coalesceInlineNodes(op.newBlock.content),
       }
       doc = insertBlock(doc, newBlock)
 
@@ -534,7 +512,7 @@ export function applySplitBlockOp(
     }
     case 'line_break':
     case 'mention': {
-      return applyError(`Split tail is not allowed in ${type} node`, op)
+      return applyError(`Split tail is not allowed on ${type} node`, op)
     }
     default: {
       assertNever(type, {
@@ -844,7 +822,7 @@ export function computeSplitTailSnapshot(
       throw DactyloError.from({
         code: 'SPLIT_TAIL_UNAUTHORIZED_IN_INLINE_NODE',
         hint: 'OperationsEngine/computeSplitTailSnapshot',
-        message: `Split tail is not allowed in ${type} node`,
+        message: `Split tail is not allowed on ${type} node`,
         payload: { node },
       })
     }
