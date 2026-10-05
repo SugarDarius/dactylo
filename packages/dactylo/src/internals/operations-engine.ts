@@ -42,6 +42,7 @@ import type { MarkKey, Marks } from './marks'
 import {
   coalesceInlineNodes,
   createLineBreakNode,
+  createLinkNode,
   createTextNode,
   getInlineNodeTextLength,
   splitTextNodeAt,
@@ -449,39 +450,91 @@ export function applySplitBlockOp(
   }
 
   const { node, index } = found
-  if (node.__type !== 'text') {
-    applyError('`split_block` atNodeId target must be a text node', op)
-  }
-
   const content = [...block.content]
 
-  const headText = node.text.slice(0, op.atOffset)
-  const tailText = node.text.slice(op.atOffset)
+  const type = node.__type
+  switch (type) {
+    case 'text': {
+      const headText = node.text.slice(0, op.atOffset)
+      const tailText = node.text.slice(op.atOffset)
 
-  const headNodes: InlineNode[] = content.slice(0, index)
-  if (headText.length > 0 || headNodes.length === 0) {
-    headNodes.push({ ...node, text: headText, updatedAt: new Date() })
+      const headNodes: InlineNode[] = content.slice(0, index)
+      if (headText.length > 0 || headNodes.length === 0) {
+        headNodes.push({ ...node, text: headText, updatedAt: new Date() })
+      }
+
+      const tailNodes: InlineNode[] = []
+      if (tailText.length > 0) {
+        tailNodes.push(createTextNode({ marks: node.marks, text: tailText }))
+      }
+      tailNodes.push(...content.slice(index + 1))
+
+      const updatedOriginal = touchBlock({
+        ...block,
+        content: coalesceInlineNodes(headNodes),
+      })
+
+      let doc = replaceBlock(context.state, op.blockId, updatedOriginal)
+      const newBlock: BlockWithInlineContent = {
+        ...op.newBlock,
+        content: coalesceInlineNodes(tailNodes),
+      }
+      doc = insertBlock(doc, newBlock)
+
+      return withDocumentState(context, doc)
+    }
+    case 'link': {
+      const headText = node.textNode.text.slice(0, op.atOffset)
+      const tailText = node.textNode.text.slice(op.atOffset)
+
+      const headNodes: InlineNode[] = content.slice(0, index)
+      if (headText.length > 0 || headNodes.length === 0) {
+        const updatedAt = new Date()
+        headNodes.push({
+          ...node,
+          textNode: { ...node.textNode, text: headText, updatedAt },
+          updatedAt: new Date(),
+        })
+      }
+
+      const tailNodes: InlineNode[] = []
+      if (tailText.length > 0) {
+        tailNodes.push(
+          createLinkNode({
+            textNode: createTextNode({
+              marks: node.textNode.marks,
+              text: tailText,
+            }),
+            url: node.url,
+          }),
+        )
+      }
+      tailNodes.push(...content.slice(index + 1))
+
+      const updatedOriginal = touchBlock({
+        ...block,
+        content: coalesceInlineNodes(headNodes),
+      })
+
+      let doc = replaceBlock(context.state, op.blockId, updatedOriginal)
+      const newBlock: BlockWithInlineContent = {
+        ...op.newBlock,
+        content: coalesceInlineNodes(tailNodes),
+      }
+      doc = insertBlock(doc, newBlock)
+
+      return withDocumentState(context, doc)
+    }
+    case 'line_break':
+    case 'mention': {
+      return applyError(`Split tail is not allowed in ${type} node`, op)
+    }
+    default: {
+      assertNever(type, {
+        hint: 'OperationsEngine/applySplitBlockOp',
+      })
+    }
   }
-
-  const tailNodes: InlineNode[] = []
-  if (tailText.length > 0) {
-    tailNodes.push(createTextNode({ marks: node.marks, text: tailText }))
-  }
-  tailNodes.push(...content.slice(index + 1))
-
-  const updatedOriginal = touchBlock({
-    ...block,
-    content: coalesceInlineNodes(headNodes),
-  })
-
-  let doc = replaceBlock(context.state, op.blockId, updatedOriginal)
-  const newBlock: BlockWithInlineContent = {
-    ...op.newBlock,
-    content: coalesceInlineNodes(tailNodes),
-  }
-  doc = insertBlock(doc, newBlock)
-
-  return withDocumentState(context, doc)
 }
 
 /**
@@ -756,21 +809,44 @@ export function computeSplitTailSnapshot(
   atOffset: number,
 ): InlineNode[] {
   const { node, index } = atNode
-  // @todo: handle links and mentions
-  if (node.__type !== 'text') {
-    return []
+
+  const type = node.__type
+  switch (type) {
+    case 'text': {
+      const tailText = node.text.slice(atOffset)
+      return [
+        createTextNode({ marks: node.marks, text: tailText }),
+        ...block.content.slice(index + 1),
+      ]
+    }
+    case 'link': {
+      const tailText = node.textNode.text.slice(atOffset)
+      return [
+        createLinkNode({
+          textNode: createTextNode({
+            marks: node.textNode.marks,
+            text: tailText,
+          }),
+          url: node.url,
+        }),
+        ...block.content.slice(index + 1),
+      ]
+    }
+    case 'line_break':
+    case 'mention': {
+      throw DactyloError.from({
+        code: 'SPLIT_TAIL_UNAUTHORIZED_IN_INLINE_NODE',
+        hint: 'OperationsEngine/computeSplitTailSnapshot',
+        message: `Split tail is not allowed in ${type} node`,
+        payload: { node },
+      })
+    }
+    default: {
+      assertNever(type, {
+        hint: 'OperationsEngine/computeSplitTailSnapshot',
+      })
+    }
   }
-
-  const tailText = node.text.slice(atOffset)
-  const tailNodes: InlineNode[] = []
-
-  if (tailText.length > 0) {
-    tailNodes.push(createTextNode({ marks: node.marks, text: tailText }))
-  }
-
-  tailNodes.push(...block.content.slice(index + 1))
-
-  return tailNodes
 }
 
 /** Throws a build error {@link DactyloError} when something goes wrong while building operations. */
@@ -1219,11 +1295,11 @@ export class OperationsEngine {
 
     return { coalesce: true, label: `insert-char:${char}`, ops }
   }
+
   /**
    * Builds operations when user presses `Backspace` key,
    * to delete the previous typed character or merge with previous block at block start.
    */
-  // @todo: handle links, mentions
   buildCursorBackspaceOps(
     context: EditorContext,
     /** Collapsed cursor anchor for the pending edit. */
@@ -1385,6 +1461,7 @@ export class OperationsEngine {
       return { coalesce: true, label: 'delete-character', ops }
     }
 
+    // @todo: handle links and mentions
     /** When the cursor is somewhere inside the node. */
     const ops: Operation[] = [
       {
@@ -1428,7 +1505,6 @@ export class OperationsEngine {
     }
 
     const isBlockEnd = isCursorAtBlockEnd(cursor, block)
-
     /** At block end we just insert a new block after the current one. */
     if (isBlockEnd) {
       const insertedBlock = createParagraphBlockAfter(block, [

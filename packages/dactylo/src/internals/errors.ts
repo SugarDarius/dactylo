@@ -24,18 +24,20 @@ export type DactyloErrorCode =
   | 'APPLY_TRANSACTION_OPERATIONS'
   /** Failed to invert a transaction operations. */
   | 'INVERT_TRANSACTION_OPERATIONS'
+  /** History is not allowed to execute. */
+  | 'HISTORY_NOT_ALLOWED'
   /** Failed to build a transaction operations. */
   | 'BUILD_TRANSACTION_OPERATIONS'
   /** Block is not allowed to have inline content. */
   | 'BLOCK_NOT_ALLOWED_TO_HAVE_INLINE_CONTENT'
   /* Block has no content. */
   | 'BLOCK_HAS_NO_CONTENT'
-  /** History is not allowed to execute. */
-  | 'HISTORY_NOT_ALLOWED'
   /** Failed to resolve a block in the document. */
   | 'UNKNOWN_BLOCK_IN_DOCUMENT'
   /** Node is not found in the block. */
   | 'UNKNOWN_NODE_IN_BLOCK'
+  /** Split tail is not allowed in inline node. */
+  | 'SPLIT_TAIL_UNAUTHORIZED_IN_INLINE_NODE'
   /** No window selection found. */
   | 'NO_WINDOW_SELECTION'
 

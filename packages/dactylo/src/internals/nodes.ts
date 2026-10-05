@@ -105,7 +105,7 @@ export function generateNodeId(): NodeId {
   return `nd_${nanoid(21)}` as NodeId
 }
 
-/** Creates a text node. */
+/** Creates a {@link TextNode}. */
 export function createTextNode(opts: {
   text: string
   metadata?: Metadata
@@ -122,7 +122,7 @@ export function createTextNode(opts: {
   }
 }
 
-/** Creates a line break node.  */
+/** Creates a {@link LineBreakNode}.  */
 export function createLineBreakNode(
   opts: {
     metadata?: Metadata
@@ -137,6 +137,25 @@ export function createLineBreakNode(
   }
 }
 
+/** Creates a {@link LinkNode}. */
+export function createLinkNode(opts: {
+  url: {
+    href: string
+    title: string
+  }
+  metadata?: Metadata
+  textNode: TextNode
+}): LinkNode {
+  return {
+    __type: 'link',
+    createdAt: new Date(),
+    id: generateNodeId(),
+    metadata: opts.metadata ?? {},
+    textNode: opts.textNode,
+    updatedAt: null,
+    url: opts.url,
+  }
+}
 /**
  * Merges adjacent text nodes with identical marks into a single node.
  *
