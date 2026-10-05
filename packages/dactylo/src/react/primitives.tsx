@@ -14,8 +14,8 @@ import {
   ROOT_ATTR_NAME,
   TEXT_NODE_ATTR_NAME,
   TEXT_NODE_ID_DATA_NAME,
-  DOM_PAINT_SPACE_CHARACTER,
-  DOM_PAINT_CARET_ANCHOR,
+  DOM_SPACE_UNICODE_CODEPOINT,
+  DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT,
   LINE_BREAK_NODE_ATTR_NAME,
   LINE_BREAK_NODE_ID_DATA_NAME,
 } from '../internals/constants'
@@ -113,7 +113,7 @@ function useRenderText(text: string) {
     let rendered = ''
 
     if (text.length === 0) {
-      rendered += DOM_PAINT_CARET_ANCHOR
+      rendered += DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT
       return rendered
     }
 
@@ -127,14 +127,14 @@ function useRenderText(text: string) {
           text.length - 1 === i ||
           text[i - 1] === ' ' ||
           text[i + 1] === ' ')
-      rendered += isSpace ? DOM_PAINT_SPACE_CHARACTER : char
+      rendered += isSpace ? DOM_SPACE_UNICODE_CODEPOINT : char
     }
 
     if (
-      rendered.endsWith(DOM_PAINT_SPACE_CHARACTER) ||
+      rendered.endsWith(DOM_SPACE_UNICODE_CODEPOINT) ||
       rendered.endsWith(' ')
     ) {
-      rendered += DOM_PAINT_CARET_ANCHOR
+      rendered += DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT
     }
 
     return rendered
