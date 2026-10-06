@@ -1292,83 +1292,76 @@ export class OperationsEngine {
     return { coalesce: true, label: `insert-char:${char}`, ops }
   }
 
+  /** Merges the current block into the previous block when backspacing at block start. */
+  // @todo: handle blocks with no inline content
+  #buildMergeBlocksOps(
+    context: EditorContext,
+    /** Collapsed cursor anchor for the pending edit. */
+    cursor: TextCursor,
+    block: BlockWithInlineContent,
+  ): ComposingOpsIntent {
+    const neighbors = getBlockNeighbors(context.state, block.id)
+    /** Should not happen as we already checked if there is only one block in the document. */
+    if (neighbors.prev === null) {
+      buildError(
+        `Previous block ID is not found for block ${cursor.blockId}`,
+        'OperationsEngine/buildCursorBackspaceOps',
+      )
+    }
+
+    const prevBlock = getBlockWithInlineContent(context.state, neighbors.prev)
+    const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
+      block,
+      prevBlock,
+      context.activeMarks,
+    )
+
+    const endSelection =
+      cursorAtBlockEnd(prevBlock.id, prevBlock) ??
+      createCursor({
+        blockId: prevBlock.id,
+        nodeId: prevBlock.content.at(-1)?.id ?? cursor.nodeId,
+        offset: 0,
+      })
+
+    const ops: Operation[] = [
+      {
+        __type: 'merge_blocks',
+        atIndex: prevBlock.content.length,
+        mergedTailSnapshot: [...block.content],
+        sourceBlockId: block.id,
+        sourceSnapshot: block,
+        splitAtNodeId,
+        splitAtOffset,
+        targetBlockId: prevBlock.id,
+      },
+      {
+        __type: 'set_selection',
+        next: endSelection,
+        prev: context.selection,
+      },
+    ]
+
+    return {
+      coalesce: true,
+      label: `merge-blocks`,
+      ops,
+    }
+  }
+
   /**
    * Builds operations when user presses `Backspace` key,
    * to delete the previous typed character or merge with previous block at block start.
    */
+  // @todo: handle links
   buildCursorBackspaceOps(
     context: EditorContext,
     /** Collapsed cursor anchor for the pending edit. */
     cursor: TextCursor,
   ): ComposingOpsIntent | null {
-    /** Looks at within which blocks the cursor is. */
     const block = getBlockWithInlineContent(context.state, cursor.blockId)
     const blockIndex = getBlockIndex(context.state, block.id)
 
-    /** Cursor is at the start of an empty block. */
-    if (cursor.offset === 0) {
-      /** Case there is only one block in the document. */
-      if (blockIndex === 0) {
-        /**
-         * 👉🏻 Expected UX:
-         * At the very start of the document (first block, offset = 0), `Backspace` key typically
-         * deletes nothing. We are not at "delete the character before the cursor" (→ offset - 1),
-         * because we already took the block-start branch and there is no previous block to join with.
-         */
-        return null
-      }
-
-      /** Merges the current block into the previous block when backspacing at block start. */
-      const neighbors = getBlockNeighbors(context.state, block.id)
-      /** Should not happen as we already checked if there is only one block in the document. */
-      if (neighbors.prev === null) {
-        buildError(
-          `Previous block ID is not found for block ${cursor.blockId}`,
-          'OperationsEngine/buildCursorBackspaceOps',
-        )
-      }
-
-      const prevBlock = getBlockWithInlineContent(context.state, neighbors.prev)
-      const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
-        block,
-        prevBlock,
-        context.activeMarks,
-      )
-
-      const endSelection =
-        cursorAtBlockEnd(prevBlock.id, prevBlock) ??
-        createCursor({
-          blockId: prevBlock.id,
-          nodeId: prevBlock.content.at(-1)?.id ?? cursor.nodeId,
-          offset: 0,
-        })
-
-      const ops: Operation[] = [
-        {
-          __type: 'merge_blocks',
-          atIndex: prevBlock.content.length,
-          mergedTailSnapshot: [...block.content],
-          sourceBlockId: block.id,
-          sourceSnapshot: block,
-          splitAtNodeId,
-          splitAtOffset,
-          targetBlockId: prevBlock.id,
-        },
-        {
-          __type: 'set_selection',
-          next: endSelection,
-          prev: context.selection,
-        },
-      ]
-
-      return {
-        coalesce: true,
-        label: `merge-blocks`,
-        ops,
-      }
-    }
-
-    /** Cursor is somewhere inside the block. */
     const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
     if (!found || found.node.__type !== 'text') {
       buildError(
@@ -1379,16 +1372,29 @@ export class OperationsEngine {
 
     const { node, index } = found
 
-    /** When the cursor is at the start of the node. */
+    /**
+     * 1️⃣ First case where the cursor is at the start of node.
+     * We checks if we must:
+     *  1. Merge the current block with the previous block
+     *  2. Or, merge the current node with the previous node if applicable,
+     *  3. Or, just remove the line break or the mention
+     */
     if (cursor.offset === 0) {
-      const ops: Operation[] = [
-        {
-          __type: 'remove_inline_node',
-          blockId: block.id,
-          index,
-          snapshot: node,
-        },
-      ]
+      /** Case where the cursor is at the start of the block and there is only one block in the document. */
+      if (blockIndex === 0 && index === 0) {
+        /**
+         * 👉🏻 Expected UX:
+         * At the very start of the document (first block, offset = 0), `Backspace` key typically
+         * deletes nothing. We are not at "delete the character before the cursor" (→ offset - 1),
+         * because we already took the block-start branch and there is no previous block to join with.
+         */
+        return null
+      }
+
+      /** Merge the current block with the previous block. */
+      if (index === 0) {
+        return this.#buildMergeBlocksOps(context, cursor, block)
+      }
 
       const prevNode = block.content[index - 1]
       /** Should not happen. */
@@ -1399,61 +1405,110 @@ export class OperationsEngine {
         )
       }
 
-      const type = prevNode.__type
-      switch (type) {
-        case 'line_break': {
-          const lineBreakIndex = index - 1
-          ops.push({
-            __type: 'remove_inline_node',
-            blockId: block.id,
-            index: lineBreakIndex,
-            snapshot: prevNode,
-          })
+      const prevType = prevNode.__type
+      // @todo: handle links
+      switch (prevType) {
+        /** Remove line break or mention and merge if applicable. */
+        case 'line_break':
+        case 'mention': {
+          const ni = index - 1
+          const ops: Operation[] = [
+            {
+              __type: 'remove_inline_node',
+              blockId: block.id,
+              index,
+              snapshot: node,
+            },
+            {
+              __type: 'remove_inline_node',
+              blockId: block.id,
+              index: ni,
+              snapshot: prevNode,
+            },
+          ]
 
-          const beforeLineBreakNode = block.content[lineBreakIndex - 1]
-          if (!beforeLineBreakNode) {
+          const before = block.content[ni - 1]
+          if (!before) {
             buildError(
-              `Before line break node not found for block ${block.id} at index ${lineBreakIndex}`,
+              `Before node not found for block ${block.id} at index ${ni}`,
               'OperationsEngine/buildCursorBackspaceOps',
             )
           }
 
-          const offset = getInlineNodeTextLength(beforeLineBreakNode)
-
-          ops.push({
-            __type: 'set_selection',
-            next: createCursor({
-              blockId: block.id,
-              nodeId: beforeLineBreakNode.id,
-              offset,
-            }),
-            prev: context.selection,
-          })
-
-          break
+          if (before.__type === 'text') {
+            ops.push(
+              {
+                __type: 'insert_text',
+                blockId: block.id,
+                marks: node.marks,
+                nodeId: before.id,
+                offset: before.text.length,
+                text: node.text,
+              },
+              {
+                __type: 'set_selection',
+                next: createCursor({
+                  blockId: block.id,
+                  nodeId: before.id,
+                  offset: before.text.length,
+                }),
+                prev: context.selection,
+              },
+            )
+          } else {
+            const offset = getInlineNodeTextLength(before)
+            ops.push({
+              __type: 'set_selection',
+              next: createCursor({
+                blockId: block.id,
+                nodeId: before.id,
+                offset,
+              }),
+              prev: context.selection,
+            })
+          }
+          return { coalesce: true, label: 'remove-node-and-merge', ops }
         }
+        /** Merge the current node with the previous node. */
         default: {
           const offset = getInlineNodeTextLength(prevNode)
-
-          ops.push({
-            __type: 'set_selection',
-            next: createCursor({
+          const ops: Operation[] = [
+            {
+              __type: 'remove_inline_node',
               blockId: block.id,
+              index,
+              snapshot: node,
+            },
+            {
+              __type: 'insert_text',
+              blockId: block.id,
+              marks: node.marks,
               nodeId: prevNode.id,
               offset,
-            }),
-            prev: context.selection,
-          })
+              text: node.text,
+            },
+            {
+              __type: 'set_selection',
+              next: createCursor({
+                blockId: block.id,
+                nodeId: prevNode.id,
+                offset,
+              }),
+              prev: context.selection,
+            },
+          ]
 
-          break
+          return { coalesce: true, label: 'merge-node-and-insert-text', ops }
         }
       }
-
-      return { coalesce: true, label: 'delete-character', ops }
     }
 
-    // @todo: handle links and mentions
-    /** When the cursor is somewhere inside the node. */
+    /**
+     * 2️⃣ Second case where the cursor is somewhere inside a node.
+     * We checks if we must:
+     *  1. Delete the previous character
+     *  2. Or, delete the previous char and update a link
+     */
     const ops: Operation[] = [
       {
         __type: 'delete_text',
