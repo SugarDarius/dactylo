@@ -6,7 +6,7 @@ import type {
   DactyloStaticConfig,
   DactyloToolEvent,
 } from '../dactylo'
-import { putCursorCaretAtPositionInDOM } from '../dom/cursor'
+import { paintCursorCaretAtPositionInDOM } from '../dom/cursor'
 import type { BlockId } from '../internals/blocks'
 import type { DocumentState } from '../internals/document'
 import type { CursorSelection, Selection } from '../internals/selection'
@@ -434,7 +434,7 @@ export function useEditableBlock(blockId: BlockId) {
 
     const editable = editableRef.current
     const id = requestAnimationFrame(() => {
-      putCursorCaretAtPositionInDOM(editable, cursorSelection.anchor)
+      paintCursorCaretAtPositionInDOM(editable, cursorSelection.anchor)
     })
 
     return () => cancelAnimationFrame(id)
