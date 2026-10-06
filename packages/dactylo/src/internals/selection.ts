@@ -221,7 +221,7 @@ export function cursorAtBlockEnd(
   if (last.__type === 'text') {
     offset = last.text.length
   } else if (last.__type === 'link') {
-    offset = last.textNode.text.length
+    offset = last.text.length
   } else if (last.__type === 'mention') {
     offset = last.text.length
   } else if (last.__type === 'line_break') {

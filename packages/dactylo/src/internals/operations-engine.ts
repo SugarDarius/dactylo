@@ -47,9 +47,10 @@ import {
   createLinkNode,
   createTextNode,
   getInlineNodeTextLength,
-  splitTextNodeAt,
+  isInlineNodeWithEditableText,
+  splitInlineNodeWithEditableTextAt,
 } from './nodes'
-import type { InlineNode, NodeId, TextNode } from './nodes'
+import type { InlineNode, InlineNodeWithEditableText, NodeId } from './nodes'
 import type {
   DeleteBlockOp,
   DeleteTextOp,
@@ -105,15 +106,18 @@ export function requireBlockWithInlineContent(
   return block
 }
 
-/** Finds a text node inside a block or throws. */
-export function requireTextNode(
+/** Finds an inline node with editable text inside a block or throws. */
+export function requireInlineNodeWithEditableText(
   block: BlockWithInlineContent,
   nodeId: NodeId,
   op: Operation,
-): { node: TextNode; index: number } {
+): { node: InlineNodeWithEditableText; index: number } {
   const found = findNodeInBlockWithInlineContent(block, nodeId)
-  if (!found || found.node.__type !== 'text') {
-    validationError(`Text node ${nodeId} not found in block ${block.id}`, op)
+  if (!found || !isInlineNodeWithEditableText(found.node)) {
+    validationError(
+      `Inline node with editable text ${nodeId} not found in block ${block.id}`,
+      op,
+    )
   }
 
   return { index: found.index, node: found.node }
@@ -153,7 +157,6 @@ export function assertRangeInText(
 }
 
 /** Validates a text cursor by checking its type and offset. */
-// @todo: handle links and mentions
 export function validateTextCursor(
   state: DocumentState,
   cursor: TextCursor,
@@ -166,7 +169,7 @@ export function validateTextCursor(
     validationError(`Node ${cursor.nodeId} no found in block ${block.id}`, op)
   }
 
-  if (found.node.__type === 'text') {
+  if (isInlineNodeWithEditableText(found.node)) {
     assertOffsetInText(
       cursor.offset,
       found.node.text.length,
@@ -186,7 +189,10 @@ export function validateTextCursor(
     return
   }
 
-  validationError(`Cursor node ${cursor.nodeId} must be text or line_break`, op)
+  validationError(
+    `Cursor node ${cursor.nodeId} must be text, link, or line_break`,
+    op,
+  )
 }
 
 /** Validates an `insert_block` operation. */
@@ -299,7 +305,7 @@ export function validateSplitBlockOp(
   op: SplitBlockOp,
 ): void | never {
   const block = requireBlockWithInlineContent(context.state, op.blockId, op)
-  const { node } = requireTextNode(block, op.atNodeId, op)
+  const { node } = requireInlineNodeWithEditableText(block, op.atNodeId, op)
 
   assertOffsetInText(op.atOffset, node.text.length, op, 'Split block offset')
 
@@ -320,7 +326,7 @@ export function validateInsertTextOp(
     validationError('Cannot insert an empty text', op)
   }
   const block = requireBlockWithInlineContent(context.state, op.blockId, op)
-  const { node } = requireTextNode(block, op.nodeId, op)
+  const { node } = requireInlineNodeWithEditableText(block, op.nodeId, op)
 
   assertOffsetInText(op.offset, node.text.length, op, 'Insert text offset')
 }
@@ -331,7 +337,7 @@ export function validateDeleteTextOp(
   op: DeleteTextOp,
 ): void | never {
   const block = requireBlockWithInlineContent(context.state, op.blockId, op)
-  const { node } = requireTextNode(block, op.nodeId, op)
+  const { node } = requireInlineNodeWithEditableText(block, op.nodeId, op)
 
   if (op.length < 0 || op.offset + op.length > node.text.length) {
     validationError('Remove range out of bounds', op)
@@ -344,7 +350,7 @@ export function validateSetMarksOp(
   op: SetMarksOp,
 ): void | never {
   const block = requireBlockWithInlineContent(context.state, op.blockId, op)
-  const { node } = requireTextNode(block, op.nodeId, op)
+  const { node } = requireInlineNodeWithEditableText(block, op.nodeId, op)
 
   assertRangeInText(op.from, op.to, node.text.length, op)
 }
@@ -467,39 +473,13 @@ export function applySplitBlockOp(
 
   const type = node.__type
   switch (type) {
-    case 'text': {
+    case 'text':
+    case 'link': {
       const headText = node.text.slice(0, op.atOffset)
 
       const headNodes: InlineNode[] = content.slice(0, index)
       if (headText.length > 0 || headNodes.length === 0) {
         headNodes.push({ ...node, text: headText, updatedAt: new Date() })
-      }
-
-      const updatedOriginal = touchBlock({
-        ...block,
-        content: coalesceInlineNodes(headNodes),
-      })
-
-      let doc = replaceBlock(context.state, op.blockId, updatedOriginal)
-      const newBlock: BlockWithInlineContent = {
-        ...op.newBlock,
-        content: coalesceInlineNodes(op.newBlock.content),
-      }
-      doc = insertBlock(doc, newBlock)
-
-      return withDocumentState(context, doc)
-    }
-    case 'link': {
-      const headText = node.textNode.text.slice(0, op.atOffset)
-
-      const headNodes: InlineNode[] = content.slice(0, index)
-      if (headText.length > 0 || headNodes.length === 0) {
-        const updatedAt = new Date()
-        headNodes.push({
-          ...node,
-          textNode: { ...node.textNode, text: headText, updatedAt },
-          updatedAt: new Date(),
-        })
       }
 
       const updatedOriginal = touchBlock({
@@ -547,7 +527,6 @@ export function applyNormalizedMarks(
 }
 
 /** Applies an `insert_text` operation to the editor context. */
-// @todo: handle links and mentions
 export function applyInsertTextOp(
   context: EditorContext,
   op: InsertTextOp,
@@ -561,7 +540,7 @@ export function applyInsertTextOp(
   }
 
   const { node, index } = found
-  if (node.__type !== 'text') {
+  if (!isInlineNodeWithEditableText(node)) {
     applyError('`insert_text` target must be a text node', op)
   }
 
@@ -575,7 +554,7 @@ export function applyInsertTextOp(
   /** When marks are the same we append the text in the same existing node. */
   if (isMarksEqual(node.marks, marks)) {
     const text = before + op.text + after
-    const updated: TextNode = {
+    const updated: InlineNodeWithEditableText = {
       ...node,
       text,
       updatedAt: new Date(),
@@ -635,8 +614,11 @@ export function applyDeleteTextOp(
 
   const { node, index } = found
 
-  if (node.__type !== 'text') {
-    applyError('`delete_text` target must be a text node', op)
+  if (!isInlineNodeWithEditableText(node)) {
+    applyError(
+      '`delete_text` target must be an inline node with editable text',
+      op,
+    )
   }
 
   const before = node.text.slice(0, op.offset)
@@ -667,16 +649,24 @@ export function applySetMarksOp(
   }
 
   const { node, index } = found
-  if (node.__type !== 'text') {
-    applyError('`set_marks` target must be a text node', op)
+  if (!isInlineNodeWithEditableText(node)) {
+    applyError(
+      '`set_marks` target must be an inline node with editable text',
+      op,
+    )
   }
 
   /**
    * Apply operation only on a non-empty range.
-   * Otherwise for this operation it's a no-op.
+   * Otherwise for this operation it's a no-op as the range is empty.
    */
   if (op.from !== op.to) {
-    const replacement = splitTextNodeAt(node, op.from, op.to, op.nextMarks)
+    const replacement = splitInlineNodeWithEditableTextAt(
+      node,
+      op.from,
+      op.to,
+      op.nextMarks,
+    )
     if (replacement.length === 0) {
       content.splice(index, 1)
     } else {
@@ -826,14 +816,12 @@ export function computeSplitTailSnapshot(
       ]
     }
     case 'link': {
-      const tailText = node.textNode.text.slice(atOffset)
+      const tailText = node.text.slice(atOffset)
       return [
         createLinkNode({
-          textNode: createTextNode({
-            marks: node.textNode.marks,
-            metadata: node.textNode.metadata,
-            text: tailText,
-          }),
+          marks: node.marks,
+          metadata: node.metadata,
+          text: tailText,
           url: node.url,
         }),
         ...block.content.slice(index + 1),
@@ -1194,7 +1182,7 @@ export class OperationsEngine {
         const block = getBlockWithInlineContent(state, span.blockId)
         const found = findNodeInBlockWithInlineContent(block, span.nodeId)
 
-        if (!found || found.node.__type !== 'text') {
+        if (!found || !isInlineNodeWithEditableText(found.node)) {
           return false
         }
 
@@ -1207,7 +1195,7 @@ export class OperationsEngine {
         const block = getBlockWithInlineContent(state, span.blockId)
         const found = findNodeInBlockWithInlineContent(block, span.nodeId)
 
-        if (!found || found.node.__type !== 'text') {
+        if (!found || !isInlineNodeWithEditableText(found.node)) {
           continue
         }
 
@@ -1353,7 +1341,6 @@ export class OperationsEngine {
    * Builds operations when user presses `Backspace` key,
    * to delete the previous typed character or merge with previous block at block start.
    */
-  // @todo: handle links
   buildCursorBackspaceOps(
     context: EditorContext,
     /** Collapsed cursor anchor for the pending edit. */
@@ -1363,7 +1350,7 @@ export class OperationsEngine {
     const blockIndex = getBlockIndex(context.state, block.id)
 
     const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
-    if (!found || found.node.__type !== 'text') {
+    if (!found || !isInlineNodeWithEditableText(found.node)) {
       buildError(
         `Node ${cursor.nodeId} not found in block ${block.id}`,
         'OperationsEngine/buildDeletePreviousTypedCharOps',
@@ -1406,7 +1393,6 @@ export class OperationsEngine {
       }
 
       const prevType = prevNode.__type
-      // @todo: handle links
       switch (prevType) {
         /** Remove line break or mention and merge if applicable. */
         case 'line_break':
@@ -1435,7 +1421,7 @@ export class OperationsEngine {
             )
           }
 
-          if (before.__type === 'text') {
+          if (isInlineNodeWithEditableText(before)) {
             if (node.text.length > 0) {
               ops.push({
                 __type: 'insert_text',
@@ -1543,7 +1529,7 @@ export class OperationsEngine {
     const block = getBlockWithInlineContent(context.state, cursor.blockId)
 
     const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
-    if (!found || found.node.__type !== 'text') {
+    if (!found || !isInlineNodeWithEditableText(found.node)) {
       buildError(
         `Node ${cursor.nodeId} not found in block ${block.id}`,
         'OperationsEngine/buildHardBreakOps',
@@ -1706,15 +1692,11 @@ export class OperationsEngine {
         }
       }
       case 'link': {
-        const tailText = node.textNode.text.slice(cursor.offset)
-        const insertedText = createTextNode({
-          marks: node.textNode.marks,
-          metadata: node.textNode.metadata,
-          text: tailText,
-        })
+        const tailText = node.text.slice(cursor.offset)
         const insertedLink = createLinkNode({
+          marks: node.marks,
           metadata: node.metadata,
-          textNode: insertedText,
+          text: tailText,
           url: node.url,
         })
 
@@ -1723,10 +1705,10 @@ export class OperationsEngine {
             __type: 'delete_text',
             blockId: block.id,
             length: tailText.length,
-            nodeId: node.textNode.id,
+            nodeId: node.id,
             offset: cursor.offset,
             snapshot: {
-              marks: node.textNode.marks,
+              marks: node.marks,
               text: tailText,
             },
           },
@@ -1746,7 +1728,7 @@ export class OperationsEngine {
             __type: 'set_selection',
             next: createCursor({
               blockId: cursor.blockId,
-              nodeId: insertedText.id,
+              nodeId: insertedLink.id,
               offset: 0,
             }),
             prev: context.selection,

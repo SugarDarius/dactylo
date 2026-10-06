@@ -10,7 +10,7 @@ import {
 import type { DocumentState } from './document'
 import { createInitialActiveMarks, isMarkEnabled } from './marks'
 import type { MarkKey, Marks } from './marks'
-import { coalesceInlineNodes } from './nodes'
+import { coalesceInlineNodes, isInlineNodeWithEditableText } from './nodes'
 import type { InlineNode } from './nodes'
 import type { Selection } from './selection'
 
@@ -223,7 +223,7 @@ export function isMarkActiveInContext(
       const block = getBlockWithInlineContent(context.state, span.blockId)
       const found = findNodeInBlockWithInlineContent(block, span.nodeId)
 
-      if (!found || found.node.__type !== 'text') {
+      if (!found || !isInlineNodeWithEditableText(found.node)) {
         return false
       }
 

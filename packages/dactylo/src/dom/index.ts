@@ -1,5 +1,5 @@
 export { putCursorCaretAtPositionInDOM } from './cursor'
-export { findTextNode, clampOffset } from './nodes'
+export { findEditableTextNode, clampOffset } from './nodes'
 export { toDatasetProperty } from './utils'
 export type { DOMPoint } from './point'
 export { isCaretAt } from './window-selection'

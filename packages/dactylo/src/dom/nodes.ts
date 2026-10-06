@@ -5,8 +5,8 @@ import {
 import { toDatasetProperty } from './utils'
 
 /** Finds the DOM text node with the given `nodeId` inside `editable`. */
-// @todo: handle handle links and mentions
-export function findTextNode(
+// @todo: handle handle links attributes
+export function findEditableTextNode(
   editable: HTMLDivElement,
   nodeId: string,
 ): HTMLSpanElement | null {

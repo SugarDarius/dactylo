@@ -67,8 +67,11 @@ export interface LinkNode extends INode {
     readonly title: string
   }
 
-  /** Text Node representing the link text. */
-  readonly textNode: TextNode
+  /** Text content of the node. */
+  readonly text: string
+
+  /** Marks decorating the text content */
+  readonly marks: Readonly<Marks>
 }
 
 /** Node representing a mention. */
@@ -99,6 +102,9 @@ export interface LineBreakNode extends INode {
 export type InlineNode = Relax<
   TextNode | LinkNode | MentionNode | LineBreakNode
 >
+
+/** Allowed nodes with editable text.*/
+export type InlineNodeWithEditableText = TextNode | LinkNode
 
 /** Generates a 24 characters long unique node ID. */
 export function generateNodeId(): NodeId {
@@ -144,18 +150,28 @@ export function createLinkNode(opts: {
     title: string
   }
   metadata?: Metadata
-  textNode: TextNode
+  text: string
+  marks: Marks
 }): LinkNode {
   return {
     __type: 'link',
     createdAt: new Date(),
     id: generateNodeId(),
+    marks: opts.marks,
     metadata: opts.metadata ?? {},
-    textNode: opts.textNode,
+    text: opts.text,
     updatedAt: null,
     url: opts.url,
   }
 }
+
+/** Whether the node is an editable text node or a link node. */
+export function isInlineNodeWithEditableText(
+  node: InlineNode,
+): node is InlineNodeWithEditableText {
+  return node.__type === 'text' || node.__type === 'link'
+}
+
 /**
  * Merges adjacent text nodes with identical marks into a single node.
  *
@@ -175,6 +191,7 @@ export function coalesceInlineNodes(
   let pending: TextNode | null = null
 
   for (const node of nodes) {
+    /** We don't coalesce links and mentions, only text nodes. */
     if (node.__type !== 'text') {
       if (pending) {
         result.push(pending)
@@ -211,14 +228,14 @@ export function coalesceInlineNodes(
 }
 
 /**
- * Splits a text node into up to three segments around `[from, to)`.
+ * Splits an inline node with editable text into up to three segments around `[from, to)`.
  * Empty segments are omitted. The leading segment keeps the original node id.
  *
  * Returns a replacement inline nodes (one to three entries).
  */
-export function splitTextNodeAt(
+export function splitInlineNodeWithEditableTextAt(
   /** Text node to split. */
-  node: TextNode,
+  node: InlineNodeWithEditableText,
   /** Start offset (inclusive) within `node.text`. */
   from: number,
   /** End offset (exclusive) within `node.text`. */
@@ -262,12 +279,8 @@ export function splitTextNodeAt(
 /** Returns the text length of an inline node. */
 export function getInlineNodeTextLength(node: InlineNode): number {
   switch (node.__type) {
-    case 'text': {
-      return node.text.length
-    }
-    case 'link': {
-      return node.textNode.text.length
-    }
+    case 'text':
+    case 'link':
     case 'mention': {
       return node.text.length
     }
