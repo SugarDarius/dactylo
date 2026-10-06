@@ -474,7 +474,7 @@ export class TransactionPipeline {
      */
     if (ops.length === 0) {
       warn(
-        'TransactionPipeline/#dispatch: no operations defined in transaction.',
+        'TransactionPipeline/#dispatch: no operations declared in transaction.',
         JSON.stringify(transaction, null, 2),
       )
       return
@@ -492,7 +492,12 @@ export class TransactionPipeline {
       }
 
       next = this.#operationsEngine.applyOp(next, op)
-      inverseOps.push(this.#operationsEngine.invertOp(op))
+      /**
+       * Push the inverse operation to the beginning of the array
+       * so it can be applied in reverse order when undoing the transaction
+       * at the moment we call the `.#undo()` method.
+       */
+      inverseOps.unshift(this.#operationsEngine.invertOp(op))
     }
 
     this.#context = next
@@ -566,6 +571,10 @@ export class TransactionPipeline {
       return
     }
 
+    /**
+     * `inverseOps` are already computed in reverse order
+     * in the `.#dispatch()` method.
+     */
     this.#commit([...entry.inverseOps], {
       label: transactionPolicyLabel('history', 'undo'),
       pushToHistory: false,
