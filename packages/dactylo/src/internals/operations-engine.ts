@@ -1436,25 +1436,25 @@ export class OperationsEngine {
           }
 
           if (before.__type === 'text') {
-            ops.push(
-              {
+            if (node.text.length > 0) {
+              ops.push({
                 __type: 'insert_text',
                 blockId: block.id,
                 marks: node.marks,
                 nodeId: before.id,
                 offset: before.text.length,
                 text: node.text,
-              },
-              {
-                __type: 'set_selection',
-                next: createCursor({
-                  blockId: block.id,
-                  nodeId: before.id,
-                  offset: before.text.length,
-                }),
-                prev: context.selection,
-              },
-            )
+              })
+            }
+            ops.push({
+              __type: 'set_selection',
+              next: createCursor({
+                blockId: block.id,
+                nodeId: before.id,
+                offset: before.text.length,
+              }),
+              prev: context.selection,
+            })
           } else {
             const offset = getInlineNodeTextLength(before)
             ops.push({
