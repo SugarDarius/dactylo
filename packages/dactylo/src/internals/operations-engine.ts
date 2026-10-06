@@ -436,7 +436,13 @@ export function applyMergeBlocksOp(
     ...target.content.slice(op.atIndex),
   ])
 
-  const updatedTarget = touchBlock({ ...target, content: mergedContent })
+  // @todo: add policy to merge blocks metadata
+  const mergedMetadata = { ...target.metadata, ...source.metadata }
+  const updatedTarget = touchBlock({
+    ...target,
+    content: mergedContent,
+    metadata: mergedMetadata,
+  })
 
   let doc = replaceBlock(context.state, op.targetBlockId, updatedTarget)
   doc = removeBlock(doc, op.sourceBlockId)
@@ -1393,7 +1399,8 @@ export class OperationsEngine {
         )
       }
 
-      switch (prevNode.__type) {
+      const type = prevNode.__type
+      switch (type) {
         case 'line_break': {
           const lineBreakIndex = index - 1
           ops.push({
@@ -1512,7 +1519,11 @@ export class OperationsEngine {
 
     /** Otherwise we split the block at the cursor position. */
     const tailSnapshot = computeSplitTailSnapshot(block, found, cursor.offset)
-    const insertedBlock = createParagraphBlockAfter(block, tailSnapshot)
+    const insertedBlock = createParagraphBlockAfter(
+      block,
+      tailSnapshot,
+      block.metadata,
+    )
 
     const ops: Operation[] = [
       {
@@ -1535,7 +1546,6 @@ export class OperationsEngine {
   }
 
   /** Builds operations when user presses `shift+Enter` key as a soft break. */
-  // @todo: handle special node splits like links
   // @todo: handle other upcoming blocks like lists, quotes, ...
   buildSoftBreakOps(
     context: EditorContext,

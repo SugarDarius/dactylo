@@ -131,10 +131,12 @@ export function createParagraphBlock(opts: {
 export function createParagraphBlockAfter(
   afterBlock: Block,
   content: InlineNode[],
+  metadata?: Metadata,
 ): ParagraphBlock {
   const posKey = makePosition(afterBlock.posKey)
   return createParagraphBlock({
     content,
+    metadata,
     parentId: afterBlock.parentId,
     posKey,
   })
