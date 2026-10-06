@@ -6,7 +6,7 @@ import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import type { Observable } from './event-source'
 import { EventSource } from './event-source'
-import { HistoryStack } from './history'
+import { HistoryStack, orderInverseOps } from './history'
 import type { HistoryEvent } from './history'
 import { detectArrowDirection, detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
@@ -571,11 +571,8 @@ export class TransactionPipeline {
       return
     }
 
-    /**
-     * `inverseOps` are already computed in reverse order
-     * in the `.#dispatch()` method.
-     */
-    this.#commit([...entry.inverseOps], {
+    const ordered = orderInverseOps(entry.inverseOps)
+    this.#commit(ordered, {
       label: transactionPolicyLabel('history', 'undo'),
       pushToHistory: false,
       source: 'undo',

@@ -26,7 +26,129 @@
  */
 
 import { DEFAULT_HISTORY_STACK_MAX_DEPTH } from './constants'
-import type { Operation } from './operations'
+import type { InsertTextOp, Operation, SetSelectionOp } from './operations'
+
+/**
+ * Ordering inverse ops for replaying a history entry
+ * when document changes must happen before selection changes.
+ *
+ * Keeps relative order within each group (matches reverse forward order).
+ */
+export function orderInverseOps(inverseOps: readonly Operation[]): Operation[] {
+  const documentOps: Operation[] = []
+  const selectionOps: Operation[] = []
+
+  for (const op of inverseOps) {
+    if (op.__type === 'set_selection') {
+      selectionOps.push(op)
+    } else {
+      documentOps.push(op)
+    }
+  }
+
+  return [...documentOps, ...selectionOps]
+}
+
+/** Single-char `insert_text` used for typing coalesce (ignores trailing selection). */
+export function getTypingInsertOp(
+  ops: readonly Operation[],
+): InsertTextOp | null {
+  const inserts: InsertTextOp[] = []
+
+  for (const op of ops) {
+    if (op.__type === 'insert_text') {
+      inserts.push(op)
+    }
+  }
+
+  if (inserts.length !== 1) {
+    return null
+  }
+
+  const [first] = inserts
+  if (first?.text.length !== 1) {
+    return null
+  }
+
+  return first
+}
+
+/** Last `set_selection` in forward op order (if any). */
+export function getTrailingSetSelectionOp(
+  ops: readonly Operation[],
+): SetSelectionOp | null {
+  for (let i = ops.length - 1; i >= 0; i -= 1) {
+    const op = ops[i]
+    if (op?.__type === 'set_selection') {
+      return op
+    }
+  }
+  return null
+}
+
+/** Build a coalesced history entry for typing operations. */
+export function buildCoalescedTypingEntry(
+  prev: InsertTextOp,
+  next: InsertTextOp,
+  prevEntryOps: readonly Operation[],
+  nextEntryOps: readonly Operation[],
+): Pick<HistoryEntry, 'ops' | 'inverseOps'> {
+  const merged = prev.text + next.text
+
+  const before = getTrailingSetSelectionOp(prevEntryOps)
+  const after = getTrailingSetSelectionOp(nextEntryOps)
+
+  const forwardOps: Operation[] = [
+    {
+      __type: 'insert_text',
+      blockId: prev.blockId,
+      marks: next.marks,
+      nodeId: prev.nodeId,
+      offset: prev.offset,
+      text: merged,
+    },
+  ]
+
+  const beforeSelection = before?.prev ?? null
+  const afterSelection = after?.next ?? null
+
+  if (beforeSelection !== null || afterSelection !== null) {
+    forwardOps.push({
+      __type: 'set_selection',
+      next: afterSelection,
+      prev: beforeSelection,
+    })
+  }
+
+  const inverseOps: Operation[] = [
+    {
+      __type: 'delete_text',
+      blockId: prev.blockId,
+      length: merged.length,
+      nodeId: prev.nodeId,
+      offset: prev.offset,
+      snapshot: {
+        marks: prev.marks ?? {},
+        text: merged,
+      },
+    },
+  ]
+
+  if (beforeSelection !== null || afterSelection !== null) {
+    inverseOps.push({
+      __type: 'set_selection',
+      next: beforeSelection,
+      prev: afterSelection,
+    })
+  }
+
+  const ordered = orderInverseOps(inverseOps)
+
+  return {
+    inverseOps: ordered,
+    ops: forwardOps,
+  }
+}
 
 /** Event emitted when working with the history stack. */
 export interface HistoryEvent {
@@ -81,53 +203,35 @@ export class HistoryStack {
   /** Merge consecutive single-character inserts on the same node. */
   #tryCoalesce(entry: Pick<HistoryEntry, 'ops' | 'inverseOps'>): boolean {
     const last = this.#undoStack[this.#undoStack.length - 1]
-    if (!last || last.ops.length !== 1 || entry.ops.length !== 1) {
+    if (!last) {
       return false
     }
 
-    const [prev] = last.ops
-    const [next] = entry.ops
+    const prevInsert = getTypingInsertOp(last.ops)
+    const nextInsert = getTypingInsertOp(entry.ops)
 
-    if (
-      prev?.__type === 'insert_text' &&
-      next?.__type === 'insert_text' &&
-      prev.blockId === next.blockId &&
-      prev.nodeId === next.nodeId &&
-      prev.offset + prev.text.length === next.offset
-    ) {
-      this.#undoStack.pop()
-
-      this.#undoStack.push({
-        inverseOps: [
-          {
-            __type: 'delete_text',
-            blockId: prev.blockId,
-            length: prev.text.length + next.text.length,
-            nodeId: prev.nodeId,
-            offset: prev.offset,
-            snapshot: {
-              marks: prev.marks ?? {},
-              text: prev.text + next.text,
-            },
-          },
-        ],
-        ops: [
-          {
-            __type: 'insert_text',
-            blockId: prev.blockId,
-            marks: next.marks,
-            nodeId: prev.nodeId,
-            offset: prev.offset,
-            text: prev.text + next.text,
-          },
-        ],
-        timestamp: Date.now(),
-      })
-
-      return true
+    if (!prevInsert || !nextInsert) {
+      return false
     }
 
-    return false
+    if (
+      prevInsert.blockId !== nextInsert.blockId ||
+      prevInsert.nodeId !== nextInsert.nodeId ||
+      prevInsert.offset + prevInsert.text.length !== nextInsert.offset
+    ) {
+      return false
+    }
+
+    this.#undoStack.pop()
+    const coalesced = buildCoalescedTypingEntry(
+      prevInsert,
+      nextInsert,
+      last.ops,
+      entry.ops,
+    )
+    this.#undoStack.push({ ...coalesced, timestamp: Date.now() })
+
+    return true
   }
 
   /** Whether at least one undo entry is available. */
