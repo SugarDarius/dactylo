@@ -53,23 +53,23 @@ export interface TransactionPolicy {
    * Human-readable label of the transaction
    * for debugging, DevTools, Ai tracing, ...
    */
-  label?: string
+  readonly label?: string
 
   /**
    * Whether to push this transaction to the history stack.
    * When set to `false`, commit phase skips history push.
    * Defaults to `true` -- history records the transaction.
    */
-  pushToHistory?: boolean
+  readonly pushToHistory?: boolean
 
   /**
    * Who/what initiated the transaction.
    * It drives history rules, hooks filtering, ...
    */
-  source?: TransactionSource
+  readonly source?: TransactionSource
 
   /** When true, merge history action for rapid typing coalescing. */
-  coalesce?: boolean
+  readonly coalesce?: true
 }
 
 /** Joins the parts with a `:` for a human-readable label. */
@@ -804,7 +804,7 @@ export class TransactionPipeline {
           if (data && data.length === 1) {
             prevent()
 
-            const { ops, label, coalesce } =
+            const { ops, label, coalesce, skipHistory } =
               this.#operationsEngine.buildTypedCharOps(
                 this.#context,
                 this.#context.selection.anchor,
@@ -814,7 +814,7 @@ export class TransactionPipeline {
             this.#commit(ops, {
               coalesce,
               label: transactionPolicyLabel('input', 'digest-event', label),
-              pushToHistory: true,
+              pushToHistory: !skipHistory,
               source: 'user',
             })
           }
@@ -917,7 +917,6 @@ export class TransactionPipeline {
       }
 
       this.#commit(ops, {
-        coalesce: false,
         label: transactionPolicyLabel(
           'input',
           'digest-event',

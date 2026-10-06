@@ -845,11 +845,13 @@ export function computeSplitTailSnapshot(
 /** Intent for building composing operations. */
 export interface ComposingOpsIntent {
   /** The operations to apply. */
-  ops: Operation[]
+  readonly ops: Operation[]
   /** The kind for the intent. */
-  label: string
+  readonly label: string
   /** When `true` merge history action for rapid typing coalescing. */
-  coalesce: boolean
+  readonly coalesce?: true
+  /** When `true` history is skipped. */
+  readonly skipHistory?: true
 }
 
 /** Options for constructing a {@link OperationsEngine} instance. */
@@ -1232,7 +1234,6 @@ export class OperationsEngine {
    * Builds operations for a single typed character at the current cursor position.
    * When the typed character is a `space` checks for markdown shortcut triggers.
    */
-  // @todo: handle coalesce behaviors
   buildTypedCharOps(
     context: EditorContext,
     /** Collapsed cursor anchor for the pending edit. */
@@ -1268,16 +1269,24 @@ export class OperationsEngine {
     // oxlint-disable-next-line no-negated-condition no-else-return unicorn/prefer-ternary
     if (char === ' ') {
       // @todo: handle markdown shortcut
-      return { coalesce: true, label: `insert-char:${char}`, ops }
+      return {
+        label: `insert-char:${char}`,
+        ops,
+        skipHistory: true,
+      }
     } else if (char === this.#options.mentions.character) {
       // @todo: handle mentions
-      return { coalesce: true, label: `mention`, ops }
+      return { label: `mention`, ops, skipHistory: true }
     } else if (char === this.#options.slashCommand.character) {
       // @todo: handle slash command
-      return { coalesce: true, label: `slash-command`, ops }
+      return { label: `slash-command`, ops, skipHistory: true }
     }
 
-    return { coalesce: true, label: `insert-char:${char}`, ops }
+    return {
+      coalesce: true,
+      label: `insert-char:${char}`,
+      ops,
+    }
   }
 
   /** Merges the current block into the previous block when backspacing at block start. */
@@ -1286,6 +1295,7 @@ export class OperationsEngine {
     context: EditorContext,
     /** Collapsed cursor anchor for the pending edit. */
     cursor: TextCursor,
+    /** The block to merge into the previous block. */
     block: BlockWithInlineContent,
   ): ComposingOpsIntent {
     const neighbors = getBlockNeighbors(context.state, block.id)
@@ -1331,7 +1341,6 @@ export class OperationsEngine {
     ]
 
     return {
-      coalesce: true,
       label: `merge-blocks`,
       ops,
     }
@@ -1453,7 +1462,10 @@ export class OperationsEngine {
               prev: context.selection,
             })
           }
-          return { coalesce: true, label: 'remove-node-and-merge', ops }
+          return {
+            label: 'remove-node-and-merge',
+            ops,
+          }
         }
         /** Merge the current node with the previous node. */
         default: {
@@ -1555,7 +1567,7 @@ export class OperationsEngine {
         },
       ]
 
-      return { coalesce: false, label: 'insert-block', ops }
+      return { label: 'insert-block', ops }
     }
 
     /** Otherwise we split the block at the cursor position. */
@@ -1583,7 +1595,7 @@ export class OperationsEngine {
       },
     ]
 
-    return { coalesce: false, label: 'split-block', ops }
+    return { label: 'split-block', ops }
   }
 
   /** Builds operations when user presses `shift+Enter` key as a soft break. */
@@ -1636,7 +1648,7 @@ export class OperationsEngine {
         },
       ]
 
-      return { coalesce: false, label: 'insert-line-break-node', ops }
+      return { label: 'insert-line-break-node', ops }
     }
 
     /** Otherwise we split the node at the cursor position. */
@@ -1686,7 +1698,6 @@ export class OperationsEngine {
         ]
 
         return {
-          coalesce: false,
           label: 'split-inline-node-and-insert-line-break-node',
           ops,
         }
@@ -1736,7 +1747,6 @@ export class OperationsEngine {
         ]
 
         return {
-          coalesce: false,
           label: 'split-inline-node-and-insert-line-break-node',
           ops,
         }
