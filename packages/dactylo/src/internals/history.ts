@@ -49,30 +49,6 @@ export function orderInverseOps(inverseOps: readonly Operation[]): Operation[] {
   return [...documentOps, ...selectionOps]
 }
 
-/** Single-char `insert_text` used for typing coalesce (ignores trailing selection). */
-export function getTypingInsertOp(
-  ops: readonly Operation[],
-): InsertTextOp | null {
-  const inserts: InsertTextOp[] = []
-
-  for (const op of ops) {
-    if (op.__type === 'insert_text') {
-      inserts.push(op)
-    }
-  }
-
-  if (inserts.length !== 1) {
-    return null
-  }
-
-  const [first] = inserts
-  if (first?.text.length !== 1) {
-    return null
-  }
-
-  return first
-}
-
 /** Last `set_selection` in forward op order (if any). */
 export function getTrailingSetSelectionOp(
   ops: readonly Operation[],
@@ -84,6 +60,44 @@ export function getTrailingSetSelectionOp(
     }
   }
   return null
+}
+
+/** Sole `insert_text` in a typing transaction, if any. */
+export function getSingleInsertTextOp(
+  ops: readonly Operation[],
+): InsertTextOp | null {
+  const inserts: InsertTextOp[] = []
+  for (const op of ops) {
+    if (op.__type === 'insert_text') {
+      inserts.push(op)
+    }
+  }
+  if (inserts.length !== 1) {
+    return null
+  }
+  return inserts[0] ?? null
+}
+
+/** Accumulated typing on the undo stack (may already be merged: `"Hello"`, etc.). */
+export function getAccumulatedTypingInsertOp(
+  ops: readonly Operation[],
+): InsertTextOp | null {
+  const insert = getSingleInsertTextOp(ops)
+  if (!insert || insert.text.length < 1) {
+    return null
+  }
+  return insert
+}
+
+/** Incoming keystroke: exactly one character in the sole `insert_text`.  */
+export function getIncomingTypingInsertOp(
+  ops: readonly Operation[],
+): InsertTextOp | null {
+  const insert = getSingleInsertTextOp(ops)
+  if (!insert || insert.text.length !== 1) {
+    return null
+  }
+  return insert
 }
 
 /** Build a coalesced history entry for typing operations. */
@@ -207,8 +221,8 @@ export class HistoryStack {
       return false
     }
 
-    const prevInsert = getTypingInsertOp(last.ops)
-    const nextInsert = getTypingInsertOp(entry.ops)
+    const prevInsert = getAccumulatedTypingInsertOp(last.ops)
+    const nextInsert = getIncomingTypingInsertOp(entry.ops)
 
     if (!prevInsert || !nextInsert) {
       return false

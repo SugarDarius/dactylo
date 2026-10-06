@@ -102,7 +102,7 @@ const createTypingHistoryEntry = (opts: {
   }
 }
 
-describe('orderInverseOps', () => {
+describe('Order inverse ops', () => {
   test('applies document inverses before selection inverses', () => {
     const ordered = orderInverseOps([
       {
@@ -185,6 +185,43 @@ describe('History', () => {
       length: 2,
       offset: 0,
       snapshot: { text: 'ab' },
+    })
+  })
+
+  test('coalesces more than two adjacent typing keystrokes', () => {
+    const stack = new HistoryStack()
+    const { blockId, nodeId } = ids()
+    const word = 'Hello'
+
+    for (let i = 0; i < word.length; i += 1) {
+      const char = word[i] ?? ''
+      stack.push(
+        createTypingHistoryEntry({
+          blockId,
+          char,
+          cursorAfter: i + 1,
+          cursorBefore: i,
+          nodeId,
+          offset: i,
+        }),
+        true,
+      )
+    }
+
+    expect(stack.undoDepth).toBe(1)
+
+    const entry = stack.popUndo()
+
+    expect(entry?.ops[0]).toMatchObject({
+      __type: 'insert_text',
+      offset: 0,
+      text: 'Hello',
+    })
+    expect(entry?.inverseOps[0]).toMatchObject({
+      __type: 'delete_text',
+      length: 5,
+      offset: 0,
+      snapshot: { text: 'Hello' },
     })
   })
 
