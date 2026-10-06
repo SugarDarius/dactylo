@@ -720,6 +720,17 @@ export function invertError(message: string, op: Operation): never {
   })
 }
 
+// --- Build ─────────────────────────────────────────---------------
+
+/** Throws a build error {@link DactyloError} when something goes wrong while building operations. */
+export function buildError(message: string, hint: string): never {
+  throw DactyloError.from({
+    code: 'BUILD_TRANSACTION_OPERATIONS',
+    hint,
+    message,
+  })
+}
+
 /**
  * Resolves undo fields when merging two blocks for a {@link MergeBlocksOp}.
  * After a merge, the previous block’s content and the current block’s content
@@ -824,12 +835,10 @@ export function computeSplitTailSnapshot(
     }
     case 'line_break':
     case 'mention': {
-      throw DactyloError.from({
-        code: 'SPLIT_TAIL_UNAUTHORIZED_IN_INLINE_NODE',
-        hint: 'OperationsEngine/computeSplitTailSnapshot',
-        message: `Split tail is not allowed on ${type} node`,
-        payload: { node },
-      })
+      return buildError(
+        `Split tail is not allowed on ${type} node`,
+        'OperationsEngine/computeSplitTailSnapshot',
+      )
     }
     default: {
       assertNever(type, {
@@ -837,15 +846,6 @@ export function computeSplitTailSnapshot(
       })
     }
   }
-}
-
-/** Throws a build error {@link DactyloError} when something goes wrong while building operations. */
-export function buildError(message: string, hint: string): never {
-  throw DactyloError.from({
-    code: 'BUILD_TRANSACTION_OPERATIONS',
-    hint,
-    message,
-  })
 }
 
 /** Intent for building composing operations. */
@@ -1696,12 +1696,10 @@ export class OperationsEngine {
       }
       case 'line_break':
       case 'mention': {
-        throw DactyloError.from({
-          code: 'SPLIT_TAIL_UNAUTHORIZED_IN_INLINE_NODE',
-          hint: 'OperationsEngine/buildSoftBreakOps',
-          message: `Split tail is not allowed on ${type} node`,
-          payload: { node },
-        })
+        return buildError(
+          `Split tail is not allowed on ${type} node`,
+          'OperationsEngine/buildSoftBreakOps',
+        )
       }
       default: {
         assertNever(type, { hint: 'OperationsEngine/buildSoftBreakOps' })

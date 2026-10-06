@@ -36,8 +36,6 @@ export type DactyloErrorCode =
   | 'UNKNOWN_BLOCK_IN_DOCUMENT'
   /** Node is not found in the block. */
   | 'UNKNOWN_NODE_IN_BLOCK'
-  /** Split tail is not allowed in inline node. */
-  | 'SPLIT_TAIL_UNAUTHORIZED_IN_INLINE_NODE'
   /** No window selection found. */
   | 'NO_WINDOW_SELECTION'
 
