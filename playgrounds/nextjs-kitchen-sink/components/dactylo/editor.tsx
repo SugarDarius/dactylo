@@ -5,9 +5,23 @@ import {
   useHistoryCommands,
   useHistoryTools,
 } from '@sugardarius/dactylo/react'
-import { Redo2, Undo2 } from 'lucide-react'
+import {
+  Redo2,
+  Undo2,
+  Bold,
+  Italic,
+  Strikethrough,
+  Underline,
+  Link,
+  TextAlignStart,
+  TextAlignCenter,
+  TextAlignEnd,
+  TextAlignJustify,
+  CodeXml,
+} from 'lucide-react'
 
 import { Button } from '~/components/ui/button'
+import { Separator } from '~/components/ui/separator'
 import { cn } from '~/lib/utils'
 
 export function Toolbar() {
@@ -16,12 +30,51 @@ export function Toolbar() {
 
   return (
     <div className='border-border flex w-full items-center border-b px-1.5 py-2'>
-      <Button variant='ghost' size='icon' disabled={!canUndo} onClick={undo}>
-        <Undo2 className='size-3.5' />
-      </Button>
-      <Button variant='ghost' size='icon' disabled={!canRedo} onClick={redo}>
-        <Redo2 className='size-3.5' />
-      </Button>
+      <div className='flex items-center'>
+        <Button variant='ghost' size='icon' disabled={!canUndo} onClick={undo}>
+          <Undo2 className='size-3.5' />
+        </Button>
+        <Button variant='ghost' size='icon' disabled={!canRedo} onClick={redo}>
+          <Redo2 className='size-3.5' />
+        </Button>
+      </div>
+      <Separator orientation='vertical' />
+      <div className='flex items-center'>
+        <Button variant='ghost' size='icon'>
+          <Bold className='size-3.5' />
+        </Button>
+        <Button variant='ghost' size='icon'>
+          <Italic className='size-3.5' />
+        </Button>
+        <Button variant='ghost' size='icon'>
+          <Strikethrough className='size-3.5' />
+        </Button>
+        <Button variant='ghost' size='icon'>
+          <Underline className='size-3.5' />
+        </Button>
+        <Button variant='ghost' size='icon'>
+          <CodeXml className='size-3.5' />
+        </Button>
+        <Button variant='ghost' size='icon'>
+          <Link className='size-3.5' />
+        </Button>
+      </div>
+      <Separator orientation='vertical' />
+      <div className='flex items-center'>
+        <Button variant='ghost' size='icon'>
+          <TextAlignStart className='size-3.5' />
+        </Button>
+        <Button variant='ghost' size='icon'>
+          <TextAlignCenter className='size-3.5' />
+        </Button>
+        <Button variant='ghost' size='icon'>
+          <TextAlignEnd className='size-3.5' />
+        </Button>
+        <Button variant='ghost' size='icon'>
+          <TextAlignJustify className='size-3.5' />
+        </Button>
+      </div>
+      <Separator orientation='vertical' />
     </div>
   )
 }
