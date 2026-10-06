@@ -800,7 +800,11 @@ export function computeSplitTailSnapshot(
     case 'text': {
       const tailText = node.text.slice(atOffset)
       return [
-        createTextNode({ marks: node.marks, text: tailText }),
+        createTextNode({
+          marks: node.marks,
+          metadata: node.metadata,
+          text: tailText,
+        }),
         ...block.content.slice(index + 1),
       ]
     }
@@ -810,6 +814,7 @@ export function computeSplitTailSnapshot(
         createLinkNode({
           textNode: createTextNode({
             marks: node.textNode.marks,
+            metadata: node.textNode.metadata,
             text: tailText,
           }),
           url: node.url,
@@ -1484,7 +1489,7 @@ export class OperationsEngine {
     }
 
     const isBlockEnd = isCursorAtBlockEnd(cursor, block)
-    /** At block end we just insert a new block after the current one. */
+    /** At block end we insert a new block after the current one. */
     if (isBlockEnd) {
       const insertedBlock = createParagraphBlockAfter(block, [
         createTextNode({ marks: context.activeMarks, text: '' }),
@@ -1539,44 +1544,169 @@ export class OperationsEngine {
     const block = getBlockWithInlineContent(context.state, cursor.blockId)
 
     const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
-    if (!found || found.node.__type !== 'text') {
+    if (!found) {
       buildError(
         `Node ${cursor.nodeId} not found in block ${block.id}`,
         'OperationsEngine/buildSoftBreakOps',
       )
     }
 
-    const { index } = found
-    const insertedText = createTextNode({
-      marks: context.activeMarks,
-      text: '',
-    })
+    const { index, node } = found
 
-    const ops: Operation[] = [
-      {
-        __type: 'insert_inline_node',
-        blockId: block.id,
-        index: index + 1,
-        node: createLineBreakNode(),
-      },
-      {
-        __type: 'insert_inline_node',
-        blockId: block.id,
-        index: index + 2,
-        node: insertedText,
-      },
-      {
-        __type: 'set_selection',
-        next: createCursor({
-          blockId: cursor.blockId,
-          nodeId: insertedText.id,
-          offset: 0,
-        }),
-        prev: context.selection,
-      },
-    ]
+    const isBlockEnd = isCursorAtBlockEnd(cursor, block)
+    /** At block end we insert a new line break node followed by an empty text node. */
+    if (isBlockEnd) {
+      const insertedText = createTextNode({
+        marks: context.activeMarks,
+        text: '',
+      })
 
-    return { coalesce: false, label: 'insert-line-break-node', ops }
+      const ops: Operation[] = [
+        {
+          __type: 'insert_inline_node',
+          blockId: block.id,
+          index: index + 1,
+          node: createLineBreakNode(),
+        },
+        {
+          __type: 'insert_inline_node',
+          blockId: block.id,
+          index: index + 2,
+          node: insertedText,
+        },
+        {
+          __type: 'set_selection',
+          next: createCursor({
+            blockId: cursor.blockId,
+            nodeId: insertedText.id,
+            offset: 0,
+          }),
+          prev: context.selection,
+        },
+      ]
+
+      return { coalesce: false, label: 'insert-line-break-node', ops }
+    }
+
+    /** Otherwise we split the node at the cursor position. */
+    const type = node.__type
+    switch (type) {
+      case 'text': {
+        const tailText = node.text.slice(cursor.offset)
+        const insertedText = createTextNode({
+          marks: node.marks,
+          metadata: node.metadata,
+          text: tailText,
+        })
+
+        const ops: Operation[] = [
+          {
+            __type: 'delete_text',
+            blockId: block.id,
+            length: tailText.length,
+            nodeId: node.id,
+            offset: cursor.offset,
+            snapshot: {
+              marks: node.marks,
+              text: tailText,
+            },
+          },
+          {
+            __type: 'insert_inline_node',
+            blockId: block.id,
+            index: index + 1,
+            node: createLineBreakNode(),
+          },
+          {
+            __type: 'insert_inline_node',
+            blockId: block.id,
+            index: index + 2,
+            node: insertedText,
+          },
+          {
+            __type: 'set_selection',
+            next: createCursor({
+              blockId: cursor.blockId,
+              nodeId: insertedText.id,
+              offset: 0,
+            }),
+            prev: context.selection,
+          },
+        ]
+
+        return {
+          coalesce: false,
+          label: 'split-inline-node-and-insert-line-break-node',
+          ops,
+        }
+      }
+      case 'link': {
+        const tailText = node.textNode.text.slice(cursor.offset)
+        const insertedText = createTextNode({
+          marks: node.textNode.marks,
+          metadata: node.textNode.metadata,
+          text: tailText,
+        })
+        const insertedLink = createLinkNode({
+          metadata: node.metadata,
+          textNode: insertedText,
+          url: node.url,
+        })
+
+        const ops: Operation[] = [
+          {
+            __type: 'delete_text',
+            blockId: block.id,
+            length: tailText.length,
+            nodeId: node.textNode.id,
+            offset: cursor.offset,
+            snapshot: {
+              marks: node.textNode.marks,
+              text: tailText,
+            },
+          },
+          {
+            __type: 'insert_inline_node',
+            blockId: block.id,
+            index: index + 1,
+            node: createLineBreakNode(),
+          },
+          {
+            __type: 'insert_inline_node',
+            blockId: block.id,
+            index: index + 2,
+            node: insertedLink,
+          },
+          {
+            __type: 'set_selection',
+            next: createCursor({
+              blockId: cursor.blockId,
+              nodeId: insertedText.id,
+              offset: 0,
+            }),
+            prev: context.selection,
+          },
+        ]
+
+        return {
+          coalesce: false,
+          label: 'split-inline-node-and-insert-line-break-node',
+          ops,
+        }
+      }
+      case 'line_break':
+      case 'mention': {
+        throw DactyloError.from({
+          code: 'SPLIT_TAIL_UNAUTHORIZED_IN_INLINE_NODE',
+          hint: 'OperationsEngine/buildSoftBreakOps',
+          message: `Split tail is not allowed on ${type} node`,
+          payload: { node },
+        })
+      }
+      default: {
+        assertNever(type, { hint: 'OperationsEngine/buildSoftBreakOps' })
+      }
+    }
   }
 
   // --- Selection operations ─────────────────────────────────────────
