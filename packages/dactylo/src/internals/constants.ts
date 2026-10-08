@@ -16,7 +16,25 @@ export const DEFAULT_BATCH_MAX_SIZE = 512
 /** Default max depth for the history stack. */
 export const DEFAULT_HISTORY_STACK_MAX_DEPTH = 100
 
-/** DOM attributes for HTML elements rendered by UI libraries and used for DOM operations. */
+/** Default typing burst controller options. */
+export const DEFAULT_TYPING_BURST_PAUSE_MS = 1000
+
+/** Default exponential moving average (EMA) for latest inter-key interval (0-1). */
+export const DEFAULT_EMA_ALPHA = 0.35
+
+/** Default user inter-key internal (IKI) between commits at or below this (fast). */
+export const DEFAULT_FAST_IKI_MS = 120
+
+/** Default user inter-key internal (IKI) between commits above this (slow). */
+export const DEFAULT_SLOW_IKI_MS = 400
+
+/** Default maximum number of characters to type when in fast mode. */
+export const DEFAULT_MAX_CHAR_WHEN_FAST = 20
+
+/** Default maximum number of characters to type when in slow mode. */
+export const DEFAULT_MAX_CHAR_WHEN_SLOW = 5
+
+/** Default DOM attributes for HTML elements rendered by UI libraries and used for DOM operations. */
 export const ROOT_ATTR_NAME = 'dactylo-root'
 export const EDITABLE_ATTR_NAME = 'dactylo-editable'
 

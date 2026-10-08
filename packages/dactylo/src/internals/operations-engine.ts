@@ -1496,7 +1496,7 @@ export class OperationsEngine {
             },
           ]
 
-          return { coalesce: true, label: 'merge-node-and-insert-text', ops }
+          return { label: 'merge-node-and-insert-text', ops }
         }
       }
     }

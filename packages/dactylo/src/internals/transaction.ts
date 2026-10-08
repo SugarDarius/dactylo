@@ -7,7 +7,7 @@ import { DactyloError } from './errors'
 import type { Observable } from './event-source'
 import { EventSource } from './event-source'
 import { HistoryStack, orderInverseOps } from './history'
-import type { HistoryEvent } from './history'
+import type { HistoryEvent, HistoryStackOptions } from './history'
 import { detectArrowDirection, detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
 import type { Operation, InsertBlockOpPosition } from './operations'
@@ -330,16 +330,19 @@ export interface TransactionPipelineEventSources {
 
 /** Options for constructing a {@link TransactionPipeline} instance. */
 export interface TransactionPipelineOptions {
-  /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
-  batchMaxSize?: number
+  /** Configuration for the batch of the transaction pipeline */
+  readonly batch?: {
+    /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
+    maxSize?: number
+  }
 
-  /** Max undo entries retained by {@link HistoryStack}. */
-  historyMaxDepth?: number
+  /** Configuration for the history of the transaction pipeline */
+  readonly history?: HistoryStackOptions
 
   /** Configuration for the operations. */
-  operations: {
+  readonly operations: {
     /** Configuration for the operations engine. */
-    engine: OperationsEngineOptions
+    readonly engine: OperationsEngineOptions
   }
 }
 
@@ -421,7 +424,7 @@ export class TransactionPipeline {
      */
     this.#context = createInitialEditorContext()
     this.#batch = new Batch({
-      maxSize: options.batchMaxSize,
+      maxSize: options.batch?.maxSize,
       onFlush: (ops, policy) =>
         this.#dispatch({
           ops,
@@ -429,9 +432,7 @@ export class TransactionPipeline {
         }),
     })
     this.#operationsEngine = new OperationsEngine(options.operations.engine)
-    this.#history = new HistoryStack({
-      maxDepth: options.historyMaxDepth,
-    })
+    this.#history = new HistoryStack(options.history)
     this.#eventSources = {
       context: new EventSource<EditorContext>(),
       history: new EventSource<HistoryEvent>(),

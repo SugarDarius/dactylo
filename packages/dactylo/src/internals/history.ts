@@ -27,6 +27,8 @@
 
 import { DEFAULT_HISTORY_STACK_MAX_DEPTH } from './constants'
 import type { InsertTextOp, Operation, SetSelectionOp } from './operations'
+import type { TypingBurstOptions } from './typing'
+import { TypingBurstController } from './typing'
 
 /**
  * Ordering inverse ops for replaying a history entry
@@ -192,11 +194,96 @@ export interface HistoryEntry {
 export interface HistoryStackOptions {
   /** Maximum number of entries to keep in the stack. */
   readonly maxDepth?: number
+
+  /** Adaptive typing burst / undo coalesce tuning. */
+  readonly typingBurst?: TypingBurstOptions
 }
 
 /**
  * Undo/redo stacks owned by {@link TransactionPipeline}.
- * Encapsulates max depth, coalescing, and redo-branch clearing.
+ *
+ * Each {@link HistoryEntry} stores forward `ops` and `inverseOps` for one undo/redo
+ * step. {@link push} may **merge** consecutive typing transactions into a single
+ * entry so undo removes a **burst** of characters instead of one key at a time.
+ *
+ * ## Two layers of coalesce
+ *
+ * | Layer         | Where                                                      | What it controls                                                                         |
+ * |---------------|------------------------------------------------------------|------------------------------------------------------------------------------------------|
+ * | **Policy**    | `TransactionPolicy.coalesce` from {@link OperationsEngine} | Whether this commit *may* merge at all. `false` for space, `@`, `/`, splits, etc.        |
+ * | **Mechanism** | `#tryCoalesce` + {@link TypingBurstController}             | Whether merge is *allowed* for this keystroke: same insert target, timing, and char cap. |
+ *
+ * Policy alone is not enough: even when `coalesce === true`, `#tryCoalesce` can
+ * refuse merge (pause, char cap, wrong block/node/offset). When merge succeeds,
+ * {@link buildCoalescedTypingEntry} replaces the top undo entry with one wider
+ * `insert_text` and updates {@link HistoryEntry.timestamp} to the latest key.
+ *
+ * ## Typing burst ({@link TypingBurstController})
+ *
+ * While merging, `last.timestamp` is the time of the previous commit in the burst.
+ * Inter-key gap drives an **EMA** (exponential moving average) of typing speed, which
+ * picks a dynamic max merge length (slow → ~{@link DEFAULT_MAX_CHAR_WHEN_SLOW},
+ * fast → ~{@link DEFAULT_MAX_CHAR_WHEN_FAST}). Tuning lives in
+ * {@link HistoryStackOptions.typingBurstOptions}.
+ *
+ * Burst checks (all must pass to merge):
+ *
+ * 1. Top entry and incoming tx are typing-shaped ({@link getAccumulatedTypingInsertOp} + {@link getIncomingTypingInsertOp}).
+ * 2. Same `blockId`, same `nodeId`, contiguous offsets (`prev.offset + prev.text.length === next.offset`).
+ * 3. {@link TypingBurstController.shouldContinue}: gap ≤ `pauseMs`, and `accumulated + incoming` ≤ speed-based cap.
+ *
+ * On spatial / shape mismatch, `#tryCoalesce` calls {@link TypingBurstController.reset}.
+ * On pause or cap, `shouldContinue` returns `false` and resets internally.
+ *
+ * ## `push()` flow
+ *
+ * push(entry, coalesce) ──► redoStack = []
+ *                │
+ *                ├─ coalesce === false ? ──► #undoStack.push(entry) ──► trim maxDepth
+ *                │
+ *                └─ #tryCoalesce(entry) ?
+ *                      │
+ *                      ├─ true  ──► return (top entry merged in place)
+ *                      │
+ *                      └─ false ──► #undoStack.push(entry) ──► trim maxDepth
+ *
+ * Semantics (`#tryCoalesce` + burst):
+ *
+ * #tryCoalesce(entry) ──► peek #undoStack[-1]
+ *                │
+ *                ├─ no top entry ? ──► false
+ *                │
+ *                ├─ not typing pair ?
+ *                │     (accumulated insert_text + single-char insert_text)
+ *                │     ──► TypingBurstController.reset() ──► false
+ *                │
+ *                ├─ blockId / nodeId / offset not contiguous ?
+ *                │     ──► TypingBurstController.reset() ──► false
+ *                │
+ *                └─ TypingBurstController.shouldContinue(last.timestamp, now) ?
+ *                      │
+ *                      ├─ gap > pauseMs ? ──► reset() ──► false
+ *                      │
+ *                      ├─ accumulated + incoming > speed cap ? ──► reset() ──► false
+ *                      │
+ *                      └─ ok ──► pop top ──► buildCoalescedTypingEntry
+ *                                ──► push merged entry (timestamp = now) ──► true
+ *
+ * End-to-end (policy → stack):
+ *
+ * OperationsEngine ──► TransactionPolicy.coalesce
+ *                │
+ *                ├─ false (space, @, /, split, …) ──► push(..., false) ──► new undo step
+ *                │
+ *                └─ true (normal char) ──► push(..., true) ──► may merge via #tryCoalesce
+ * ## Stack behavior (non-coalesce)
+ *
+ * - Any `push` clears the redo branch.
+ * - {@link popUndo} / {@link popRedo} move entries between stacks; they do not run burst logic.
+ * - {@link clear} empties both stacks and resets {@link TypingBurstController}.
+ *
+ * @see TypingBurstController — pause threshold, EMA IKI, speed-dependent char cap
+ * @see buildCoalescedTypingEntry — merges forward/inverse ops for typing bursts
  */
 export class HistoryStack {
   /** Maximum number of entries to keep in the stack. */
@@ -207,11 +294,16 @@ export class HistoryStack {
   /** Redo stack. */
   #redoStack: HistoryEntry[]
 
+  /** Pause + EMA IKI → speed-dependent max merge length for typing. */
+  readonly #typingBurstController: TypingBurstController
+
   constructor(options: HistoryStackOptions = {}) {
     this.#maxDepth = options.maxDepth ?? DEFAULT_HISTORY_STACK_MAX_DEPTH
 
     this.#undoStack = []
     this.#redoStack = []
+
+    this.#typingBurstController = new TypingBurstController(options.typingBurst)
   }
 
   /** Merge consecutive single-character inserts on the same node. */
@@ -225,6 +317,7 @@ export class HistoryStack {
     const nextInsert = getIncomingTypingInsertOp(entry.ops)
 
     if (!prevInsert || !nextInsert) {
+      this.#typingBurstController.reset()
       return false
     }
 
@@ -233,6 +326,19 @@ export class HistoryStack {
       prevInsert.nodeId !== nextInsert.nodeId ||
       prevInsert.offset + prevInsert.text.length !== nextInsert.offset
     ) {
+      this.#typingBurstController.reset()
+      return false
+    }
+
+    const now = Date.now()
+    const continueBurst = this.#typingBurstController.shouldContinue({
+      accumulatedChars: prevInsert.text.length,
+      incomingChars: nextInsert.text.length,
+      lastEventMs: last.timestamp,
+      nowMs: now,
+    })
+
+    if (!continueBurst) {
       return false
     }
 
@@ -243,7 +349,7 @@ export class HistoryStack {
       last.ops,
       entry.ops,
     )
-    this.#undoStack.push({ ...coalesced, timestamp: Date.now() })
+    this.#undoStack.push({ ...coalesced, timestamp: now })
 
     return true
   }
@@ -312,5 +418,6 @@ export class HistoryStack {
   clear(): void {
     this.#undoStack = []
     this.#redoStack = []
+    this.#typingBurstController.reset()
   }
 }

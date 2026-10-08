@@ -45,10 +45,24 @@ export type {
   NodeId,
   TextNode,
 } from './internals/nodes'
-export type { HistoryEvent } from './internals/history'
-export type { Transaction, TransactionSource } from './internals/transaction'
+export type { HistoryEvent, HistoryStackOptions } from './internals/history'
+export type {
+  Transaction,
+  TransactionSource,
+  TransactionPipelineOptions,
+} from './internals/transaction'
+export type { TypingBurstOptions } from './internals/typing'
 export {
-  BLOCK_CONTENT_EDITABLE_ATTR_NAME,
-  PARAGRAPH_BLOCK_CONTENT_ATTR_NAME,
+  ROOT_ATTR_NAME,
+  EDITABLE_ATTR_NAME,
+  BLOCKS_ATTR_NAME,
   BLOCK_PLACEHOLDER_ATTR_NAME,
+  BLOCK_CONTENT_EDITABLE_ATTR_NAME,
+  PARAGRAPH_BLOCK_ATTR_NAME,
+  PARAGRAPH_BLOCK_CONTENT_ATTR_NAME,
+  PARAGRAPH_BLOCK_ID_ATTR_NAME,
+  TEXT_NODE_ATTR_NAME,
+  TEXT_NODE_ID_DATA_NAME,
+  LINE_BREAK_NODE_ATTR_NAME,
+  LINE_BREAK_NODE_ID_DATA_NAME,
 } from './internals/constants'

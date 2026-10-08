@@ -16,7 +16,7 @@ import type {
   UnsubscribeCallback,
 } from './internals/event-source'
 import { EventSource } from './internals/event-source'
-import type { HistoryEvent } from './internals/history'
+import type { HistoryEvent, HistoryStackOptions } from './internals/history'
 import type { MarkKey } from './internals/marks'
 import {
   isBlockWithActiveCursor,
@@ -370,37 +370,37 @@ export type DactyloBlocksApi = DactyloAspectApi<
 /** Config options to use for the internal components and delegates of the editor. */
 export interface DactyloConfigOptions {
   /** Configuration for the editor */
-  editor?: {
+  readonly editor?: {
     /** Configuration for mentions. */
-    mentions?: {
+    readonly mentions?: {
       /**
        * The character to trigger a mention.
        * Defaults to `@`
        */
-      character?: string
+      readonly character?: string
     }
 
     /** Configuration for slash command. */
-    slashCommand?: {
+    readonly slashCommand?: {
       /**
        * The character to trigger a slash command.
        * Defaults to `/`
        */
-      character?: string
+      readonly character?: string
     }
 
     /** Configuration for the paragraphs */
-    paragraph?: {
+    readonly paragraph?: {
       /**
        * Placeholder text when an empty paragraph is created or empty.
        * Defaults to placeholder option in {@link DactyloOptions} if set
        * or defaults to {@link DEFAULT_PARAGRAPH_PLACEHOLDER}.
        */
-      placeholder?: string
+      readonly placeholder?: string
     }
 
     /** Configuration for the headings */
-    heading?: {
+    readonly heading?: {
       /**
        * Placeholder text when a heading is created or empty.
        * Defaults to {@link DEFAULT_HEADING_PLACEHOLDER} with level.
@@ -409,39 +409,42 @@ export interface DactyloConfigOptions {
        * Heading 1
        * ```
        */
-      placeholder?: string
+      readonly placeholder?: string
     }
   }
 
   /** Configuration for the transaction pipeline */
-  pipeline?: {
-    /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
-    batchMaxSize?: number
+  readonly pipeline?: {
+    /** Configuration for the batch of the transaction pipeline */
+    readonly batch?: {
+      /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
+      readonly maxSize?: number
+    }
 
-    /** Max undo entries retained. */
-    historyMaxDepth?: number
+    /** Configuration for the history of the transaction pipeline */
+    readonly history?: HistoryStackOptions
   }
 }
 
 /** Options for constructing a {@link Dactylo} instance. */
 export interface DactyloOptions {
   /** Alias for {@link DactyloConfigOptions.editor.paragraph.placeholder}. */
-  placeholder?: string
+  readonly placeholder?: string
 
   /**
    * Whether the editor is editable.
    * Defaults to `true`
    */
-  editable?: boolean
+  readonly editable?: boolean
 
   /** Config options to use for the internal components and delegates of the editor. */
-  config?: DactyloConfigOptions
+  readonly config?: DactyloConfigOptions
 
   /**
    * Whether to enable debug mode.
    * Defaults to `false`
    */
-  debug?: boolean
+  readonly debug?: boolean
 }
 
 /**
@@ -517,8 +520,8 @@ export class Dactylo {
       },
     }
     this.#pipeline = new TransactionPipeline({
-      batchMaxSize: options.config?.pipeline?.batchMaxSize,
-      historyMaxDepth: options.config?.pipeline?.historyMaxDepth,
+      batch: options.config?.pipeline?.batch,
+      history: options.config?.pipeline?.history,
       operations: {
         engine: {
           mentions: {
