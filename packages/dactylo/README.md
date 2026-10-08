@@ -6,10 +6,66 @@ Users write in a familiar editor. Underneath, Dactylo keeps a typed document you
 
 ## How it works
 
-- **Structured document.** Content lives in blocks (paragraph, heading, divider, …) and inline nodes (text, line break, link, mention). Marks such as bold and italic sit on text nodes.
-- **Transactions.** An edit is a batch of operations. The pipeline validates the batch, applies it, then commits history and events. A rejected transaction leaves the document unchanged.
-- **Tools and commands.** Tools read the editor (`canUndo`, `isFocused`). Commands mutates it (`undo`, `toggle-mark`, `delete block`). Either can be attributed to `user` or `ai-agent` externally.
-- **Headless.** Style the built-in React composer, or subscribe to the editor changes and render the document yourself.
+- **Structured document.** Blocks (paragraph, heading, divider, …) and inline nodes (text, line break, link, mention). Marks such as bold and italic sit on text nodes.
+- **Tools and commands.** Tools read the editor (`canUndo`, `isFocused`). Commands mutate it (`undo`, `toggle-mark`, `delete block`). Either can be attributed to `user` or `ai-agent` externally.
+- **Headless.** Style the built-in React composer, or subscribe to context changes and render the document yourself.
+
+### Core architecture
+
+Every mutation goes through one **`TransactionPipeline`**. **`Dactylo`** is a thin facade: commands and keyboard handlers build operations, then dispatch a transaction. Subscribers see a full **`EditorContext`** snapshot (document, selection, active marks)—not document-only diffs.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                      EditorContext                           │
+│  state (DocumentState)  │  selection  │  activeMarks         │
+└──────────────────────────────────────────────────────────────┘
+         ▲                           │
+         │                           ▼
+      applyOps                   validateOps
+         │                           │
+         └──── Operations Engine ---─┘
+          (validate · apply · invert)
+```
+
+**Transaction lifecycle** (keyboard, toolbar, or agent—same path):
+
+```
+Command / key handler
+        |
+        ▼
+Transaction { ops, policy? }  ──►  validateOps  ──► fail ──► reject (context unchanged)
+        |                              |
+        |                              ▼
+        |                         applyOps  ──►  next EditorContext
+        |                              |
+        ▼                              ▼
+commitEffects ◄──────────────── inverseOps (for history)
+        |
+        ├── HistoryStack.push (unless policy.pushToHistory === false)
+        └── notify: context · history · transactionDidApply
+```
+
+**Pipeline delegates** (owned by the pipeline, not reimplemented in `Dactylo`):
+
+| Delegate | Role |
+| --- | --- |
+| **OperationsEngine** | Turns intent into `Operation[]`, validates each op against the current context, applies them immutably, and produces **inverse** ops for undo. |
+| **HistoryStack** | Stores forward + inverse op batches; **undo/redo** re-run `applyOps` with `pushToHistory: false`. Coalesces rapid typing into one undo step. |
+
+End-to-end example (same shape as the in-code docs):
+
+```
+User presses "A"
+       |
+       ▼
+EditorContext  ──►  buildKeyOps  ──►  [ insert_text, set_selection ]
+       |                                      |
+       ▼                                      ▼
+TransactionPipeline  ──►  applyOps  ──►  new EditorContext
+       |
+       ▼
+editor.getContext() / subscribe  ──►  UI re-renders blocks and caret
+```
 
 ## Packages
 
