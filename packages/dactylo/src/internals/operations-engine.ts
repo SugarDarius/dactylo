@@ -1303,7 +1303,7 @@ export class OperationsEngine {
     if (neighbors.prev === null) {
       buildError(
         `Previous block ID is not found for block ${cursor.blockId}`,
-        'OperationsEngine/buildCursorBackspaceOps',
+        'OperationsEngine/buildMergeBlocksOps',
       )
     }
 
