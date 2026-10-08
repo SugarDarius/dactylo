@@ -8,16 +8,16 @@ allowBuilds:
 autoInstallPeers: true
 catalog:
   '@arethetypeswrong/core': ^0.18.5
-  '@types/node': ^26.6.3
+  '@types/node': ^26.6.4
   happy-dom: ^20.14.5
-  oxfmt: ^0.71.0
-  oxlint: ^1.86.0
-  publint: ^0.3.24
+  oxfmt: ^0.72.0
+  oxlint: ^1.87.0
+  publint: ^0.3.25
   syncpack: ^15.3.3
   tsdown: ^0.23.0
-  turbo: ^2.11.5
+  turbo: ^2.11.7
   typescript: ^7.0.2
-  ultracite: ^7.12.2
+  ultracite: ^7.12.4
   vitest: ^5.0.3
 catalogs:
   react19:
