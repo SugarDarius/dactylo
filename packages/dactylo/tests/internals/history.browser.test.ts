@@ -44,6 +44,62 @@ const createInsertHistoryEntry = (opts: {
   }
 }
 
+const createDeleteHistoryEntry = (opts: {
+  blockId: BlockId
+  nodeId: NodeId
+  offset: number
+  char: string
+  cursorAfter: number
+  cursorBefore: number
+}): Pick<HistoryEntry, 'ops' | 'inverseOps'> => {
+  const del = {
+    __type: 'delete_text' as const,
+    blockId: opts.blockId,
+    length: 1,
+    nodeId: opts.nodeId,
+    offset: opts.offset,
+    snapshot: { marks: {}, text: opts.char },
+  }
+  const selection: SetSelectionOp = {
+    __type: 'set_selection',
+    next: {
+      __type: 'cursor',
+      anchor: {
+        blockId: opts.blockId,
+        nodeId: opts.nodeId,
+        offset: opts.cursorAfter,
+      },
+    },
+    prev: {
+      __type: 'cursor',
+      anchor: {
+        blockId: opts.blockId,
+        nodeId: opts.nodeId,
+        offset: opts.cursorBefore,
+      },
+    },
+  }
+  const rawInverseOps = [
+    {
+      __type: 'insert_text' as const,
+      blockId: opts.blockId,
+      marks: {},
+      nodeId: opts.nodeId,
+      offset: opts.offset,
+      text: opts.char,
+    },
+    {
+      __type: 'set_selection' as const,
+      next: selection.prev,
+      prev: selection.next,
+    },
+  ]
+  return {
+    inverseOps: orderInverseOps(rawInverseOps),
+    ops: [del, selection],
+  }
+}
+
 const createTypingHistoryEntry = (opts: {
   blockId: BlockId
   nodeId: NodeId
@@ -222,6 +278,43 @@ describe('History', () => {
       length: 5,
       offset: 0,
       snapshot: { text: 'Hello' },
+    })
+  })
+
+  // "Hello", cursor 5 → backspace 'o' (offset 4), then 'l' (offset 3)
+  test('coalesces adjacent single-char deletes with set_selection', () => {
+    const stack = new HistoryStack()
+    const { blockId, nodeId } = ids()
+    stack.push(
+      createDeleteHistoryEntry({
+        blockId,
+        char: 'o',
+        cursorAfter: 4,
+        cursorBefore: 5,
+        nodeId,
+        offset: 4,
+      }),
+      true,
+    )
+    /* oxlint-disable-next-line unicorn/prefer-single-call */
+    stack.push(
+      createDeleteHistoryEntry({
+        blockId,
+        char: 'l',
+        cursorAfter: 3,
+        cursorBefore: 4,
+        nodeId,
+        offset: 3,
+      }),
+      true,
+    )
+    expect(stack.undoDepth).toBe(1)
+    const entry = stack.popUndo()
+    expect(entry?.ops[0]).toMatchObject({
+      __type: 'delete_text',
+      length: 2,
+      offset: 3,
+      snapshot: { text: 'lo' },
     })
   })
 
