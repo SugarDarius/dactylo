@@ -1,12 +1,8 @@
-import {
-  TEXT_NODE_ATTR_NAME,
-  TEXT_NODE_ID_DATA_NAME,
-} from '../internals/constants'
+import { NODE_ATTR_NAME, NODE_ID_DATA_NAME } from '../internals/constants'
 import { toDatasetProperty } from './utils'
 
-/** Finds the DOM text node with the given `nodeId` inside `editable`. */
-// @todo: handle handle links attributes
-export function findEditableTextNode(
+/** Finds the DOM editable node with the given `nodeId` inside `editable`. */
+export function findEditableNode(
   editable: HTMLDivElement,
   nodeId: string,
 ): HTMLSpanElement | null {
@@ -14,8 +10,8 @@ export function findEditableTextNode(
   while (current) {
     if (
       current instanceof HTMLSpanElement &&
-      current.getAttribute(TEXT_NODE_ATTR_NAME) !== null &&
-      current.dataset[toDatasetProperty(TEXT_NODE_ID_DATA_NAME)] === nodeId
+      current.getAttribute(NODE_ATTR_NAME) !== null &&
+      current.dataset[toDatasetProperty(NODE_ID_DATA_NAME)] === nodeId
     ) {
       return current
     }

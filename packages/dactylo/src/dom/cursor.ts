@@ -1,6 +1,6 @@
 import { DactyloError } from '../internals/errors'
 import type { TextCursor } from '../internals/selection'
-import { clampOffset, findEditableTextNode } from './nodes'
+import { clampOffset, findEditableNode } from './nodes'
 import type { DOMPoint } from './point'
 import { isCaretAt } from './window-selection'
 
@@ -21,7 +21,7 @@ export function getDOMPointFromTextCursor(
   cursor: TextCursor,
 ): DOMPoint | null {
   const { nodeId } = cursor
-  const node = findEditableTextNode(editable, nodeId)
+  const node = findEditableNode(editable, nodeId)
 
   if (!node) {
     if (editable.childNodes.length === 0) {

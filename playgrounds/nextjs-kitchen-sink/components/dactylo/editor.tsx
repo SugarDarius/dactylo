@@ -97,17 +97,17 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
           className={cn(
             'relative flex w-full flex-col px-6 py-2',
             // @note: for DX convenience add custom components
-            '**:[[dactylo-paragraph-block-content]]:outline-0',
+            '**:[[dactylo-block-content]]:outline-0',
             '**:[[dactylo-blocks]]:flex **:[[dactylo-blocks]]:flex-col **:[[dactylo-blocks]]:gap-2',
-            `[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:[content:attr(dactylo-block-placeholder)/'']`,
-            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:pointer-events-none',
-            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:max-w-full',
-            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:max-w-full',
-            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:min-h-[1em]',
-            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:p-0',
-            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:text-muted-foreground',
-            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:whitespace-break-spaces',
-            '[&_[dactylo-paragraph-block-content][dactylo-content-editable=true][data-empty=true][data-active=true]]:after:wrap-break-word',
+            `[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:[content:attr(dactylo-block-placeholder)/'']`,
+            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:pointer-events-none',
+            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:max-w-full',
+            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:max-w-full',
+            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:min-h-[1em]',
+            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:p-0',
+            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:text-muted-foreground',
+            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:whitespace-break-spaces',
+            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:wrap-break-word',
           )}
         />
       </Composer.Root>

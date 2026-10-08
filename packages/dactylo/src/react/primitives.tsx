@@ -6,17 +6,17 @@ import { Dactylo } from '../dactylo'
 import { paintTextForDOM } from '../dom/text'
 import {
   BLOCKS_ATTR_NAME,
-  BLOCK_CONTENT_EDITABLE_ATTR_NAME,
+  BLOCK_CONTENT_EDITABLE_DATA_NAME,
   EDITABLE_ATTR_NAME,
   PARAGRAPH_BLOCK_ATTR_NAME,
-  PARAGRAPH_BLOCK_CONTENT_ATTR_NAME,
-  PARAGRAPH_BLOCK_ID_ATTR_NAME,
   BLOCK_PLACEHOLDER_ATTR_NAME,
   ROOT_ATTR_NAME,
   TEXT_NODE_ATTR_NAME,
-  TEXT_NODE_ID_DATA_NAME,
   LINE_BREAK_NODE_ATTR_NAME,
-  LINE_BREAK_NODE_ID_DATA_NAME,
+  BLOCK_ID_DATA_NAME,
+  BLOCK_CONTENT_ATTR_NAME,
+  NODE_ID_DATA_NAME,
+  NODE_ATTR_NAME,
 } from '../internals/constants'
 import {
   DactyloProvider,
@@ -114,7 +114,8 @@ const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
         ref={forwardedRef}
         {...{
           [TEXT_NODE_ATTR_NAME]: '',
-          [TEXT_NODE_ID_DATA_NAME]: node.id,
+          [NODE_ATTR_NAME]: '',
+          [NODE_ID_DATA_NAME]: node.id,
         }}
         aria-roledescription='text-node'
         // @todo: handle marks
@@ -136,7 +137,8 @@ export const ComposerLineBreakNode = forwardRef<
     ref={forwardedRef}
     {...{
       [LINE_BREAK_NODE_ATTR_NAME]: '',
-      [LINE_BREAK_NODE_ID_DATA_NAME]: node.id,
+      [NODE_ATTR_NAME]: '',
+      [NODE_ID_DATA_NAME]: node.id,
     }}
     aria-roledescription='line-break-node'
   />
@@ -193,7 +195,7 @@ const ComposerParagraphBlock = forwardRef<
       ref={mergedRefs}
       {...{
         [PARAGRAPH_BLOCK_ATTR_NAME]: '',
-        [PARAGRAPH_BLOCK_ID_ATTR_NAME]: block.id,
+        [BLOCK_ID_DATA_NAME]: block.id,
       }}
       data-active={isActive ?? undefined}
       aria-roledescription='paragraph-block'
@@ -209,8 +211,8 @@ const ComposerParagraphBlock = forwardRef<
         data-active={isActive ?? undefined}
         data-empty={isEmpty ?? undefined}
         {...{
-          [BLOCK_CONTENT_EDITABLE_ATTR_NAME]: canEdit ? 'true' : 'false',
-          [PARAGRAPH_BLOCK_CONTENT_ATTR_NAME]: '',
+          [BLOCK_CONTENT_ATTR_NAME]: '',
+          [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
           [BLOCK_PLACEHOLDER_ATTR_NAME]: paragraph.placeholder,
         }}
         tabIndex={canEdit ? 0 : undefined}
