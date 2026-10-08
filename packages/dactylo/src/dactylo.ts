@@ -90,6 +90,7 @@ export type DactyloCommand =
   /** History commands */
   | 'history/undo'
   | 'history/redo'
+  | 'history/clear'
 
   /** Marks commands */
   | 'marks/toggle'
@@ -235,6 +236,9 @@ export interface DactyloHistoryCommands {
 
   /** Re-applies the newest redo entry via the transaction pipeline. */
   readonly redo: () => void
+
+  /** Clears the undo and redo stacks via transaction pipeline. */
+  readonly clear: () => void
 }
 
 /** Api to interact with the history of the editor. */
@@ -786,6 +790,21 @@ export class Dactylo {
   get history(): DactyloHistoryApi {
     return {
       commands: {
+        /**
+         * Clears the undo and redo stacks via transaction pipeline.
+         *
+         * @example
+         * ```ts
+         * editor.history.commands.clear()
+         * ```
+         */
+        clear: (): void =>
+          this.#safeExecuteCommand(
+            'history/clear',
+            () => this.#pipeline.clearHistory(),
+            noop,
+          ),
+
         /**
          * Re-applies the newest redo entry via the transaction pipeline.
          *

@@ -605,6 +605,12 @@ export class TransactionPipeline {
     this.#notifyHistory()
   }
 
+  /** Clears the undo and redo stacks. */
+  clearHistory(): void {
+    this.#history.clear()
+    this.#notifyHistory()
+  }
+
   // --- Marks operations ─────────────────────────────────────────----
 
   /** Toggle a mark on or off. */

@@ -640,7 +640,7 @@ export class HistoryStack {
     return entry
   }
 
-  /** Drop all history (e.g. after import). */
+  /** Clears the undo and redo stacks. */
   clear(): void {
     this.#undoStack = []
     this.#redoStack = []

@@ -311,8 +311,9 @@ export function useHistoryCommands() {
 
   const undo = useStableCallback(() => editor.history.commands.undo())
   const redo = useStableCallback(() => editor.history.commands.redo())
+  const clear = useStableCallback(() => editor.history.commands.clear())
 
-  return { redo, undo } as const
+  return { clear, redo, undo } as const
 }
 
 /**
