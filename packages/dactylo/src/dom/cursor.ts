@@ -59,8 +59,15 @@ export function paintCursorCaretAtPositionInDOM(
 ): void {
   const point = getDOMPointFromTextCursor(editable, cursor)
   if (!point) {
-    // @todo: improve this
-    throw new Error('No point found')
+    throw DactyloError.from({
+      code: 'PAINT_DOM',
+      hint: 'dom/#paintCursorCaretAtPositionInDOM',
+      message: 'No point from text cursor found',
+      payload: {
+        cursor,
+        editable,
+      },
+    })
   }
   const clamped = { ...point, offset: clampOffset(point.node, point.offset) }
 
