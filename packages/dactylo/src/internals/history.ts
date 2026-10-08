@@ -1,30 +1,3 @@
-/**
- * {@link HistoryStack} defines how Dactylo tracks history in the editor.
- *
- * | Approach                                | Memory         | Speed        | Correctness                               |
- * |-----------------------------------------|----------------|--------------|-------------------------------------------|
- * | Full state snapshots                    | O(doc × depth) | Fast restore | Easy                                      |
- * | Operation inverse (chosen)              | O(ops × depth) | Fast apply   | Requires `invertOp`                       |
- * | Plain `{ undoStack, redoStack }` object | Same as class  | Same         | Harder to encapsulate coalesce + maxDepth |
- *
- * Architecture:
- * ```
- * TransactionPipeline
- * ├── #history: HistoryStack
- * └── #run(transaction)
- *       └─ commitEffects:
- *             if (policy.pushToHistory !== false)
- *               history.push({ ops, inverseOps }, { coalesce, source })
- * ```
- *
- * Stack behavior:
- * - New user transaction → `push()` clears redo branch
- * - `popUndo()` → pipeline applies `inverseOps` with `pushToHistory: false`
- * - `popRedo()` → pipeline applies forward `ops`
- * - `Batch.run()` → one history entry for entire batch
- * - Selection-only → `pushToHistory: false` on `TransactionPolicy`
- */
-
 import { DEFAULT_HISTORY_STACK_MAX_DEPTH } from './constants'
 import type { InsertTextOp, Operation, SetSelectionOp } from './operations'
 import type { TypingBurstOptions } from './typing'
@@ -200,11 +173,34 @@ export interface HistoryStackOptions {
 }
 
 /**
- * Undo/redo stacks owned by {@link TransactionPipeline}.
+ * {@link HistoryStack} defines how Dactylo tracks history in the editor.
+ *
+ * | Approach                                | Memory         | Speed        | Correctness                               |
+ * |-----------------------------------------|----------------|--------------|-------------------------------------------|
+ * | Full state snapshots                    | O(doc × depth) | Fast restore | Easy                                      |
+ * | Operation inverse (chosen)              | O(ops × depth) | Fast apply   | Requires `invertOp`                       |
+ * | Plain `{ undoStack, redoStack }` object | Same as class  | Same         | Harder to encapsulate coalesce + maxDepth |
  *
  * Each {@link HistoryEntry} stores forward `ops` and `inverseOps` for one undo/redo
  * step. {@link push} may **merge** consecutive typing transactions into a single
  * entry so undo removes a **burst** of characters instead of one key at a time.
+ *
+ * Architecture:
+ * ```
+ * TransactionPipeline
+ * ├── #history: HistoryStack
+ * └── #run(transaction)
+ *       └─ commitEffects:
+ *             if (policy.pushToHistory !== false)
+ *               history.push({ ops, inverseOps }, { coalesce, source })
+ * ```
+ *
+ * Stack behavior:
+ * - New user transaction → `push()` clears redo branch
+ * - `popUndo()` → pipeline applies `inverseOps` with `pushToHistory: false`
+ * - `popRedo()` → pipeline applies forward `ops`
+ * - `Batch.run()` → one history entry for entire batch
+ * - Selection-only → `pushToHistory: false` on `TransactionPolicy`
  *
  * ## Two layers of coalesce
  *
