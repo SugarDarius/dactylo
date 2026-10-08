@@ -546,7 +546,7 @@ export class TransactionPipeline {
     }
   }
 
-  // --- Marks operations ─────────────────────────────────────────----
+  // --- History operations ─────────────────────────────────────────--
 
   /** Whether at least one undo entry is available. */
   canUndo(): boolean {
