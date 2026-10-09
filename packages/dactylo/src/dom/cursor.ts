@@ -33,7 +33,7 @@ export function paintCursorCaretAtPositionInDOM(
   if (!domSelection) {
     throw DactyloError.from({
       code: 'NO_WINDOW_SELECTION',
-      hint: 'dom/#putCursorCaretAtPositionInDOM',
+      hint: 'dom/#paintCursorCaretAtPositionInDOM',
       message: 'No window selection found',
     })
   }
