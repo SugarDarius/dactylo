@@ -1,53 +1,8 @@
 import { DactyloError } from '../internals/errors'
 import type { TextCursor } from '../internals/selection'
-import { clampOffset, findEditableNode } from './nodes'
-import type { DOMPoint } from './point'
+import { clampNodeOffset } from './nodes'
+import { getDOMPointFromTextCursor } from './point'
 import { isCaretAt } from './window-selection'
-
-/**
- * Maps a {@link TextCursor} to the DOM point inside `editable`.
- *
- * The model offset counts characters in one inline node. It is not an index
- * into `editable.childNodes`. Spans and anchors are elements, so passing that
- * offset to `Range.setStart` on an element would count children and throw
- * once it walks past them.
- *
- * Returns `null` when the node is not in the DOM and the block already has
- * other children. An empty editable still returns a caret at the start of the
- * div, which is the empty paragraph before its text span is rendered.
- */
-export function getDOMPointFromTextCursor(
-  editable: HTMLDivElement,
-  cursor: TextCursor,
-): DOMPoint | null {
-  const { nodeId } = cursor
-  const node = findEditableNode(editable, nodeId)
-
-  if (!node) {
-    if (editable.childNodes.length === 0) {
-      return { node: editable, offset: 0 }
-    }
-    return null
-  }
-
-  /**
-   * One model text node can be several DOM text nodes once marks, or the
-   * browser, split it. Walk only inside this host and consume `offset`.
-   */
-  const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
-  let remaining = cursor.offset
-  let text = walker.nextNode() as Text | null
-
-  while (text) {
-    if (remaining <= text.length) {
-      return { node: text, offset: remaining }
-    }
-    remaining -= text.length
-    text = walker.nextNode() as Text | null
-  }
-
-  return { node, offset: cursor.offset }
-}
 
 /**
  * Paints a collapsed caret at cursor position in the DOM
@@ -69,7 +24,10 @@ export function paintCursorCaretAtPositionInDOM(
       },
     })
   }
-  const clamped = { ...point, offset: clampOffset(point.node, point.offset) }
+  const clamped = {
+    ...point,
+    offset: clampNodeOffset(point.node, point.offset),
+  }
 
   const domSelection = window.getSelection()
   if (!domSelection) {
