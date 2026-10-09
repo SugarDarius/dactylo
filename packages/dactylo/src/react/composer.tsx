@@ -447,7 +447,7 @@ export function useEditableBlock(blockId: BlockId) {
 
   useEffect(() => {
     const editable = editableRef.current
-    if (!editable) {
+    if (!editable || !withActiveCursor) {
       return
     }
 
@@ -458,7 +458,7 @@ export function useEditableBlock(blockId: BlockId) {
      */
     editable.addEventListener('beforeinput', onBeforeInput)
     return () => editable.removeEventListener('beforeinput', onBeforeInput)
-  }, [onBeforeInput])
+  }, [onBeforeInput, withActiveCursor])
 
   return {
     canEdit,
