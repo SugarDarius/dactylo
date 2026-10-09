@@ -60,7 +60,7 @@ export class Orchestrator {
    * Runs a Model → DOM operation and handles errors.
    * Flags the orchestrator as painting while running the operation.
    */
-  #run(fn: () => void): void {
+  #runPainting(fn: () => void): void {
     this.#isPainting = true
     try {
       return fn()
@@ -84,7 +84,7 @@ export class Orchestrator {
   paintTextCursor(cursor: TextCursor): CancelCallback {
     const editable = this.#editable
     return this.#runWithRaf(() => {
-      this.#run(() => {
+      this.#runPainting(() => {
         if (!editable) {
           warnOnceIf(
             this.#debug,
