@@ -29,7 +29,7 @@ export function Toolbar() {
   const { undo, redo } = useHistoryCommands()
 
   return (
-    <div className='border-border flex w-full items-center border-b px-1.5 py-2'>
+    <div className='border-border flex w-full items-center gap-1.5 border-b px-1.5 py-2'>
       <div className='flex items-center'>
         <Button variant='ghost' size='icon' disabled={!canUndo} onClick={undo}>
           <Undo2 className='size-3.5' />
