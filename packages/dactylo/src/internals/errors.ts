@@ -39,7 +39,7 @@ export type DactyloErrorCode =
   /** No window selection found. */
   | 'NO_WINDOW_SELECTION'
   /** Unexpected failure when painting into the DOM. */
-  | 'PAINT_DOM'
+  | 'DOM_ORCHESTRATOR_PAINTING'
 
 /**
  * Typed error for Dactylo operations.

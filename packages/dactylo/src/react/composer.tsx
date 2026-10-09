@@ -6,7 +6,7 @@ import type {
   DactyloStaticConfig,
   DactyloToolEvent,
 } from '../dactylo'
-import { paintCursorCaretAtPositionInDOM } from '../dom/cursor'
+import type { Orchestrator } from '../dom/orchestrator'
 import type { BlockId } from '../internals/blocks'
 import type { DocumentState } from '../internals/document'
 import type { CursorSelection, Selection } from '../internals/selection'
@@ -19,16 +19,18 @@ import {
   useStableValue,
 } from './internals/hooks'
 
-// --- Main Context ─────────────────────────────────────────--------
+// --- Composer Context ─────────────────────────────────────────--------
 
 /** Main Dactylo context. */
-export interface DactyloContext {
+export interface ComposerContext {
   /** The {@link Dactylo} editor instance. */
   editor: Dactylo
+  /** The DOM selection {@link Orchestrator}. */
+  orchestrator: Orchestrator
 }
 
-export const { Provider: DactyloProvider, useContext: useDactylo } =
-  createSafeContext<DactyloContext>({
+export const { Provider: ComposerProvider, useContext: useComposer } =
+  createSafeContext<ComposerContext>({
     errorMsg: `\`<${COMPOSER_ROOT_NAME} />\` is missing. Did you forget to wrap your component within it?`,
   })
 
@@ -44,7 +46,7 @@ export const { Provider: DactyloProvider, useContext: useDactylo } =
  * ```
  */
 export function useEditorConfig(): DactyloStaticConfig {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
   const config = useStableValue(editor.config)
 
   return config
@@ -59,7 +61,7 @@ export function useEditorConfig(): DactyloStaticConfig {
  * ```
  */
 export function useCanEdit(): boolean {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
 
   const subscribe = useStableCallback(
     editor.events.editable.subscribe.bind(editor),
@@ -80,7 +82,7 @@ export function useCanEdit(): boolean {
  * ```
  */
 export function useSetEditable() {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
   return useStableCallback(
     (
       next: boolean,
@@ -103,7 +105,7 @@ export function useSetEditable() {
  * ```
  */
 export function useDocumentState(): DocumentState {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
 
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() => {
@@ -127,7 +129,7 @@ export function useDocumentState(): DocumentState {
  * ```
  */
 export function useSelection(): Selection | null {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
 
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() => {
@@ -148,7 +150,7 @@ export function useSelection(): Selection | null {
  * ```
  */
 export function useCursorSelection(): CursorSelection | null {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
 
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() => {
@@ -173,7 +175,7 @@ export function useCursorSelection(): CursorSelection | null {
  * ```
  */
 export function useSelectionTools() {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
 
   const isBlockWithActiveCursor = useStableCallback((blockId: BlockId) =>
     editor.selection.tools.isBlockWithActiveCursor(blockId),
@@ -195,7 +197,7 @@ export function useSelectionTools() {
  * ```
  */
 export function useSelectionCommands() {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
 
   const focus = useStableCallback(
     (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
@@ -220,7 +222,7 @@ export function useSelectionCommands() {
  * ```
  */
 export function useIsFocused(): boolean {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
 
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() =>
@@ -242,7 +244,7 @@ export function useIsFocused(): boolean {
  * ```
  */
 export function useComposerCommands() {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
 
   const sendInput = useStableCallback((event: InputEvent) =>
     editor.composer.commands.sendInput(event),
@@ -267,7 +269,7 @@ export function useComposerCommands() {
  * ```
  */
 export function useBlocksTools() {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
 
   const isWithEmptyInlineContent = useStableCallback((blockId: BlockId) =>
     editor.blocks.tools.isWithEmptyInlineContent(blockId),
@@ -286,7 +288,7 @@ export function useBlocksTools() {
  * ```
  */
 export function useBlocksCommands() {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
 
   const $delete = useStableCallback((blockId: BlockId) =>
     editor.blocks.commands.delete(blockId),
@@ -307,7 +309,7 @@ export function useBlocksCommands() {
  * ```
  */
 export function useHistoryCommands() {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
 
   const undo = useStableCallback(() => editor.history.commands.undo())
   const redo = useStableCallback(() => editor.history.commands.redo())
@@ -326,7 +328,7 @@ export function useHistoryCommands() {
  * ```
  */
 export function useHistoryTools() {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
 
   const subscribe = useStableCallback(
     editor.events.history.subscribe.bind(editor),
@@ -356,14 +358,50 @@ export function useHistoryTools() {
 // --- Editable ------─────────────────────────────────────────------
 
 /**
+ * Binds `<Composer.Editable />` to {@link Dactylo} selection and events.
+ *  - DOM → model: `pointerup on the editable element + `selectionchange` events.
+ *  - Model → DOM: paths a collapsed cursor caret in the current editable block.
+ * Mount once on `<Composer.Editable />`, do not mount per block.
+ *
+ * @private
+ */
+export function useEditable() {
+  const { orchestrator } = useComposer()
+  const editableRef = useRef<HTMLDivElement>(null)
+
+  const canEdit = useCanEdit()
+  const cursorSelection = useCursorSelection()
+
+  /** Attach the orchestrator to the editable element when it is mounted and editable. */
+  useEffect(() => {
+    if (!editableRef.current || !canEdit) {
+      return
+    }
+
+    orchestrator.attach(editableRef.current)
+    return () => orchestrator.detach()
+  }, [orchestrator, canEdit])
+
+  /**
+   * Paints a collapsed caret at the position of the text cursor in the DOM.
+   * Runs only when the editor is editable and there is a cursor selection.
+   * ```
+   */
+  useIsomorphicLayoutEffect(() => {
+    if (!canEdit || !cursorSelection) {
+      return
+    }
+
+    return orchestrator.paintTextCursor(cursorSelection.anchor)
+  }, [canEdit, cursorSelection])
+
+  return { canEdit, editableRef } as const
+}
+
+/**
  * Wires a block's `contentEditable` surface to {@link Dactylo}.
  * Works only for blocks with inline content.
  *
- * @example
- * ```tsx
- * const { canEdit, editableId, editableRef, withActiveCursor } = useEditableBlock(blockId)
- * console.log(canEdit, editableId, editableRef, withActiveCursor)
- * ```
  * @private
  */
 export function useEditableBlock(blockId: BlockId) {
@@ -422,25 +460,6 @@ export function useEditableBlock(blockId: BlockId) {
     return () => editable.removeEventListener('beforeinput', onBeforeInput)
   }, [onBeforeInput])
 
-  /** Put the cursor caret in the DOM at the position of the cursor selection. */
-  useIsomorphicLayoutEffect(() => {
-    if (
-      !editableRef.current ||
-      !canEdit ||
-      !cursorSelection ||
-      !withActiveCursor
-    ) {
-      return
-    }
-
-    const editable = editableRef.current
-    const id = requestAnimationFrame(() => {
-      paintCursorCaretAtPositionInDOM(editable, cursorSelection.anchor)
-    })
-
-    return () => cancelAnimationFrame(id)
-  }, [canEdit, withActiveCursor, cursorSelection])
-
   return {
     canEdit,
     editableId,
@@ -465,7 +484,7 @@ export function useEditableBlock(blockId: BlockId) {
 export function useToolsListener(
   listener: (event: DactyloToolEvent) => void,
 ): void {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
   const stableListener = useStableCallback(listener)
 
   useEffect(
@@ -487,7 +506,7 @@ export function useToolsListener(
 export function useCommandsListener(
   listener: (event: DactyloCommandEvent) => void,
 ): void {
-  const { editor } = useDactylo()
+  const { editor } = useComposer()
   const stableListener = useStableCallback(listener)
 
   useEffect(

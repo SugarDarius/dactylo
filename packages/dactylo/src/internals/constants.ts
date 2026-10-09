@@ -39,7 +39,7 @@ export const ROOT_ATTR_NAME = 'dactylo-root'
 export const EDITABLE_ATTR_NAME = 'dactylo-editable'
 
 export const BLOCKS_ATTR_NAME = 'dactylo-blocks'
-
+export const BLOCK_ATTR_NAME = 'dactylo-block'
 export const BLOCK_ID_DATA_NAME = 'data-dactylo-block-id'
 export const BLOCK_PLACEHOLDER_ATTR_NAME = 'dactylo-block-placeholder'
 export const BLOCK_CONTENT_ATTR_NAME = 'dactylo-block-content'

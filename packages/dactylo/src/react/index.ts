@@ -6,7 +6,7 @@ export type {
 } from './types'
 export * as Composer from './primitives'
 export {
-  useDactylo,
+  useComposer,
   useIsFocused,
   useCanEdit,
   useHistoryCommands,

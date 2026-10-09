@@ -1,8 +1,9 @@
 'use client'
 
-import { forwardRef, useMemo, useRef } from 'react'
+import { forwardRef, useMemo } from 'react'
 
 import { Dactylo } from '../dactylo'
+import { Orchestrator } from '../dom/orchestrator'
 import { paintTextForDOM } from '../dom/text'
 import {
   BLOCKS_ATTR_NAME,
@@ -17,17 +18,19 @@ import {
   BLOCK_CONTENT_ATTR_NAME,
   NODE_ID_DATA_NAME,
   NODE_ATTR_NAME,
+  BLOCK_ATTR_NAME,
 } from '../internals/constants'
 import {
-  DactyloProvider,
-  useCanEdit,
+  ComposerProvider,
   useDocumentState,
   useIsFocused,
   useSelectionCommands,
   useEditorConfig,
   useEditableBlock,
   useComposerCommands,
+  useEditable,
 } from './composer'
+import type { ComposerContext } from './composer'
 import {
   COMPOSER_EDITABLE_NAME,
   COMPOSER_PARAGRAPH_BLOCK_NAME,
@@ -79,8 +82,11 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
     forwardedRef,
   ) => {
     const isMounted = useIsMounted()
-    const ctx = useStableValue({
+    const ctx = useStableValue<ComposerContext>({
+      /** Dactylo editor instance. */
       editor: new Dactylo({ config, debug, editable, placeholder }),
+      /** DOM selection orchestrator. */
+      orchestrator: new Orchestrator(),
     })
 
     if (!isMounted && clientOnly) {
@@ -94,7 +100,7 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
         {...{ [ROOT_ATTR_NAME]: '' }}
         aria-roledescription='composer'
       >
-        <DactyloProvider value={ctx}>{children}</DactyloProvider>
+        <ComposerProvider value={ctx}>{children}</ComposerProvider>
       </div>
     )
   },
@@ -113,9 +119,9 @@ const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
         {...props}
         ref={forwardedRef}
         {...{
-          [TEXT_NODE_ATTR_NAME]: '',
           [NODE_ATTR_NAME]: '',
           [NODE_ID_DATA_NAME]: node.id,
+          [TEXT_NODE_ATTR_NAME]: '',
         }}
         aria-roledescription='text-node'
         // @todo: handle marks
@@ -136,9 +142,9 @@ export const ComposerLineBreakNode = forwardRef<
     {...props}
     ref={forwardedRef}
     {...{
-      [LINE_BREAK_NODE_ATTR_NAME]: '',
       [NODE_ATTR_NAME]: '',
       [NODE_ID_DATA_NAME]: node.id,
+      [LINE_BREAK_NODE_ATTR_NAME]: '',
     }}
     aria-roledescription='line-break-node'
   />
@@ -178,9 +184,6 @@ const ComposerParagraphBlock = forwardRef<
   HTMLDivElement,
   ComposerParagraphBlockProps
 >(({ block, ...props }, forwardedRef) => {
-  const ref = useRef<HTMLDivElement>(null)
-  const mergedRefs = mergeRefs(forwardedRef, ref)
-
   const { paragraph } = useEditorConfig()
   const { canEdit, editableId, editableRef, withActiveCursor, isEmpty } =
     useEditableBlock(block.id)
@@ -192,10 +195,11 @@ const ComposerParagraphBlock = forwardRef<
   return (
     <div
       {...props}
-      ref={mergedRefs}
+      ref={forwardedRef}
       {...{
-        [PARAGRAPH_BLOCK_ATTR_NAME]: '',
+        [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
+        [PARAGRAPH_BLOCK_ATTR_NAME]: '',
       }}
       data-active={isActive ?? undefined}
       aria-roledescription='paragraph-block'
@@ -290,7 +294,9 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
     { children, autoFocus, translate = 'no', spellCheck = 'true', ...props },
     forwardedRef,
   ) => {
-    const canEdit = useCanEdit()
+    const { editableRef, canEdit } = useEditable()
+    const mergedRefs = mergeRefs(forwardedRef, editableRef)
+
     const focused = useIsFocused()
 
     const { focus } = useSelectionCommands()
@@ -315,7 +321,7 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
     return (
       <div
         {...props}
-        ref={forwardedRef}
+        ref={mergedRefs}
         {...{ [EDITABLE_ATTR_NAME]: '' }}
         translate={translate}
         spellCheck={spellCheck}

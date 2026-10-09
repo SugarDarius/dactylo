@@ -1,5 +1,5 @@
 import type { TextCursor } from '../internals/selection'
-import { findEditableNode } from './nodes'
+import { findEditableElement } from './nodes'
 
 /** A browser selection selection point. */
 export interface DOMPoint {
@@ -8,6 +8,18 @@ export interface DOMPoint {
 
   /** Character index, or child index when `node` is an element. */
   offset: number
+}
+
+/**
+ * Whether the live caret is already the collapsed point `point`.
+ * Skipping that case keeps a render from resetting the selection while typing.
+ */
+export function isCaretAt(selection: Selection, point: DOMPoint): boolean {
+  return (
+    selection.isCollapsed &&
+    selection.anchorNode === point.node &&
+    selection.anchorOffset === point.offset
+  )
 }
 
 /**
@@ -27,7 +39,7 @@ export function getDOMPointFromTextCursor(
   cursor: TextCursor,
 ): DOMPoint | null {
   const { nodeId } = cursor
-  const node = findEditableNode(editable, nodeId)
+  const node = findEditableElement(editable, nodeId)
 
   if (!node) {
     if (editable.childNodes.length === 0) {

@@ -58,3 +58,6 @@ export type Metadata = Record<
   string,
   string | number | boolean | null | undefined
 >
+
+/** A function that cancels an operation. */
+export type CancelCallback = () => void

@@ -1,8 +1,7 @@
 import { DactyloError } from '../internals/errors'
 import type { TextCursor } from '../internals/selection'
 import { clampNodeOffset } from './nodes'
-import { getDOMPointFromTextCursor } from './point'
-import { isCaretAt } from './window-selection'
+import { getDOMPointFromTextCursor, isCaretAt } from './point'
 
 /**
  * Paints a collapsed caret at cursor position in the DOM
@@ -15,7 +14,7 @@ export function paintCursorCaretAtPositionInDOM(
   const point = getDOMPointFromTextCursor(editable, cursor)
   if (!point) {
     throw DactyloError.from({
-      code: 'PAINT_DOM',
+      code: 'DOM_ORCHESTRATOR_PAINTING',
       hint: 'dom/#paintCursorCaretAtPositionInDOM',
       message: 'No point from text cursor found',
       payload: {
