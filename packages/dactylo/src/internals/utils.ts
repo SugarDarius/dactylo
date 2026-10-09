@@ -29,3 +29,13 @@ export function clamp(value: number, min: number, max: number): number {
 export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
+
+/** Checks whether DOM is available. */
+export function canUseDOM(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof navigator !== 'undefined' &&
+    typeof document !== 'undefined' &&
+    document.createElement !== undefined
+  )
+}

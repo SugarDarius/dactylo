@@ -25,7 +25,7 @@ import {
 import { TransactionPipeline } from './internals/transaction'
 import type { Transaction, TransactionSource } from './internals/transaction'
 import type { Relax } from './internals/types'
-import { negate, noop } from './internals/utils'
+import { canUseDOM, negate, noop } from './internals/utils'
 
 /** Api to interact with one aspect of the editor. */
 export interface DactyloAspectApi<A, C> {
@@ -564,6 +564,7 @@ export class Dactylo {
     fallback: () => T,
     opts?: {
       payload?: Record<string, unknown>
+      clientOnly?: true
     },
   ): T {
     const startedAt = Date.now()
@@ -572,7 +573,13 @@ export class Dactylo {
     if (!this.#editable) {
       warnOnceIf(
         this.#debug,
-        `Command \`${command}\` cannot perform any transactions or operations as editor is not editable. To make it editable please call the method \`.setEditable(true)\`. Fallback executor is used instead.`,
+        `Command \`${command}\` cannot perform any transactions or operations as editor is not editable. To make it editable please call the method \`Dactylo.setEditable(true)\`. Fallback executor is used instead.`,
+      )
+      $executor = fallback
+    } else if (opts?.clientOnly && !canUseDOM()) {
+      warnOnceIf(
+        this.#debug,
+        `Command \`${command}\` cannot be executed in a non-DOM environment. Fallback executor is used instead.`,
       )
       $executor = fallback
     }
@@ -944,7 +951,7 @@ export class Dactylo {
             'composer/send-input',
             () => this.#pipeline.digestInputEvent(event),
             negate,
-            { payload: { event } },
+            { clientOnly: true, payload: { event } },
           ),
         /**
          * Sends a keydown event to the editor and returns a boolean indicating whether the event was processed or not.
@@ -963,7 +970,7 @@ export class Dactylo {
             'composer/send-keydown',
             () => this.#pipeline.digestKeydownEvent(event),
             negate,
-            { payload: { event } },
+            { clientOnly: true, payload: { event } },
           ),
       },
       // @todo: add tools for the composer

@@ -1,3 +1,5 @@
+import { canUseDOM } from './utils'
+
 /** CSS applied to the `%cDactylo` badge in styled console output. */
 const BADGE =
   'background-color:#171717;border-radius:6px;color:#E5E5E5;padding:3px 7px;font-family:sans-serif;font-weight:600;'
@@ -6,10 +8,10 @@ const BADGE =
 function wrap(
   method: 'log' | 'warn' | 'error',
 ): (message: string, ...args: readonly unknown[]) => void {
-  return typeof window === 'undefined'
-    ? console[method]
-    : (message, ...args) =>
+  return canUseDOM()
+    ? (message, ...args) =>
         console[method]('%cDactylo', BADGE, message, ...args)
+    : console[method]
 }
 
 /**
