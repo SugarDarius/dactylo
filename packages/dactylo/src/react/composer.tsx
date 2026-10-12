@@ -395,7 +395,7 @@ export function useEditable() {
   /** Attach the orchestrator to the editable element when it is mounted. */
   useEffect(() => {
     const editable = editableRef.current
-    if (!editable) {
+    if (!editable || !canEdit) {
       return
     }
 
@@ -414,6 +414,7 @@ export function useEditable() {
       editable.removeEventListener('compositionend', onCompositionEnd)
     }
   }, [
+    canEdit,
     editor,
     onPointerUp,
     onSelectionChange,
