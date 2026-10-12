@@ -7,6 +7,7 @@ import {
   DEFAULT_SLASH_COMMAND_CHARACTER,
 } from './internals/constants'
 import { isBlockWithInlineContentEmpty } from './internals/document'
+import { DomManager } from './internals/dom-manager'
 import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
 import { DactyloError } from './internals/errors'
@@ -24,13 +25,13 @@ import {
 } from './internals/selection'
 import { TransactionPipeline } from './internals/transaction'
 import type { Transaction, TransactionSource } from './internals/transaction'
-import type { Relax } from './internals/types'
+import type { CancelCallback, Relax } from './internals/types'
 import { canUseDOM, negate, noop } from './internals/utils'
 
 /** Api to interact with one aspect of the editor. */
-export interface DactyloAspectApi<A, C> {
+export interface DactyloAspectApi<T extends object, C extends object> {
   /** Tools to query one aspect of the editor.*/
-  readonly tools: A
+  readonly tools: T
 
   /** Commands to mutate one aspect of the editor. */
   readonly commands: C
@@ -102,6 +103,11 @@ export type DactyloCommand =
   /** Selection commands */
   | 'selection/focus'
   | 'selection/blur'
+
+  /** DOM commands */
+  | 'dom/attach'
+  | 'dom/detach'
+  | 'dom/paint-caret-at'
 
   /** Blocks commands */
   | 'blocks/delete'
@@ -273,10 +279,6 @@ export type DactyloMarksApi = DactyloAspectApi<
   DactyloMarksCommands
 >
 
-/** Tools to query the composer of the editor. */
-// oxlint-disable-next-line typescript/no-empty-interface typescript/no-empty-object-type
-export interface DactyloComposerTools {}
-
 /** Commands to mutate the {@link DocumentState} of the editor from UI events. */
 export interface DactyloComposerCommands {
   /**
@@ -308,10 +310,10 @@ export interface DactyloComposerCommands {
 }
 
 /** Api to interact with the composer of the editor. */
-export type DactyloComposerApi = DactyloAspectApi<
-  DactyloComposerTools,
-  DactyloComposerCommands
->
+export interface DactyloComposerApi {
+  /** Commands to mutate the {@link DocumentState} of the editor from UI events. */
+  readonly commands: DactyloComposerCommands
+}
 
 /** Tools to query the selection of the editor. */
 export interface DactyloSelectionTools {
@@ -346,6 +348,23 @@ export type DactyloSelectionApi = DactyloAspectApi<
   DactyloSelectionTools,
   DactyloSelectionCommands
 >
+
+/** Commands to sync the DOM with the editor state. */
+export interface DactyloDomCommands {
+  /** Attaches the editable `<div />` element to the editor. */
+  readonly attach: (editable: HTMLDivElement) => void
+
+  /** Detaches the editable `<div />` element from the editor. */
+  readonly detach: () => void
+
+  /** Paints a collapsed caret at the position of the text cursor in the DOM. */
+  readonly paintCaret: () => CancelCallback
+}
+
+/** Api to interact with the editor's DOM. */
+export interface DactyloDomApi {
+  readonly commands: DactyloDomCommands
+}
 
 /** Tools to query the {@link DocumentState} blocks of the editor. */
 export interface DactyloBlocksTools {
@@ -494,6 +513,9 @@ export class Dactylo {
   /** Transaction pipeline to use for the editor */
   readonly #pipeline: TransactionPipeline
 
+  /** DOM manager to use for the editor */
+  readonly #domManager: DomManager
+
   /** Events emitted by Dactylo. */
   readonly #eventSources: DactyloEventSources
 
@@ -536,6 +558,10 @@ export class Dactylo {
           },
         },
       },
+    })
+    this.#domManager = new DomManager({
+      debug: this.#debug,
+      getSelection: () => this.#pipeline.context.selection,
     })
     this.#eventSources = {
       commands: new EventSource<DactyloCommandEvent>(),
@@ -973,8 +999,6 @@ export class Dactylo {
             { clientOnly: true, payload: { event } },
           ),
       },
-      // @todo: add tools for the composer
-      tools: {},
     }
   }
 
@@ -1052,6 +1076,60 @@ export class Dactylo {
             'selection/is-focused',
             () => isSelectionActive(this.#pipeline.context.selection),
             negate,
+          ),
+      },
+    }
+  }
+
+  /** Returns the Api to interact with the editor's DOM. */
+  get dom(): DactyloDomApi {
+    return {
+      commands: {
+        /**
+         * Attaches the DOM to the editor.
+         *
+         * @example
+         * ```ts
+         * editor.dom.commands.attach(editable)
+         * ```
+         */
+        attach: (editable: HTMLDivElement) =>
+          this.#safeExecuteCommand(
+            'dom/attach',
+            () => this.#domManager.attach(editable),
+            noop,
+            { clientOnly: true, payload: { editable } },
+          ),
+        /**
+         * Detaches the editable `<div />` element from the editor.
+         *
+         * @example
+         * ```ts
+         * editor.dom.commands.detach()
+         * ```
+         */
+        detach: () =>
+          this.#safeExecuteCommand(
+            'dom/detach',
+            () => this.#domManager.detach(),
+            noop,
+            { clientOnly: true },
+          ),
+
+        /**
+         * Paints a collapsed caret at the position of the text cursor in the DOM.
+         *
+         * @example
+         * ```ts
+         * editor.dom.commands.paintCaret()
+         * ```
+         */
+        paintCaret: () =>
+          this.#safeExecuteCommand(
+            'dom/paint-caret-at',
+            () => this.#domManager.paintCaretAt(),
+            () => noop,
+            { clientOnly: true },
           ),
       },
     }

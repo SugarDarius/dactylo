@@ -42,17 +42,6 @@
         "default": "./dist/index.cjs"
       }
     },
-    "./dom": {
-      "import": {
-        "types": "./dist/dom/index.d.ts",
-        "default": "./dist/dom/index.js"
-      },
-      "require": {
-        "types": "./dist/dom/index.d.cts",
-        "module": "./dist/dom/index.js",
-        "default": "./dist/dom/index.cjs"
-      }
-    },
     "./react": {
       "import": {
         "types": "./dist/react/index.d.ts",

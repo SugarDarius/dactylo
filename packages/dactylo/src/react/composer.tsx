@@ -6,9 +6,9 @@ import type {
   DactyloStaticConfig,
   DactyloToolEvent,
 } from '../dactylo'
-import type { Orchestrator } from '../dom/orchestrator'
 import type { BlockId } from '../internals/blocks'
 import type { DocumentState } from '../internals/document'
+import { isCursorSelection } from '../internals/selection'
 import type { CursorSelection, Selection } from '../internals/selection'
 import type { TransactionSource } from '../internals/transaction'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
@@ -25,8 +25,6 @@ import {
 export interface ComposerContext {
   /** The {@link Dactylo} editor instance. */
   editor: Dactylo
-  /** The DOM selection {@link Orchestrator}. */
-  orchestrator: Orchestrator
 }
 
 export const { Provider: ComposerProvider, useContext: useComposer } =
@@ -155,7 +153,7 @@ export function useCursorSelection(): CursorSelection | null {
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() => {
     const { selection } = editor.getContext()
-    if (selection?.__type !== 'cursor') {
+    if (!isCursorSelection(selection)) {
       return null
     }
 
@@ -366,21 +364,23 @@ export function useHistoryTools() {
  * @private
  */
 export function useEditable() {
-  const { orchestrator } = useComposer()
   const editableRef = useRef<HTMLDivElement>(null)
+
+  const { editor } = useComposer()
 
   const canEdit = useCanEdit()
   const cursorSelection = useCursorSelection()
 
-  /** Attach the orchestrator to the editable element when it is mounted and editable. */
+  /** Attach the orchestrator to the editable element when it is mounted. */
   useEffect(() => {
-    if (!editableRef.current || !canEdit) {
+    const editable = editableRef.current
+    if (!editable) {
       return
     }
 
-    orchestrator.attach(editableRef.current)
-    return () => orchestrator.detach()
-  }, [orchestrator, canEdit])
+    editor.dom.commands.attach(editable)
+    return () => editor.dom.commands.detach()
+  }, [editor])
 
   /**
    * Paints a collapsed caret at the position of the text cursor in the DOM.
@@ -391,8 +391,8 @@ export function useEditable() {
       return
     }
 
-    return orchestrator.paint.caret(cursorSelection.anchor)
-  }, [canEdit, cursorSelection])
+    return editor.dom.commands.paintCaret()
+  }, [canEdit, cursorSelection, editor])
 
   return { canEdit, editableRef } as const
 }

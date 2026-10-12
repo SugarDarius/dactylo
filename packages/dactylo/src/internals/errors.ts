@@ -38,8 +38,8 @@ export type DactyloErrorCode =
   | 'UNKNOWN_NODE_IN_BLOCK'
   /** No window selection found. */
   | 'NO_WINDOW_SELECTION'
-  /** Unexpected failure when painting into the DOM. */
-  | 'DOM_ORCHESTRATOR_PAINTING'
+  /** Unexpected failure when painting selection into the DOM. */
+  | 'SELECTION_MANAGER_PAINTING'
 
 /**
  * Typed error for Dactylo operations.

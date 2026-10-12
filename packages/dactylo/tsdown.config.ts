@@ -7,8 +7,6 @@ export default defineConfig({
   entry: [
     /** Main package entry point. */
     'src/index.ts',
-    /** DOM entry sub-module entry point. */
-    'src/dom/index.ts',
     /** React sub-module entry point. */
     'src/react/index.ts',
   ],

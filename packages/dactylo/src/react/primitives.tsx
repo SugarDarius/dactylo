@@ -1,10 +1,8 @@
 'use client'
 
-import { forwardRef, useMemo } from 'react'
+import { forwardRef, useDebugValue, useMemo } from 'react'
 
 import { Dactylo } from '../dactylo'
-import { Orchestrator } from '../dom/orchestrator'
-import { paintTextForDOM } from '../dom/text'
 import {
   BLOCKS_ATTR_NAME,
   BLOCK_CONTENT_EDITABLE_DATA_NAME,
@@ -20,6 +18,7 @@ import {
   NODE_ATTR_NAME,
   BLOCK_ATTR_NAME,
 } from '../internals/constants'
+import { paintTextForDOM } from '../internals/dom'
 import {
   ComposerProvider,
   useDocumentState,
@@ -85,9 +84,9 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
     const ctx = useStableValue<ComposerContext>({
       /** Dactylo editor instance. */
       editor: new Dactylo({ config, debug, editable, placeholder }),
-      /** DOM selection orchestrator. */
-      orchestrator: new Orchestrator(),
     })
+
+    useDebugValue(ctx)
 
     if (!isMounted && clientOnly) {
       return null
