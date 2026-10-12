@@ -392,7 +392,10 @@ export function useEditable() {
     editor.dom.commands.syncSelection()
   })
 
-  /** Attach the orchestrator to the editable element when it is mounted. */
+  /**
+   * Attach the orchestrator to the editable element when it is mounted.
+   * And adds the event listeners to the editable element.
+   */
   useEffect(() => {
     const editable = editableRef.current
     if (!editable || !canEdit) {
