@@ -15,6 +15,7 @@ export {
   useBlocksCommands,
   useComposerCommands,
   useSelection,
+  useSetEditable,
   useCursorSelection,
   useSelectionTools,
   useSelectionCommands,

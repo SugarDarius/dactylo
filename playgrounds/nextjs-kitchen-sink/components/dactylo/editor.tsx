@@ -2,8 +2,10 @@
 
 import {
   Composer,
+  useCanEdit,
   useHistoryCommands,
   useHistoryTools,
+  useSetEditable,
 } from '@sugardarius/dactylo/react'
 import {
   Redo2,
@@ -18,6 +20,8 @@ import {
   TextAlignEnd,
   TextAlignJustify,
   CodeXml,
+  Lock,
+  LockOpen,
 } from 'lucide-react'
 
 import { Button } from '~/components/ui/button'
@@ -27,6 +31,8 @@ import { cn } from '~/lib/utils'
 export function Toolbar() {
   const { canUndo, canRedo } = useHistoryTools()
   const { undo, redo } = useHistoryCommands()
+  const canEdit = useCanEdit()
+  const setEditable = useSetEditable()
 
   return (
     <div className='border-border flex w-full items-center gap-1.5 border-b px-1.5 py-2'>
@@ -75,6 +81,19 @@ export function Toolbar() {
         </Button>
       </div>
       <Separator orientation='vertical' />
+      <div className='flex items-center'>
+        <Button
+          variant='ghost'
+          size='icon'
+          onClick={() => setEditable(!canEdit)}
+        >
+          {canEdit ? (
+            <Lock className='size-3.5' />
+          ) : (
+            <LockOpen className='size-3.5' />
+          )}
+        </Button>
+      </div>
     </div>
   )
 }
