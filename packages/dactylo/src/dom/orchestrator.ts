@@ -5,7 +5,7 @@ import type { CancelCallback } from '../internals/types'
 import { findBlockEditableElement } from './blocks'
 import { paintCursorCaretAtPositionInDOM } from './cursor'
 
-/** Options for configuring {@link Orchestrator}. */
+/** Options for constructing {@link Orchestrator}. */
 export interface OrchestratorOptions {
   /** Whether to enable debug mode. */
   readonly debug?: boolean
@@ -76,40 +76,45 @@ export class Orchestrator {
   }
 
   /** Whether the DOM → model sync should be skipped. */
-  shouldSkipSync(): boolean {
+  #shouldSkipSync(): boolean {
     return this.#isPainting
   }
 
-  /** Paints a collapsed caret at the position of the text cursor in the DOM. */
-  paintTextCursor(cursor: TextCursor): CancelCallback {
-    const editable = this.#editable
-    return this.#runWithRaf(() => {
-      this.#runPainting(() => {
-        if (!editable) {
-          warnOnceIf(
-            this.#debug,
-            'No editable element found. Attach the orchestrator to the editable element first using `Orchestrator.attach(element)`.',
-          )
-          return
-        }
+  /** Returns the API to paint the DOM selection. */
+  get paint() {
+    return {
+      /** Paints a collapsed caret at the position of the text cursor in the DOM. */
+      caret: (cursor: TextCursor): CancelCallback => {
+        const editable = this.#editable
+        return this.#runWithRaf(() => {
+          this.#runPainting(() => {
+            if (!editable) {
+              warnOnceIf(
+                this.#debug,
+                'No editable element found. Attach the orchestrator to the editable element first using `Orchestrator.attach(element)`.',
+              )
+              return
+            }
 
-        const editableContent = findBlockEditableElement(
-          editable,
-          cursor.blockId,
-        )
-        if (!editableContent) {
-          throw DactyloError.from({
-            code: 'DOM_ORCHESTRATOR_PAINTING',
-            hint: 'Orchestrator/#paintTextCursor',
-            message: `No editable block content found for block id: ${cursor.blockId}`,
-            payload: {
-              blockId: cursor.blockId,
-            },
+            const editableContent = findBlockEditableElement(
+              editable,
+              cursor.blockId,
+            )
+            if (!editableContent) {
+              throw DactyloError.from({
+                code: 'DOM_ORCHESTRATOR_PAINTING',
+                hint: 'Orchestrator/#paintTextCursor',
+                message: `No editable block content found for block id: ${cursor.blockId}`,
+                payload: {
+                  blockId: cursor.blockId,
+                },
+              })
+            }
+
+            paintCursorCaretAtPositionInDOM(editableContent, cursor)
           })
-        }
-
-        paintCursorCaretAtPositionInDOM(editableContent, cursor)
-      })
-    })
+        })
+      },
+    }
   }
 }

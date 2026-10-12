@@ -384,15 +384,14 @@ export function useEditable() {
 
   /**
    * Paints a collapsed caret at the position of the text cursor in the DOM.
-   * Runs only when the editor is editable and there is a cursor selection.
-   * ```
+   * Runs only when the editor is editable and when there is a cursor selection.
    */
   useIsomorphicLayoutEffect(() => {
     if (!canEdit || !cursorSelection) {
       return
     }
 
-    return orchestrator.paintTextCursor(cursorSelection.anchor)
+    return orchestrator.paint.caret(cursorSelection.anchor)
   }, [canEdit, cursorSelection])
 
   return { canEdit, editableRef } as const
