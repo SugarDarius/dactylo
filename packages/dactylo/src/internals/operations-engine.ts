@@ -76,7 +76,7 @@ import {
   isRangeSelection,
   isSelectionActive,
 } from './selection'
-import type { TextCursor } from './selection'
+import type { TextCursor, Selection } from './selection'
 import { assertNever } from './utils'
 
 // --- Validate ─────────────────────────────────────────------------
@@ -1884,6 +1884,22 @@ export class OperationsEngine {
     ]
   }
 
+  /** Builds the operations to update selection. */
+  buildUpdateSelectionOps(
+    context: EditorContext,
+    next: Selection | null,
+  ): Operation[] {
+    const ops: Operation[] = [
+      {
+        __type: 'set_selection',
+        next,
+        prev: context.selection,
+      },
+    ]
+
+    return ops
+  }
+
   /** Builds the operations to clear the selection. */
   buildClearSelectionOps(context: EditorContext): Operation[] | null {
     const { selection } = context
@@ -1893,13 +1909,15 @@ export class OperationsEngine {
       return null
     }
 
-    return [
+    const ops: Operation[] = [
       {
         __type: 'set_selection',
         next: null,
         prev: selection,
       },
     ]
+
+    return ops
   }
 
   // --- Blocks operations ─────────────────────────────────────────---

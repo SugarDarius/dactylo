@@ -79,7 +79,7 @@ import type { Selection } from './selection'
  * User presses "A"
  *        |
  *        ▼
- * TransactPipeline.#context (EditorContext) → buildKeyOps({ context, cursor })
+ * TransactPipeline.#context (EditorContext) → buildTypedCharOps({ context, cursor })
  *        │                                         │
  *        │                                         ▼
  *        |                            [ insert_text, set_selection ]

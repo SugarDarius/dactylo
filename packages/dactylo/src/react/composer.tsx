@@ -371,6 +371,27 @@ export function useEditable() {
   const canEdit = useCanEdit()
   const cursorSelection = useCursorSelection()
 
+  const onPointerUp = useStableCallback((event: PointerEvent) => {
+    if (event.defaultPrevented) {
+      return
+    }
+
+    editor.dom.commands.syncSelection()
+  })
+
+  const onSelectionChange = useStableCallback(() => {
+    editor.dom.commands.syncSelection(true)
+  })
+
+  const onCompositionStart = useStableCallback(() => {
+    editor.composer.commands.setIMEComposing(true)
+  })
+
+  const onCompositionEnd = useStableCallback(() => {
+    editor.composer.commands.setIMEComposing(false)
+    editor.dom.commands.syncSelection()
+  })
+
   /** Attach the orchestrator to the editable element when it is mounted. */
   useEffect(() => {
     const editable = editableRef.current
@@ -379,8 +400,26 @@ export function useEditable() {
     }
 
     editor.dom.commands.attach(editable)
-    return () => editor.dom.commands.detach()
-  }, [editor])
+
+    editable.addEventListener('pointerup', onPointerUp)
+    editable.addEventListener('selectionchange', onSelectionChange)
+    editable.addEventListener('compositionstart', onCompositionStart)
+    editable.addEventListener('compositionend', onCompositionEnd)
+    return () => {
+      editor.dom.commands.detach()
+
+      editable.removeEventListener('pointerup', onPointerUp)
+      editable.removeEventListener('selectionchange', onSelectionChange)
+      editable.removeEventListener('compositionstart', onCompositionStart)
+      editable.removeEventListener('compositionend', onCompositionEnd)
+    }
+  }, [
+    editor,
+    onPointerUp,
+    onSelectionChange,
+    onCompositionStart,
+    onCompositionEnd,
+  ])
 
   /**
    * Paints a collapsed caret at the position of the text cursor in the DOM.

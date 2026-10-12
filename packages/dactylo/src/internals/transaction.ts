@@ -14,6 +14,7 @@ import type { Operation, InsertBlockOpPosition } from './operations'
 import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
 import { isCursorSelection, isSelectionActive } from './selection'
+import type { Selection } from './selection'
 import { assertNever } from './utils'
 import { warnHistoryInputType } from './warnings'
 
@@ -378,8 +379,8 @@ export interface TransactionPipelineOptions {
  * └─────────────────────────────────────────────────────────────────────────┘
  *          │ validate + apply on                    │ read at commit only
  *          ▼                                        ▼
- *    EditorContext ──────────────► EditorContext
- *       (prev)                         (next)
+ *    EditorContext ──────────────-----------------------► EditorContext
+ *       (prev)                                               (next)
  *
  * | Type                | Mutable?      | Serialized to disk?   | Role                             |
  * |---------------------|---------------|-----------------------|----------------------------------|
@@ -397,6 +398,12 @@ export class TransactionPipeline {
 
   /** Current editor context */
   #context: EditorContext
+
+  /**
+   * Whether the IME composition is currently active.
+   * Covers gaps between events, where `isComposing` is missing or already `false`.
+   */
+  #isIMEComposing = false
 
   /** The operations engine to use for the transaction pipeline. */
   readonly #operationsEngine: OperationsEngine
@@ -418,9 +425,9 @@ export class TransactionPipeline {
      *  - a markdown string
      *
      * TODO: handle initial content from props
-     *  - from JSON
+     *  - from JSON (validated schema version)
      *  - from markdown string
-     *  - path if no inline content is provided for a block with inline content
+     *  - patch if no inline content is provided for a block with inline content
      */
     this.#context = createInitialEditorContext()
     this.#batch = new Batch({
@@ -532,6 +539,16 @@ export class TransactionPipeline {
       ops,
       policy: { source: 'editor', ...policy },
     })
+  }
+
+  /** Whether the IME composition is currently active. */
+  get isIMEComposing(): boolean {
+    return this.#isIMEComposing
+  }
+
+  /** Sets the IME composing state. */
+  setIMEComposing(isComposing: boolean): void {
+    this.#isIMEComposing = isComposing
   }
 
   // ─── Events ───────────────────────────────────────────────────----
@@ -715,6 +732,7 @@ export class TransactionPipeline {
     }
 
     // @todo: handle composition input types
+    // @todo: handle insert replacement text
     switch (inputType) {
       /** Not handled input types bucket. */
       case 'historyUndo':
@@ -752,6 +770,9 @@ export class TransactionPipeline {
 
           return true
         }
+
+        // @todo: handle range selection
+
         return false
       }
       case 'insertParagraph': {
@@ -774,6 +795,9 @@ export class TransactionPipeline {
 
           return true
         }
+
+        // @todo: handle range selection
+
         return false
       }
       case 'deleteContentBackward': {
@@ -955,6 +979,25 @@ export class TransactionPipeline {
 
     this.#commit(ops, {
       label: transactionPolicyLabel('selection', 'put-at-document-end'),
+      pushToHistory: false,
+      source,
+    })
+  }
+
+  /**
+   * Updates the selection to the given value.
+   * Does not push to the history.
+   */
+  updateSelection(
+    next: Selection | null,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const ops = this.#operationsEngine.buildUpdateSelectionOps(
+      this.#context,
+      next,
+    )
+    this.#commit(ops, {
+      label: transactionPolicyLabel('selection', 'update'),
       pushToHistory: false,
       source,
     })

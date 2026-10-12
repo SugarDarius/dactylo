@@ -7,7 +7,7 @@ import {
   DEFAULT_SLASH_COMMAND_CHARACTER,
 } from './internals/constants'
 import { isBlockWithInlineContentEmpty } from './internals/document'
-import { DomManager } from './internals/dom-manager'
+import { DOMManager } from './internals/dom-manager'
 import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
 import { DactyloError } from './internals/errors'
@@ -23,6 +23,7 @@ import {
   isBlockWithActiveCursor,
   isSelectionActive,
 } from './internals/selection'
+import type { Selection } from './internals/selection'
 import { TransactionPipeline } from './internals/transaction'
 import type { Transaction, TransactionSource } from './internals/transaction'
 import type { CancelCallback, Relax } from './internals/types'
@@ -99,6 +100,7 @@ export type DactyloCommand =
   /** Composer commands */
   | 'composer/send-input'
   | 'composer/send-keydown'
+  | 'composer/set-ime-composing'
 
   /** Selection commands */
   | 'selection/focus'
@@ -108,6 +110,7 @@ export type DactyloCommand =
   | 'dom/attach'
   | 'dom/detach'
   | 'dom/paint-caret-at'
+  | 'dom/sync-selection'
 
   /** Blocks commands */
   | 'blocks/delete'
@@ -293,6 +296,8 @@ export interface DactyloComposerCommands {
    * Using `beforeinput` event handler is meant to be used to get intent before mutating DOM and
    * for IME composition and be compliant with virtual mobile keyboards (iOS and Android)
    * by telling us "What's being inserted", not just "What's being pressed".
+   *
+   * Client only.
    */
   readonly sendInput: (event: InputEvent) => boolean
 
@@ -305,8 +310,13 @@ export interface DactyloComposerCommands {
    *  - copy intents from clipboard
    *  - select-all/deselect from keyboard
    *  - arrow navigation from keyboard
+   *
+   * Client only.
    */
   readonly sendKeydown: (event: KeyboardEvent) => boolean
+
+  /** Sets the IME composing state. */
+  readonly setIMEComposing: (isComposing: boolean) => void
 }
 
 /** Api to interact with the composer of the editor. */
@@ -351,14 +361,17 @@ export type DactyloSelectionApi = DactyloAspectApi<
 
 /** Commands to sync the DOM with the editor state. */
 export interface DactyloDomCommands {
-  /** Attaches the editable `<div />` element to the editor. */
+  /** Attaches the editable `<div />` element to the editor. Client only. */
   readonly attach: (editable: HTMLDivElement) => void
 
-  /** Detaches the editable `<div />` element from the editor. */
+  /** Detaches the editable `<div />` element from the editor. Client only. */
   readonly detach: () => void
 
-  /** Paints a collapsed caret at the position of the text cursor in the DOM. */
+  /** Paints a collapsed caret at the position of the text cursor in the DOM. Client only. */
   readonly paintCaret: () => CancelCallback
+
+  /** Synchronizes the DOM selection with the editor state. Client only. */
+  readonly syncSelection: (fromSelectionChange?: boolean) => void
 }
 
 /** Api to interact with the editor's DOM. */
@@ -514,7 +527,7 @@ export class Dactylo {
   readonly #pipeline: TransactionPipeline
 
   /** DOM manager to use for the editor */
-  readonly #domManager: DomManager
+  readonly #domManager: DOMManager
 
   /** Events emitted by Dactylo. */
   readonly #eventSources: DactyloEventSources
@@ -559,8 +572,11 @@ export class Dactylo {
         },
       },
     })
-    this.#domManager = new DomManager({
+    this.#domManager = new DOMManager({
+      commitSelection: (next: Selection | null) =>
+        this.#pipeline.updateSelection(next, 'user'),
       debug: this.#debug,
+      getIMEComposingState: () => this.#pipeline.isIMEComposing,
       getSelection: () => this.#pipeline.context.selection,
     })
     this.#eventSources = {
@@ -960,6 +976,8 @@ export class Dactylo {
       commands: {
         /**
          * Sends an input event to the editor and returns a boolean indicating whether the event was processed or not.
+         * Client only.
+         *
          * @example
          * ```ts
          * const handleBeforeInput = (event: InputEvent) => {
@@ -981,6 +999,8 @@ export class Dactylo {
           ),
         /**
          * Sends a keydown event to the editor and returns a boolean indicating whether the event was processed or not.
+         * Client only.
+         *
          * @example
          * ```ts
          * const handleKeyDown = (event: KeyboardEvent) => {
@@ -997,6 +1017,22 @@ export class Dactylo {
             () => this.#pipeline.digestKeydownEvent(event),
             negate,
             { clientOnly: true, payload: { event } },
+          ),
+
+        /**
+         * Sets the IME composing state.
+         *
+         * @example
+         * ```ts
+         * editor.composer.commands.setIMEComposing(true)
+         * ```
+         */
+        setIMEComposing: (isComposing: boolean): void =>
+          this.#safeExecuteCommand(
+            'composer/set-ime-composing',
+            () => this.#pipeline.setIMEComposing(isComposing),
+            noop,
+            { payload: { isComposing } },
           ),
       },
     }
@@ -1102,6 +1138,7 @@ export class Dactylo {
           ),
         /**
          * Detaches the editable `<div />` element from the editor.
+         * Client only.
          *
          * @example
          * ```ts
@@ -1118,6 +1155,7 @@ export class Dactylo {
 
         /**
          * Paints a collapsed caret at the position of the text cursor in the DOM.
+         * Client only.
          *
          * @example
          * ```ts
@@ -1129,6 +1167,23 @@ export class Dactylo {
             'dom/paint-caret-at',
             () => this.#domManager.paintCaretAt(),
             () => noop,
+            { clientOnly: true },
+          ),
+
+        /**
+         * Synchronizes the DOM selection with the editor state.
+         * Client only.
+         *
+         * @example
+         * ```ts
+         * editor.dom.commands.syncSelection()
+         * ```
+         */
+        syncSelection: (fromSelectionChange?: boolean) =>
+          this.#safeExecuteCommand(
+            'dom/sync-selection',
+            () => this.#domManager.scheduleSync(fromSelectionChange),
+            noop,
             { clientOnly: true },
           ),
       },

@@ -1,14 +1,69 @@
 import { error, warnOnceIf } from './console'
 import {
   clampNodeOffset,
+  findBlockContentEditableFromDOMNode,
   findBlockEditableElement,
+  findBlockIdFromDomNode,
   getDOMPointFromTextCursor,
+  getTextCursorFromDOMPoint,
   isCaretAt,
+  isWindowSelectionInsideEditable,
 } from './dom'
 import { DactyloError } from './errors'
-import { isCursorSelection } from './selection'
+import {
+  areSelectionsEqual,
+  createCursor,
+  createRange,
+  isCursorSelection,
+} from './selection'
 import type { Selection, TextCursor } from './selection'
 import type { CancelCallback } from './types'
+
+export function getSelectionFromEditable(
+  editable: HTMLDivElement,
+): Selection | null {
+  const domSelection = window.getSelection()
+  if (!domSelection || domSelection.rangeCount === 0) {
+    return null
+  }
+
+  if (!isWindowSelectionInsideEditable(editable, domSelection)) {
+    return null
+  }
+
+  const { anchorNode, anchorOffset, focusNode, focusOffset, isCollapsed } =
+    domSelection
+
+  if (!anchorNode || !focusNode) {
+    return null
+  }
+
+  const anchorBlockId = findBlockIdFromDomNode(anchorNode)
+  const focusBlockId = findBlockIdFromDomNode(focusNode)
+  if (!anchorBlockId || !focusBlockId) {
+    return null
+  }
+
+  const anchorContent = findBlockContentEditableFromDOMNode(anchorNode)
+  const focusContent = findBlockContentEditableFromDOMNode(focusNode)
+  if (!anchorContent || !focusContent) {
+    return null
+  }
+
+  const anchor = getTextCursorFromDOMPoint(anchorContent, anchorBlockId, {
+    node: anchorNode,
+    offset: anchorOffset,
+  })
+  const focus = getTextCursorFromDOMPoint(focusContent, focusBlockId, {
+    node: focusNode,
+    offset: focusOffset,
+  })
+  if (!anchor || !focus) {
+    return null
+  }
+
+  return isCollapsed ? createCursor(anchor) : createRange(anchor, focus)
+}
 
 /**
  * Paints a collapsed caret at cursor position in the DOM
@@ -63,12 +118,18 @@ export function paintCaretAt(
 }
 
 /** Options for constructing {@link DomManager}. */
-export interface DomManagerOptions {
+export interface DOMManagerOptions {
   /** Whether to enable debug mode. */
   readonly debug?: boolean
 
   /** Callback to invoke to get the current selection from {@link EditorContext}. */
   readonly getSelection: () => Selection | null
+
+  /** Callback to invoke to commit the selection to {@link EditorContext}. */
+  readonly commitSelection: (next: Selection | null) => void
+
+  /** Callback to invoke to get the IME composing state. */
+  readonly getIMEComposingState: () => boolean
 }
 
 /**
@@ -78,7 +139,7 @@ export interface DomManagerOptions {
  * 2. Paint caret
  *  👉🏻 {@link Selection} → DOM: paints a collapsed cursor caret in the current editable block.
  */
-export class DomManager {
+export class DOMManager {
   /** The HTML div `[dactylo-editable]` element. */
   #editable: HTMLDivElement | null = null
 
@@ -98,19 +159,17 @@ export class DomManager {
   /** Callback to invoke to get the current selection from {@link EditorContext}. */
   readonly #getSelection: () => Selection | null
 
-  constructor(options: DomManagerOptions) {
+  /** Callback to invoke to commit the selection to {@link EditorContext}. */
+  readonly #commitSelection: (next: Selection | null) => void
+
+  /** Callback to invoke to get the IME composing state. */
+  readonly #getIMEComposingState: () => boolean
+
+  constructor(options: DOMManagerOptions) {
     this.#debug = options.debug ?? false
     this.#getSelection = options.getSelection
-  }
-
-  /** Attaches the view manager to the editable element. */
-  attach(editable: HTMLDivElement): void {
-    this.#editable = editable
-  }
-
-  /** Detaches the view manager from the editable element. */
-  detach(): void {
-    this.#editable = null
+    this.#commitSelection = options.commitSelection
+    this.#getIMEComposingState = options.getIMEComposingState
   }
 
   /**
@@ -132,14 +191,22 @@ export class DomManager {
     }
   }
 
+  /** Cancels the scheduled sync animation frame. */
+  #cancelScheduledSync(): void {
+    if (this.#syncAfId !== null) {
+      cancelAnimationFrame(this.#syncAfId)
+      this.#syncAfId = null
+    }
+  }
+
   /**
    * Reads `window.getSelection()` under the attached `[dactylo-editable]`,
    * maps it to {@link Selection} and updates the {@link EditorContext} with the new selection
    * when it differs.
    */
   #sync(): void {
-    /** When the dom manager is painting, skip the sync. */
-    if (this.#isPainting) {
+    /** When the dom manager is painting or the IME composition is active, skip the sync. */
+    if (this.#isPainting || this.#getIMEComposingState()) {
       return
     }
 
@@ -149,19 +216,66 @@ export class DomManager {
         this.#debug,
         'DomManager/#sync: no editable element found. Attach the dom manager to the editable element first using `DomManager.attach(element)`.',
       )
-      // return
+      return
     }
+
+    const nextSelection = getSelectionFromEditable(editable)
+    if (
+      nextSelection === null ||
+      areSelectionsEqual(nextSelection, this.#getSelection())
+    ) {
+      return
+    }
+
+    this.#commitSelection(nextSelection)
+  }
+
+  /** Attaches the view manager to the editable element. */
+  attach(editable: HTMLDivElement): void {
+    this.#editable = editable
+  }
+
+  /** Detaches the view manager from the editable element. */
+  detach(): void {
+    this.#cancelScheduledSync()
+    this.#editable = null
   }
 
   /**
    * Schedules the DOM → {@link Selection} sync on next animation frame.
    * Coalesces multiple `pointerup` / `selectionchange` events into one read.
    */
-  scheduleSync(): void {
+  scheduleSync(fromSelectionChange = false): void {
+    const editable = this.#editable
+    if (!editable) {
+      warnOnceIf(
+        this.#debug,
+        'DomManager/scheduleSync: no editable element found. Attach the dom manager to the editable element first using `DomManager.attach(element)`.',
+      )
+      return
+    }
+
+    /**
+     * When sync is scheduled from a `selectionchange` event,
+     * we need to cancel it if:
+     *  - There is no anchor node in the current window selection.
+     *  - The anchor node is not inside the editable `<div />` element.
+     */
+    if (fromSelectionChange) {
+      const domSelection = window.getSelection()
+      if (
+        !domSelection ||
+        !domSelection.anchorNode ||
+        !editable.contains(domSelection.anchorNode)
+      ) {
+        return
+      }
+    }
     /** When a sync is already scheduled, skip the schedule. */
     if (this.#syncAfId !== null) {
       return
     }
+
     this.#syncAfId = requestAnimationFrame(() => {
       this.#syncAfId = null
       this.#sync()
@@ -172,6 +286,11 @@ export class DomManager {
   paintCaretAt(): CancelCallback {
     /** Runs the painting operation before the next browser re-paint. */
     const id = requestAnimationFrame(() => {
+      /** When the IME composition is active, skip the painting. */
+      if (this.#getIMEComposingState()) {
+        return
+      }
+
       const editable = this.#editable
       if (!editable) {
         warnOnceIf(

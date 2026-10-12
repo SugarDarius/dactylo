@@ -8,9 +8,21 @@ import {
   BLOCKS_ATTR_NAME,
   DOM_SPACE_UNICODE_CODEPOINT,
   DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT,
+  BLOCK_CONTENT_EDITABLE_DATA_NAME,
+  LINE_BREAK_NODE_ATTR_NAME,
+  TEXT_NODE_ATTR_NAME,
 } from './constants'
 import type { NodeId } from './nodes'
 import type { TextCursor } from './selection'
+
+/** A browser selection selection point. */
+export interface DOMPoint {
+  /** Node the collapsed selection is at. */
+  node: Node
+
+  /** Character index, or child index when `node` is an element. */
+  offset: number
+}
 
 /**
  * Converts a dataset attribute name to a JavaScript property name.
@@ -26,6 +38,49 @@ export function toDatasetProperty(attr: string): string {
       // oxlint-disable-next-line prefer-named-capture-group
       .replaceAll(/-([a-z])/gu, (_, letter: string) => letter.toUpperCase())
   )
+}
+
+/**
+ * Counts model characters represented by painted DOM text.
+ *
+ * {@link paintTextForDOM} inserts ZWSP (and sometimes NBSP) that are not
+ * stored on `TextNode.text`. DOM→model mapping must use this helper.
+ */
+export function modelLengthFromPaintedDOMText(painted: string): number {
+  let model = 0
+  // oxlint-disable-next-line typescript/prefer-for-of
+  for (let i = 0; i < painted.length; i += 1) {
+    if (painted[i] === DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT) {
+      continue
+    }
+    model += 1
+  }
+  return model
+}
+
+/**
+ * Model offset for a caret inside one `[dactylo-node]` host that may contain
+ * several `#text` nodes (splits, marks, browser normalization).
+ */
+export function modelOffsetInInlineTextHost(
+  host: HTMLElement,
+  targetText: Text,
+  domOffsetInTarget: number,
+): number {
+  const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT)
+  let model = 0
+  let text = walker.nextNode() as Text | null
+  while (text) {
+    if (text === targetText) {
+      return (
+        model +
+        modelLengthFromPaintedDOMText(text.data.slice(0, domOffsetInTarget))
+      )
+    }
+    model += modelLengthFromPaintedDOMText(text.data)
+    text = walker.nextNode() as Text | null
+  }
+  return model
 }
 
 /** Reads `data-dactylo-block-id` from a `[dactylo-paragraph-block]` wrapper. */
@@ -52,6 +107,21 @@ export function findBlocksElement(
     current = current.nextSibling
   }
 
+  return null
+}
+
+/** Finds the block id from a DOM node. */
+export function findBlockIdFromDomNode(node: Node | null): BlockId | null {
+  let current: Node | null = node
+  while (current) {
+    if (
+      current instanceof HTMLElement &&
+      current.getAttribute(BLOCK_ATTR_NAME) !== null
+    ) {
+      return readBlockIdFromElement(current)
+    }
+    current = current.parentNode
+  }
   return null
 }
 
@@ -110,6 +180,31 @@ export function findBlockEditableElement(
 }
 
 /**
+ * Nearest `[dactylo-block-content]` with `data-dactylo-block-content-editable="true"`.
+ * That node is the per-block `contentEditable` surface.
+ */
+export function findBlockContentEditableFromDOMNode(
+  node: Node | null,
+): HTMLDivElement | null {
+  let current: Node | null = node
+  while (current) {
+    if (current instanceof HTMLElement) {
+      if (!current.hasAttribute(BLOCK_CONTENT_ATTR_NAME)) {
+        current = current.parentNode
+        continue
+      }
+      const flag =
+        current.dataset[toDatasetProperty(BLOCK_CONTENT_EDITABLE_DATA_NAME)]
+      if (flag === 'true' && current instanceof HTMLDivElement) {
+        return current
+      }
+    }
+    current = current.parentNode
+  }
+  return null
+}
+
+/**
  * Clamps `offset` to the range `Range.setStart` accepts for `node`.
  *
  * The model offset is already validated, but the DOM text can be shorter for
@@ -151,25 +246,19 @@ export function findEditableElement(
   return null
 }
 
-/** A browser selection selection point. */
-export interface DOMPoint {
-  /** Node the collapsed selection is at. */
-  node: Node
-
-  /** Character index, or child index when `node` is an element. */
-  offset: number
-}
-
-/**
- * Whether the live caret is already the collapsed point `point`.
- * Skipping that case keeps a render from resetting the selection while typing.
- */
-export function isCaretAt(selection: Selection, point: DOMPoint): boolean {
-  return (
-    selection.isCollapsed &&
-    selection.anchorNode === point.node &&
-    selection.anchorOffset === point.offset
-  )
+/** Nearest ancestor marked `[dactylo-node]`. */
+export function findClosestDactyloNode(node: Node): HTMLElement | null {
+  let current: Node | null = node
+  while (current) {
+    if (
+      current instanceof HTMLElement &&
+      current.getAttribute(NODE_ATTR_NAME) !== null
+    ) {
+      return current
+    }
+    current = current.parentNode
+  }
+  return null
 }
 
 /**
@@ -247,4 +336,122 @@ export function paintTextForDOM(text: string): string {
   }
 
   return rendered
+}
+
+/** Maps a text host boundary to a model offset (start or end of inline text). */
+export function cursorAtTextHostBoundary(
+  host: HTMLElement,
+  blockId: BlockId,
+  nodeId: NodeId,
+  domChildOffset: number,
+): TextCursor {
+  if (domChildOffset <= 0) {
+    return { blockId, nodeId, offset: 0 }
+  }
+  let model = 0
+  const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT)
+  let text = walker.nextNode() as Text | null
+  while (text) {
+    model += modelLengthFromPaintedDOMText(text.data)
+    text = walker.nextNode() as Text | null
+  }
+  return { blockId, nodeId, offset: model }
+}
+
+/** Maps child-index on `[dactylo-block-content]` to {@link TextCursor}. */
+export function cursorAtBlockContentChildIndex(
+  blockContent: HTMLDivElement,
+  blockId: BlockId,
+  index: number,
+): TextCursor | null {
+  const { childNodes } = blockContent
+  if (childNodes.length === 0) {
+    return null
+  }
+  const clamped = Math.max(0, Math.min(index, childNodes.length))
+  const child = childNodes[clamped] ?? childNodes[clamped - 1]
+  if (!(child instanceof HTMLElement)) {
+    return null
+  }
+  if (child.getAttribute(NODE_ATTR_NAME) === null) {
+    return null
+  }
+  const nodeId = readNodeIdFromElement(child)
+  if (!nodeId) {
+    return null
+  }
+  if (clamped < childNodes.length) {
+    return { blockId, nodeId, offset: 0 }
+  }
+  if (child.hasAttribute(LINE_BREAK_NODE_ATTR_NAME)) {
+    return { blockId, nodeId, offset: 0 }
+  }
+  return cursorAtTextHostBoundary(child, blockId, nodeId, 1)
+}
+
+/** Maps one live selection endpoint (`anchor` or `focus`) to {@link TextCursor}. */
+export function getTextCursorFromDOMPoint(
+  blockContent: HTMLDivElement,
+  blockId: BlockId,
+  point: DOMPoint,
+): TextCursor | null {
+  const { node, offset } = point
+  if (node.nodeType === Node.TEXT_NODE) {
+    const host = findClosestDactyloNode(node)
+    if (!host?.hasAttribute(TEXT_NODE_ATTR_NAME)) {
+      return null
+    }
+    const nodeId = readNodeIdFromElement(host)
+    if (!nodeId) {
+      return null
+    }
+    return {
+      blockId,
+      nodeId,
+      offset: modelOffsetInInlineTextHost(host, node as Text, offset),
+    }
+  }
+  if (
+    node instanceof HTMLElement &&
+    node.getAttribute(NODE_ATTR_NAME) !== null
+  ) {
+    const nodeId = readNodeIdFromElement(node)
+    if (!nodeId) {
+      return null
+    }
+    if (node.hasAttribute(LINE_BREAK_NODE_ATTR_NAME)) {
+      return { blockId, nodeId, offset: 0 }
+    }
+    if (node.hasAttribute(TEXT_NODE_ATTR_NAME)) {
+      return cursorAtTextHostBoundary(node, blockId, nodeId, offset)
+    }
+  }
+  if (node === blockContent) {
+    return cursorAtBlockContentChildIndex(blockContent, blockId, offset)
+  }
+  return null
+}
+
+/** Whether both endpoints of the live DOM selection lie inside `[dactylo-editable]`. */
+export function isWindowSelectionInsideEditable(
+  editable: HTMLDivElement,
+  domSelection: Selection,
+): boolean {
+  const { anchorNode, focusNode } = domSelection
+  if (!anchorNode || !focusNode) {
+    return false
+  }
+  return editable.contains(anchorNode) && editable.contains(focusNode)
+}
+
+/**
+ * Whether the live caret is already the collapsed point `point`.
+ * Skipping that case keeps a render from resetting the selection while typing.
+ */
+export function isCaretAt(selection: Selection, point: DOMPoint): boolean {
+  return (
+    selection.isCollapsed &&
+    selection.anchorNode === point.node &&
+    selection.anchorOffset === point.offset
+  )
 }
