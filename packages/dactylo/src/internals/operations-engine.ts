@@ -1,5 +1,6 @@
 import {
   createParagraphBlockAfter,
+  findHeadInlineContentBeforeCursor,
   findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
   sortBlockOrder,
@@ -1919,14 +1920,13 @@ export class OperationsEngine {
     const betweenLast = fNi - 1
 
     if (betweenFirst <= betweenLast) {
-      ops.push(
-        ...this.#buildRemoveInlineNodeRangeOps(
-          block.id,
-          block.content,
-          betweenFirst,
-          betweenLast,
-        ),
+      const inlines = this.#buildRemoveInlineNodeRangeOps(
+        block.id,
+        block.content,
+        betweenFirst,
+        betweenLast,
       )
+      ops.push(...inlines)
     }
 
     /** Head of last node (focus exclusive). */
@@ -1992,7 +1992,163 @@ export class OperationsEngine {
   }
 
   /**
+   * Deletes from `from` (inclusive) through the end of the block.
+   * Keeps `[block start, from)`.
+   */
+  #buildForwardTrimBlockOps(
+    block: BlockWithInlineContent,
+    from: TextCursor,
+  ): Operation[] {
+    const found = findNodeInBlockWithInlineContent(block, from.nodeId)
+    if (!found) {
+      buildError(
+        `Node ${from.nodeId} not found in block ${block.id}`,
+        'OperationsEngine/buildForwardTrimBlockOps',
+      )
+    }
+
+    const { index: fromNi, node: fromNode } = found
+    const ops: Operation[] = []
+
+    if (isInlineNodeWithEditableText(fromNode)) {
+      const tailLen = fromNode.text.length - from.offset
+      if (tailLen > 0) {
+        ops.push({
+          __type: 'delete_text',
+          blockId: block.id,
+          length: tailLen,
+          nodeId: fromNode.id,
+          offset: from.offset,
+          snapshot: {
+            marks: fromNode.marks,
+            text: fromNode.text.slice(from.offset),
+          },
+        })
+      }
+    }
+
+    const lastIndex = block.content.length - 1
+    if (fromNi < lastIndex) {
+      const inlines = this.#buildRemoveInlineNodeRangeOps(
+        block.id,
+        block.content,
+        fromNi + 1,
+        lastIndex,
+      )
+      ops.push(...inlines)
+    }
+
+    /** Anchor on line_break / mention at offset 0: remove that node too. */
+    if (!isInlineNodeWithEditableText(fromNode) && from.offset === 0) {
+      ops.push({
+        __type: 'remove_inline_node',
+        blockId: block.id,
+        index: fromNi,
+        snapshot: fromNode,
+      })
+    }
+
+    return ops
+  }
+
+  /**
+   * Builds `delete_block` ops for every block strictly between `startBlockId`
+   * and `endBlockId` in document order.
+   */
+  #buildDeleteBlocksBetweenOps(
+    state: DocumentState,
+    startBlockId: BlockId,
+    endBlockId: BlockId,
+  ): Operation[] {
+    const order = state.blockOrderById
+
+    const startBi = order.indexOf(startBlockId)
+    const endBi = order.indexOf(endBlockId)
+
+    if (startBi === -1 || endBi === -1 || endBi <= startBi) {
+      return []
+    }
+
+    const ops: Operation[] = []
+
+    for (let bi = startBi + 1; bi < endBi; bi += 1) {
+      const blockId = order[bi]
+      if (!blockId) {
+        continue
+      }
+
+      const block = getBlock(state, blockId)
+
+      let afterBlockId: BlockId | null = null
+      if (bi > 0) {
+        afterBlockId = order[bi - 1] ?? null
+      }
+
+      ops.push({
+        __type: 'delete_block',
+        afterBlockId,
+        blockId,
+        snapshot: block,
+      })
+    }
+
+    return ops
+  }
+
+  /**
+   * Deletes from the start of the block through `to` (exclusive).
+   * Keeps `[to, block end)`.
+   */
+  #buildBackwardTrimBlockOps(
+    block: BlockWithInlineContent,
+    to: TextCursor,
+  ): Operation[] {
+    const found = findNodeInBlockWithInlineContent(block, to.nodeId)
+    if (!found) {
+      buildError(
+        `Node ${to.nodeId} not found in block ${block.id}`,
+        'OperationsEngine/buildBackwardTrimBlockOps',
+      )
+    }
+
+    const { index: toNi, node: toNode } = found
+    const ops: Operation[] = []
+
+    if (toNi > 0) {
+      const inlines = this.#buildRemoveInlineNodeRangeOps(
+        block.id,
+        block.content,
+        0,
+        toNi - 1,
+      )
+      ops.push(...inlines)
+    }
+
+    if (isInlineNodeWithEditableText(toNode) && to.offset > 0) {
+      ops.push({
+        __type: 'delete_text',
+        blockId: block.id,
+        length: to.offset,
+        nodeId: toNode.id,
+        offset: 0,
+        snapshot: {
+          marks: toNode.marks,
+          text: toNode.text.slice(0, to.offset),
+        },
+      })
+    }
+
+    return ops
+  }
+
+  /**
    * Builds operations when user presses `Backspace` key at the current range position.
+   *
+   * | Case                       | Behavior                                                                                   |
+   * |----------------------------|--------------------------------------------------------------------------------------------|
+   * | Same node, text/link       | `delete_text`                                                                              |
+   * | Same block, multiple nodes | `delete_text` + `remove_inline_node` (+ optional text join)                                |
+   * | Cross-block                | forward trim start block → delete middle blocks → backward trim end block → `merge_blocks` |
    */
   #buildDeleteBackspaceAtRangeOps(
     context: EditorContext,
@@ -2011,7 +2167,7 @@ export class OperationsEngine {
     }
 
     /**
-     * 1️⃣ First case we are in the same block.
+     * 1️⃣ First case: we are in a single block.
      * So we only need to delete the content inside
      */
     if (anchor.blockId === focus.blockId) {
@@ -2025,7 +2181,60 @@ export class OperationsEngine {
 
       return { label: 'delete-content-inside-block', ops }
     }
-    // @todo: handle case where we are in different blocks
+
+    /**
+     * 2️⃣ Second case: we are in different blocks.
+     * So we need to delete the context cross-blocks and maybe remove some blocks.
+     */
+    const startBlock = getBlockWithInlineContent(state, anchor.blockId)
+    const endBlock = getBlockWithInlineContent(state, focus.blockId)
+
+    const ops: Operation[] = []
+
+    const forwards = this.#buildForwardTrimBlockOps(startBlock, anchor)
+    ops.push(...forwards)
+
+    const between = this.#buildDeleteBlocksBetweenOps(
+      state,
+      startBlock.id,
+      endBlock.id,
+    )
+    ops.push(...between)
+
+    const backwards = this.#buildBackwardTrimBlockOps(endBlock, focus)
+    ops.push(...backwards)
+
+    const headContent = findHeadInlineContentBeforeCursor(startBlock, anchor)
+    const atIndex = headContent.length
+
+    const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
+      endBlock,
+      { ...startBlock, content: headContent },
+      context.activeMarks,
+    )
+
+    ops.push(
+      {
+        __type: 'merge_blocks',
+        atIndex,
+        mergedTailSnapshot: [...endBlock.content],
+        sourceBlockId: endBlock.id,
+        sourceSnapshot: endBlock,
+        splitAtNodeId,
+        splitAtOffset,
+        targetBlockId: startBlock.id,
+      },
+      {
+        __type: 'set_selection',
+        next: createCursor({
+          blockId: startBlock.id,
+          nodeId: anchor.nodeId,
+          offset: anchor.offset,
+        }),
+        prev: range,
+      },
+    )
+
     return null
   }
 
