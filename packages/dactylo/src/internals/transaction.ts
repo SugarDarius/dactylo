@@ -884,36 +884,38 @@ export class TransactionPipeline {
 
         return false
       }
+
+      case 'insertReplacementText':
       case 'insertText': {
         /** In any case we prevent native browser behavior as we want full control over text input. */
         prevent()
-        if (isCursorSelection(this.#context.selection)) {
-          const { data } = event
 
-          /**
-           * We only process text input if we have a non-empty data.
-           * Allowing surrogate pairs and ZWJ sequences (aka. emoji pickers).
-           */
-          if (data && data.length > 0) {
-            const { ops, label, coalesce, skipHistory } =
-              this.#operationsEngine.buildTypedCharOps(
-                this.#context,
-                this.#context.selection.anchor,
-                data,
-              )
+        const { data } = event
+        /**
+         * We only process text input if we have a non-empty data.
+         * Allowing surrogate pairs and ZWJ sequences (aka. emoji pickers).
+         */
+        if (data && data.length > 0) {
+          const intent = this.#operationsEngine.buildTypedCharOps(
+            this.#context,
+            data,
+          )
 
-            this.#commit(ops, {
-              coalesce,
-              label: transactionPolicyLabel('input', 'digest-event', label),
-              pushToHistory: !skipHistory,
-              source: 'user',
-            })
+          /** 👉🏻 See {@link buildTypedCharOps} jsdoc on why it can return `null` */
+          if (intent === null) {
+            return false
           }
 
+          const { ops, label, coalesce, skipHistory } = intent
+
+          this.#commit(ops, {
+            coalesce,
+            label: transactionPolicyLabel('input', 'digest-event', label),
+            pushToHistory: !skipHistory,
+            source: 'user',
+          })
           return true
         }
-
-        // @todo: handle range selection
 
         return false
       }

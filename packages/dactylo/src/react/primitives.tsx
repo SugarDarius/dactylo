@@ -183,12 +183,11 @@ const ComposerParagraphBlock = forwardRef<
   ComposerParagraphBlockProps
 >(({ block, ...props }, forwardedRef) => {
   const { paragraph } = useEditorConfig()
-  const { canEdit, editableId, editableRef, withActiveCursor, isEmpty } =
+  const { canEdit, editableId, editableRef, withActiveSelection, isEmpty } =
     useEditableBlock(block.id)
 
   const content = useMemo(() => [...block.content], [block.content])
-
-  const isActive = canEdit && withActiveCursor
+  const isActive = canEdit && withActiveSelection
 
   return (
     <div

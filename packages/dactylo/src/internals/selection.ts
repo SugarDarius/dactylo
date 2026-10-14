@@ -135,12 +135,35 @@ export function isRangeSelection(
   return isSelectionActive(selection) && selection.__type === 'range'
 }
 
-/** Checks if a block has an active cursor selection within. */
+/** Checks whether the block has an active cursor selection within. */
 export function isBlockWithActiveCursor(
   selection: Selection | null,
   blockId: BlockId,
 ): boolean {
   return isCursorSelection(selection) && selection.anchor.blockId === blockId
+}
+
+/** Checks whether the block has an active range selection within. */
+export function isBlockWithActiveRange(
+  selection: Selection | null,
+  blockId: BlockId,
+): boolean {
+  return (
+    isRangeSelection(selection) &&
+    (selection.anchor.blockId === blockId ||
+      selection.focus.blockId === blockId)
+  )
+}
+
+/** Checks whether the block has an active selection within. */
+export function isBlockWithActiveSelection(
+  selection: Selection | null,
+  blockId: BlockId,
+): boolean {
+  return (
+    isBlockWithActiveCursor(selection, blockId) ||
+    isBlockWithActiveRange(selection, blockId)
+  )
 }
 
 /** A contiguous `[from, to)` slice inside one text node, part of a larger range. */

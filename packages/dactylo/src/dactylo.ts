@@ -23,6 +23,8 @@ import type { HistoryEvent, HistoryStackOptions } from './internals/history'
 import type { MarkKey } from './internals/marks'
 import {
   isBlockWithActiveCursor,
+  isBlockWithActiveRange,
+  isBlockWithActiveSelection,
   isSelectionActive,
 } from './internals/selection'
 import type { Selection } from './internals/selection'
@@ -90,6 +92,8 @@ export type DactyloTool =
 
   /** Selection tools */
   | 'selection/is-block-with-active-cursor'
+  | 'selection/is-block-with-active-range'
+  | 'selection/is-block-with-active-selection'
   | 'selection/is-focused'
 
   /** Blocks tools */
@@ -340,6 +344,18 @@ export interface DactyloSelectionTools {
    * This is a pure function that does not mutate the editor context.
    */
   readonly isBlockWithActiveCursor: (blockId: BlockId) => boolean
+
+  /**
+   * Whether the block with the given ID is with an active range selection within.
+   * This is a pure function that does not mutate the editor context.
+   */
+  readonly isBlockWithActiveRange: (blockId: BlockId) => boolean
+
+  /**
+   * Whether the block with the given ID is with an active selection within.
+   * This is a pure function that does not mutate the editor context.
+   */
+  readonly isBlockWithActiveSelection: (blockId: BlockId) => boolean
 
   /**
    * Whether the editor is focused or not.
@@ -1118,6 +1134,43 @@ export class Dactylo {
             'selection/is-block-with-active-cursor',
             () =>
               isBlockWithActiveCursor(
+                this.#pipeline.context.selection,
+                blockId,
+              ),
+            negate,
+          ),
+
+        /**
+         * Whether the block with the given ID is with an active range selection within.
+         * This is a pure function that does not mutate the editor context.
+         *
+         * @example
+         * ```ts
+         * const withActiveRange = editor.selection.tools.isBlockWithActiveRange(blockId)
+         * ```
+         */
+        isBlockWithActiveRange: (blockId: BlockId): boolean =>
+          this.#safeExecuteTool(
+            'selection/is-block-with-active-range',
+            () =>
+              isBlockWithActiveRange(this.#pipeline.context.selection, blockId),
+            negate,
+          ),
+
+        /**
+         * Whether the block with the given ID is with an active selection within.
+         * This is a pure function that does not mutate the editor context.
+         *
+         * @example
+         * ```ts
+         * const withActiveSelection = editor.selection.tools.isBlockWithActiveSelection(blockId)
+         * ```
+         */
+        isBlockWithActiveSelection: (blockId: BlockId): boolean =>
+          this.#safeExecuteTool(
+            'selection/is-block-with-active-selection',
+            () =>
+              isBlockWithActiveSelection(
                 this.#pipeline.context.selection,
                 blockId,
               ),

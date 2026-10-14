@@ -179,7 +179,19 @@ export function useSelectionTools() {
     editor.selection.tools.isBlockWithActiveCursor(blockId),
   )
 
-  return { isBlockWithActiveCursor } as const
+  const isBlockWithActiveRange = useStableCallback((blockId: BlockId) =>
+    editor.selection.tools.isBlockWithActiveRange(blockId),
+  )
+
+  const isBlockWithActiveSelection = useStableCallback((blockId: BlockId) =>
+    editor.selection.tools.isBlockWithActiveSelection(blockId),
+  )
+
+  return {
+    isBlockWithActiveCursor,
+    isBlockWithActiveRange,
+    isBlockWithActiveSelection,
+  } as const
 }
 
 /**
@@ -452,15 +464,12 @@ export function useEditableBlock(blockId: BlockId) {
 
   const canEdit = useCanEdit()
 
-  const cursorSelection = useCursorSelection()
-  const { isBlockWithActiveCursor } = useSelectionTools()
+  const { isBlockWithActiveSelection } = useSelectionTools()
   const { sendInput } = useComposerCommands()
   const { isWithEmptyInlineContent } = useBlocksTools()
 
   const isEmpty = isWithEmptyInlineContent(blockId)
-  const withActiveCursor = cursorSelection
-    ? isBlockWithActiveCursor(blockId)
-    : false
+  const withActiveSelection = isBlockWithActiveSelection(blockId)
 
   /**
    * `beforeinput` event handler used to capture the following input types:
@@ -483,13 +492,13 @@ export function useEditableBlock(blockId: BlockId) {
    * `beforeinput` event is also used for IME and mobile keyboard edits reporting to "what is being inserted?"
    * before the DOM changes.
    */
-  const onBeforeInput = useStableCallback((event: InputEvent) =>
-    sendInput(event),
-  )
+  const onBeforeInput = useStableCallback((event: InputEvent) => {
+    sendInput(event)
+  })
 
   useEffect(() => {
     const editable = editableRef.current
-    if (!editable || !withActiveCursor) {
+    if (!editable || !withActiveSelection) {
       return
     }
 
@@ -500,14 +509,14 @@ export function useEditableBlock(blockId: BlockId) {
      */
     editable.addEventListener('beforeinput', onBeforeInput)
     return () => editable.removeEventListener('beforeinput', onBeforeInput)
-  }, [onBeforeInput, withActiveCursor])
+  }, [onBeforeInput, withActiveSelection])
 
   return {
     canEdit,
     editableId,
     editableRef,
     isEmpty,
-    withActiveCursor,
+    withActiveSelection,
   } as const
 }
 

@@ -78,7 +78,7 @@ import {
   isRangeSelection,
   isSelectionActive,
 } from './selection'
-import type { TextCursor, Selection } from './selection'
+import type { TextCursor, Selection, RangeSelection } from './selection'
 import { assertNever } from './utils'
 
 // --- Validate ─────────────────────────────────────────------------
@@ -729,6 +729,15 @@ export function buildError(message: string, hint: string): never {
   })
 }
 
+/** Throws a range selection collapsed error {@link DactyloError} when the range selection is collapsed. */
+export function rangeCollapsedError(message: string, hint: string): never {
+  throw DactyloError.from({
+    code: 'RANGE_SELECTION_COLLAPSED',
+    hint,
+    message,
+  })
+}
+
 /**
  * Resolves undo fields when merging two blocks for a {@link MergeBlocksOp}.
  * After a merge, the previous block’s content and the current block’s content
@@ -1162,7 +1171,7 @@ export class OperationsEngine {
      * When the selection is a cursor, we enable the active mark for the given mark key
      * for the whole document (e.g the mark is active on typing).
      */
-    if (selection.__type === 'cursor') {
+    if (isCursorSelection(selection)) {
       const prev = context.activeMarks
       const next = toggleMarkFlag(prev, markKey)
 
@@ -1181,7 +1190,7 @@ export class OperationsEngine {
      * When the selection is a range, we enable the active mark for the given mark key
      * only for the range of text nodes.
      */
-    else if (selection.__type === 'range') {
+    else if (isRangeSelection(selection)) {
       const normalized = normalizeRange(state, selection)
       const { anchor, focus } = normalized
 
@@ -1191,12 +1200,10 @@ export class OperationsEngine {
        * because a {@link RangeSelection} is a non-empty text range.
        */
       if (compareTextCursors(state, anchor, focus) >= 0) {
-        throw DactyloError.from({
-          code: 'RANGE_SELECTION_COLLAPSED',
-          hint: 'Use selection.__type === "cursor" (or toggleMark with a collapsed caret) to change activeMarks in editor context.',
-          message:
-            'Range selection is collapsed; expected anchor to precede focus.',
-        })
+        rangeCollapsedError(
+          'Range selection is collapsed; expected anchor to precede focus.',
+          'OperationsEngine/buildSetMarksOps',
+        )
       }
 
       /**
@@ -1266,10 +1273,10 @@ export class OperationsEngine {
   // --- Composing operations ─────────────────────────────────────────
 
   /**
-   * Builds operations for a single typed character at the current cursor position.
+   * Builds operations for a single typed character (or emoji) at the current cursor position.
    * When the typed character is a `space` checks for markdown shortcut triggers.
    */
-  buildTypedCharOps(
+  #buildTypedCharAtCursorOps(
     context: EditorContext,
     /** Collapsed cursor anchor for the pending edit. */
     cursor: TextCursor,
@@ -1322,6 +1329,120 @@ export class OperationsEngine {
       label: `insert-char:${char}`,
       ops,
     }
+  }
+
+  /** Builds operations for a single typed character (or emoji) at the current range selection. */
+  #buildTypeCharAtRangeOps(
+    context: EditorContext,
+    /** The range selection to type the character at. */
+    range: RangeSelection,
+    /** The character to insert. */
+    char: string,
+  ): ComposingOpsIntent {
+    const { state } = context
+    const normalized = normalizeRange(state, range)
+    const { anchor, focus } = normalized
+
+    /**
+     * Anchor must precede focus in document order.
+     * We cannot accept this case as it's a contract-violation
+     * because a {@link RangeSelection} is a non-empty text range.
+     */
+    if (compareTextCursors(state, anchor, focus) >= 0) {
+      rangeCollapsedError(
+        'Range selection is collapsed; expected anchor to precede focus.',
+        'OperationsEngine/buildTypeCharAtRangeOps',
+      )
+    }
+
+    // @todo: handle cross block/nodes range selection.
+    if (anchor.blockId !== focus.blockId || anchor.nodeId !== focus.nodeId) {
+      throw DactyloError.from({
+        code: 'BUILD_TRANSACTION_OPERATIONS',
+        hint: 'OperationsEngine/buildTypeCharAtRangeOps',
+        message:
+          'Cross-node / cross-block range typing is not implemented yet.',
+      })
+    }
+
+    const block = getBlockWithInlineContent(state, anchor.blockId)
+    const found = findNodeInBlockWithInlineContent(block, anchor.nodeId)
+    if (!found || !isInlineNodeWithEditableText(found.node)) {
+      buildError(
+        `Node ${anchor.nodeId} not found in block ${block.id}`,
+        'OperationsEngine/buildTypeCharAtRangeOps',
+      )
+    }
+
+    const { node } = found
+    const deleteOffset = anchor.offset
+    const deleteLength = focus.offset - anchor.offset
+
+    if (deleteLength <= 0) {
+      rangeCollapsedError(
+        'Range selection is collapsed; expected non-empty text range.',
+        'OperationsEngine/buildTypeCharAtRangeOps',
+      )
+    }
+
+    const ops: Operation[] = [
+      {
+        __type: 'delete_text',
+        blockId: block.id,
+        length: deleteLength,
+        nodeId: node.id,
+        offset: deleteOffset,
+        snapshot: {
+          marks: node.marks,
+          text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
+        },
+      },
+      {
+        __type: 'insert_text',
+        blockId: block.id,
+        marks: context.activeMarks,
+        nodeId: node.id,
+        offset: deleteOffset,
+        text: char,
+      },
+      {
+        __type: 'set_selection',
+        next: createCursor({
+          blockId: block.id,
+          nodeId: node.id,
+          offset: deleteOffset + char.length,
+        }),
+        prev: context.selection,
+      },
+    ]
+    return {
+      coalesce: true,
+      label: `insert-char-at-range:${char}`,
+      ops,
+    }
+  }
+
+  /**
+   * Builds operations for a single typed character (or emoji) at the current selection.
+   * Returns `null` when there is no active selection.
+   */
+  buildTypedCharOps(
+    context: EditorContext,
+    char: string,
+  ): ComposingOpsIntent | null {
+    if (isCursorSelection(context.selection)) {
+      return this.#buildTypedCharAtCursorOps(
+        context,
+        context.selection.anchor,
+        char,
+      )
+    }
+
+    if (isRangeSelection(context.selection)) {
+      return this.#buildTypeCharAtRangeOps(context, context.selection, char)
+    }
+
+    return null
   }
 
   #buildPasteLineOps(
