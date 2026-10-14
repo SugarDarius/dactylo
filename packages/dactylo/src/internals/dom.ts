@@ -448,10 +448,28 @@ export function isWindowSelectionInsideEditable(
  * Whether the live caret is already the collapsed point `point`.
  * Skipping that case keeps a render from resetting the selection while typing.
  */
-export function isCaretAt(selection: Selection, point: DOMPoint): boolean {
+export function isCaretAt(domSelection: Selection, point: DOMPoint): boolean {
   return (
-    selection.isCollapsed &&
-    selection.anchorNode === point.node &&
-    selection.anchorOffset === point.offset
+    domSelection.isCollapsed &&
+    domSelection.anchorNode === point.node &&
+    domSelection.anchorOffset === point.offset
+  )
+}
+
+/**
+ * Whether the live range is already the collapsed point `point`.
+ * Skipping that case keeps a render from resetting the selection while typing.
+ */
+export function isRangeAt(
+  domSelection: Selection,
+  anchorPoint: DOMPoint,
+  focusPoint: DOMPoint,
+): boolean {
+  return (
+    !domSelection.isCollapsed &&
+    domSelection.anchorNode === anchorPoint.node &&
+    domSelection.anchorOffset === anchorPoint.offset &&
+    domSelection.focusNode === focusPoint.node &&
+    domSelection.focusOffset === focusPoint.offset
   )
 }

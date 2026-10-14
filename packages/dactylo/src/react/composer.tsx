@@ -8,9 +8,14 @@ import type {
 } from '../dactylo'
 import type { BlockId } from '../internals/blocks'
 import type { DocumentState } from '../internals/document'
-import { isCursorSelection } from '../internals/selection'
-import type { CursorSelection, Selection } from '../internals/selection'
+import { isCursorSelection, isRangeSelection } from '../internals/selection'
+import type {
+  CursorSelection,
+  RangeSelection,
+  Selection,
+} from '../internals/selection'
 import type { TransactionSource } from '../internals/transaction'
+import { noop } from '../internals/utils'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
 import {
@@ -154,6 +159,31 @@ export function useCursorSelection(): CursorSelection | null {
   const getSnapshot = useStableCallback(() => {
     const { selection } = editor.getContext()
     if (!isCursorSelection(selection)) {
+      return null
+    }
+
+    return selection
+  })
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * REturns the {@link RangeSelection} or `null` from the {@link EditorContext}.
+ *
+ * @example
+ * ```tsx
+ * const rangeSelection = useRangeSelection()
+ * console.log(rangeSelection)
+ * ```
+ */
+export function useRangeSelection(): RangeSelection | null {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() => {
+    const { selection } = editor.getContext()
+    if (!isRangeSelection(selection)) {
       return null
     }
 
@@ -382,16 +412,20 @@ export function useEditable() {
 
   const canEdit = useCanEdit()
   const cursorSelection = useCursorSelection()
+  const rangeSelection = useRangeSelection()
 
   const onPointerUp = useStableCallback((event: PointerEvent) => {
     if (event.defaultPrevented) {
       return
     }
 
+    console.log('onPointerUp')
+
     editor.dom.commands.syncSelection()
   })
 
   const onSelectionChange = useStableCallback(() => {
+    console.log('onSelectionChange')
     editor.dom.commands.syncSelection(true)
   })
 
@@ -438,16 +472,26 @@ export function useEditable() {
   ])
 
   /**
-   * Paints a collapsed caret at the position of the text cursor in the DOM.
-   * Runs only when the editor is editable and when there is a cursor selection.
+   * PPaints the native selection from editor context:
+   * collapsed caret or range (e.g. shift + arrow keys).
+   *
+   * Runs only when the editor is editable and when there is a selection.
    */
   useIsomorphicLayoutEffect(() => {
-    if (!canEdit || !cursorSelection) {
+    if (!canEdit || (!cursorSelection && !rangeSelection)) {
       return
     }
 
-    return editor.dom.commands.paintCaret()
-  }, [canEdit, cursorSelection, editor])
+    if (cursorSelection !== null) {
+      return editor.dom.commands.paintCaret()
+    }
+
+    if (rangeSelection !== null) {
+      return editor.dom.commands.paintRange()
+    }
+
+    return noop
+  }, [canEdit, cursorSelection, rangeSelection, editor])
 
   return { canEdit, editableRef } as const
 }

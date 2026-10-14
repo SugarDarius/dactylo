@@ -907,13 +907,13 @@ export class TransactionPipeline {
           }
 
           const { ops, label, coalesce, skipHistory } = intent
-
           this.#commit(ops, {
             coalesce,
             label: transactionPolicyLabel('input', 'digest-event', label),
             pushToHistory: !skipHistory,
             source: 'user',
           })
+
           return true
         }
 
@@ -1014,6 +1014,7 @@ export class TransactionPipeline {
         arrowDirection,
         event.shiftKey,
       )
+
       if (ops === null) {
         return false
       }

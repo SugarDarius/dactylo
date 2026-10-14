@@ -7,6 +7,7 @@ import {
   getDOMPointFromTextCursor,
   getTextCursorFromDOMPoint,
   isCaretAt,
+  isRangeAt,
   isWindowSelectionInsideEditable,
 } from './dom'
 import { DactyloError } from './errors'
@@ -15,8 +16,9 @@ import {
   createCursor,
   createRange,
   isCursorSelection,
+  isRangeSelection,
 } from './selection'
-import type { Selection, TextCursor } from './selection'
+import type { RangeSelection, Selection, TextCursor } from './selection'
 import type { CancelCallback } from './types'
 
 export function getSelectionFromEditable(
@@ -94,7 +96,7 @@ export function paintCaretAt(
   if (!domSelection) {
     throw DactyloError.from({
       code: 'NO_WINDOW_SELECTION',
-      hint: 'dom/#paintCursorCaretAtPositionInDOM',
+      hint: 'dom-manager/paintCaretAt',
       message: 'No window selection found',
     })
   }
@@ -111,6 +113,93 @@ export function paintCaretAt(
   /** Focus the editable if it is not already focused. */
   if (document.activeElement !== editable) {
     editable.focus({ preventScroll: true })
+  }
+
+  domSelection.removeAllRanges()
+  domSelection.addRange(range)
+}
+
+/**
+ * Paints a non-collapsed range in the DOM (anchor/focus order preserved)
+ * and focuses the block content surface that holds the focus endpoint.
+ */
+export function paintRangeAt(
+  editable: HTMLDivElement,
+  rangeSelection: RangeSelection,
+): void {
+  const { anchor, focus } = rangeSelection
+
+  const anchorBlockContent = findBlockEditableElement(editable, anchor.blockId)
+  if (!anchorBlockContent) {
+    throw DactyloError.from({
+      code: 'SELECTION_MANAGER_PAINTING',
+      hint: 'dom-manager/paintRangeAt',
+      message: `No editable block content found for anchor block id: ${anchor.blockId}`,
+      payload: { blockId: anchor.blockId },
+    })
+  }
+
+  const focusBlockContent = findBlockEditableElement(editable, focus.blockId)
+  if (!focusBlockContent) {
+    throw DactyloError.from({
+      code: 'SELECTION_MANAGER_PAINTING',
+      hint: 'dom-manager/paintRangeAt',
+      message: `No editable block content found for focus block id: ${focus.blockId}`,
+      payload: { blockId: focus.blockId },
+    })
+  }
+
+  const anchorPoint = getDOMPointFromTextCursor(anchorBlockContent, anchor)
+  if (!anchorPoint) {
+    throw DactyloError.from({
+      code: 'SELECTION_MANAGER_PAINTING',
+      hint: 'dom-manager/paintRangeAt',
+      message: `No point from text cursor found for anchor block id: ${anchor.blockId}`,
+      payload: { blockId: anchor.blockId },
+    })
+  }
+  const focusPoint = getDOMPointFromTextCursor(focusBlockContent, focus)
+  if (!focusPoint) {
+    throw DactyloError.from({
+      code: 'SELECTION_MANAGER_PAINTING',
+      hint: 'dom-manager/paintRangeAt',
+      message: `No point from text cursor found for focus block id: ${focus.blockId}`,
+      payload: { blockId: focus.blockId },
+    })
+  }
+
+  const clampedAnchor = {
+    ...anchorPoint,
+    offset: clampNodeOffset(anchorPoint.node, anchorPoint.offset),
+  }
+  const clampedFocus = {
+    ...focusPoint,
+    offset: clampNodeOffset(focusPoint.node, focusPoint.offset),
+  }
+
+  const domSelection = window.getSelection()
+  if (!domSelection) {
+    throw DactyloError.from({
+      code: 'NO_WINDOW_SELECTION',
+      hint: 'dom-manager/paintRangeAt',
+      message: 'No window selection found',
+    })
+  }
+
+  /** Skip resetting the selection if the range is already at the position. */
+  if (
+    document.activeElement === focusBlockContent &&
+    isRangeAt(domSelection, clampedAnchor, clampedFocus)
+  ) {
+    return
+  }
+
+  const range = document.createRange()
+  range.setStart(clampedAnchor.node, clampedAnchor.offset)
+  range.setEnd(clampedFocus.node, clampedFocus.offset)
+
+  if (document.activeElement !== focusBlockContent) {
+    focusBlockContent.focus({ preventScroll: true })
   }
 
   domSelection.removeAllRanges()
@@ -320,6 +409,37 @@ export class DOMManager {
 
       this.#runPainting(() => {
         paintCaretAt(editableContent, cursor)
+      })
+    })
+
+    return () => cancelAnimationFrame(id)
+  }
+
+  /** Paints a range at anchor/focus in the DOM. */
+  paintRangeAt(): CancelCallback {
+    /** Runs the painting operation before the next browser re-paint. */
+    const id = requestAnimationFrame(() => {
+      /** When the IME composition is active, skip the painting. */
+      if (this.#getIMEComposingState()) {
+        return
+      }
+
+      const editable = this.#editable
+      if (!editable) {
+        warnOnceIf(
+          this.#debug,
+          'No editable element found. Attach the orchestrator to the editable element first using `Orchestrator.attach(element)`.',
+        )
+        return
+      }
+
+      const selection = this.#getSelection()
+      if (!isRangeSelection(selection)) {
+        return
+      }
+
+      this.#runPainting(() => {
+        paintRangeAt(editable, selection)
       })
     })
 

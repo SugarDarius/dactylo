@@ -122,6 +122,7 @@ export type DactyloCommand =
   | 'dom/attach'
   | 'dom/detach'
   | 'dom/paint-caret-at'
+  | 'dom/paint-range-at'
   | 'dom/sync-selection'
 
   /** Blocks commands */
@@ -393,6 +394,9 @@ export interface DactyloDomCommands {
 
   /** Paints a collapsed caret at the position of the text cursor in the DOM. Client only. */
   readonly paintCaret: () => CancelCallback
+
+  /** Paints a range at anchor/focus in the DOM. Client only. */
+  readonly paintRange: () => CancelCallback
 
   /** Synchronizes the DOM selection with the editor state. Client only. */
   readonly syncSelection: (fromSelectionChange?: boolean) => void
@@ -1245,6 +1249,22 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'dom/paint-caret-at',
             () => this.#domManager.paintCaretAt(),
+            () => noop,
+            { clientOnly: true },
+          ),
+
+        /**
+         * Paints a range at anchor/focus in the DOM. Client only.
+         *
+         * @example
+         * ```ts
+         * editor.dom.commands.paintRange()
+         * ```
+         */
+        paintRange: () =>
+          this.#safeExecuteCommand(
+            'dom/paint-range-at',
+            () => this.#domManager.paintRangeAt(),
             () => noop,
             { clientOnly: true },
           ),
