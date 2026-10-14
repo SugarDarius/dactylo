@@ -282,14 +282,91 @@ export function getLinearOffsetInBlock(
   let linear = 0
   for (const node of block.content) {
     if (node.id === cursor.nodeId) {
-      if (node.__type === 'text') {
+      if (
+        node.__type === 'text' ||
+        node.__type === 'link' ||
+        node.__type === 'mention'
+      ) {
         return linear + cursor.offset
       }
       return linear
     }
-    linear += getInlineNodeTextLength(node)
+    if (node.__type !== 'line_break') {
+      linear += getInlineNodeTextLength(node)
+    }
   }
   return linear
+}
+
+/** Returns the linear length of a block’s inline content (line breaks contribute 0). */
+export function getBlockLinearLength(block: BlockWithInlineContent): number {
+  let linear = 0
+  for (const node of block.content) {
+    if (node.__type !== 'line_break') {
+      linear += getInlineNodeTextLength(node)
+    }
+  }
+  return linear
+}
+
+/** Start linear offset of each visual line (split on `line_break`). */
+export function getVisualLineStartLinears(
+  block: BlockWithInlineContent,
+): number[] {
+  const starts = [0]
+  let linear = 0
+  for (const node of block.content) {
+    if (node.__type === 'line_break') {
+      starts.push(linear)
+      continue
+    }
+    linear += getInlineNodeTextLength(node)
+  }
+  return starts
+}
+
+/** Maps a cursor to a visual line index and column (for up/down). */
+export function getVisualLineContext(
+  block: BlockWithInlineContent,
+  cursor: TextCursor,
+): { column: number; lineIndex: number; lineStartLinear: number } | null {
+  let lineIndex = 0
+  let lineStartLinear = 0
+  let linear = 0
+  for (const node of block.content) {
+    if (node.id === cursor.nodeId) {
+      if (node.__type === 'line_break') {
+        return {
+          column: 0,
+          lineIndex: lineIndex + 1,
+          lineStartLinear: linear,
+        }
+      }
+      if (
+        node.__type === 'text' ||
+        node.__type === 'link' ||
+        node.__type === 'mention'
+      ) {
+        return {
+          column: cursor.offset,
+          lineIndex,
+          lineStartLinear,
+        }
+      }
+      return {
+        column: 0,
+        lineIndex,
+        lineStartLinear,
+      }
+    }
+    if (node.__type === 'line_break') {
+      lineIndex += 1
+      lineStartLinear = linear
+      continue
+    }
+    linear += getInlineNodeTextLength(node)
+  }
+  return null
 }
 
 /** Places a collapsed cursor at the start of an inline node. */

@@ -987,9 +987,12 @@ export class TransactionPipeline {
           return true
         }
         // @todo: handle copy with clipboard data type
+        // @todo: handle escape behaviors
+        // @todo: hand select all behaviors
         case 'copy':
         case 'escape':
         case 'select-all': {
+          prevent()
           warn(`\`${shortcut}\` shortcut is not is not implemented yet.`)
           return false
         }

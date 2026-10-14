@@ -25,7 +25,9 @@ import {
   cursorAtInlineNodeEnd,
   cursorAtInlineNodeStart,
   cursorFromLinearOffsetInBlock,
-  getLinearOffsetInBlock,
+  getBlockLinearLength,
+  getVisualLineContext,
+  getVisualLineStartLinears,
 } from './selection'
 import type {
   CursorSelection,
@@ -586,6 +588,54 @@ export function createCursorAtDocumentEnd(
   return cursorAtBlockEnd(block.id, block)
 }
 
+/** Returns the next caret position at up or down, or `null` if already at the boundary. */
+export function stepCursorVerticalWithinBlock(
+  block: BlockWithInlineContent,
+  cursor: TextCursor,
+  direction: 'up' | 'down',
+  snapOffsetToBoundary: (text: string, offset: number) => number,
+): TextCursor | null {
+  const ctx = getVisualLineContext(block, cursor)
+  if (!ctx) {
+    return null
+  }
+  const lineStarts = getVisualLineStartLinears(block)
+  const blockEnd = getBlockLinearLength(block)
+  if (direction === 'up') {
+    if (ctx.lineIndex === 0) {
+      return null
+    }
+    const prevLineStart = lineStarts[ctx.lineIndex - 1] ?? 0
+    const prevLineEnd = lineStarts[ctx.lineIndex] ?? blockEnd
+    const prevLineLen = prevLineEnd - prevLineStart
+    const targetLinear =
+      prevLineStart + Math.min(ctx.column, Math.max(0, prevLineLen))
+    return cursorFromLinearOffsetInBlock(
+      block.id,
+      block,
+      targetLinear,
+      snapOffsetToBoundary,
+    )
+  }
+  if (ctx.lineIndex >= lineStarts.length - 1) {
+    return null
+  }
+  const nextLineStart = lineStarts[ctx.lineIndex + 1] ?? blockEnd
+  const nextLineEnd =
+    ctx.lineIndex + 2 < lineStarts.length
+      ? (lineStarts[ctx.lineIndex + 2] ?? blockEnd)
+      : blockEnd
+  const nextLineLen = nextLineEnd - nextLineStart
+  const targetLinear =
+    nextLineStart + Math.min(ctx.column, Math.max(0, nextLineLen))
+  return cursorFromLinearOffsetInBlock(
+    block.id,
+    block,
+    targetLinear,
+    snapOffsetToBoundary,
+  )
+}
+
 /** Returns the previous caret position at left, or `null` if already at the boundary. */
 export function stepCursorLeft(
   state: DocumentState,
@@ -669,15 +719,40 @@ export function stepCursorUp(
   snapOffsetToBoundary: (text: string, offset: number) => number,
 ): TextCursor | null {
   const block = getBlockWithInlineContent(state, cursor.blockId)
+  const within = stepCursorVerticalWithinBlock(
+    block,
+    cursor,
+    'up',
+    snapOffsetToBoundary,
+  )
+
+  if (within) {
+    return within
+  }
+
+  const ctx = getVisualLineContext(block, cursor)
+  if (!ctx || ctx.lineIndex !== 0) {
+    return null
+  }
+
   const prevBlock = resolvePrevInlineBlock(state, block.id)
   if (!prevBlock) {
     return null
   }
-  const linear = getLinearOffsetInBlock(block, cursor)
+
+  const prevStarts = getVisualLineStartLinears(prevBlock)
+  const prevEnd = getBlockLinearLength(prevBlock)
+
+  const lastLineStart = prevStarts.at(-1) ?? 0
+  const lastLineLen = prevEnd - lastLineStart
+
+  const targetLinear =
+    lastLineStart + Math.min(ctx.column, Math.max(0, lastLineLen))
+
   return cursorFromLinearOffsetInBlock(
     prevBlock.id,
     prevBlock,
-    linear,
+    targetLinear,
     snapOffsetToBoundary,
   )
 }
@@ -689,15 +764,43 @@ export function stepCursorDown(
   snapOffsetToBoundary: (text: string, offset: number) => number,
 ): TextCursor | null {
   const block = getBlockWithInlineContent(state, cursor.blockId)
+  const within = stepCursorVerticalWithinBlock(
+    block,
+    cursor,
+    'down',
+    snapOffsetToBoundary,
+  )
+
+  if (within) {
+    return within
+  }
+
+  const lineStarts = getVisualLineStartLinears(block)
+
+  const ctx = getVisualLineContext(block, cursor)
+  if (!ctx || ctx.lineIndex !== lineStarts.length - 1) {
+    return null
+  }
+
   const nextBlock = resolveNextInlineBlock(state, block.id)
   if (!nextBlock) {
     return null
   }
-  const linear = getLinearOffsetInBlock(block, cursor)
+
+  const nextStarts = getVisualLineStartLinears(nextBlock)
+  const nextEnd = getBlockLinearLength(nextBlock)
+
+  const firstLineStart = nextStarts[0] ?? 0
+  const firstLineEnd = nextStarts[1] ?? nextEnd
+  const firstLineLen = firstLineEnd - firstLineStart
+
+  const targetLinear =
+    firstLineStart + Math.min(ctx.column, Math.max(0, firstLineLen))
+
   return cursorFromLinearOffsetInBlock(
     nextBlock.id,
     nextBlock,
-    linear,
+    targetLinear,
     snapOffsetToBoundary,
   )
 }
