@@ -73,7 +73,6 @@ editor.getContext() / subscribe  ──►  UI re-renders blocks and caret
 | ---------------------------- | ------------------------ |
 | `@sugardarius/dactylo`       | Editor runtime           |
 | `@sugardarius/dactylo/react` | React composer and hooks |
-| `@sugardarius/dactylo/dom`   | DOM helpers              |
 
 React 19 is an optional peer dependency, required only for the React entry.
 
