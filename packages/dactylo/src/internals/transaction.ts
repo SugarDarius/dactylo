@@ -990,6 +990,8 @@ export class TransactionPipeline {
 
     const arrowDirection = detectArrowDirection(event)
     if (arrowDirection !== null && isSelectionActive(this.#context.selection)) {
+      prevent()
+
       const ops = this.#operationsEngine.buildArrowNavigationOps(
         this.#context,
         arrowDirection,
