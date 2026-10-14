@@ -216,7 +216,6 @@ const ComposerParagraphBlock = forwardRef<
           [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
           [BLOCK_PLACEHOLDER_ATTR_NAME]: paragraph.placeholder,
         }}
-        tabIndex={canEdit ? 0 : undefined}
       >
         <ComposerInlineContent content={content} />
       </div>
@@ -319,14 +318,18 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
       <div
         {...props}
         ref={mergedRefs}
-        {...{ [EDITABLE_ATTR_NAME]: '' }}
+        role='group'
+        aria-roledescription='editable'
+        contentEditable={canEdit ? 'true' : undefined}
+        suppressContentEditableWarning
         translate={translate}
         spellCheck={spellCheck}
         data-disabled={!canEdit || undefined}
         data-focused={focused || undefined}
         onKeyDown={handleKeyDown}
-        role='group'
-        aria-roledescription='editable'
+        {...{ [EDITABLE_ATTR_NAME]: '' }}
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        tabIndex={canEdit ? 0 : undefined}
       >
         <ComposerBlocks translate={translate} spellCheck={spellCheck} />
         {children}

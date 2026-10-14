@@ -730,6 +730,7 @@ export class TransactionPipeline {
 
     const prevent = () => {
       event.preventDefault()
+      event.stopPropagation()
     }
 
     // @todo: handle composition input types

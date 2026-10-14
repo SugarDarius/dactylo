@@ -411,8 +411,36 @@ export function useEditable() {
   const { editor } = useComposer()
 
   const canEdit = useCanEdit()
+
   const cursorSelection = useCursorSelection()
   const rangeSelection = useRangeSelection()
+
+  const { sendInput } = useComposerCommands()
+
+  /**
+   * `beforeinput` event handler used to capture the following input types:
+   *  - `insertLineBreak` (`shift+Enter` → soft break)
+   *  - `insertParagraph` (`Enter` → hard break)
+   *  - `deleteContentBackward` (`Backspace` → delete char for cursor selection or  range of chars for range selection)
+   *  - `insertText` (`Typing` → insert text)
+   *
+   * `input` event fires too late for how {@link Dactylo} works.
+   * The `sendInput` command treats the `InputEvent` as a user-intent and then calls
+   * `event.preventDefault()` for the cases it owns.
+   *
+   * That only works because `beforeinput` event runs before the browser mutates the `contentEditable` DOM.
+   * The model {@link DocumentState} stays the source of truth, and the caret is written back afterwards.
+   *
+   * `input` event runs after the DOM mutation. So we cannot cancel it properly. The browser would have already
+   * inserted the character, or a line break, and we would be reconciling DIRTY DOM instead of applying the intent
+   * to the document.
+   *
+   * `beforeinput` event is also used for IME and mobile keyboard edits reporting to "what is being inserted?"
+   * before the DOM changes.
+   */
+  const onBeforeInput = useStableCallback((event: InputEvent) => {
+    sendInput(event)
+  })
 
   const onPointerUp = useStableCallback((event: PointerEvent) => {
     if (event.defaultPrevented) {
@@ -451,6 +479,13 @@ export function useEditable() {
     document.addEventListener('pointerup', onPointerUp)
     document.addEventListener('selectionchange', onSelectionChange)
 
+    /**
+     * Attach a native DOM event handler for `beforeinput` as React build-in `onBeforeInput`
+     * is returning a `TextEvent` as native event instead of an `InputEvent`.
+     * We want real Level 2 DOM events.
+     */
+    editable.addEventListener('beforeinput', onBeforeInput)
+
     /** Listen to compositionstart and compositionend events on the editable element. */
     editable.addEventListener('compositionstart', onCompositionStart)
     editable.addEventListener('compositionend', onCompositionEnd)
@@ -459,6 +494,8 @@ export function useEditable() {
 
       document.removeEventListener('pointerup', onPointerUp)
       document.removeEventListener('selectionchange', onSelectionChange)
+
+      editable.removeEventListener('beforeinput', onBeforeInput)
 
       editable.removeEventListener('compositionstart', onCompositionStart)
       editable.removeEventListener('compositionend', onCompositionEnd)
@@ -470,6 +507,7 @@ export function useEditable() {
     onSelectionChange,
     onCompositionStart,
     onCompositionEnd,
+    onBeforeInput,
   ])
 
   /**
@@ -510,51 +548,10 @@ export function useEditableBlock(blockId: BlockId) {
   const canEdit = useCanEdit()
 
   const { isBlockWithActiveSelection } = useSelectionTools()
-  const { sendInput } = useComposerCommands()
   const { isWithEmptyInlineContent } = useBlocksTools()
 
   const isEmpty = isWithEmptyInlineContent(blockId)
   const withActiveSelection = isBlockWithActiveSelection(blockId)
-
-  /**
-   * `beforeinput` event handler used to capture the following input types:
-   *  - `insertLineBreak` (`shift+Enter` → soft break)
-   *  - `insertParagraph` (`Enter` → hard break)
-   *  - `deleteContentBackward` (`Backspace` → delete char for cursor selection or  range of chars for range selection)
-   *  - `insertText` (`Typing` → insert text)
-   *
-   * `input` event fires too late for how {@link Dactylo} works.
-   * The `sendInput` command treats the `InputEvent` as a user-intent and then calls
-   * `event.preventDefault()` for the cases it owns.
-   *
-   * That only works because `beforeinput` event runs before the browser mutates the `contentEditable` DOM.
-   * The model {@link DocumentState} stays the source of truth, and the caret is written back afterwards.
-   *
-   * `input` event runs after the DOM mutation. So we cannot cancel it properly. The browser would have already
-   * inserted the character, or a line break, and we would be reconciling DIRTY DOM instead of applying the intent
-   * to the document.
-   *
-   * `beforeinput` event is also used for IME and mobile keyboard edits reporting to "what is being inserted?"
-   * before the DOM changes.
-   */
-  const onBeforeInput = useStableCallback((event: InputEvent) => {
-    sendInput(event)
-  })
-
-  useEffect(() => {
-    const editable = editableRef.current
-    if (!editable || !withActiveSelection) {
-      return
-    }
-
-    /**
-     * Attach a native DOM event handler for `beforeinput` as React build-in `onBeforeInput`
-     * is returning a `TextEvent` as native event instead of an `InputEvent`.
-     * We want real Level 2 DOM events.
-     */
-    editable.addEventListener('beforeinput', onBeforeInput)
-    return () => editable.removeEventListener('beforeinput', onBeforeInput)
-  }, [onBeforeInput, withActiveSelection])
 
   return {
     canEdit,
