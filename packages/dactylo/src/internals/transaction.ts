@@ -909,6 +909,8 @@ export class TransactionPipeline {
               source: 'user',
             })
           }
+
+          return true
         }
 
         // @todo: handle range selection
