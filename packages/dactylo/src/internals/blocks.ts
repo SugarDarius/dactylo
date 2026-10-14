@@ -245,3 +245,34 @@ export function findHeadInlineContentBeforeCursor(
 
   return head
 }
+
+/**
+ * Inline content kept when deleting from the start of the block through `to` (exclusive).
+ * Mirrors {@link OperationsEngine#buildBackwardTrimBlockOps} for merge snapshots.
+ */
+export function findTailInlineContentFromCursor(
+  block: BlockWithInlineContent,
+  to: TextCursor,
+): InlineNode[] {
+  const toNi = block.content.findIndex((n) => n.id === to.nodeId)
+  if (toNi === -1) {
+    return [...block.content]
+  }
+
+  const toNode = block.content[toNi]
+  if (!toNode) {
+    return block.content.slice(toNi + 1)
+  }
+
+  const tail: InlineNode[] = []
+  if (isInlineNodeWithEditableText(toNode) && to.offset > 0) {
+    const text = toNode.text.slice(to.offset)
+    tail.push({ ...toNode, text, updatedAt: new Date() })
+  } else {
+    tail.push(toNode)
+  }
+
+  tail.push(...block.content.slice(toNi + 1))
+
+  return tail
+}

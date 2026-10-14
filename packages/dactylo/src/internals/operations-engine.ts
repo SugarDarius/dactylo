@@ -2,6 +2,7 @@ import {
   createParagraphBlockAfter,
   findHeadInlineContentBeforeCursor,
   findNodeInBlockWithInlineContent,
+  findTailInlineContentFromCursor,
   isBlockWithInlineContent,
   sortBlockOrder,
   touchBlock,
@@ -72,7 +73,6 @@ import {
   areSelectionsEqual,
   createCursor,
   createRange,
-  cursorAtBlockEnd,
   cursorAtBlockStart,
   isCursorAtBlockEnd,
   isCursorSelection,
@@ -1552,24 +1552,33 @@ export class OperationsEngine {
     }
 
     const prevBlock = getBlockWithInlineContent(context.state, neighbors.prev)
+    const ops: Operation[] = []
+
+    let targetHead = [...prevBlock.content]
+    if (targetHead.length === 0) {
+      const placeholder = createTextNode({
+        marks: context.activeMarks,
+        text: '',
+      })
+      ops.push({
+        __type: 'insert_inline_node',
+        blockId: prevBlock.id,
+        index: 0,
+        node: placeholder,
+      })
+      targetHead = [placeholder]
+    }
+
     const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
       block,
-      prevBlock,
+      { ...prevBlock, content: targetHead },
       context.activeMarks,
     )
 
-    const endSelection =
-      cursorAtBlockEnd(prevBlock.id, prevBlock) ??
-      createCursor({
-        blockId: prevBlock.id,
-        nodeId: prevBlock.content.at(-1)?.id ?? cursor.nodeId,
-        offset: 0,
-      })
-
-    const ops: Operation[] = [
+    ops.push(
       {
         __type: 'merge_blocks',
-        atIndex: prevBlock.content.length,
+        atIndex: targetHead.length,
         mergedTailSnapshot: [...block.content],
         sourceBlockId: block.id,
         sourceSnapshot: block,
@@ -1579,10 +1588,14 @@ export class OperationsEngine {
       },
       {
         __type: 'set_selection',
-        next: endSelection,
+        next: createCursor({
+          blockId: prevBlock.id,
+          nodeId: splitAtNodeId,
+          offset: splitAtOffset,
+        }),
         prev: context.selection,
       },
-    ]
+    )
 
     return {
       label: `merge-blocks`,
@@ -2153,7 +2166,7 @@ export class OperationsEngine {
   #buildDeleteBackspaceAtRangeOps(
     context: EditorContext,
     range: RangeSelection,
-  ): ComposingOpsIntent | null {
+  ): ComposingOpsIntent {
     const { state } = context
 
     const normalized = normalizeRange(context.state, range)
@@ -2194,6 +2207,21 @@ export class OperationsEngine {
     const forwards = this.#buildForwardTrimBlockOps(startBlock, anchor)
     ops.push(...forwards)
 
+    let targetHead = findHeadInlineContentBeforeCursor(startBlock, anchor)
+    if (targetHead.length === 0) {
+      const placeholder = createTextNode({
+        marks: context.activeMarks,
+        text: '',
+      })
+      ops.push({
+        __type: 'insert_inline_node',
+        blockId: startBlock.id,
+        index: 0,
+        node: placeholder,
+      })
+      targetHead = [placeholder]
+    }
+
     const between = this.#buildDeleteBlocksBetweenOps(
       state,
       startBlock.id,
@@ -2204,22 +2232,30 @@ export class OperationsEngine {
     const backwards = this.#buildBackwardTrimBlockOps(endBlock, focus)
     ops.push(...backwards)
 
-    const headContent = findHeadInlineContentBeforeCursor(startBlock, anchor)
-    const atIndex = headContent.length
+    const tailContent = findTailInlineContentFromCursor(endBlock, focus)
+    const trimmedSourceSnapshot: BlockWithInlineContent = {
+      ...endBlock,
+      content: tailContent,
+    }
+
+    const mergeTargetSnapshot: BlockWithInlineContent = {
+      ...startBlock,
+      content: targetHead,
+    }
 
     const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
-      endBlock,
-      { ...startBlock, content: headContent },
+      trimmedSourceSnapshot,
+      mergeTargetSnapshot,
       context.activeMarks,
     )
 
     ops.push(
       {
         __type: 'merge_blocks',
-        atIndex,
-        mergedTailSnapshot: [...endBlock.content],
+        atIndex: targetHead.length,
+        mergedTailSnapshot: [...tailContent],
         sourceBlockId: endBlock.id,
-        sourceSnapshot: endBlock,
+        sourceSnapshot: trimmedSourceSnapshot,
         splitAtNodeId,
         splitAtOffset,
         targetBlockId: startBlock.id,
@@ -2228,14 +2264,14 @@ export class OperationsEngine {
         __type: 'set_selection',
         next: createCursor({
           blockId: startBlock.id,
-          nodeId: anchor.nodeId,
-          offset: anchor.offset,
+          nodeId: splitAtNodeId,
+          offset: splitAtOffset,
         }),
         prev: range,
       },
     )
 
-    return null
+    return { label: 'delete-range-cross-blocks', ops }
   }
 
   /**
