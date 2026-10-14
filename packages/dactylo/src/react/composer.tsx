@@ -419,13 +419,10 @@ export function useEditable() {
       return
     }
 
-    console.log('onPointerUp')
-
     editor.dom.commands.syncSelection()
   })
 
   const onSelectionChange = useStableCallback(() => {
-    console.log('onSelectionChange')
     editor.dom.commands.syncSelection(true)
   })
 
@@ -450,15 +447,19 @@ export function useEditable() {
 
     editor.dom.commands.attach(editable)
 
-    editable.addEventListener('pointerup', onPointerUp)
-    editable.addEventListener('selectionchange', onSelectionChange)
+    /** Listen to global pointerup and selectionchange events. */
+    document.addEventListener('pointerup', onPointerUp)
+    document.addEventListener('selectionchange', onSelectionChange)
+
+    /** Listen to compositionstart and compositionend events on the editable element. */
     editable.addEventListener('compositionstart', onCompositionStart)
     editable.addEventListener('compositionend', onCompositionEnd)
     return () => {
       editor.dom.commands.detach()
 
-      editable.removeEventListener('pointerup', onPointerUp)
-      editable.removeEventListener('selectionchange', onSelectionChange)
+      document.removeEventListener('pointerup', onPointerUp)
+      document.removeEventListener('selectionchange', onSelectionChange)
+
       editable.removeEventListener('compositionstart', onCompositionStart)
       editable.removeEventListener('compositionend', onCompositionEnd)
     }
