@@ -858,31 +858,25 @@ export class TransactionPipeline {
       case 'deleteContentBackward': {
         /** In any case we prevent native browser behavior as we want full control over backspace. */
         prevent()
-        if (isCursorSelection(this.#context.selection)) {
-          const intent = this.#operationsEngine.buildCursorBackspaceOps(
-            this.#context,
-            this.#context.selection.anchor,
-          )
 
-          /** 👉🏻 See {@link buildCursorBackspaceOps} jsdoc on why it can return `null` */
-          if (intent === null) {
-            return false
-          }
+        const intent = this.#operationsEngine.buildDeleteBackspaceOps(
+          this.#context,
+        )
 
-          const { ops, label, coalesce } = intent
-          this.#commit(ops, {
-            coalesce,
-            label: transactionPolicyLabel('input', 'digest-event', label),
-            pushToHistory: true,
-            source: 'user',
-          })
-
-          return true
+        /** 👉🏻 See {@link buildCursorBackspaceOps} jsdoc on why it can return `null` */
+        if (intent === null) {
+          return false
         }
 
-        // @todo: handle range selection
+        const { ops, label, coalesce } = intent
+        this.#commit(ops, {
+          coalesce,
+          label: transactionPolicyLabel('input', 'digest-event', label),
+          pushToHistory: true,
+          source: 'user',
+        })
 
-        return false
+        return true
       }
 
       case 'insertReplacementText':

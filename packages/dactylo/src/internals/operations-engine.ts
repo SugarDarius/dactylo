@@ -1590,10 +1590,10 @@ export class OperationsEngine {
   }
 
   /**
-   * Builds operations when user presses `Backspace` key,
-   * to delete the previous typed character or merge with previous block at block start.
+   * Builds operations when user presses `Backspace` key at the current cursor position.
+   * Merges with the previous block or node if rules are met.
    */
-  buildCursorBackspaceOps(
+  #buildDeleteBackspaceAtCursorOps(
     context: EditorContext,
     /** Collapsed cursor anchor for the pending edit. */
     cursor: TextCursor,
@@ -1781,7 +1781,271 @@ export class OperationsEngine {
       },
     ]
 
-    return { coalesce: true, label: 'delete-character', ops }
+    return { coalesce: true, label: 'delete-previous-character', ops }
+  }
+
+  /**
+   * Deletes `[from.offset, to.offset)` inside one editable text node.
+   * Fast path for range backspace when anchor/focus share the same node.
+   */
+  #buildDeleteTextRunOps(
+    blockId: BlockId,
+    node: InlineNodeWithEditableText,
+    from: number,
+    to: number,
+    range: RangeSelection,
+  ): Operation[] {
+    const length = to - from
+    if (length <= 0) {
+      rangeCollapsedError(
+        'Range selection is collapsed; expected non-empty text range.',
+        'OperationsEngine/buildDeleteTextRunOps',
+      )
+    }
+
+    return [
+      {
+        __type: 'delete_text',
+        blockId,
+        length,
+        nodeId: node.id,
+        offset: from,
+        snapshot: {
+          marks: node.marks,
+          text: node.text.slice(from, to),
+        },
+      },
+      {
+        __type: 'set_selection',
+        next: createCursor({ blockId, nodeId: node.id, offset: from }),
+        prev: range,
+      },
+    ]
+  }
+
+  /**
+   * Removes inline nodes in `[firstIndex, lastIndex]` (inclusive).
+   * Emits `remove_inline_node` from highest index → lowest so indices stay valid.
+   */
+  #buildRemoveInlineNodeRangeOps(
+    blockId: BlockId,
+    content: readonly InlineNode[],
+    firstIndex: number,
+    lastIndex: number,
+  ): Operation[] {
+    const ops: Operation[] = []
+
+    for (let i = lastIndex; i >= firstIndex; i -= 1) {
+      const snapshot = content[i]
+
+      if (!snapshot) {
+        continue
+      }
+
+      ops.push({
+        __type: 'remove_inline_node',
+        blockId,
+        index: i,
+        snapshot,
+      })
+    }
+
+    return ops
+  }
+
+  /**
+   * Builds operations for a range backspace within a single block (possibly multiple inline nodes).
+   * Joins surviving head/tail text when marks match.
+   */
+  #buildDeleteRangeWithinBlockOps(
+    block: BlockWithInlineContent,
+    anchor: TextCursor,
+    focus: TextCursor,
+    range: RangeSelection,
+  ): Operation[] {
+    const anchorFound = findNodeInBlockWithInlineContent(block, anchor.nodeId)
+    const focusFound = findNodeInBlockWithInlineContent(block, focus.nodeId)
+
+    if (!anchorFound || !focusFound) {
+      buildError(
+        'Anchor or focus node missing in block',
+        'OperationsEngine/buildDeleteRangeWithinBlockOps',
+      )
+    }
+
+    const { index: aNi, node: aNode } = anchorFound
+    const { index: fNi, node: fNode } = focusFound
+
+    /** Same text node → single delete_text. */
+    if (aNi === fNi && isInlineNodeWithEditableText(aNode)) {
+      return this.#buildDeleteTextRunOps(
+        block.id,
+        aNode,
+        anchor.offset,
+        focus.offset,
+        range,
+      )
+    }
+
+    const ops: Operation[] = []
+
+    /** Tail of first node. */
+    if (isInlineNodeWithEditableText(aNode)) {
+      const tailLen = aNode.text.length - anchor.offset
+      if (tailLen > 0) {
+        ops.push({
+          __type: 'delete_text',
+          blockId: block.id,
+          length: tailLen,
+          nodeId: aNode.id,
+          offset: anchor.offset,
+          snapshot: {
+            marks: aNode.marks,
+            text: aNode.text.slice(anchor.offset),
+          },
+        })
+      }
+    } else if (aNode && anchor.offset === 0) {
+      ops.push({
+        __type: 'remove_inline_node',
+        blockId: block.id,
+        index: aNi,
+        snapshot: aNode,
+      })
+    }
+
+    /** Fully selected nodes between anchor and focus. */
+    const betweenFirst = aNi + 1
+    const betweenLast = fNi - 1
+
+    if (betweenFirst <= betweenLast) {
+      ops.push(
+        ...this.#buildRemoveInlineNodeRangeOps(
+          block.id,
+          block.content,
+          betweenFirst,
+          betweenLast,
+        ),
+      )
+    }
+
+    /** Head of last node (focus exclusive). */
+    if (
+      fNi !== aNi &&
+      isInlineNodeWithEditableText(fNode) &&
+      focus.offset > 0
+    ) {
+      ops.push({
+        __type: 'delete_text',
+        blockId: block.id,
+        length: focus.offset,
+        nodeId: fNode.id,
+        offset: 0,
+        snapshot: {
+          marks: fNode.marks,
+          text: fNode.text.slice(0, focus.offset),
+        },
+      })
+    }
+
+    /** Join head + tail text when both ends are text with equal marks. */
+    if (
+      isInlineNodeWithEditableText(aNode) &&
+      isInlineNodeWithEditableText(fNode) &&
+      aNi !== fNi &&
+      isMarksEqual(aNode.marks, fNode.marks)
+    ) {
+      const headText = aNode.text.slice(0, anchor.offset)
+      const tailText = fNode.text.slice(focus.offset)
+
+      if (tailText.length > 0 && headText.length >= 0) {
+        ops.push({
+          __type: 'insert_text',
+          blockId: block.id,
+          marks: aNode.marks,
+          nodeId: aNode.id,
+          offset: anchor.offset,
+          text: tailText,
+        })
+        if (focus.offset < fNode.text.length) {
+          ops.push({
+            __type: 'remove_inline_node',
+            blockId: block.id,
+            index: fNi,
+            snapshot: fNode,
+          })
+        }
+      }
+    }
+
+    ops.push({
+      __type: 'set_selection',
+      next: createCursor({
+        blockId: block.id,
+        nodeId: anchor.nodeId,
+        offset: anchor.offset,
+      }),
+      prev: range,
+    })
+
+    return ops
+  }
+
+  /**
+   * Builds operations when user presses `Backspace` key at the current range position.
+   */
+  #buildDeleteBackspaceAtRangeOps(
+    context: EditorContext,
+    range: RangeSelection,
+  ): ComposingOpsIntent | null {
+    const { state } = context
+
+    const normalized = normalizeRange(context.state, range)
+    const { anchor, focus } = normalized
+
+    if (compareTextCursors(state, anchor, focus) >= 0) {
+      rangeCollapsedError(
+        'Range selection is collapsed; expected anchor to precede focus.',
+        'OperationsEngine/buildDeleteBackspaceAtRangeOps',
+      )
+    }
+
+    /**
+     * 1️⃣ First case we are in the same block.
+     * So we only need to delete the content inside
+     */
+    if (anchor.blockId === focus.blockId) {
+      const block = getBlockWithInlineContent(state, anchor.blockId)
+      const ops = this.#buildDeleteRangeWithinBlockOps(
+        block,
+        anchor,
+        focus,
+        range,
+      )
+
+      return { label: 'delete-content-inside-block', ops }
+    }
+    // @todo: handle case where we are in different blocks
+    return null
+  }
+
+  /**
+   * Builds operations when user presses `Backspace` key at the current selection.
+   * Returns `null` when there is no active selection.
+   */
+  buildDeleteBackspaceOps(context: EditorContext): ComposingOpsIntent | null {
+    if (isCursorSelection(context.selection)) {
+      return this.#buildDeleteBackspaceAtCursorOps(
+        context,
+        context.selection.anchor,
+      )
+    }
+
+    if (isRangeSelection(context.selection)) {
+      return this.#buildDeleteBackspaceAtRangeOps(context, context.selection)
+    }
+
+    return null
   }
 
   /** Builds operations when user presses `Enter` key as a hard break. */
