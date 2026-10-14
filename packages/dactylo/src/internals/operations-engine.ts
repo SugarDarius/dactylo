@@ -1924,12 +1924,14 @@ export class OperationsEngine {
       }
     }
 
-    const nextFocus = stepTextCursor(
-      context.state,
-      origin,
-      direction,
-      this.#graphemeOffsetCaret,
-    )
+    const nextFocus = stepTextCursor(context.state, origin, direction, {
+      getNext: (text, offset) =>
+        this.#graphemeOffsetCaret.getNextOffset(text, offset),
+      getPrev: (text, offset) =>
+        this.#graphemeOffsetCaret.getPrevOffset(text, offset),
+      snapToBoundary: (text, offset) =>
+        this.#graphemeOffsetCaret.snapOffsetToBoundary(text, offset),
+    })
     if (!nextFocus) {
       if (!extend && isRangeSelection(context.selection)) {
         const collapsed = createCursor(origin)
