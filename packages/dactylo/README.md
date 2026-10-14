@@ -94,12 +94,14 @@ const editor = new Dactylo({
   placeholder: 'Write something…',
 })
 
-const unsubscribe = editor.subscribe(({ state, selection }) => {
+const unsubscribe = editor.subscribe(({ state, selection, activeMarks }) => {
   render({
     /** The written content. */
     state,
     /** Where the user is editing. */
     selection,
+    /** Which active marks are enabled. */
+    activeMarks,
   })
 })
 
@@ -109,7 +111,7 @@ editor.history.commands.undo()
 
 `subscribe` fires after each context update. The snapshot holds the document (`state`), and the selection.
 
-The same split exists on `editor.history`, `editor.marks`, `editor.blocks`, `editor.selection`, and `editor.composer`. `editor.events` reports commands, tools, errors, history, and applied or rejected transactions.
+The same split exists on `editor.history`, `editor.marks`, `editor.blocks`, `editor.selection`, `editor.dom`, and `editor.composer`. `editor.events` reports commands, tools, errors, history, and applied or rejected transactions.
 
 ### React
 

@@ -37,6 +37,9 @@ export const DEFAULT_MAX_CHAR_WHEN_SLOW = 5
 /** Default locales to use when handling text operations. */
 export const DEFAULT_LOCALES = 'en-US'
 
+/** Default autolink detection enabled. */
+export const DEFAULT_WITH_AUTO_LINK = true
+
 /** Default DOM attributes for HTML elements rendered by UI libraries and used for DOM operations. */
 export const ROOT_ATTR_NAME = 'dactylo-root'
 

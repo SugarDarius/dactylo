@@ -6,6 +6,7 @@ import {
   DEFAULT_MENTION_CHARACTER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
   DEFAULT_SLASH_COMMAND_CHARACTER,
+  DEFAULT_WITH_AUTO_LINK,
 } from './internals/constants'
 import { isBlockWithInlineContentEmpty } from './internals/document'
 import { DOMManager } from './internals/dom-manager'
@@ -41,7 +42,10 @@ export interface DactyloAspectApi<T extends object, C extends object> {
 
 /** Static configuration for the editor. */
 export interface DactyloStaticConfig {
-  /** The locales to use for writing and reading text. */
+  /** Whether autolink detection is enabled. */
+  readonly withAutoLink: boolean
+
+  /** The locales used for writing and reading text. */
   readonly locales: Intl.LocalesArgument
 
   /** Configuration for mentions. */
@@ -435,6 +439,9 @@ export interface DactyloConfigOptions {
      */
     readonly locales?: Intl.LocalesArgument
 
+    /** Configuration for autolink detection. */
+    readonly withAutoLink?: boolean
+
     /** Configuration for the paragraphs */
     readonly paragraph?: {
       /**
@@ -547,6 +554,9 @@ export class Dactylo {
     this.#debug = options.debug ?? false
 
     const locales = options.config?.editor?.locales ?? DEFAULT_LOCALES
+    const withAutoLink =
+      options.config?.editor?.withAutoLink ?? DEFAULT_WITH_AUTO_LINK
+
     this.#config = {
       heading: {
         placeholder:
@@ -570,6 +580,7 @@ export class Dactylo {
           options.config?.editor?.slashCommand?.character ??
           DEFAULT_SLASH_COMMAND_CHARACTER,
       },
+      withAutoLink,
     }
     this.#pipeline = new TransactionPipeline({
       batch: options.config?.pipeline?.batch,
@@ -583,6 +594,7 @@ export class Dactylo {
           slashCommand: {
             character: this.#config.slashCommand.character,
           },
+          withAutoLink,
         },
       },
     })

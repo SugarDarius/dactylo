@@ -869,6 +869,9 @@ export interface OperationsEngineOptions {
 
   /** The locales to use when handling text operations. */
   readonly locales: Intl.LocalesArgument
+
+  /** Whether to enable autolink detection. */
+  readonly withAutoLink: boolean
 }
 
 /** Configuration for mentions. */
@@ -903,6 +906,9 @@ export class OperationsEngine {
   /** Grapheme offset caret instance. */
   readonly #graphemeOffsetCaret: GraphemeOffsetCaret
 
+  /** Whether to enable autolink detection. */
+  readonly #withAutoLink: boolean
+
   constructor(options: OperationsEngineOptions) {
     this.#mentionsConfig = options.mentions
     this.#slashCommandConfig = options.slashCommand
@@ -910,6 +916,7 @@ export class OperationsEngine {
     this.#graphemeOffsetCaret = new GraphemeOffsetCaret({
       locales: options.locales,
     })
+    this.#withAutoLink = options.withAutoLink
   }
 
   // --- Core engine ─────────────────────────────────────────---------
@@ -1333,10 +1340,8 @@ export class OperationsEngine {
       return null
     }
 
-    if (
-      !plainTextHasLinks(line) &&
-      isMarksEqual(context.activeMarks, node.marks)
-    ) {
+    const hasLinks = this.#withAutoLink && plainTextHasLinks(line)
+    if (!hasLinks && isMarksEqual(context.activeMarks, node.marks)) {
       const ops: Operation[] = [
         {
           __type: 'insert_text',
