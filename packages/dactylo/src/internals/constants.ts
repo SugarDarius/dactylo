@@ -34,6 +34,9 @@ export const DEFAULT_MAX_CHAR_WHEN_FAST = 20
 /** Default maximum number of characters to type when in slow mode. */
 export const DEFAULT_MAX_CHAR_WHEN_SLOW = 5
 
+/** Default locales to use when handling text operations. */
+export const DEFAULT_LOCALES = 'en-US'
+
 /** Default DOM attributes for HTML elements rendered by UI libraries and used for DOM operations. */
 export const ROOT_ATTR_NAME = 'dactylo-root'
 

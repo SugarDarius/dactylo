@@ -889,7 +889,12 @@ export class TransactionPipeline {
         prevent()
         if (isCursorSelection(this.#context.selection)) {
           const { data } = event
-          if (data && data.length === 1) {
+
+          /**
+           * We only process text input if we have a non-empty data.
+           * Allowing surrogate pairs and ZWJ sequences (aka. emoji pickers).
+           */
+          if (data && data.length > 0) {
             const { ops, label, coalesce, skipHistory } =
               this.#operationsEngine.buildTypedCharOps(
                 this.#context,
@@ -905,6 +910,9 @@ export class TransactionPipeline {
             })
           }
         }
+
+        // @todo: handle range selection
+
         return false
       }
       default: {

@@ -38,6 +38,7 @@ import {
 } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
+import { GraphemeOffsetCaret } from './grapheme'
 import type { ArrowDirection } from './keyboard'
 import { isMarkEnabled, isMarksEqual, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
@@ -858,13 +859,28 @@ export interface ComposingOpsIntent {
 /** Options for constructing a {@link OperationsEngine} instance. */
 export interface OperationsEngineOptions {
   /** Configuration for mentions. */
-  mentions: {
-    character: string
+  readonly mentions: {
+    readonly character: string
   }
   /** Configuration for slash command. */
-  slashCommand: {
+  readonly slashCommand: {
     character: string
   }
+
+  /** The locales to use when handling text operations. */
+  readonly locales: Intl.LocalesArgument
+}
+
+/** Configuration for mentions. */
+export interface OperationEngineMentionsConfig {
+  /** The character to use for mentions. */
+  readonly character: string
+}
+
+/** Configuration for slash command. */
+export interface OperationEngineSlashCommandConfig {
+  /** The character to use for slash command. */
+  readonly character: string
 }
 
 /**
@@ -878,11 +894,22 @@ export interface OperationsEngineOptions {
  * It allows to handle inline composition with mentions and slash command
  */
 export class OperationsEngine {
-  /** Options for the operations engine. */
-  #options: OperationsEngineOptions
+  /** Configuration for mentions. */
+  readonly #mentionsConfig: OperationEngineMentionsConfig
+
+  /** Configuration for slash command. */
+  readonly #slashCommandConfig: OperationEngineSlashCommandConfig
+
+  /** Grapheme offset caret instance. */
+  readonly #graphemeOffsetCaret: GraphemeOffsetCaret
 
   constructor(options: OperationsEngineOptions) {
-    this.#options = options
+    this.#mentionsConfig = options.mentions
+    this.#slashCommandConfig = options.slashCommand
+
+    this.#graphemeOffsetCaret = new GraphemeOffsetCaret({
+      locales: options.locales,
+    })
   }
 
   // --- Core engine ─────────────────────────────────────────---------
@@ -1275,12 +1302,12 @@ export class OperationsEngine {
         ops,
         skipHistory: true,
       }
-    } else if (char === this.#options.mentions.character) {
+    } else if (char === this.#mentionsConfig.character) {
       // @todo: handle mentions
-      return { label: `mention`, ops, skipHistory: true }
-    } else if (char === this.#options.slashCommand.character) {
+      return { label: 'mention', ops, skipHistory: true }
+    } else if (char === this.#slashCommandConfig.character) {
       // @todo: handle slash command
-      return { label: `slash-command`, ops, skipHistory: true }
+      return { label: 'slash-command', ops, skipHistory: true }
     }
 
     return {
@@ -1597,16 +1624,24 @@ export class OperationsEngine {
      *  1. Delete the previous character
      *  2. Or, delete the previous char and update a link
      */
+    const { start, length } = this.#graphemeOffsetCaret.getDeleteRange(
+      node.text,
+      cursor.offset,
+    )
+    if (length <= 0) {
+      return null
+    }
+
     const ops: Operation[] = [
       {
         __type: 'delete_text',
         blockId: cursor.blockId,
-        length: 1,
+        length,
         nodeId: cursor.nodeId,
-        offset: cursor.offset - 1,
+        offset: start,
         snapshot: {
           marks: node.marks,
-          text: node.text[cursor.offset - 1] ?? '',
+          text: node.text.slice(start, start + length),
         },
       },
       {
@@ -1614,7 +1649,7 @@ export class OperationsEngine {
         next: createCursor({
           blockId: cursor.blockId,
           nodeId: cursor.nodeId,
-          offset: cursor.offset - 1,
+          offset: start,
         }),
         prev: context.selection,
       },
@@ -1889,7 +1924,12 @@ export class OperationsEngine {
       }
     }
 
-    const nextFocus = stepTextCursor(context.state, origin, direction)
+    const nextFocus = stepTextCursor(
+      context.state,
+      origin,
+      direction,
+      this.#graphemeOffsetCaret,
+    )
     if (!nextFocus) {
       if (!extend && isRangeSelection(context.selection)) {
         const collapsed = createCursor(origin)

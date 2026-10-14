@@ -5,6 +5,7 @@ import {
 } from './blocks'
 import type { Block, BlockId, BlockWithInlineContent } from './blocks'
 import { DactyloError } from './errors'
+import type { GraphemeOffsetCaret } from './grapheme'
 import type { ArrowDirection } from './keyboard'
 import type { Marks } from './marks'
 import { createTextNode, getInlineNodeTextLength } from './nodes'
@@ -590,6 +591,7 @@ export function createCursorAtDocumentEnd(
 export function stepCursorLeft(
   state: DocumentState,
   cursor: TextCursor,
+  graphemeOffsetCaret: GraphemeOffsetCaret,
 ): TextCursor | null {
   const block = getBlockWithInlineContent(state, cursor.blockId)
   const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
@@ -598,7 +600,10 @@ export function stepCursorLeft(
   }
   const { node, index } = found
   if (node.__type === 'text' && cursor.offset > 0) {
-    return { ...cursor, offset: cursor.offset - 1 }
+    return {
+      ...cursor,
+      offset: graphemeOffsetCaret.getPrevOffset(node.text, cursor.offset),
+    }
   }
   if (node.__type === 'line_break' && cursor.offset === 0) {
     const prevNode = block.content[index - 1]
@@ -632,6 +637,7 @@ export function stepCursorLeft(
 export function stepCursorRight(
   state: DocumentState,
   cursor: TextCursor,
+  graphemeOffsetCaret: GraphemeOffsetCaret,
 ): TextCursor | null {
   const block = getBlockWithInlineContent(state, cursor.blockId)
   const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
@@ -640,7 +646,10 @@ export function stepCursorRight(
   }
   const { node, index } = found
   if (node.__type === 'text' && cursor.offset < node.text.length) {
-    return { ...cursor, offset: cursor.offset + 1 }
+    return {
+      ...cursor,
+      offset: graphemeOffsetCaret.getNextOffset(node.text, cursor.offset),
+    }
   }
   const nextNode = block.content[index + 1]
   if (nextNode) {
@@ -658,6 +667,7 @@ export function stepCursorRight(
 export function stepCursorUp(
   state: DocumentState,
   cursor: TextCursor,
+  graphemeOffsetCaret: GraphemeOffsetCaret,
 ): TextCursor | null {
   const block = getBlockWithInlineContent(state, cursor.blockId)
   const prevBlock = resolvePrevInlineBlock(state, block.id)
@@ -665,13 +675,19 @@ export function stepCursorUp(
     return null
   }
   const linear = getLinearOffsetInBlock(block, cursor)
-  return cursorFromLinearOffsetInBlock(prevBlock.id, prevBlock, linear)
+  return cursorFromLinearOffsetInBlock(
+    prevBlock.id,
+    prevBlock,
+    linear,
+    graphemeOffsetCaret,
+  )
 }
 
 /** Returns the next caret position at down, or `null` if already at the boundary. */
 export function stepCursorDown(
   state: DocumentState,
   cursor: TextCursor,
+  graphemeOffsetCaret: GraphemeOffsetCaret,
 ): TextCursor | null {
   const block = getBlockWithInlineContent(state, cursor.blockId)
   const nextBlock = resolveNextInlineBlock(state, block.id)
@@ -679,7 +695,12 @@ export function stepCursorDown(
     return null
   }
   const linear = getLinearOffsetInBlock(block, cursor)
-  return cursorFromLinearOffsetInBlock(nextBlock.id, nextBlock, linear)
+  return cursorFromLinearOffsetInBlock(
+    nextBlock.id,
+    nextBlock,
+    linear,
+    graphemeOffsetCaret,
+  )
 }
 
 /** Returns the next caret position, or `null` if already at the boundary. */
@@ -687,19 +708,20 @@ export function stepTextCursor(
   state: DocumentState,
   cursor: TextCursor,
   direction: ArrowDirection,
+  graphemeOffsetCaret: GraphemeOffsetCaret,
 ): TextCursor | null {
   switch (direction) {
     case 'left': {
-      return stepCursorLeft(state, cursor)
+      return stepCursorLeft(state, cursor, graphemeOffsetCaret)
     }
     case 'right': {
-      return stepCursorRight(state, cursor)
+      return stepCursorRight(state, cursor, graphemeOffsetCaret)
     }
     case 'up': {
-      return stepCursorUp(state, cursor)
+      return stepCursorUp(state, cursor, graphemeOffsetCaret)
     }
     case 'down': {
-      return stepCursorDown(state, cursor)
+      return stepCursorDown(state, cursor, graphemeOffsetCaret)
     }
     default: {
       return null

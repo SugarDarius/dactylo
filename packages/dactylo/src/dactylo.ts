@@ -2,6 +2,7 @@ import type { BlockId } from './internals/blocks'
 import { error, warnOnceIf } from './internals/console'
 import {
   DEFAULT_HEADING_PLACEHOLDER,
+  DEFAULT_LOCALES,
   DEFAULT_MENTION_CHARACTER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
   DEFAULT_SLASH_COMMAND_CHARACTER,
@@ -40,34 +41,37 @@ export interface DactyloAspectApi<T extends object, C extends object> {
 
 /** Static configuration for the editor. */
 export interface DactyloStaticConfig {
+  /** The locales to use for writing and reading text. */
+  readonly locales: Intl.LocalesArgument
+
   /** Configuration for mentions. */
-  mentions: {
+  readonly mentions: {
     /**
      * The character to trigger a mention.
      * Defaults to `@`
      */
-    character: string
+    readonly character: string
   }
 
   /** Configuration for slash command. */
-  slashCommand: {
+  readonly slashCommand: {
     /**
      * The character to trigger a slash command.
      * Defaults to `/`
      */
-    character: string
+    readonly character: string
   }
 
   /** Configuration for the headings */
-  heading: {
+  readonly heading: {
     /** Placeholder text when a heading is created or empty. */
-    placeholder: string
+    readonly placeholder: string
   }
 
   /** Configuration for the paragraphs */
-  paragraph: {
+  readonly paragraph: {
     /** Placeholder text when an empty paragraph is created or empty. */
-    placeholder: string
+    readonly placeholder: string
   }
 }
 
@@ -425,6 +429,12 @@ export interface DactyloConfigOptions {
       readonly character?: string
     }
 
+    /**
+     * The locales to use for writing text.
+     * Defaults to `en-US`
+     */
+    readonly locales?: Intl.LocalesArgument
+
     /** Configuration for the paragraphs */
     readonly paragraph?: {
       /**
@@ -535,12 +545,15 @@ export class Dactylo {
   constructor(options: DactyloOptions = {}) {
     this.#editable = options.editable ?? true
     this.#debug = options.debug ?? false
+
+    const locales = options.config?.editor?.locales ?? DEFAULT_LOCALES
     this.#config = {
       heading: {
         placeholder:
           options.config?.editor?.heading?.placeholder ??
           DEFAULT_HEADING_PLACEHOLDER,
       },
+      locales,
       mentions: {
         character:
           options.config?.editor?.mentions?.character ??
@@ -563,6 +576,7 @@ export class Dactylo {
       history: options.config?.pipeline?.history,
       operations: {
         engine: {
+          locales,
           mentions: {
             character: this.#config.mentions.character,
           },

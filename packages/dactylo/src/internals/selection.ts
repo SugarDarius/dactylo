@@ -1,5 +1,6 @@
 import { findFirstInlineNodeInBlock, findLastInlineNodeInBlock } from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
+import type { GraphemeOffsetCaret } from './grapheme'
 import { getInlineNodeTextLength } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
 import type { Relax } from './types'
@@ -296,12 +297,20 @@ export function cursorFromLinearOffsetInBlock(
   blockId: BlockId,
   block: BlockWithInlineContent,
   linear: number,
+  graphemeOffsetCaret: GraphemeOffsetCaret,
 ): TextCursor {
   let remaining = Math.max(0, linear)
   for (const node of block.content) {
     if (node.__type === 'text') {
       if (remaining <= node.text.length) {
-        return { blockId, nodeId: node.id, offset: remaining }
+        return {
+          blockId,
+          nodeId: node.id,
+          offset: graphemeOffsetCaret.snapOffsetToBoundary(
+            node.text,
+            remaining,
+          ),
+        }
       }
       remaining -= node.text.length
       continue
