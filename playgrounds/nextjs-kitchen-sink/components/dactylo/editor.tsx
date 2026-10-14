@@ -118,6 +118,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             // @note: for DX convenience add custom components
             '**:[[dactylo-block-content]]:outline-0',
             '**:[[dactylo-blocks]]:flex **:[[dactylo-blocks]]:flex-col **:[[dactylo-blocks]]:gap-2',
+            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true]]:caret-cyan-500',
             `[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:[content:attr(dactylo-block-placeholder)/'']`,
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:pointer-events-none',
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:max-w-full',
