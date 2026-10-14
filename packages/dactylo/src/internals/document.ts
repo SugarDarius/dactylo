@@ -5,7 +5,6 @@ import {
 } from './blocks'
 import type { Block, BlockId, BlockWithInlineContent } from './blocks'
 import { DactyloError } from './errors'
-import type { GraphemeOffsetCaret } from './grapheme'
 import type { ArrowDirection } from './keyboard'
 import type { Marks } from './marks'
 import { createTextNode, getInlineNodeTextLength } from './nodes'
@@ -591,7 +590,7 @@ export function createCursorAtDocumentEnd(
 export function stepCursorLeft(
   state: DocumentState,
   cursor: TextCursor,
-  graphemeOffsetCaret: GraphemeOffsetCaret,
+  getPrevOffset: (text: string, offset: number) => number,
 ): TextCursor | null {
   const block = getBlockWithInlineContent(state, cursor.blockId)
   const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
@@ -602,7 +601,7 @@ export function stepCursorLeft(
   if (node.__type === 'text' && cursor.offset > 0) {
     return {
       ...cursor,
-      offset: graphemeOffsetCaret.getPrevOffset(node.text, cursor.offset),
+      offset: getPrevOffset(node.text, cursor.offset),
     }
   }
   if (node.__type === 'line_break' && cursor.offset === 0) {
@@ -637,7 +636,7 @@ export function stepCursorLeft(
 export function stepCursorRight(
   state: DocumentState,
   cursor: TextCursor,
-  graphemeOffsetCaret: GraphemeOffsetCaret,
+  getNextOffset: (text: string, offset: number) => number,
 ): TextCursor | null {
   const block = getBlockWithInlineContent(state, cursor.blockId)
   const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
@@ -648,7 +647,7 @@ export function stepCursorRight(
   if (node.__type === 'text' && cursor.offset < node.text.length) {
     return {
       ...cursor,
-      offset: graphemeOffsetCaret.getNextOffset(node.text, cursor.offset),
+      offset: getNextOffset(node.text, cursor.offset),
     }
   }
   const nextNode = block.content[index + 1]
@@ -667,7 +666,7 @@ export function stepCursorRight(
 export function stepCursorUp(
   state: DocumentState,
   cursor: TextCursor,
-  graphemeOffsetCaret: GraphemeOffsetCaret,
+  snapOffsetToBoundary: (text: string, offset: number) => number,
 ): TextCursor | null {
   const block = getBlockWithInlineContent(state, cursor.blockId)
   const prevBlock = resolvePrevInlineBlock(state, block.id)
@@ -679,7 +678,7 @@ export function stepCursorUp(
     prevBlock.id,
     prevBlock,
     linear,
-    graphemeOffsetCaret,
+    snapOffsetToBoundary,
   )
 }
 
@@ -687,7 +686,7 @@ export function stepCursorUp(
 export function stepCursorDown(
   state: DocumentState,
   cursor: TextCursor,
-  graphemeOffsetCaret: GraphemeOffsetCaret,
+  snapOffsetToBoundary: (text: string, offset: number) => number,
 ): TextCursor | null {
   const block = getBlockWithInlineContent(state, cursor.blockId)
   const nextBlock = resolveNextInlineBlock(state, block.id)
@@ -699,29 +698,36 @@ export function stepCursorDown(
     nextBlock.id,
     nextBlock,
     linear,
-    graphemeOffsetCaret,
+    snapOffsetToBoundary,
   )
 }
 
-/** Returns the next caret position, or `null` if already at the boundary. */
+/**
+ * Returns the next caret position, or `null` if already at the boundary.
+ * Must provide the offsets management operations to use for the cursor navigation.
+ */
 export function stepTextCursor(
   state: DocumentState,
   cursor: TextCursor,
   direction: ArrowDirection,
-  graphemeOffsetCaret: GraphemeOffsetCaret,
+  offsets: {
+    getNext: (text: string, offset: number) => number
+    getPrev: (text: string, offset: number) => number
+    snapToBoundary: (text: string, offset: number) => number
+  },
 ): TextCursor | null {
   switch (direction) {
     case 'left': {
-      return stepCursorLeft(state, cursor, graphemeOffsetCaret)
+      return stepCursorLeft(state, cursor, offsets.getPrev)
     }
     case 'right': {
-      return stepCursorRight(state, cursor, graphemeOffsetCaret)
+      return stepCursorRight(state, cursor, offsets.getNext)
     }
     case 'up': {
-      return stepCursorUp(state, cursor, graphemeOffsetCaret)
+      return stepCursorUp(state, cursor, offsets.snapToBoundary)
     }
     case 'down': {
-      return stepCursorDown(state, cursor, graphemeOffsetCaret)
+      return stepCursorDown(state, cursor, offsets.snapToBoundary)
     }
     default: {
       return null
