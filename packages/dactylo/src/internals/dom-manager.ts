@@ -125,9 +125,9 @@ export function paintCaretAt(
  */
 export function paintRangeAt(
   editable: HTMLDivElement,
-  rangeSelection: RangeSelection,
+  range: RangeSelection,
 ): void {
-  const { anchor, focus } = rangeSelection
+  const { anchor, focus } = range
 
   const anchorBlockContent = findBlockEditableElement(editable, anchor.blockId)
   if (!anchorBlockContent) {
@@ -194,16 +194,18 @@ export function paintRangeAt(
     return
   }
 
-  const range = document.createRange()
-  range.setStart(clampedAnchor.node, clampedAnchor.offset)
-  range.setEnd(clampedFocus.node, clampedFocus.offset)
-
   if (document.activeElement !== focusBlockContent) {
     focusBlockContent.focus({ preventScroll: true })
   }
 
   domSelection.removeAllRanges()
-  domSelection.addRange(range)
+  domSelection.removeAllRanges()
+  domSelection.setBaseAndExtent(
+    clampedAnchor.node,
+    clampedAnchor.offset,
+    clampedFocus.node,
+    clampedFocus.offset,
+  )
 }
 
 /** Options for constructing {@link DomManager}. */

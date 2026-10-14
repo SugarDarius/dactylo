@@ -262,6 +262,63 @@ export function findClosestDactyloNode(node: Node): HTMLElement | null {
 }
 
 /**
+ * DOM offset within one painted `#text` node for a model offset inside that
+ * segment (inverse of `modelLengthFromPaintedDOMText` on a prefix).
+ */
+export function domOffsetInPaintedText(
+  painted: string,
+  modelOffsetInSegment: number,
+): number {
+  if (modelOffsetInSegment <= 0) {
+    return 0
+  }
+  const segmentModelLength = modelLengthFromPaintedDOMText(painted)
+  if (modelOffsetInSegment >= segmentModelLength) {
+    return painted.length
+  }
+  for (let dom = 0; dom <= painted.length; dom += 1) {
+    if (
+      modelLengthFromPaintedDOMText(painted.slice(0, dom)) ===
+      modelOffsetInSegment
+    ) {
+      return dom
+    }
+  }
+  return painted.length
+}
+
+/**
+ * Maps a model offset inside one `[dactylo-node]` text host to a DOM point.
+ * Walks `#text` nodes and uses painted-text model length (ZWSP/NBSP aware).
+ */
+export function getDOMPointFromInlineTextHost(
+  host: HTMLElement,
+  modelOffset: number,
+): DOMPoint | null {
+  const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT)
+  let modelConsumed = 0
+  let text = walker.nextNode() as Text | null
+  let lastText: Text | null = null
+  while (text) {
+    lastText = text
+    const nodeModelLen = modelLengthFromPaintedDOMText(text.data)
+    if (modelOffset <= modelConsumed + nodeModelLen) {
+      const inNode = modelOffset - modelConsumed
+      return {
+        node: text,
+        offset: domOffsetInPaintedText(text.data, inNode),
+      }
+    }
+    modelConsumed += nodeModelLen
+    text = walker.nextNode() as Text | null
+  }
+  if (lastText) {
+    return { node: lastText, offset: lastText.length }
+  }
+  return null
+}
+
+/**
  * Maps a {@link TextCursor} to the DOM point inside `editable`.
  *
  * The model offset counts characters in one inline node. It is not an index
@@ -279,31 +336,25 @@ export function getDOMPointFromTextCursor(
 ): DOMPoint | null {
   const { nodeId } = cursor
   const node = findEditableElement(editable, nodeId)
-
   if (!node) {
     if (editable.childNodes.length === 0) {
       return { node: editable, offset: 0 }
     }
     return null
   }
-
-  /**
-   * One model text node can be several DOM text nodes once marks, or the
-   * browser, split it. Walk only inside this host and consume `offset`.
-   */
-  const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
-  let remaining = cursor.offset
-  let text = walker.nextNode() as Text | null
-
-  while (text) {
-    if (remaining <= text.length) {
-      return { node: text, offset: remaining }
-    }
-    remaining -= text.length
-    text = walker.nextNode() as Text | null
+  if (node.hasAttribute(LINE_BREAK_NODE_ATTR_NAME)) {
+    return { node, offset: 0 }
   }
-
-  return { node, offset: cursor.offset }
+  if (
+    node.hasAttribute(TEXT_NODE_ATTR_NAME) ||
+    node instanceof HTMLAnchorElement
+  ) {
+    const point = getDOMPointFromInlineTextHost(node, cursor.offset)
+    if (point) {
+      return point
+    }
+  }
+  return null
 }
 
 /** Paints model text into DOM characters.*/
