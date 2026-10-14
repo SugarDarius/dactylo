@@ -1,4 +1,5 @@
 import type { BlockId, BlockWithoutPosKey } from './blocks'
+import { readTransferredData } from './clipboard'
 import { warn, warnOnce } from './console'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
 import { createInitialEditorContext } from './editor-context'
@@ -742,10 +743,60 @@ export class TransactionPipeline {
         return false
       }
 
-      // @todo: handle clipboard input types `deleteFromCut`, `insertFromPaste`
-      case 'deleteFromCut':
-      case 'insertFromPaste': {
+      // @todo: handle clipboard input types `deleteFromCut`
+      case 'deleteFromCut': {
         prevent()
+        return false
+      }
+
+      case 'insertFromPaste': {
+        // @todo: handle data types of pastes
+        if (isCursorSelection(this.#context.selection)) {
+          prevent()
+
+          const transferredData = readTransferredData(event.dataTransfer)
+          if (transferredData !== null) {
+            const type = transferredData.__type
+            switch (type) {
+              case 'text/plain': {
+                const intent = this.#operationsEngine.buildPlainTextPasteOps(
+                  this.#context,
+                  this.#context.selection.anchor,
+                  transferredData.text,
+                )
+                /** 👉🏻 See {@link buildPlainTextPasteOps} jsdoc on why it can return `null` */
+                if (intent === null) {
+                  return false
+                }
+
+                const { ops, label, coalesce, skipHistory } = intent
+                this.#commit(ops, {
+                  coalesce,
+                  label: transactionPolicyLabel('input', 'digest-event', label),
+                  pushToHistory: !skipHistory,
+                  source: 'user',
+                })
+
+                return true
+              }
+              case 'text/html':
+              case 'dactylo': {
+                warn(
+                  `\`${type}\` clipboard data type is not is not implemented yet.`,
+                )
+                return false
+              }
+              default: {
+                return false
+              }
+            }
+          }
+
+          return false
+        }
+
+        // @todo: handle range selection
+
         return false
       }
 
@@ -924,6 +975,7 @@ export class TransactionPipeline {
 
           return true
         }
+        // @todo: handle copy with clipboard data type
         case 'copy':
         case 'escape':
         case 'select-all': {

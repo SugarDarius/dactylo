@@ -112,7 +112,6 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
   ({ node, ...props }, forwardedRef) => {
     const rendered = useMemo(() => paintTextForDOM(node.text), [node.text])
-
     return (
       <span
         {...props}

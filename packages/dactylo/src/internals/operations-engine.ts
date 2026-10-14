@@ -65,6 +65,7 @@ import type {
   SetSelectionOp,
   SplitBlockOp,
 } from './operations'
+import { plainTextHasLinks, splitPlainText } from './plain-text'
 import {
   areSelectionsEqual,
   createCursor,
@@ -1287,6 +1288,95 @@ export class OperationsEngine {
       label: `insert-char:${char}`,
       ops,
     }
+  }
+
+  #buildPasteLineOps(
+    context: EditorContext,
+    /** Collapsed cursor anchor for the pending edit. */
+    cursor: TextCursor,
+    /** The block id to paste the line into. */
+    blockId: BlockId,
+    /** The node to paste the line into. */
+    node: InlineNodeWithEditableText,
+    /** The line to paste. */
+    line: string,
+  ): ComposingOpsIntent | null {
+    /** We don't want to execute the pipeline for an empty line. */
+    if (line.length <= 0) {
+      return null
+    }
+
+    if (
+      !plainTextHasLinks(line) &&
+      isMarksEqual(context.activeMarks, node.marks)
+    ) {
+      const ops: Operation[] = [
+        {
+          __type: 'insert_text',
+          blockId,
+          marks: node.marks,
+          nodeId: node.id,
+          offset: cursor.offset,
+          text: line,
+        },
+        {
+          __type: 'set_selection',
+          next: createCursor({
+            blockId,
+            nodeId: node.id,
+            offset: cursor.offset + line.length,
+          }),
+          prev: context.selection,
+        },
+      ]
+
+      return { label: 'past-text', ops }
+    }
+
+    // @todo: handle slice for pasted links
+
+    return null
+  }
+
+  /** Builds operations for a pasted plain text.*/
+  buildPlainTextPasteOps(
+    context: EditorContext,
+    /** Collapsed cursor anchor for the pending edit. */
+    cursor: TextCursor,
+    /** The plain text to paste. */
+    plain: string,
+  ): ComposingOpsIntent | null {
+    /** We don't want to execute the pipeline for an empty text. */
+    if (plain.length <= 0) {
+      return null
+    }
+
+    const { state } = context
+
+    const block = getBlockWithInlineContent(state, cursor.blockId)
+    const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+    if (!found || !isInlineNodeWithEditableText(found.node)) {
+      buildError(
+        `Node ${cursor.nodeId} not found in block ${block.id}`,
+        'OperationsEngine/buildPlainTextPasteOps',
+      )
+    }
+
+    const lines = splitPlainText(plain)
+    if (lines.length === 1) {
+      const [line] = lines as [string]
+
+      return this.#buildPasteLineOps(
+        context,
+        cursor,
+        block.id,
+        found.node,
+        line,
+      )
+    }
+
+    // @todo: handle past for multi lines
+    return null
   }
 
   /** Merges the current block into the previous block when backspacing at block start. */
