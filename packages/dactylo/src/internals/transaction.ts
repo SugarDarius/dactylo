@@ -752,6 +752,7 @@ export class TransactionPipeline {
       case 'insertFromPaste': {
         // @todo: handle data types of pastes
         if (isCursorSelection(this.#context.selection)) {
+          /** In any case we prevent native browser behavior as we want full control over paste. */
           prevent()
 
           const transferredData = readTransferredData(event.dataTransfer)
@@ -768,6 +769,9 @@ export class TransactionPipeline {
                 if (intent === null) {
                   return false
                 }
+
+                /** stop native browser behavior as we got a real intent. */
+                prevent()
 
                 const { ops, label, coalesce, skipHistory } = intent
                 this.#commit(ops, {
@@ -802,10 +806,10 @@ export class TransactionPipeline {
 
       /** Typing commands input types bucket. */
       case 'insertLineBreak': {
+        /** In any case we prevent native browser behavior as we want full control over line breaks. */
+        prevent()
         /** `shift+Enter` is considered as a soft break. */
         if (isCursorSelection(this.#context.selection)) {
-          prevent()
-
           const { ops, label, coalesce } =
             this.#operationsEngine.buildSoftBreakOps(
               this.#context,
@@ -827,10 +831,10 @@ export class TransactionPipeline {
         return false
       }
       case 'insertParagraph': {
+        /** In any case we prevent native browser behavior as we want full control over paragraph breaks. */
+        prevent()
         /** `Enter` solo is considered as a hard break. */
         if (isCursorSelection(this.#context.selection)) {
-          prevent()
-
           const { ops, label, coalesce } =
             this.#operationsEngine.buildHardBreakOps(
               this.#context,
@@ -852,9 +856,9 @@ export class TransactionPipeline {
         return false
       }
       case 'deleteContentBackward': {
+        /** In any case we prevent native browser behavior as we want full control over backspace. */
+        prevent()
         if (isCursorSelection(this.#context.selection)) {
-          prevent()
-
           const intent = this.#operationsEngine.buildCursorBackspaceOps(
             this.#context,
             this.#context.selection.anchor,
@@ -881,11 +885,11 @@ export class TransactionPipeline {
         return false
       }
       case 'insertText': {
+        /** In any case we prevent native browser behavior as we want full control over text input. */
+        prevent()
         if (isCursorSelection(this.#context.selection)) {
           const { data } = event
           if (data && data.length === 1) {
-            prevent()
-
             const { ops, label, coalesce, skipHistory } =
               this.#operationsEngine.buildTypedCharOps(
                 this.#context,
@@ -990,6 +994,7 @@ export class TransactionPipeline {
 
     const arrowDirection = detectArrowDirection(event)
     if (arrowDirection !== null && isSelectionActive(this.#context.selection)) {
+      /** In any case we prevent native browser behavior as we want full control over arrow navigation. */
       prevent()
 
       const ops = this.#operationsEngine.buildArrowNavigationOps(
