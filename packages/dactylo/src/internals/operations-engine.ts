@@ -800,6 +800,71 @@ export function resolvesMergeBlocksUndoFields(
 }
 
 /**
+ * Previews in-memory the inline content of a block
+ * after a list of trim operations without applying them into the document.
+ *
+ * Purpose:
+ * After delete or replace a cross-block range selection the engine does:
+ *  1. Trims the start block from the anchor forward (e.g `#buildForwardTrimBlockOps`
+ *  2. Deletes blocks in the middle.
+ *  3. Trims end block from the focus backward (e.g `#buildBackwardTrimBlockOps`)
+ *  4. Emits a `merge_blocks` operation that joins the trimmed end into the trimmed start.
+ *
+ * Several fields on that `merge_blocks` op must match the document at the moment this op
+ * is validated/applied; after the trim ops in the same transaction have already run.
+ * The build still works from the original block snapshots, so it uses this helper
+ * to replay only the relevant inline ops.
+ *
+ * Why coalescing matters?
+ * Forward trim can leave adjacent text nodes with the same marks; real apply merges them.
+ * If the preview skipped coalescing, `validateMergeBlocksOp` could disagree with the state
+ * seen when `merge_blocks` runs.
+ *
+ * Baseline: "what will this block’s inline tree be after these trim ops?"
+ * So the engine can build a correct `merge_blocks` op (merge index, undo snapshots, split point, …)
+ * before anything is dispatched to the document.
+ */
+export function previewInlineContentAfterTrimOps(
+  content: readonly InlineNode[],
+  ops: Operation[],
+  blockId: BlockId,
+): InlineNode[] {
+  let next = [...content]
+
+  for (const op of ops) {
+    if (op.blockId !== blockId) {
+      continue
+    }
+
+    if (op.__type === 'delete_text') {
+      const idx = next.findIndex((n) => n.id === op.nodeId)
+      if (idx === -1) {
+        continue
+      }
+
+      const node = next[idx]
+      if (!node || !isInlineNodeWithEditableText(node)) {
+        continue
+      }
+
+      const before = node.text.slice(0, op.offset)
+      const after = node.text.slice(op.offset + op.length)
+
+      next[idx] = {
+        ...node,
+        text: before + after,
+        updatedAt: new Date(),
+      }
+    } else if (op.__type === 'remove_inline_node') {
+      next.splice(op.index, 1)
+    }
+    next = coalesceInlineNodes(next)
+  }
+
+  return next
+}
+
+/**
  * Inline nodes that move to the tail block when splitting a cursor.
  * Used by operations emitters to populate {@link SplitBlockOp} tailSnapshot field for undo.
  *
@@ -1404,7 +1469,7 @@ export class OperationsEngine {
     const forwards = this.#buildForwardTrimBlockOps(startBlock, anchor)
     ops.push(...forwards)
 
-    let targetHead = this.#simulateBlockContentAfterInlineOps(
+    let targetHead = previewInlineContentAfterTrimOps(
       startBlock.content,
       forwards,
       startBlock.id,
@@ -1433,7 +1498,7 @@ export class OperationsEngine {
     const backward = this.#buildBackwardTrimBlockOps(endBlock, focus)
     ops.push(...backward)
 
-    const tailContent = this.#simulateBlockContentAfterInlineOps(
+    const tailContent = previewInlineContentAfterTrimOps(
       endBlock.content,
       backward,
       endBlock.id,
@@ -2316,51 +2381,6 @@ export class OperationsEngine {
   }
 
   /**
-   * Replays inline ops on a block's content the same way dispatch would
-   * (including coalescing). Used so `merge_blocks.mergedTailSnapshot` matches
-   * live source.content at validation time.
-   */
-  #simulateBlockContentAfterInlineOps(
-    content: readonly InlineNode[],
-    ops: Operation[],
-    blockId: BlockId,
-  ): InlineNode[] {
-    let next = [...content]
-
-    for (const op of ops) {
-      if (op.blockId !== blockId) {
-        continue
-      }
-
-      if (op.__type === 'delete_text') {
-        const idx = next.findIndex((n) => n.id === op.nodeId)
-        if (idx === -1) {
-          continue
-        }
-
-        const node = next[idx]
-        if (!node || !isInlineNodeWithEditableText(node)) {
-          continue
-        }
-
-        const before = node.text.slice(0, op.offset)
-        const after = node.text.slice(op.offset + op.length)
-
-        next[idx] = {
-          ...node,
-          text: before + after,
-          updatedAt: new Date(),
-        }
-      } else if (op.__type === 'remove_inline_node') {
-        next.splice(op.index, 1)
-      }
-      next = coalesceInlineNodes(next)
-    }
-
-    return next
-  }
-
-  /**
    * Deletes from the start of the block through `to` (exclusive).
    * Keeps `[to, block end)`.
    */
@@ -2491,7 +2511,7 @@ export class OperationsEngine {
     const forwards = this.#buildForwardTrimBlockOps(startBlock, anchor)
     ops.push(...forwards)
 
-    let targetHead = this.#simulateBlockContentAfterInlineOps(
+    let targetHead = previewInlineContentAfterTrimOps(
       startBlock.content,
       forwards,
       startBlock.id,
@@ -2520,7 +2540,7 @@ export class OperationsEngine {
     const backwards = this.#buildBackwardTrimBlockOps(endBlock, focus)
     ops.push(...backwards)
 
-    const tailContent = this.#simulateBlockContentAfterInlineOps(
+    const tailContent = previewInlineContentAfterTrimOps(
       endBlock.content,
       backwards,
       endBlock.id,
