@@ -2181,7 +2181,7 @@ export class OperationsEngine {
 
     /**
      * 1️⃣ First case: we are in a single block.
-     * So we only need to delete the content inside
+     * So we only need to delete the content inside.
      */
     if (anchor.blockId === focus.blockId) {
       const block = getBlockWithInlineContent(state, anchor.blockId)
