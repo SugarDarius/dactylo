@@ -12,11 +12,9 @@
 import { nanoid } from 'nanoid'
 
 import { DactyloError } from './errors'
-import { isInlineNodeWithEditableText } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
 import { makePosition } from './position'
 import type { PosKey } from './position'
-import type { TextCursor } from './selection'
 import type { Brand, Relax, Metadata } from './types'
 
 /**
@@ -215,76 +213,4 @@ export function findLastInlineNodeInBlock(
   }
 
   return last
-}
-
-/**
- * Finds the inline content kept when deleting from `from` through the end of the block.
- * Used to compute merge `atIndex` after a forward trim.
- */
-export function findHeadInlineContentBeforeCursor(
-  block: BlockWithInlineContent,
-  from: TextCursor,
-): InlineNode[] {
-  const found = block.content.findIndex((n) => n.id === from.nodeId)
-  if (found === -1) {
-    return [...block.content]
-  }
-
-  const head = block.content.slice(0, found)
-  const node = block.content[found]
-  if (!node) {
-    return head
-  }
-
-  if (isInlineNodeWithEditableText(node) && from.offset > 0) {
-    const text = node.text.slice(0, from.offset)
-    if (text.length > 0) {
-      head.push({ ...node, text, updatedAt: new Date() })
-    }
-  }
-
-  return head
-}
-
-/**
- * Inline content kept when deleting from the start of the block through `to` (exclusive).
- * Mirrors {@link OperationsEngine#buildBackwardTrimBlockOps} for merge snapshots.
- */
-export function findTailInlineContentFromCursor(
-  block: BlockWithInlineContent,
-  to: TextCursor,
-): InlineNode[] {
-  const toNi = block.content.findIndex((n) => n.id === to.nodeId)
-  if (toNi === -1) {
-    return [...block.content]
-  }
-
-  const toNode = block.content[toNi]
-  if (!toNode) {
-    return block.content.slice(toNi + 1)
-  }
-
-  if (isInlineNodeWithEditableText(toNode)) {
-    if (to.offset >= toNode.text.length) {
-      return block.content.slice(toNi + 1)
-    }
-
-    const tail: InlineNode[] = []
-    if (to.offset > 0) {
-      const text = toNode.text.slice(to.offset)
-      if (text.length > 0) {
-        tail.push({ ...toNode, text, updatedAt: new Date() })
-      }
-    } else {
-      tail.push(toNode)
-    }
-
-    tail.push(...block.content.slice(toNi + 1))
-
-    return tail
-  }
-
-  const tail: InlineNode[] = [toNode, ...block.content.slice(toNi + 1)]
-
-  return tail
 }
