@@ -2,7 +2,6 @@ import {
   createParagraphBlockAfter,
   findHeadInlineContentBeforeCursor,
   findNodeInBlockWithInlineContent,
-  findTailInlineContentFromCursor,
   isBlockWithInlineContent,
   sortBlockOrder,
   touchBlock,
@@ -1431,7 +1430,11 @@ export class OperationsEngine {
     const backward = this.#buildBackwardTrimBlockOps(endBlock, focus)
     ops.push(...backward)
 
-    const tailContent = findTailInlineContentFromCursor(endBlock, focus)
+    const tailContent = this.#simulateBlockContentAfterInlineOps(
+      endBlock.content,
+      backward,
+      endBlock.id,
+    )
     const trimmedSourceSnapshot: BlockWithInlineContent = {
       ...endBlock,
       content: tailContent,
@@ -2310,6 +2313,51 @@ export class OperationsEngine {
   }
 
   /**
+   * Replays inline ops on a block's content the same way dispatch would
+   * (including coalescing). Used so merge_blocks.mergedTailSnapshot matches
+   * live source.content at validation time.
+   */
+  #simulateBlockContentAfterInlineOps(
+    content: readonly InlineNode[],
+    ops: Operation[],
+    blockId: BlockId,
+  ): InlineNode[] {
+    let next = [...content]
+
+    for (const op of ops) {
+      if (op.blockId !== blockId) {
+        continue
+      }
+
+      if (op.__type === 'delete_text') {
+        const idx = next.findIndex((n) => n.id === op.nodeId)
+        if (idx === -1) {
+          continue
+        }
+
+        const node = next[idx]
+        if (!node || !isInlineNodeWithEditableText(node)) {
+          continue
+        }
+
+        const before = node.text.slice(0, op.offset)
+        const after = node.text.slice(op.offset + op.length)
+
+        next[idx] = {
+          ...node,
+          text: before + after,
+          updatedAt: new Date(),
+        }
+      } else if (op.__type === 'remove_inline_node') {
+        next.splice(op.index, 1)
+      }
+      next = coalesceInlineNodes(next)
+    }
+
+    return next
+  }
+
+  /**
    * Deletes from the start of the block through `to` (exclusive).
    * Keeps `[to, block end)`.
    */
@@ -2324,21 +2372,19 @@ export class OperationsEngine {
         'OperationsEngine/buildBackwardTrimBlockOps',
       )
     }
-
     const { index: toNi, node: toNode } = found
     const ops: Operation[] = []
-
-    if (toNi > 0) {
-      const inlines = this.#buildRemoveInlineNodeRangeOps(
-        block.id,
-        block.content,
-        0,
-        toNi - 1,
-      )
-      ops.push(...inlines)
-    }
-
-    if (isInlineNodeWithEditableText(toNode) && to.offset > 0) {
+    const fullyConsumesFocusText =
+      isInlineNodeWithEditableText(toNode) && to.offset >= toNode.text.length
+    /**
+     * Trim the focus node before removing preceding inlines (when some prefix is removed).
+     * Skip delete_text when the whole node is consumed — see remove at index 0 below.
+     */
+    if (
+      isInlineNodeWithEditableText(toNode) &&
+      to.offset > 0 &&
+      !fullyConsumesFocusText
+    ) {
       ops.push({
         __type: 'delete_text',
         blockId: block.id,
@@ -2351,7 +2397,37 @@ export class OperationsEngine {
         },
       })
     }
-
+    if (fullyConsumesFocusText && toNi > 0) {
+      ops.push({
+        __type: 'delete_text',
+        blockId: block.id,
+        length: toNode.text.length,
+        nodeId: toNode.id,
+        offset: 0,
+        snapshot: {
+          marks: toNode.marks,
+          text: toNode.text,
+        },
+      })
+    }
+    if (toNi > 0) {
+      const inlines = this.#buildRemoveInlineNodeRangeOps(
+        block.id,
+        block.content,
+        0,
+        toNi - 1,
+      )
+      ops.push(...inlines)
+    }
+    /** Focus at end of first text node: drop that node entirely (matches findTail). */
+    if (fullyConsumesFocusText && toNi === 0) {
+      ops.push({
+        __type: 'remove_inline_node',
+        blockId: block.id,
+        index: 0,
+        snapshot: toNode,
+      })
+    }
     return ops
   }
 
@@ -2433,7 +2509,11 @@ export class OperationsEngine {
     const backwards = this.#buildBackwardTrimBlockOps(endBlock, focus)
     ops.push(...backwards)
 
-    const tailContent = findTailInlineContentFromCursor(endBlock, focus)
+    const tailContent = this.#simulateBlockContentAfterInlineOps(
+      endBlock.content,
+      backwards,
+      endBlock.id,
+    )
     const trimmedSourceSnapshot: BlockWithInlineContent = {
       ...endBlock,
       content: tailContent,

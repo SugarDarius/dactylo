@@ -264,15 +264,27 @@ export function findTailInlineContentFromCursor(
     return block.content.slice(toNi + 1)
   }
 
-  const tail: InlineNode[] = []
-  if (isInlineNodeWithEditableText(toNode) && to.offset > 0) {
-    const text = toNode.text.slice(to.offset)
-    tail.push({ ...toNode, text, updatedAt: new Date() })
-  } else {
-    tail.push(toNode)
+  if (isInlineNodeWithEditableText(toNode)) {
+    if (to.offset >= toNode.text.length) {
+      return block.content.slice(toNi + 1)
+    }
+
+    const tail: InlineNode[] = []
+    if (to.offset > 0) {
+      const text = toNode.text.slice(to.offset)
+      if (text.length > 0) {
+        tail.push({ ...toNode, text, updatedAt: new Date() })
+      }
+    } else {
+      tail.push(toNode)
+    }
+
+    tail.push(...block.content.slice(toNi + 1))
+
+    return tail
   }
 
-  tail.push(...block.content.slice(toNi + 1))
+  const tail: InlineNode[] = [toNode, ...block.content.slice(toNi + 1)]
 
   return tail
 }
