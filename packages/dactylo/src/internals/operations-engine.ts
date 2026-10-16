@@ -1,6 +1,5 @@
 import {
   createParagraphBlockAfter,
-  findHeadInlineContentBeforeCursor,
   findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
   sortBlockOrder,
@@ -1402,10 +1401,14 @@ export class OperationsEngine {
 
     const ops: Operation[] = []
 
-    const forward = this.#buildForwardTrimBlockOps(startBlock, anchor)
-    ops.push(...forward)
+    const forwards = this.#buildForwardTrimBlockOps(startBlock, anchor)
+    ops.push(...forwards)
 
-    let targetHead = findHeadInlineContentBeforeCursor(startBlock, anchor)
+    let targetHead = this.#simulateBlockContentAfterInlineOps(
+      startBlock.content,
+      forwards,
+      startBlock.id,
+    )
     if (targetHead.length === 0) {
       const placeholder = createTextNode({
         marks: context.activeMarks,
@@ -2372,14 +2375,14 @@ export class OperationsEngine {
         'OperationsEngine/buildBackwardTrimBlockOps',
       )
     }
+
     const { index: toNi, node: toNode } = found
+
     const ops: Operation[] = []
     const fullyConsumesFocusText =
       isInlineNodeWithEditableText(toNode) && to.offset >= toNode.text.length
-    /**
-     * Trim the focus node before removing preceding inlines (when some prefix is removed).
-     * Skip delete_text when the whole node is consumed — see remove at index 0 below.
-     */
+
+    /** Partial prefix removal on the focus text node. */
     if (
       isInlineNodeWithEditableText(toNode) &&
       to.offset > 0 &&
@@ -2397,19 +2400,21 @@ export class OperationsEngine {
         },
       })
     }
+
+    /**
+     * Fully consumed focus node (`dd` at end of selection):
+     * remove the whole inline node (undo = insert_inline_node with full snapshot).
+     * Must run at original `toNi` *before* removing nodes `[0, toNi)`.
+     */
     if (fullyConsumesFocusText && toNi > 0) {
       ops.push({
-        __type: 'delete_text',
+        __type: 'remove_inline_node',
         blockId: block.id,
-        length: toNode.text.length,
-        nodeId: toNode.id,
-        offset: 0,
-        snapshot: {
-          marks: toNode.marks,
-          text: toNode.text,
-        },
+        index: toNi,
+        snapshot: toNode,
       })
     }
+
     if (toNi > 0) {
       const inlines = this.#buildRemoveInlineNodeRangeOps(
         block.id,
@@ -2419,7 +2424,8 @@ export class OperationsEngine {
       )
       ops.push(...inlines)
     }
-    /** Focus at end of first text node: drop that node entirely (matches findTail). */
+
+    /** Fully consumed first inline in the block. */
     if (fullyConsumesFocusText && toNi === 0) {
       ops.push({
         __type: 'remove_inline_node',
@@ -2428,6 +2434,7 @@ export class OperationsEngine {
         snapshot: toNode,
       })
     }
+
     return ops
   }
 
@@ -2484,7 +2491,11 @@ export class OperationsEngine {
     const forwards = this.#buildForwardTrimBlockOps(startBlock, anchor)
     ops.push(...forwards)
 
-    let targetHead = findHeadInlineContentBeforeCursor(startBlock, anchor)
+    let targetHead = this.#simulateBlockContentAfterInlineOps(
+      startBlock.content,
+      forwards,
+      startBlock.id,
+    )
     if (targetHead.length === 0) {
       const placeholder = createTextNode({
         marks: context.activeMarks,
