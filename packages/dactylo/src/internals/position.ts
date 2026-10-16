@@ -60,7 +60,7 @@ export const MIN_NON_ZERO_CODE = MIN_CODE + 1
  * Value must be between 0 and 94.
  */
 export function nthDigit(n: number): PosKey {
-  const code = MIN_CODE + (n < 0 ? NUM_DIGITS + n : 0)
+  const code = MIN_CODE + (n < 0 ? NUM_DIGITS + n : n)
   if (code < MIN_CODE || code > MAX_CODE) {
     throw DactyloError.from({
       code: 'FRACTIONAL_POSITION',
