@@ -2046,6 +2046,10 @@ export class OperationsEngine {
    * Builds operations for a range backspace within a single block (possibly multiple inline nodes).
    * Joins surviving head/tail text when marks match.
    */
+  /**
+   * Builds operations for a range backspace within a single block (possibly multiple inline nodes).
+   * Joins surviving head/tail text when marks match.
+   */
   #buildDeleteRangeWithinBlockOps(
     block: BlockWithInlineContent,
     anchor: TextCursor,
@@ -2092,6 +2096,30 @@ export class OperationsEngine {
 
     const ops: Operation[] = []
 
+    /**
+     * Head of last node first.
+     * Must run before removing nodes between anchor/focus: otherwise
+     * `updateBlockWithInlineContent` may coalesce adjacent text nodes and
+     * drop the focus node id before this delete_text is validated/applied.
+     */
+    if (
+      fNi !== aNi &&
+      isInlineNodeWithEditableText(fNode) &&
+      focus.offset > 0
+    ) {
+      ops.push({
+        __type: 'delete_text',
+        blockId: block.id,
+        length: focus.offset,
+        nodeId: fNode.id,
+        offset: 0,
+        snapshot: {
+          marks: fNode.marks,
+          text: fNode.text.slice(0, focus.offset),
+        },
+      })
+    }
+
     /** Tail of first node. */
     if (isInlineNodeWithEditableText(aNode)) {
       const tailLen = aNode.text.length - anchor.offset
@@ -2129,25 +2157,6 @@ export class OperationsEngine {
         betweenLast,
       )
       ops.push(...inlines)
-    }
-
-    /** Head of last node (focus exclusive). */
-    if (
-      fNi !== aNi &&
-      isInlineNodeWithEditableText(fNode) &&
-      focus.offset > 0
-    ) {
-      ops.push({
-        __type: 'delete_text',
-        blockId: block.id,
-        length: focus.offset,
-        nodeId: fNode.id,
-        offset: 0,
-        snapshot: {
-          marks: fNode.marks,
-          text: fNode.text.slice(0, focus.offset),
-        },
-      })
     }
 
     /** Join head + tail text when both ends are text with equal marks. */
