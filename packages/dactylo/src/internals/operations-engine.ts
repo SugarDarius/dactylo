@@ -2314,7 +2314,7 @@ export class OperationsEngine {
 
   /**
    * Replays inline ops on a block's content the same way dispatch would
-   * (including coalescing). Used so merge_blocks.mergedTailSnapshot matches
+   * (including coalescing). Used so `merge_blocks.mergedTailSnapshot` matches
    * live source.content at validation time.
    */
   #simulateBlockContentAfterInlineOps(
