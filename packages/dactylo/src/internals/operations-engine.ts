@@ -1274,6 +1274,48 @@ export class OperationsEngine {
   // --- Composing operations ─────────────────────────────────────────
 
   /**
+   * Builds the finished intent ops for a single typed character (or emoji) at the current selection.
+   * Determines behaviors when:
+   *  - `space` is typed → manage markdown shortcuts
+   *  - `mention_character` is typed → manage inline composition for mentions
+   *  - `slash_command_character` is typed → manage inline composition for slash commands
+   *  -  others chars are typed → insert the char and continue typing
+   */
+  #buildTypedCharIntentFinisherOps(
+    char: string,
+    ops: Operation[],
+    type: 'cursor' | 'range',
+  ): ComposingOpsIntent {
+    const label =
+      type === 'cursor' ? 'insert-char-at-cursor' : 'insert-char-at-range'
+
+    // @todo: handle markdown shortcut
+    if (char === ' ') {
+      return {
+        label: `markdown-shortcut`,
+        ops,
+        skipHistory: true,
+      }
+    }
+
+    // @todo: handle mentions
+    if (char === this.#mentionsConfig.character) {
+      return { label: 'mention', ops, skipHistory: true }
+    }
+
+    // @todo: handle slash command
+    if (char === this.#slashCommandConfig.character) {
+      return { label: 'slash-command', ops, skipHistory: true }
+    }
+
+    return {
+      coalesce: true,
+      label: `${label}:${char}`,
+      ops,
+    }
+  }
+
+  /**
    * Builds operations for a single typed character (or emoji) at the current cursor position.
    * When the typed character is a `space` checks for markdown shortcut triggers.
    */
@@ -1286,10 +1328,10 @@ export class OperationsEngine {
   ): ComposingOpsIntent {
     const { state } = context
 
-    let ops: Operation[] = []
+    const ops: Operation[] = []
     const block = getBlockWithInlineContent(state, cursor.blockId)
 
-    ops = [
+    ops.push(
       {
         __type: 'insert_text',
         blockId: block.id,
@@ -1307,32 +1349,139 @@ export class OperationsEngine {
         }),
         prev: context.selection,
       },
-    ]
+    )
 
-    // oxlint-disable-next-line no-negated-condition no-else-return unicorn/prefer-ternary
-    if (char === ' ') {
-      // @todo: handle markdown shortcut
-      return {
-        label: `insert-char:${char}`,
-        ops,
-        skipHistory: true,
-      }
-    } else if (char === this.#mentionsConfig.character) {
-      // @todo: handle mentions
-      return { label: 'mention', ops, skipHistory: true }
-    } else if (char === this.#slashCommandConfig.character) {
-      // @todo: handle slash command
-      return { label: 'slash-command', ops, skipHistory: true }
-    }
-
-    return {
-      coalesce: true,
-      label: `insert-char:${char}`,
-      ops,
-    }
+    return this.#buildTypedCharIntentFinisherOps(char, ops, 'cursor')
   }
 
-  /** Builds operations for a single typed character (or emoji) at the current range selection. */
+  /**
+   * Builds operations for a single typed character (or emoji) at the current range selection
+   * Returns `insert_text` and `set_selection` operations.
+   */
+  #buildTypedCharInsertAndSelectionAtRangeOps(
+    context: EditorContext,
+    range: RangeSelection,
+    char: string,
+    at: TextCursor,
+  ): Operation[] {
+    return [
+      {
+        __type: 'insert_text',
+        blockId: at.blockId,
+        marks: context.activeMarks,
+        nodeId: at.nodeId,
+        offset: at.offset,
+        text: char,
+      },
+      {
+        __type: 'set_selection',
+        next: createCursor({
+          blockId: at.blockId,
+          nodeId: at.nodeId,
+          offset: at.offset + char.length,
+        }),
+        prev: range,
+      },
+    ]
+  }
+
+  /**
+   * Builds operations for cross-block range replace.
+   * Same pipeline as range backspace, then insert at merge boundary.
+   */
+  #buildTypedCharAtRangeCrossBlockOps(
+    context: EditorContext,
+    anchor: TextCursor,
+    focus: TextCursor,
+    range: RangeSelection,
+    char: string,
+  ): Operation[] {
+    const { state } = context
+
+    const startBlock = getBlockWithInlineContent(state, anchor.blockId)
+    const endBlock = getBlockWithInlineContent(state, focus.blockId)
+
+    const ops: Operation[] = []
+
+    const forward = this.#buildForwardTrimBlockOps(startBlock, anchor)
+    ops.push(...forward)
+
+    let targetHead = findHeadInlineContentBeforeCursor(startBlock, anchor)
+    if (targetHead.length === 0) {
+      const placeholder = createTextNode({
+        marks: context.activeMarks,
+        text: '',
+      })
+      ops.push({
+        __type: 'insert_inline_node',
+        blockId: startBlock.id,
+        index: 0,
+        node: placeholder,
+      })
+      targetHead = [placeholder]
+    }
+
+    const deleted = this.#buildDeleteBlocksBetweenOps(
+      state,
+      startBlock.id,
+      endBlock.id,
+    )
+    ops.push(...deleted)
+
+    const backward = this.#buildBackwardTrimBlockOps(endBlock, focus)
+    ops.push(...backward)
+
+    const tailContent = findTailInlineContentFromCursor(endBlock, focus)
+    const trimmedSourceSnapshot: BlockWithInlineContent = {
+      ...endBlock,
+      content: tailContent,
+    }
+
+    const mergeTargetSnapshot: BlockWithInlineContent = {
+      ...startBlock,
+      content: targetHead,
+    }
+
+    const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
+      trimmedSourceSnapshot,
+      mergeTargetSnapshot,
+      context.activeMarks,
+    )
+
+    ops.push(
+      {
+        __type: 'merge_blocks',
+        atIndex: targetHead.length,
+        mergedTailSnapshot: [...tailContent],
+        sourceBlockId: endBlock.id,
+        sourceSnapshot: trimmedSourceSnapshot,
+        splitAtNodeId,
+        splitAtOffset,
+        targetBlockId: startBlock.id,
+      },
+      ...this.#buildTypedCharInsertAndSelectionAtRangeOps(
+        context,
+        range,
+        char,
+        {
+          blockId: startBlock.id,
+          nodeId: splitAtNodeId,
+          offset: splitAtOffset,
+        },
+      ),
+    )
+
+    return ops
+  }
+
+  /**
+   * Builds operations for a single typed character (or emoji) at the current range selection.
+   * | Case                       | Behavior                                                                 |
+   * |----------------------------|--------------------------------------------------------------------------|
+   * | Same node, text/link       | `delete_text` + `insert_text` + `set_selection`                          |
+   * | Same block, multiple nodes | range delete (no head/tail join) + `insert_text` at anchor               |
+   * | Cross-block                | forward trim → delete middle → backward trim → merge → insert at split   |
+   */
   #buildTypeCharAtRangeOps(
     context: EditorContext,
     /** The range selection to type the character at. */
@@ -1356,71 +1505,97 @@ export class OperationsEngine {
       )
     }
 
-    // @todo: handle cross block/nodes range selection.
-    if (anchor.blockId !== focus.blockId || anchor.nodeId !== focus.nodeId) {
-      throw DactyloError.from({
-        code: 'BUILD_TRANSACTION_OPERATIONS',
-        hint: 'OperationsEngine/buildTypeCharAtRangeOps',
-        message:
-          'Cross-node / cross-block range typing is not implemented yet.',
-      })
-    }
+    /**
+     * 1️⃣ First case: range selection is within the same block.
+     * 👉🏻 Deleting the selection in-block, and inserting replacement char
+     * at current anchor position (no survivor join).
+     */
+    if (anchor.blockId === focus.blockId) {
+      const block = getBlockWithInlineContent(state, anchor.blockId)
 
-    const block = getBlockWithInlineContent(state, anchor.blockId)
-    const found = findNodeInBlockWithInlineContent(block, anchor.nodeId)
-    if (!found || !isInlineNodeWithEditableText(found.node)) {
-      buildError(
-        `Node ${anchor.nodeId} not found in block ${block.id}`,
-        'OperationsEngine/buildTypeCharAtRangeOps',
+      /** Fastest path: one editable text node. */
+      if (anchor.nodeId === focus.nodeId) {
+        const found = findNodeInBlockWithInlineContent(block, anchor.nodeId)
+        if (!found || !isInlineNodeWithEditableText(found.node)) {
+          buildError(
+            `Node ${anchor.nodeId} not found in block ${block.id}`,
+            'OperationsEngine/buildTypeCharAtRangeOps',
+          )
+        }
+
+        const { node } = found
+        const deleteOffset = anchor.offset
+        const deleteLength = focus.offset - anchor.offset
+
+        if (deleteLength <= 0) {
+          rangeCollapsedError(
+            'Range selection is collapsed; expected non-empty text range.',
+            'OperationsEngine/buildTypeCharAtRangeOps',
+          )
+        }
+
+        const ops: Operation[] = [
+          {
+            __type: 'delete_text',
+            blockId: block.id,
+            length: deleteLength,
+            nodeId: node.id,
+            offset: deleteOffset,
+            snapshot: {
+              marks: node.marks,
+              text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
+            },
+          },
+          ...this.#buildTypedCharInsertAndSelectionAtRangeOps(
+            context,
+            range,
+            char,
+            {
+              blockId: block.id,
+              nodeId: node.id,
+              offset: deleteOffset,
+            },
+          ),
+        ]
+
+        return this.#buildTypedCharIntentFinisherOps(char, ops, 'range')
+      }
+
+      /** Same block, but multiple inline nodes. */
+      const deleteOps = this.#buildDeleteRangeWithinBlockOps(
+        block,
+        anchor,
+        focus,
+        range,
+        { joinSurvivors: false, setSelection: false },
       )
+
+      const ops: Operation[] = [
+        ...deleteOps,
+        ...this.#buildTypedCharInsertAndSelectionAtRangeOps(
+          context,
+          range,
+          char,
+          anchor,
+        ),
+      ]
+
+      return this.#buildTypedCharIntentFinisherOps(char, ops, 'range')
     }
 
-    const { node } = found
-    const deleteOffset = anchor.offset
-    const deleteLength = focus.offset - anchor.offset
+    /**
+     * 2️⃣ Second case: range selection is across multiple blocks.
+     * 👉🏻 Forward trim → delete middle → backward trim → merge → insert at split
+     */
+    const ops = this.#buildTypedCharAtRangeCrossBlockOps(
+      context,
+      anchor,
+      focus,
+      range,
+      char,
+    )
 
-    if (deleteLength <= 0) {
-      rangeCollapsedError(
-        'Range selection is collapsed; expected non-empty text range.',
-        'OperationsEngine/buildTypeCharAtRangeOps',
-      )
-    }
-
-    const ops: Operation[] = [
-      {
-        __type: 'delete_text',
-        blockId: block.id,
-        length: deleteLength,
-        nodeId: node.id,
-        offset: deleteOffset,
-        snapshot: {
-          marks: node.marks,
-          text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
-        },
-      },
-      {
-        __type: 'insert_text',
-        blockId: block.id,
-        marks: context.activeMarks,
-        nodeId: node.id,
-        offset: deleteOffset,
-        text: char,
-      },
-      {
-        __type: 'set_selection',
-        next: createCursor({
-          blockId: block.id,
-          nodeId: node.id,
-          offset: deleteOffset + char.length,
-        }),
-        prev: context.selection,
-      },
-    ]
-    return {
-      coalesce: true,
-      label: `insert-char-at-range:${char}`,
-      ops,
-    }
+    return this.#buildTypedCharIntentFinisherOps(char, ops, 'range')
   }
 
   /**
@@ -1876,7 +2051,15 @@ export class OperationsEngine {
     anchor: TextCursor,
     focus: TextCursor,
     range: RangeSelection,
+    opts: {
+      /** Whether to join survivors. */
+      joinSurvivors?: boolean
+      /** Whether to set the selection. */
+      setSelection?: boolean
+    } = {},
   ): Operation[] {
+    const { joinSurvivors = true, setSelection = true } = opts
+
     const anchorFound = findNodeInBlockWithInlineContent(block, anchor.nodeId)
     const focusFound = findNodeInBlockWithInlineContent(block, focus.nodeId)
 
@@ -1892,13 +2075,19 @@ export class OperationsEngine {
 
     /** Same text node → single delete_text. */
     if (aNi === fNi && isInlineNodeWithEditableText(aNode)) {
-      return this.#buildDeleteTextRunOps(
+      const ops = this.#buildDeleteTextRunOps(
         block.id,
         aNode,
         anchor.offset,
         focus.offset,
         range,
       )
+
+      if (!setSelection) {
+        return ops.filter((op) => op.__type !== 'set_selection')
+      }
+
+      return ops
     }
 
     const ops: Operation[] = []
@@ -1963,6 +2152,7 @@ export class OperationsEngine {
 
     /** Join head + tail text when both ends are text with equal marks. */
     if (
+      joinSurvivors &&
       isInlineNodeWithEditableText(aNode) &&
       isInlineNodeWithEditableText(fNode) &&
       aNi !== fNi &&
@@ -1991,15 +2181,17 @@ export class OperationsEngine {
       }
     }
 
-    ops.push({
-      __type: 'set_selection',
-      next: createCursor({
-        blockId: block.id,
-        nodeId: anchor.nodeId,
-        offset: anchor.offset,
-      }),
-      prev: range,
-    })
+    if (setSelection) {
+      ops.push({
+        __type: 'set_selection',
+        next: createCursor({
+          blockId: block.id,
+          nodeId: anchor.nodeId,
+          offset: anchor.offset,
+        }),
+        prev: range,
+      })
+    }
 
     return ops
   }
@@ -2180,8 +2372,8 @@ export class OperationsEngine {
     }
 
     /**
-     * 1️⃣ First case: we are in a single block.
-     * So we only need to delete the content inside.
+     * 1️⃣ First case: range selection is within the same block.
+     * 👉🏻 Deleting only the content inside the block.
      */
     if (anchor.blockId === focus.blockId) {
       const block = getBlockWithInlineContent(state, anchor.blockId)
@@ -2196,8 +2388,8 @@ export class OperationsEngine {
     }
 
     /**
-     * 2️⃣ Second case: we are in different blocks.
-     * So we need to delete the context cross-blocks and maybe remove some blocks.
+     * 2️⃣ Second case: range selection is in different blocks.
+     * 👉🏻 Deleting the context cross-blocks and maybe removing some blocks.
      */
     const startBlock = getBlockWithInlineContent(state, anchor.blockId)
     const endBlock = getBlockWithInlineContent(state, focus.blockId)
