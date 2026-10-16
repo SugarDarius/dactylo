@@ -13,7 +13,7 @@ import { nanoid } from 'nanoid'
 
 import { DactyloError } from './errors'
 import type { InlineNode, NodeId } from './nodes'
-import { makePosition } from './position'
+import { after } from './position'
 import type { PosKey } from './position'
 import type { Brand, Relax, Metadata } from './types'
 
@@ -133,7 +133,7 @@ export function createParagraphBlockAfter(
   content: InlineNode[],
   metadata?: Metadata,
 ): ParagraphBlock {
-  const posKey = makePosition(afterBlock.posKey)
+  const posKey = after(afterBlock.posKey)
   return createParagraphBlock({
     content,
     metadata,
