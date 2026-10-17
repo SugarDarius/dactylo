@@ -2,7 +2,7 @@
 
 A headless, block-based rich-text markdown editor. The document is a list of blocks and inline nodes trees, and every edit — keyboard, UI, or an AI agent — goes through the same transactional pipeline.
 
-Users write in a familiar editor. Underneath, Dactylo keeps a typed document you can query, mutate, undo, and render yourself.
+Users write in a familiar editor. Underneath, Dactylo keeps a typed document you can query, mutate, undo, and render yourself. Just type™.
 
 ## How it works
 
@@ -160,36 +160,40 @@ export function Editor() {
 
 ### Core
 
-| Feature                                              | Status             | Description                                                                          |
-| ---------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------ |
-| Transaction pipeline (validate · apply · invert)     | ✅ **Done**        | Single path for keyboard, commands, and agents                                       |
-| History (undo / redo, typing coalescing)             | ✅ **Done**        | Build-in history                                                                     |
-| Context subscriptions                                | ✅ **Done**        | Subscribe and listen to context changes natively                                     |
-| Command & tool events                                | ✅ **Done**        | Subscribe and listen to dactylo aspect changes natively                              |
-| Marks (bold, italic, strikethrough, underline, code) | 🚧 **In Progress** | Apply marks in the editor                                                            |
-| Markdown inline shortcuts                            | 🚧 **In Progress** | Use Build-in markdown inline shortcuts for headings, divider, links, lists and marks |
-| Autolink detection                                   | 🚧 **In Progress** | Automatically transform links from pastes into inline nodes (configurable)           |
-| Mentions (`@…`)                                      | 🚧 **In Progress** | Build-in mentions inside the editor (configurable)                                   |
-| Inline command trigger (`/…`)                        | 🚧 **In Progress** | Build-in inline command trigger (configurable)                                       |
-| IME composition                                      | 🚧 **In Progress** | Build-in IME composition management                                                  |
-| Clipboard (paste / cut / copy)                       | 🚧 **In Progress** | Clipboard events management                                                          |
-| Selection (cursor, range, DOM sync, caret paint)     | 🚧 **In Progress** | Editor's virtual selection with DOM sync                                             |
-| Block merge on Backspace at block start              | 🚧 **In Progress** | Paragraph merge; non-inline blocks `@todo`                                           |
-| Fractional index for blocks ordering                 | ✅ **Done**        | Fast blocks ordering using a factional index                                         |
-| Block / node metadata                                | 🚧 **In Progress** | Defines metadata on blocks and nodes for rendering and / or external operations      |
-| Placeholders                                         | 🚧 **In Progress** | config for blocks' placeholders                                                      |
-| Locales                                              | 🚧 **In Progress** | Set the locales in the current language                                              |
-| Read-only mode                                       | ✅ **Done**        | Editor cannot be edited                                                              |
-| Nested blocks (parent / child)                       | 🚧 **In Progress** | Manage nested blocks at level -1                                                     |
-| Collaboration                                        | 📆 **Planned**     | Enables collaboration through external providers                                     |
-| Strings security                                     | 🚧 **In Progress** | Prevents scripting and injections when inserting text                                |
-| DOM sync                                             | 🚧 **In Progress** | Sync DOM selection with Dactylo Selection                                            |
+| Feature                                          | Status             | Description                                                                             |
+| ------------------------------------------------ | ------------------ | --------------------------------------------------------------------------------------- |
+| Transaction pipeline (validate · apply · invert) | 🚧 **In Progress** | Single path for keyboard, commands, and agents                                          |
+| Operations Engine                                | 🚧 **In Progress** | Builds operations for each blocks/inline nodes                                          |
+| Blocks and inline nodes split & merge            | 🚧 **In Progress** | Built-in merge / and or split logic                                                     |
+| History (undo / redo, typing coalescing)         | ✅ **Done**        | Build-in history                                                                        |
+| Native keys for composing                        | 🚧 **In Progress** | Handling native composing keys like `Enter`, `shift+enter`, `backspace`, `ArrowLeft`, … |
+| Context subscriptions                            | ✅ **Done**        | Subscribe and listen to context changes natively                                        |
+| Command & tool events                            | ✅ **Done**        | Subscribe and listen to dactylo aspect changes natively                                 |
+| Marks                                            | 🚧 **In Progress** | Apply marks in the editor (bold, code, italic, strikethrough,… )                        |
+| Markdown inline shortcuts                        | 🚧 **In Progress** | Use Build-in markdown inline shortcuts for headings, divider, links, lists and marks    |
+| Autolink detection                               | 🚧 **In Progress** | Automatically transform links from pastes into inline nodes (configurable)              |
+| Mentions (`@…`)                                  | 🚧 **In Progress** | Enables build-in inline composition for inserting mentions (configurable)               |
+| Inline command trigger (`/…`)                    | 🚧 **In Progress** | Enables build-in inline composition for triggering external commands (configurable)     |
+| IME composition                                  | 🚧 **In Progress** | Build-in IME composition management                                                     |
+| Clipboard (paste / cut / copy)                   | 🚧 **In Progress** | Clipboard events management                                                             |
+| Browser native shortcuts                         | 🚧 **In Progress** | Shortcuts management like `mod+z`, `mod+a`                                              |
+| Fractional index for blocks ordering             | ✅ **Done**        | Fast blocks ordering using a factional index                                            |
+| Block / inline node metadata                     | 🚧 **In Progress** | Defines metadata on blocks and inline nodes for rendering and / or external operations  |
+| Placeholders                                     | 🚧 **In Progress** | config for blocks' placeholders                                                         |
+| Locales                                          | 🚧 **In Progress** | Set the locales in the current language                                                 |
+| Read-only mode                                   | ✅ **Done**        | Editor cannot be edited                                                                 |
+| Nested blocks (parent / child)                   | 🚧 **In Progress** | Manage nested blocks at level -1                                                        |
+| Strings security                                 | 🚧 **In Progress** | Prevents scripting and injections when inserting text                                   |
+| DOM sync                                         | 🚧 **In Progress** | Sync DOM selection with Dactylo Selection                                               |
+| Dactylo owned errors                             | 🚧 **In Progress** | Exposes errors defined by Dactylo                                                       |
+| Collaboration                                    | 📆 **Planned**     | Enables collaboration through external providers                                        |
+| Emojis inline trigger (`:…`)                     | 📆 **Planned**     | Enables inline composition for inserting emojis (configurable)                          |
 
 ### Blocks
 
 | Feature              | Status             | Description                                                                                                     |
 | -------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Paragraph            | **Done**           | Paragraph block with inline content                                                                             |
+| Paragraph            | ✅ **Done**        | Paragraph block with inline content                                                                             |
 | Heading (levels 1–6) | 🚧 **In Progress** | Heading block with inline content                                                                               |
 | Divider              | 🚧 **In Progress** | Block for UI rendering - no inline content                                                                      |
 | Bullet list item     | 📆 **Planned**     | Bullet list item block with inline content                                                                      |
@@ -210,11 +214,10 @@ export function Editor() {
 
 | Feature       | Status             | Notes                                   |
 | ------------- | ------------------ | --------------------------------------- |
-| TextNode      | ✅ **Done**        | Inline text                             |
+| TextNode      | ✅ **Done**        | Inline text with marks                  |
 | LineBreakNode | ✅ **Done**        | Soft break using `shift+enter` keys     |
-| LinkNode      | 🚧 **In Progress** | Inline links                            |
+| LinkNode      | 🚧 **In Progress** | Inline links with marks                 |
 | MentionNode   | 🚧 **In Progress** | Inline mention containing artefact data |
-| Emoji         | 📆 **Planned**     | Inline emojis                           |
 
 ### API
 
@@ -246,4 +249,4 @@ export function Editor() {
 
 [MIT](https://github.com/SugarDarius/dactylo/blob/main/LICENSE)
 
-Made with ❤️ by @SugarDarius
+Made with ❤️ by [@SugarDarius](https://github.com/SugarDarius)
