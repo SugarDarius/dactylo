@@ -7,6 +7,8 @@ import {
   DEFAULT_PARAGRAPH_PLACEHOLDER,
   DEFAULT_SLASH_COMMAND_CHARACTER,
   DEFAULT_AUTOLINK_ENABLED,
+  DEFAULT_MENTIONS_ENABLED,
+  DEFAULT_SLASH_COMMAND_ENABLED,
 } from './internals/constants'
 import { isBlockWithInlineContentEmpty } from './internals/document'
 import { DOMManager } from './internals/dom-manager'
@@ -46,7 +48,10 @@ export interface DactyloAspectApi<T extends object, C extends object> {
 export interface DactyloStaticConfig {
   /** Configuration for autolink detection. */
   readonly autolink: {
-    /** Whether to enable autolink detection. */
+    /**
+     * Whether to enable autolink detection.
+     * Defaults to `true`
+     */
     readonly enabled: boolean
   }
 
@@ -56,6 +61,12 @@ export interface DactyloStaticConfig {
   /** Configuration for mentions. */
   readonly mentions: {
     /**
+     * Whether to enable mentions.
+     * Defaults to `true`
+     */
+    readonly enabled: boolean
+
+    /**
      * The character to trigger a mention.
      * Defaults to `@`
      */
@@ -64,6 +75,12 @@ export interface DactyloStaticConfig {
 
   /** Configuration for slash command. */
   readonly slashCommand: {
+    /**
+     * Whether to enable slash command.
+     * Defaults to `true`
+     */
+    readonly enabled: boolean
+
     /**
      * The character to trigger a slash command.
      * Defaults to `/`
@@ -441,6 +458,12 @@ export interface DactyloConfigOptions {
     /** Configuration for mentions. */
     readonly mentions?: {
       /**
+       * Whether to enable mentions.
+       * Defaults to `true`
+       */
+      readonly enabled?: boolean
+
+      /**
        * The character to trigger a mention.
        * Defaults to `@`
        */
@@ -449,6 +472,12 @@ export interface DactyloConfigOptions {
 
     /** Configuration for slash command. */
     readonly slashCommand?: {
+      /**
+       * Whether to enable slash command.
+       * Defaults to `true`
+       */
+      readonly enabled?: boolean
+
       /**
        * The character to trigger a slash command.
        * Defaults to `/`
@@ -464,7 +493,10 @@ export interface DactyloConfigOptions {
 
     /** Configuration for autolink detection. */
     readonly autolink?: {
-      /** Whether to enable autolink detection. */
+      /**
+       * Whether to enable autolink detection.
+       * Defaults to `true`
+       */
       readonly enabled?: boolean
     }
 
@@ -596,6 +628,8 @@ export class Dactylo {
         character:
           options.config?.editor?.mentions?.character ??
           DEFAULT_MENTION_CHARACTER,
+        enabled:
+          options.config?.editor?.mentions?.enabled ?? DEFAULT_MENTIONS_ENABLED,
       },
       paragraph: {
         placeholder:
@@ -607,6 +641,9 @@ export class Dactylo {
         character:
           options.config?.editor?.slashCommand?.character ??
           DEFAULT_SLASH_COMMAND_CHARACTER,
+        enabled:
+          options.config?.editor?.slashCommand?.enabled ??
+          DEFAULT_SLASH_COMMAND_ENABLED,
       },
     }
     this.#pipeline = new TransactionPipeline({
@@ -620,9 +657,11 @@ export class Dactylo {
           locales,
           mentions: {
             character: this.#config.mentions.character,
+            enabled: this.#config.mentions.enabled,
           },
           slashCommand: {
             character: this.#config.slashCommand.character,
+            enabled: this.#config.slashCommand.enabled,
           },
         },
       },

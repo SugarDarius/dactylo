@@ -4,8 +4,14 @@ export const DEFAULT_PARAGRAPH_PLACEHOLDER = 'Write something…'
 /** Default placeholder text for the editor when no content is written. */
 export const DEFAULT_HEADING_PLACEHOLDER = 'Heading'
 
+/** Default mentions enabled. */
+export const DEFAULT_MENTIONS_ENABLED = true
+
 /** Default mention character. */
 export const DEFAULT_MENTION_CHARACTER = '@'
+
+/** Default slash command enabled. */
+export const DEFAULT_SLASH_COMMAND_ENABLED = true
 
 /** Default slash command character. */
 export const DEFAULT_SLASH_COMMAND_CHARACTER = '/'

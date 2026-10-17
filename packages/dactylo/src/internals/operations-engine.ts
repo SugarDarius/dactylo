@@ -933,12 +933,18 @@ export interface ComposingOpsIntent {
 export interface OperationsEngineOptions {
   /** Configuration for mentions. */
   readonly mentions: {
+    /** Whether to enable mentions. */
+    readonly enabled: boolean
+
     /** The character to trigger a mention. */
     readonly character: string
   }
 
   /** Configuration for slash command. */
   readonly slashCommand: {
+    /** Whether to enable slash command. */
+    readonly enabled: boolean
+
     /** The character to trigger a slash command. */
     readonly character: string
   }
@@ -955,12 +961,18 @@ export interface OperationsEngineOptions {
 
 /** Configuration for mentions. */
 export interface OperationEngineMentionsConfig {
+  /** Whether to enable mentions. */
+  readonly enabled: boolean
+
   /** The character to use for mentions. */
   readonly character: string
 }
 
 /** Configuration for slash command. */
 export interface OperationEngineSlashCommandConfig {
+  /** Whether to enable slash command. */
+  readonly enabled: boolean
+
   /** The character to use for slash command. */
   readonly character: string
 }
@@ -1374,12 +1386,18 @@ export class OperationsEngine {
     }
 
     // @todo: handle mentions
-    if (char === this.#mentionsConfig.character) {
+    if (
+      this.#mentionsConfig.enabled &&
+      char === this.#mentionsConfig.character
+    ) {
       return { label: 'mention', ops, skipHistory: true }
     }
 
     // @todo: handle slash command
-    if (char === this.#slashCommandConfig.character) {
+    if (
+      this.#slashCommandConfig.enabled &&
+      char === this.#slashCommandConfig.character
+    ) {
       return { label: 'slash-command', ops, skipHistory: true }
     }
 
