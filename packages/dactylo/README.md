@@ -47,10 +47,10 @@ commitEffects ◄──────────────── inverseOps (fo
 
 **Pipeline delegates** (owned by the pipeline, not reimplemented in `Dactylo`):
 
-| Delegate | Role |
-| --- | --- |
+| Delegate             | Role                                                                                                                                           |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | **OperationsEngine** | Turns intent into `Operation[]`, validates each op against the current context, applies them immutably, and produces **inverse** ops for undo. |
-| **HistoryStack** | Stores forward + inverse op batches; **undo/redo** re-run `applyOps` with `pushToHistory: false`. Coalesces rapid typing into one undo step. |
+| **HistoryStack**     | Stores forward + inverse op batches; **undo/redo** re-run `applyOps` with `pushToHistory: false`. Coalesces rapid typing into one undo step.   |
 
 End-to-end example (same shape as the in-code docs):
 
@@ -150,6 +150,100 @@ export function Editor() {
 
 `Composer.Root` owns the editor. `Composer.Editable` renders the blocks. Hooks mirror the core API: history, blocks, selection, the document, and listeners for commands and tools.
 
+## Roadmap
+
+👉🏻 The foreseen roadmap to bring live features that Dactylo needs to exposes to developers.
+
+- ✅ **Done** → Completed
+- 🚧 **In Progress** → Under implementation
+- 📆 **Planned** → Planned / considered for implementation
+
+### Core
+
+| Feature                                              | Status             | Description                                                                          |
+| ---------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------ |
+| Transaction pipeline (validate · apply · invert)     | ✅ **Done**        | Single path for keyboard, commands, and agents                                       |
+| History (undo / redo, typing coalescing)             | ✅ **Done**        | Build-in history                                                                     |
+| Context subscriptions                                | ✅ **Done**        | Subscribe and listen to context changes natively                                     |
+| Command & tool events                                | ✅ **Done**        | Subscribe and listen to dactylo aspect changes natively                              |
+| Marks (bold, italic, strikethrough, underline, code) | 🚧 **In Progress** | Apply marks in the editor                                                            |
+| Markdown inline shortcuts                            | 🚧 **In Progress** | Use Build-in markdown inline shortcuts for headings, divider, links, lists and marks |
+| Autolink detection                                   | 🚧 **In Progress** | Automatically transform links from pastes into inline nodes (configurable)           |
+| Mentions (`@…`)                                      | 🚧 **In Progress** | Build-in mentions inside the editor (configurable)                                   |
+| Inline command trigger (`/…`)                        | 🚧 **In Progress** | Build-in inline command trigger (configurable)                                       |
+| IME composition                                      | 🚧 **In Progress** | Build-in IME composition management                                                  |
+| Clipboard (paste / cut / copy)                       | 🚧 **In Progress** | Clipboard events management                                                          |
+| Selection (cursor, range, DOM sync, caret paint)     | 🚧 **In Progress** | Editor's virtual selection with DOM sync                                             |
+| Block merge on Backspace at block start              | 🚧 **In Progress** | Paragraph merge; non-inline blocks `@todo`                                           |
+| Fractional index for blocks ordering                 | ✅ **Done**        | Fast blocks ordering using a factional index                                         |
+| Block / node metadata                                | 🚧 **In Progress** | Defines metadata on blocks and nodes for rendering and / or external operations      |
+| Placeholders                                         | 🚧 **In Progress** | config for blocks' placeholders                                                      |
+| Locales                                              | 🚧 **In Progress** | Set the locales in the current language                                              |
+| Read-only mode                                       | ✅ **Done**        | Editor cannot be edited                                                              |
+| Nested blocks (parent / child)                       | 🚧 **In Progress** | Manage nested blocks at level -1                                                     |
+| Collaboration                                        | 📆 **Planned**     | Enables collaboration through external providers                                     |
+| Strings security                                     | 🚧 **In Progress** | Prevents scripting and injections when inserting text                                |
+| DOM sync                                             | 🚧 **In Progress** | Sync DOM selection with Dactylo Selection                                            |
+
+### Blocks
+
+| Feature              | Status             | Description                                                                                                     |
+| -------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Paragraph            | **Done**           | Paragraph block with inline content                                                                             |
+| Heading (levels 1–6) | 🚧 **In Progress** | Heading block with inline content                                                                               |
+| Divider              | 🚧 **In Progress** | Block for UI rendering - no inline content                                                                      |
+| Bullet list item     | 📆 **Planned**     | Bullet list item block with inline content                                                                      |
+| Numbered list item   | 📆 **Planned**     | Numbered list item block with inline content                                                                    |
+| Todo list item       | 📆 **Planned**     | Todo list item with block inline content                                                                        |
+| Toggle list item     | 📆 **Planned**     | Toggle list item block with inline content                                                                      |
+| Callout              | 📆 **Planned**     | Callout block with icon + sub blocks                                                                            |
+| Quote                | 📆 **Planned**     | Quote block with inline content only                                                                            |
+| Table                | 📆 **Planned**     | Table block with inline content                                                                                 |
+| Code                 | 📆 **Planned**     | Safe code block rendering code with inline content                                                              |
+| Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
+| Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
+| Tabs                 | 📆 **Planned**     | Tabs block with sub blocks inside                                                                               |
+| 2 / 3 / 4 columns    | 📆 **Planned**     | Columns block with sub blocks inside                                                                            |
+| Host                 | 📆 **Planned**     | Hosting custom content owned by user with custom data inside                                                    |
+
+### Inline Nodes
+
+| Feature       | Status             | Notes                                   |
+| ------------- | ------------------ | --------------------------------------- |
+| TextNode      | ✅ **Done**        | Inline text                             |
+| LineBreakNode | ✅ **Done**        | Soft break using `shift+enter` keys     |
+| LinkNode      | 🚧 **In Progress** | Inline links                            |
+| MentionNode   | 🚧 **In Progress** | Inline mention containing artefact data |
+| Emoji         | 📆 **Planned**     | Inline emojis                           |
+
+### API
+
+| Feature                  | Status             | Notes                                                                                           |
+| ------------------------ | ------------------ | ----------------------------------------------------------------------------------------------- |
+| Events API               | 🚧 **In Progress** | Observe events from document state, transaction pipeline, history, errors, and editor's aspects |
+| Tools API                | 🚧 **In Progress** | Exposes tools api to read document state                                                        |
+| Commands API             | 🚧 **In Progress** | Exposes commands api to mutate document state                                                   |
+| Marks API                | 🚧 **In Progress** | Apply marks on eligible inline nodes                                                            |
+| Document API             | 🚧 **In Progress** | Init (with JSON or Markdown), replace, and reset document state                                 |
+| History API              | 🚧 **In Progress** | Work with build-in history                                                                      |
+| Composer API             | 🚧 **In Progress** | Sends and reads composing events                                                                |
+| Selection API            | 🚧 **In Progress** | Mutate and reads Dactylo's selection                                                            |
+| DOM API                  | 🚧 **In Progress** | Sync browser DOM native selection with Dactylo's selection                                      |
+| Blocks API               | 🚧 **In Progress** | Mutate and reads blocks                                                                         |
+| Inline nodes API         | 🚧 **In Progress** | Mutate and reads inline nodes                                                                   |
+| Export JSON and Markdown | 📆 **Planned**     | Export document state as JSON and Markdown                                                      |
+| Batching transactions    | 📆 **Planned**     | Supports for batching big number for transactions (Ai Agent use case)                           |
+| Table of contents        | 📆 **Planned**     | Build-in table of content based on headings contained in the document                           |
+
+### React integration
+
+| Feature    | Status             | Description                                            |
+| ---------- | ------------------ | ------------------------------------------------------ |
+| Primitives | 🚧 **In Progress** | Exposes React primitives for building a Dactylo editor |
+| Hooks      | 🚧 **In Progress** | Exposes external hooks to work with Dactylo            |
+
 ## License
 
 [MIT](https://github.com/SugarDarius/dactylo/blob/main/LICENSE)
+
+Made with ❤️ by @SugarDarius

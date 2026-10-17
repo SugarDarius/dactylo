@@ -940,12 +940,12 @@ export interface OperationsEngineOptions {
     readonly character: string
   }
 
-  /** Configuration for slash command. */
-  readonly slashCommand: {
-    /** Whether to enable slash command. */
+  /** Configuration for inline command trigger. */
+  readonly inlineCommandTrigger: {
+    /** Whether to enable inline command trigger. */
     readonly enabled: boolean
 
-    /** The character to trigger a slash command. */
+    /** The character to trigger an inline command. */
     readonly character: string
   }
 
@@ -968,12 +968,12 @@ export interface OperationEngineMentionsConfig {
   readonly character: string
 }
 
-/** Configuration for slash command. */
-export interface OperationEngineSlashCommandConfig {
-  /** Whether to enable slash command. */
+/** Configuration for inline command trigger. */
+export interface OperationEngineInlineCommandTriggerConfig {
+  /** Whether to enable inline command trigger. */
   readonly enabled: boolean
 
-  /** The character to use for slash command. */
+  /** The character to use for inline command trigger. */
   readonly character: string
 }
 
@@ -997,8 +997,8 @@ export class OperationsEngine {
   /** Configuration for mentions. */
   readonly #mentionsConfig: OperationEngineMentionsConfig
 
-  /** Configuration for slash command. */
-  readonly #slashCommandConfig: OperationEngineSlashCommandConfig
+  /** Configuration for inline command trigger. */
+  readonly #inlineCommandTriggerConfig: OperationEngineInlineCommandTriggerConfig
 
   /** Grapheme offset caret instance. */
   readonly #graphemeOffsetCaret: GraphemeOffsetCaret
@@ -1008,7 +1008,7 @@ export class OperationsEngine {
 
   constructor(options: OperationsEngineOptions) {
     this.#mentionsConfig = options.mentions
-    this.#slashCommandConfig = options.slashCommand
+    this.#inlineCommandTriggerConfig = options.inlineCommandTrigger
 
     this.#graphemeOffsetCaret = new GraphemeOffsetCaret({
       locales: options.locales,
@@ -1393,12 +1393,12 @@ export class OperationsEngine {
       return { label: 'mention', ops, skipHistory: true }
     }
 
-    // @todo: handle slash command
+    // @todo: handle inline command trigger
     if (
-      this.#slashCommandConfig.enabled &&
-      char === this.#slashCommandConfig.character
+      this.#inlineCommandTriggerConfig.enabled &&
+      char === this.#inlineCommandTriggerConfig.character
     ) {
-      return { label: 'slash-command', ops, skipHistory: true }
+      return { label: 'inline-command-trigger', ops, skipHistory: true }
     }
 
     return {

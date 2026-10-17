@@ -5,10 +5,10 @@ import {
   DEFAULT_LOCALES,
   DEFAULT_MENTION_CHARACTER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
-  DEFAULT_SLASH_COMMAND_CHARACTER,
   DEFAULT_AUTOLINK_ENABLED,
   DEFAULT_MENTIONS_ENABLED,
-  DEFAULT_SLASH_COMMAND_ENABLED,
+  DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
+  DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
 } from './internals/constants'
 import { isBlockWithInlineContentEmpty } from './internals/document'
 import { DOMManager } from './internals/dom-manager'
@@ -73,16 +73,16 @@ export interface DactyloStaticConfig {
     readonly character: string
   }
 
-  /** Configuration for slash command. */
-  readonly slashCommand: {
+  /** Configuration for inline command trigger. */
+  readonly inlineCommandTrigger: {
     /**
-     * Whether to enable slash command.
+     * Whether to enable inline command trigger.
      * Defaults to `true`
      */
     readonly enabled: boolean
 
     /**
-     * The character to trigger a slash command.
+     * The character to trigger an inline command.
      * Defaults to `/`
      */
     readonly character: string
@@ -470,16 +470,16 @@ export interface DactyloConfigOptions {
       readonly character?: string
     }
 
-    /** Configuration for slash command. */
-    readonly slashCommand?: {
+    /** Configuration for inline command trigger. */
+    readonly inlineCommandTrigger?: {
       /**
-       * Whether to enable slash command.
+       * Whether to enable inline command trigger.
        * Defaults to `true`
        */
       readonly enabled?: boolean
 
       /**
-       * The character to trigger a slash command.
+       * The character to trigger an inline command.
        * Defaults to `/`
        */
       readonly character?: string
@@ -623,6 +623,14 @@ export class Dactylo {
           options.config?.editor?.heading?.placeholder ??
           DEFAULT_HEADING_PLACEHOLDER,
       },
+      inlineCommandTrigger: {
+        character:
+          options.config?.editor?.inlineCommandTrigger?.character ??
+          DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
+        enabled:
+          options.config?.editor?.inlineCommandTrigger?.enabled ??
+          DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
+      },
       locales,
       mentions: {
         character:
@@ -637,14 +645,6 @@ export class Dactylo {
           options.config?.editor?.paragraph?.placeholder ??
           DEFAULT_PARAGRAPH_PLACEHOLDER,
       },
-      slashCommand: {
-        character:
-          options.config?.editor?.slashCommand?.character ??
-          DEFAULT_SLASH_COMMAND_CHARACTER,
-        enabled:
-          options.config?.editor?.slashCommand?.enabled ??
-          DEFAULT_SLASH_COMMAND_ENABLED,
-      },
     }
     this.#pipeline = new TransactionPipeline({
       batch: options.config?.pipeline?.batch,
@@ -654,14 +654,14 @@ export class Dactylo {
           autolink: {
             enabled: this.#config.autolink.enabled,
           },
+          inlineCommandTrigger: {
+            character: this.#config.inlineCommandTrigger.character,
+            enabled: this.#config.inlineCommandTrigger.enabled,
+          },
           locales,
           mentions: {
             character: this.#config.mentions.character,
             enabled: this.#config.mentions.enabled,
-          },
-          slashCommand: {
-            character: this.#config.slashCommand.character,
-            enabled: this.#config.slashCommand.enabled,
           },
         },
       },

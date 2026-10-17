@@ -11,10 +11,10 @@ export const DEFAULT_MENTIONS_ENABLED = true
 export const DEFAULT_MENTION_CHARACTER = '@'
 
 /** Default slash command enabled. */
-export const DEFAULT_SLASH_COMMAND_ENABLED = true
+export const DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED = true
 
 /** Default slash command character. */
-export const DEFAULT_SLASH_COMMAND_CHARACTER = '/'
+export const DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER = '/'
 
 /** Default autolink detection enabled. */
 export const DEFAULT_AUTOLINK_ENABLED = true
