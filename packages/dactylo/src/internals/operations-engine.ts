@@ -933,18 +933,24 @@ export interface ComposingOpsIntent {
 export interface OperationsEngineOptions {
   /** Configuration for mentions. */
   readonly mentions: {
+    /** The character to trigger a mention. */
     readonly character: string
   }
+
   /** Configuration for slash command. */
   readonly slashCommand: {
-    character: string
+    /** The character to trigger a slash command. */
+    readonly character: string
   }
 
   /** The locales to use when handling text operations. */
   readonly locales: Intl.LocalesArgument
 
-  /** Whether to enable autolink detection. */
-  readonly withAutoLink: boolean
+  /** Configuration for autolink detection. */
+  readonly autolink: {
+    /** Whether to enable autolink detection. */
+    readonly enabled: boolean
+  }
 }
 
 /** Configuration for mentions. */
@@ -957,6 +963,12 @@ export interface OperationEngineMentionsConfig {
 export interface OperationEngineSlashCommandConfig {
   /** The character to use for slash command. */
   readonly character: string
+}
+
+/** Configuration for autolink detection. */
+export interface OperationEngineAutolinkConfig {
+  /** Whether to enable autolink detection. */
+  readonly enabled: boolean
 }
 
 /**
@@ -979,8 +991,8 @@ export class OperationsEngine {
   /** Grapheme offset caret instance. */
   readonly #graphemeOffsetCaret: GraphemeOffsetCaret
 
-  /** Whether to enable autolink detection. */
-  readonly #withAutoLink: boolean
+  /** Configuration for autolink detection. */
+  readonly #autolinkConfig: OperationEngineAutolinkConfig
 
   constructor(options: OperationsEngineOptions) {
     this.#mentionsConfig = options.mentions
@@ -989,7 +1001,7 @@ export class OperationsEngine {
     this.#graphemeOffsetCaret = new GraphemeOffsetCaret({
       locales: options.locales,
     })
-    this.#withAutoLink = options.withAutoLink
+    this.#autolinkConfig = options.autolink
   }
 
   // --- Core engine ─────────────────────────────────────────---------
@@ -1708,7 +1720,7 @@ export class OperationsEngine {
       return null
     }
 
-    const hasLinks = this.#withAutoLink && plainTextHasLinks(line)
+    const hasLinks = this.#autolinkConfig.enabled && plainTextHasLinks(line)
     if (!hasLinks && isMarksEqual(context.activeMarks, node.marks)) {
       const ops: Operation[] = [
         {

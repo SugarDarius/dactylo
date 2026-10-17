@@ -6,7 +6,7 @@ import {
   DEFAULT_MENTION_CHARACTER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
   DEFAULT_SLASH_COMMAND_CHARACTER,
-  DEFAULT_WITH_AUTO_LINK,
+  DEFAULT_AUTOLINK_ENABLED,
 } from './internals/constants'
 import { isBlockWithInlineContentEmpty } from './internals/document'
 import { DOMManager } from './internals/dom-manager'
@@ -44,8 +44,11 @@ export interface DactyloAspectApi<T extends object, C extends object> {
 
 /** Static configuration for the editor. */
 export interface DactyloStaticConfig {
-  /** Whether autolink detection is enabled. */
-  readonly withAutoLink: boolean
+  /** Configuration for autolink detection. */
+  readonly autolink: {
+    /** Whether to enable autolink detection. */
+    readonly enabled: boolean
+  }
 
   /** The locales used for writing and reading text. */
   readonly locales: Intl.LocalesArgument
@@ -460,7 +463,10 @@ export interface DactyloConfigOptions {
     readonly locales?: Intl.LocalesArgument
 
     /** Configuration for autolink detection. */
-    readonly withAutoLink?: boolean
+    readonly autolink?: {
+      /** Whether to enable autolink detection. */
+      readonly enabled?: boolean
+    }
 
     /** Configuration for the paragraphs */
     readonly paragraph?: {
@@ -574,10 +580,12 @@ export class Dactylo {
     this.#debug = options.debug ?? false
 
     const locales = options.config?.editor?.locales ?? DEFAULT_LOCALES
-    const withAutoLink =
-      options.config?.editor?.withAutoLink ?? DEFAULT_WITH_AUTO_LINK
 
     this.#config = {
+      autolink: {
+        enabled:
+          options.config?.editor?.autolink?.enabled ?? DEFAULT_AUTOLINK_ENABLED,
+      },
       heading: {
         placeholder:
           options.config?.editor?.heading?.placeholder ??
@@ -600,13 +608,15 @@ export class Dactylo {
           options.config?.editor?.slashCommand?.character ??
           DEFAULT_SLASH_COMMAND_CHARACTER,
       },
-      withAutoLink,
     }
     this.#pipeline = new TransactionPipeline({
       batch: options.config?.pipeline?.batch,
       history: options.config?.pipeline?.history,
       operations: {
         engine: {
+          autolink: {
+            enabled: this.#config.autolink.enabled,
+          },
           locales,
           mentions: {
             character: this.#config.mentions.character,
@@ -614,7 +624,6 @@ export class Dactylo {
           slashCommand: {
             character: this.#config.slashCommand.character,
           },
-          withAutoLink,
         },
       },
     })
