@@ -917,6 +917,45 @@ export function computeSplitTailSnapshot(
   }
 }
 
+/**
+ * Insertion index for {@link MergeBlocksOp} when undoing this split.
+ * It Mirrors head extraction in {@link applySplitBlockOp}.
+ */
+export function computeSplitMergeAtIndex(
+  block: BlockWithInlineContent,
+  atNode: { node: InlineNode; index: number },
+  atOffset: number,
+): number {
+  const { node, index } = atNode
+  const { content } = block
+
+  const headNodes: InlineNode[] = content.slice(0, index)
+
+  const type = node.__type
+  switch (type) {
+    case 'text':
+    case 'link': {
+      const headText = node.text.slice(0, atOffset)
+      if (headText.length > 0 || headNodes.length === 0) {
+        headNodes.push({ ...node, text: headText })
+      }
+      return coalesceInlineNodes(headNodes).length
+    }
+    case 'line_break':
+    case 'mention': {
+      return buildError(
+        `Split head is not allowed on ${type} node`,
+        'OperationsEngine/computeSplitMergeAtIndex',
+      )
+    }
+    default: {
+      assertNever(type, {
+        hint: 'OperationsEngine/computeSplitMergeAtIndex',
+      })
+    }
+  }
+}
+
 /** Intent for building composing operations. */
 export interface ComposingOpsIntent {
   /** The operations to apply. */
@@ -2683,7 +2722,7 @@ export class OperationsEngine {
     const ops: Operation[] = [
       {
         __type: 'split_block',
-        atIndex: found.index,
+        atIndex: computeSplitMergeAtIndex(block, found, cursor.offset),
         atNodeId: cursor.nodeId,
         atOffset: cursor.offset,
         blockId: block.id,
