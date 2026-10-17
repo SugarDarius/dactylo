@@ -2997,7 +2997,12 @@ export class OperationsEngine {
   buildUpdateSelectionOps(
     context: EditorContext,
     next: Selection | null,
-  ): Operation[] {
+  ): Operation[] | null {
+    /** Skip if the selection is already the same. */
+    if (areSelectionsEqual(context.selection, next)) {
+      return null
+    }
+
     const ops: Operation[] = [
       {
         __type: 'set_selection',

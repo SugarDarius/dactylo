@@ -1066,6 +1066,12 @@ export class TransactionPipeline {
       this.#context,
       next,
     )
+
+    /** 👉🏻 See {@link OperationsEngine.buildUpdateSelectionOps} jsdoc on why it can return `null` */
+    if (ops === null) {
+      return
+    }
+
     this.#commit(ops, {
       label: transactionPolicyLabel('selection', 'update'),
       pushToHistory: false,
