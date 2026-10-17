@@ -2712,6 +2712,7 @@ export class OperationsEngine {
     }
 
     /** Otherwise we split the block at the cursor position. */
+    const atIndex = computeSplitMergeAtIndex(block, found, cursor.offset)
     const tailSnapshot = computeSplitTailSnapshot(block, found, cursor.offset)
     const insertedBlock = createParagraphBlockAfter(
       block,
@@ -2722,7 +2723,7 @@ export class OperationsEngine {
     const ops: Operation[] = [
       {
         __type: 'split_block',
-        atIndex: computeSplitMergeAtIndex(block, found, cursor.offset),
+        atIndex,
         atNodeId: cursor.nodeId,
         atOffset: cursor.offset,
         blockId: block.id,
