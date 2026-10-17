@@ -68,8 +68,10 @@ export function modelOffsetInInlineTextHost(
   domOffsetInTarget: number,
 ): number {
   const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT)
+
   let model = 0
   let text = walker.nextNode() as Text | null
+
   while (text) {
     if (text === targetText) {
       return (
@@ -77,9 +79,11 @@ export function modelOffsetInInlineTextHost(
         modelLengthFromPaintedDOMText(text.data.slice(0, domOffsetInTarget))
       )
     }
+
     model += modelLengthFromPaintedDOMText(text.data)
     text = walker.nextNode() as Text | null
   }
+
   return model
 }
 
@@ -90,29 +94,48 @@ export function readBlockIdFromElement(element: HTMLElement): BlockId | null {
 }
 
 /**
- * Finds the DOM blocks element inside
- * the editable `[dactylo-editable]` html div element.
+ * First HTMLElement in `root`'s subtree matching `predicate`.
+ * Uses TreeWalker + marker checks only (no querySelector).
  */
-export function findBlocksElement(
-  editable: HTMLDivElement,
-): HTMLDivElement | null {
-  let current = editable.firstChild
-  while (current !== null) {
-    if (
-      current instanceof HTMLDivElement &&
-      current.getAttribute(BLOCKS_ATTR_NAME) !== null
-    ) {
+export function findFirstElementInSubtree(
+  root: Element,
+  predicate: (element: HTMLElement) => boolean,
+): HTMLElement | null {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
+  let current = walker.nextNode()
+
+  while (current) {
+    if (current instanceof HTMLElement && predicate(current)) {
       return current
     }
-    current = current.nextSibling
+
+    current = walker.nextNode()
   }
 
   return null
 }
 
+/**
+ * Finds the DOM blocks element inside
+ * the editable `[dactylo-editable]` HTMlDivElement.
+ */
+export function findBlocksElement(
+  editable: HTMLDivElement,
+): HTMLDivElement | null {
+  const found = findFirstElementInSubtree(
+    editable,
+    (element) =>
+      element instanceof HTMLDivElement &&
+      element.hasAttribute(BLOCKS_ATTR_NAME),
+  )
+
+  return found instanceof HTMLDivElement ? found : null
+}
+
 /** Finds the block id from a DOM node. */
 export function findBlockIdFromDomNode(node: Node | null): BlockId | null {
   let current: Node | null = node
+
   while (current) {
     if (
       current instanceof HTMLElement &&
@@ -120,14 +143,16 @@ export function findBlockIdFromDomNode(node: Node | null): BlockId | null {
     ) {
       return readBlockIdFromElement(current)
     }
+
     current = current.parentNode
   }
+
   return null
 }
 
 /**
  * Finds the DOM block element with the given `blockId` inside
- * the editable `[dactylo-editable]` html div element.
+ * the editable `[dactylo-editable]` HTMlDivElement.
  */
 export function findBlockElement(
   editable: HTMLDivElement,
@@ -138,24 +163,24 @@ export function findBlockElement(
     return null
   }
 
-  let current = blocks.firstChild
-  while (current !== null) {
-    if (
-      current instanceof HTMLDivElement &&
-      current.getAttribute(BLOCK_ATTR_NAME) !== null &&
-      readBlockIdFromElement(current) === blockId
-    ) {
-      return current
+  const found = findFirstElementInSubtree(blocks, (element) => {
+    if (!(element instanceof HTMLDivElement)) {
+      return false
     }
 
-    current = current.nextSibling
-  }
-  return null
+    if (!element.hasAttribute(BLOCK_ATTR_NAME)) {
+      return false
+    }
+
+    return readBlockIdFromElement(element) === blockId
+  })
+
+  return found instanceof HTMLDivElement ? found : null
 }
 
 /**
  * Finds the DOM editable element with the given `blockId` inside
- * the editable `[dactylo-editable]` html div element.
+ * the editable `[dactylo-editable]` HTMlDivElement.
  */
 export function findBlockEditableElement(
   editable: HTMLDivElement,
@@ -166,17 +191,15 @@ export function findBlockEditableElement(
     return null
   }
 
-  let current = block.firstChild
-  while (current !== null) {
-    if (
-      current instanceof HTMLDivElement &&
-      current.getAttribute(BLOCK_CONTENT_ATTR_NAME) !== null
-    ) {
-      return current
+  const found = findFirstElementInSubtree(block, (element) => {
+    if (!(element instanceof HTMLDivElement)) {
+      return false
     }
-    current = current.nextSibling
-  }
-  return null
+
+    return element.hasAttribute(BLOCK_CONTENT_ATTR_NAME)
+  })
+
+  return found instanceof HTMLDivElement ? found : null
 }
 
 /**
@@ -193,14 +216,17 @@ export function findBlockContentEditableFromDOMNode(
         current = current.parentNode
         continue
       }
+
       const flag =
         current.dataset[toDatasetProperty(BLOCK_CONTENT_EDITABLE_DATA_NAME)]
       if (flag === 'true' && current instanceof HTMLDivElement) {
         return current
       }
     }
+
     current = current.parentNode
   }
+
   return null
 }
 
@@ -225,25 +251,18 @@ export function readNodeIdFromElement(element: HTMLElement): NodeId | null {
 }
 
 /** Finds the DOM editable element with the given `nodeId` inside
- * the block content `[dactylo-block-content]` html div element.
+ * the block content `[dactylo-block-content]` HTMlDivElement.
  */
 export function findEditableElement(
-  editable: HTMLDivElement,
+  block: HTMLDivElement,
   nodeId: string,
 ): HTMLSpanElement | HTMLAnchorElement | null {
-  let current = editable.firstChild
-  while (current !== null) {
-    if (
-      (current instanceof HTMLSpanElement ||
-        current instanceof HTMLAnchorElement) &&
-      current.getAttribute(NODE_ATTR_NAME) !== null &&
-      readNodeIdFromElement(current) === nodeId
-    ) {
-      return current
+  return findFirstElementInSubtree(block, (element) => {
+    if (!element.hasAttribute(NODE_ATTR_NAME)) {
+      return false
     }
-    current = current.nextSibling
-  }
-  return null
+    return readNodeIdFromElement(element) === nodeId
+  })
 }
 
 /** Nearest ancestor marked `[dactylo-node]`. */
@@ -272,10 +291,12 @@ export function domOffsetInPaintedText(
   if (modelOffsetInSegment <= 0) {
     return 0
   }
+
   const segmentModelLength = modelLengthFromPaintedDOMText(painted)
   if (modelOffsetInSegment >= segmentModelLength) {
     return painted.length
   }
+
   for (let dom = 0; dom <= painted.length; dom += 1) {
     if (
       modelLengthFromPaintedDOMText(painted.slice(0, dom)) ===
@@ -284,6 +305,7 @@ export function domOffsetInPaintedText(
       return dom
     }
   }
+
   return painted.length
 }
 
@@ -296,11 +318,14 @@ export function getDOMPointFromInlineTextHost(
   modelOffset: number,
 ): DOMPoint | null {
   const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT)
+
   let modelConsumed = 0
-  let text = walker.nextNode() as Text | null
   let lastText: Text | null = null
+  let text = walker.nextNode() as Text | null
+
   while (text) {
     lastText = text
+
     const nodeModelLen = modelLengthFromPaintedDOMText(text.data)
     if (modelOffset <= modelConsumed + nodeModelLen) {
       const inNode = modelOffset - modelConsumed
@@ -309,12 +334,15 @@ export function getDOMPointFromInlineTextHost(
         offset: domOffsetInPaintedText(text.data, inNode),
       }
     }
+
     modelConsumed += nodeModelLen
     text = walker.nextNode() as Text | null
   }
+
   if (lastText) {
     return { node: lastText, offset: lastText.length }
   }
+
   return null
 }
 
@@ -335,16 +363,20 @@ export function getDOMPointFromTextCursor(
   cursor: TextCursor,
 ): DOMPoint | null {
   const { nodeId } = cursor
+
   const node = findEditableElement(editable, nodeId)
   if (!node) {
     if (editable.childNodes.length === 0) {
       return { node: editable, offset: 0 }
     }
+
     return null
   }
+
   if (node.hasAttribute(LINE_BREAK_NODE_ATTR_NAME)) {
     return { node, offset: 0 }
   }
+
   if (
     node.hasAttribute(TEXT_NODE_ATTR_NAME) ||
     node instanceof HTMLAnchorElement
@@ -354,6 +386,7 @@ export function getDOMPointFromTextCursor(
       return point
     }
   }
+
   return null
 }
 
@@ -400,12 +433,15 @@ export function cursorAtTextHostBoundary(
     return { blockId, nodeId, offset: 0 }
   }
   let model = 0
+
   const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT)
   let text = walker.nextNode() as Text | null
+
   while (text) {
     model += modelLengthFromPaintedDOMText(text.data)
     text = walker.nextNode() as Text | null
   }
+
   return { blockId, nodeId, offset: model }
 }
 
@@ -419,24 +455,31 @@ export function cursorAtBlockContentChildIndex(
   if (childNodes.length === 0) {
     return null
   }
+
   const clamped = Math.max(0, Math.min(index, childNodes.length))
+
   const child = childNodes[clamped] ?? childNodes[clamped - 1]
   if (!(child instanceof HTMLElement)) {
     return null
   }
+
   if (child.getAttribute(NODE_ATTR_NAME) === null) {
     return null
   }
+
   const nodeId = readNodeIdFromElement(child)
   if (!nodeId) {
     return null
   }
+
   if (clamped < childNodes.length) {
     return { blockId, nodeId, offset: 0 }
   }
+
   if (child.hasAttribute(LINE_BREAK_NODE_ATTR_NAME)) {
     return { blockId, nodeId, offset: 0 }
   }
+
   return cursorAtTextHostBoundary(child, blockId, nodeId, 1)
 }
 
@@ -452,16 +495,19 @@ export function getTextCursorFromDOMPoint(
     if (!host?.hasAttribute(TEXT_NODE_ATTR_NAME)) {
       return null
     }
+
     const nodeId = readNodeIdFromElement(host)
     if (!nodeId) {
       return null
     }
+
     return {
       blockId,
       nodeId,
       offset: modelOffsetInInlineTextHost(host, node as Text, offset),
     }
   }
+
   if (
     node instanceof HTMLElement &&
     node.getAttribute(NODE_ATTR_NAME) !== null
@@ -470,16 +516,20 @@ export function getTextCursorFromDOMPoint(
     if (!nodeId) {
       return null
     }
+
     if (node.hasAttribute(LINE_BREAK_NODE_ATTR_NAME)) {
       return { blockId, nodeId, offset: 0 }
     }
+
     if (node.hasAttribute(TEXT_NODE_ATTR_NAME)) {
       return cursorAtTextHostBoundary(node, blockId, nodeId, offset)
     }
   }
+
   if (node === blockContent) {
     return cursorAtBlockContentChildIndex(blockContent, blockId, offset)
   }
+
   return null
 }
 
@@ -492,6 +542,7 @@ export function isWindowSelectionInsideEditable(
   if (!anchorNode || !focusNode) {
     return false
   }
+
   return editable.contains(anchorNode) && editable.contains(focusNode)
 }
 
