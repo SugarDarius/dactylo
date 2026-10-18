@@ -220,7 +220,7 @@ export function Editor() {
 | LinkNode      | 🚧 **In Progress** | Inline links with marks                                                                  |
 | MentionNode   | 🚧 **In Progress** | Inline mention containing artefact data                                                  |
 | HashtagNode   | 📆 **Planned**     | Inline hashtag containing artefact data                                                  |
-| Isolation     | 📆 **Planned**     | Apply isolation for specific use case like UI rendering (commands, background colors, …) |
+| Isolation     | 📆 **Planned**     | Apply isolation for specific use case like UI rendering (comments, background colors, …) |
 
 ### API
 
