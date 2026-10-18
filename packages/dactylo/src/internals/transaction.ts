@@ -885,6 +885,8 @@ export class TransactionPipeline {
         /** In any case we prevent native browser behavior as we want full control over text input. */
         prevent()
 
+        // @todo: handle `insertReplacementText` as it gets data from transfer
+
         const { data } = event
         /**
          * We only process text input if we have a non-empty data.
