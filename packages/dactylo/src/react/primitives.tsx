@@ -54,6 +54,12 @@ import type {
   ComposerLineBreakNodeProps,
 } from './types'
 
+/** Base style for the editable area of the composer. */
+const EDITABLE_OUTLINE_STYLE: React.CSSProperties = {
+  outlineStyle: 'none',
+  outlineWidth: 0,
+}
+
 // --- Composer.Root ─────────────────────────────────────────-------
 
 /**
@@ -216,6 +222,7 @@ const ComposerParagraphBlock = forwardRef<
           [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
           [BLOCK_PLACEHOLDER_ATTR_NAME]: paragraph.placeholder,
         }}
+        style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
         <ComposerInlineContent content={content} />
       </div>
@@ -330,6 +337,7 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
         {...{ [EDITABLE_ATTR_NAME]: '' }}
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={canEdit ? 0 : undefined}
+        style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
         <ComposerBlocks translate={translate} spellCheck={spellCheck} />
         {children}
