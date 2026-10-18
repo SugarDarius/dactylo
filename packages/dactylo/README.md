@@ -205,11 +205,11 @@ export function Editor() {
 | Quote                | 📆 **Planned**     | Quote block with inline content only (maybe a sub-kind of ParagraphBlock?)                                      |
 | Table                | 📆 **Planned**     | Table block with inline content                                                                                 |
 | Code                 | 📆 **Planned**     | Safe code block rendering code with inline content                                                              |
+| Slot                 | 📆 **Planned**     | Hosting custom content owned by developer with custom data inside and no inline content                         |
 | Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
 | Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
 | Tabs                 | 📆 **Planned**     | Tabs block with sub blocks inside                                                                               |
 | 2 / 3 / 4 columns    | 📆 **Planned**     | Columns block with sub blocks inside                                                                            |
-| Slot                 | 📆 **Planned**     | Hosting custom content owned by user with custom data inside and no online content                              |
 
 ### Inline Nodes
 
