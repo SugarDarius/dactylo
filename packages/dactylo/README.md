@@ -188,6 +188,7 @@ export function Editor() {
 | Dactylo owned errors                             | 🚧 **In Progress** | Exposes errors defined by Dactylo                                                       |
 | Collaboration                                    | 📆 **Planned**     | Enables collaboration through external providers                                        |
 | Emojis inline trigger (`:…`)                     | 📆 **Planned**     | Enables inline composition for inserting emojis (configurable)                          |
+| Hashtags (`#…`)                                  | 📆 **Planned**     | Enables built-in support for hashtags                                                   |
 
 ### Blocks
 
@@ -201,42 +202,45 @@ export function Editor() {
 | Todo list item       | 📆 **Planned**     | Todo list item with block inline content                                                                        |
 | Toggle list item     | 📆 **Planned**     | Toggle list item block with inline content                                                                      |
 | Callout              | 📆 **Planned**     | Callout block with icon + sub blocks                                                                            |
-| Quote                | 📆 **Planned**     | Quote block with inline content only                                                                            |
+| Quote                | 📆 **Planned**     | Quote block with inline content only (maybe a sub-kind of ParagraphBlock?)                                      |
 | Table                | 📆 **Planned**     | Table block with inline content                                                                                 |
 | Code                 | 📆 **Planned**     | Safe code block rendering code with inline content                                                              |
 | Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
 | Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
 | Tabs                 | 📆 **Planned**     | Tabs block with sub blocks inside                                                                               |
 | 2 / 3 / 4 columns    | 📆 **Planned**     | Columns block with sub blocks inside                                                                            |
-| Host                 | 📆 **Planned**     | Hosting custom content owned by user with custom data inside                                                    |
+| Slot                 | 📆 **Planned**     | Hosting custom content owned by user with custom data inside and no online content                              |
 
 ### Inline Nodes
 
-| Feature       | Status             | Notes                                   |
-| ------------- | ------------------ | --------------------------------------- |
-| TextNode      | ✅ **Done**        | Inline text with marks                  |
-| LineBreakNode | ✅ **Done**        | Soft break using `shift+enter` keys     |
-| LinkNode      | 🚧 **In Progress** | Inline links with marks                 |
-| MentionNode   | 🚧 **In Progress** | Inline mention containing artefact data |
+| Feature       | Status             | Notes                                                                                    |
+| ------------- | ------------------ | ---------------------------------------------------------------------------------------- |
+| TextNode      | ✅ **Done**        | Inline text with marks                                                                   |
+| LineBreakNode | ✅ **Done**        | Soft break using `shift+enter` keys                                                      |
+| LinkNode      | 🚧 **In Progress** | Inline links with marks                                                                  |
+| MentionNode   | 🚧 **In Progress** | Inline mention containing artefact data                                                  |
+| HashtagNode   | 📆 **Planned**     | Inline hashtag containing artefact data                                                  |
+| Isolation     | 📆 **Planned**     | Apply isolation for specific use case like UI rendering (commands, background colors, …) |
 
 ### API
 
-| Feature                  | Status             | Notes                                                                                           |
-| ------------------------ | ------------------ | ----------------------------------------------------------------------------------------------- |
-| Events API               | 🚧 **In Progress** | Observe events from document state, transaction pipeline, history, errors, and editor's aspects |
-| Tools API                | 🚧 **In Progress** | Exposes tools api to read document state                                                        |
-| Commands API             | 🚧 **In Progress** | Exposes commands api to mutate document state                                                   |
-| Marks API                | 🚧 **In Progress** | Apply marks on eligible inline nodes                                                            |
-| Document API             | 🚧 **In Progress** | Init (with JSON or Markdown), replace, and reset document state                                 |
-| History API              | 🚧 **In Progress** | Work with build-in history                                                                      |
-| Composer API             | 🚧 **In Progress** | Sends and reads composing events                                                                |
-| Selection API            | 🚧 **In Progress** | Mutate and reads Dactylo's selection                                                            |
-| DOM API                  | 🚧 **In Progress** | Sync browser DOM native selection with Dactylo's selection                                      |
-| Blocks API               | 🚧 **In Progress** | Mutate and reads blocks                                                                         |
-| Inline nodes API         | 🚧 **In Progress** | Mutate and reads inline nodes                                                                   |
-| Export JSON and Markdown | 📆 **Planned**     | Export document state as JSON and Markdown                                                      |
-| Batching transactions    | 📆 **Planned**     | Supports for batching big number for transactions (Ai Agent use case)                           |
-| Table of contents        | 📆 **Planned**     | Build-in table of content based on headings contained in the document                           |
+| Feature                      | Status             | Notes                                                                                           |
+| ---------------------------- | ------------------ | ----------------------------------------------------------------------------------------------- |
+| Events API                   | 🚧 **In Progress** | Observe events from document state, transaction pipeline, history, errors, and editor's aspects |
+| Tools API                    | 🚧 **In Progress** | Exposes tools api to read document state                                                        |
+| Commands API                 | 🚧 **In Progress** | Exposes commands api to mutate document state                                                   |
+| Marks API                    | 🚧 **In Progress** | Apply marks on eligible inline nodes                                                            |
+| Document API                 | 🚧 **In Progress** | Init (with JSON or Markdown), replace, and reset document state                                 |
+| History API                  | 🚧 **In Progress** | Work with build-in history                                                                      |
+| Composer API                 | 🚧 **In Progress** | Sends and reads composing events                                                                |
+| Selection API                | 🚧 **In Progress** | Mutate and reads Dactylo's selection                                                            |
+| DOM API                      | 🚧 **In Progress** | Sync browser DOM native selection with Dactylo's selection                                      |
+| Blocks API                   | 🚧 **In Progress** | Mutate and reads blocks                                                                         |
+| Inline nodes API             | 🚧 **In Progress** | Mutate and reads inline nodes                                                                   |
+| Mentions API                 | 📆 **Planned**     | Mutate and reads mentions as first-class citizen                                                |
+| Export JSON and Markdown API | 📆 **Planned**     | Export document state as JSON and Markdown                                                      |
+| Batching transactions        | 🚧 **In Progress** | Supports for batching big number for transactions (Ai Agent use case)                           |
+| Table of contents            | 📆 **Planned**     | Build-in table of content based on headings contained in the document                           |
 
 ### React integration
 

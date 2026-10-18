@@ -158,6 +158,7 @@ export function isBlockWithInlineContent(
 export function sortBlockOrder(blocks: ReadonlyMap<BlockId, Block>): BlockId[] {
   return [...blocks.values()]
     .toSorted((a, b) =>
+      // @todo: use shared comparator function
       a.posKey < b.posKey ? -1 : a.posKey > b.posKey ? 1 : 0,
     )
     .map((b) => b.id)

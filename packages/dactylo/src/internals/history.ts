@@ -42,6 +42,7 @@ export function orderInverseDocumentOps(
     const run = inverseDocumentOps.slice(runStart, index)
     const sorted = run.toSorted((a, b) => {
       if (a.__type === 'insert_block' && b.__type === 'insert_block') {
+        // @todo: use shared comparator function
         return a.block.posKey < b.block.posKey
           ? -1
           : a.block.posKey > b.block.posKey
