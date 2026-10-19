@@ -8,6 +8,7 @@ import type {
 } from '../dactylo'
 import type { BlockId } from '../internals/blocks'
 import type { DocumentState } from '../internals/document'
+import type { Marks } from '../internals/marks'
 import { isCursorSelection, isRangeSelection } from '../internals/selection'
 import type {
   CursorSelection,
@@ -116,6 +117,29 @@ export function useDocumentState(): DocumentState {
     const { state } = editor.getContext()
 
     return state
+  })
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+// --- Marks ─────────────────────────────────────────---------------
+
+/**
+ * Returns the active marks from the {@link EditorContext}.
+ *
+ * @example
+ * ```tsx
+ * const activeMarks = useActiveMarks()
+ * console.log(activeMarks)
+ * ```
+ */
+export function useActiveMarks(): Marks {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() => {
+    const { activeMarks } = editor.getContext()
+    return activeMarks
   })
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
