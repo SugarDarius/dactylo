@@ -1460,7 +1460,8 @@ export class OperationsEngine {
           return false
         }
 
-        return isMarkEnabled(found.node.marks, markKey)
+        /** Toggle the mark on or off depending on the current state of the mark. */
+        return !isMarkEnabled(found.node.marks, markKey)
       })
 
       const ops: Operation[] = []
@@ -1474,11 +1475,7 @@ export class OperationsEngine {
         }
 
         const { node } = found
-        const nextMarks: Marks = { ...node.marks }
-
-        if (enabling) {
-          nextMarks[markKey] = true
-        }
+        const nextMarks: Marks = { ...node.marks, [markKey]: enabling }
 
         ops.push({
           __type: 'set_marks',
