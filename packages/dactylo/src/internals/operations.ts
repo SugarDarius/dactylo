@@ -125,7 +125,7 @@ export interface MergeBlocksOp {
   /** Copy of source inline content before deletion (for undo). */
   readonly mergedTailSnapshot: readonly InlineNode[]
 
-  /** Text node ID in target where undo split must occur. */
+  /** Inline node ID with editable text in target where undo split must occur. */
   readonly splitAtNodeId: NodeId
 
   /** Character offset within `splitAtNodeId` for undo split. */

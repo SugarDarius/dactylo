@@ -291,7 +291,7 @@ export function validateMergeBlocksOp(
     )
   }
 
-  if (splitNode.node.__type === 'text') {
+  if (isInlineNodeWithEditableText(splitNode.node)) {
     assertOffsetInText(
       op.splitAtOffset,
       splitNode.node.text.length,
@@ -798,7 +798,7 @@ export function resolvesMergeBlocksUndoFields(
     return { splitAtNodeId: first.id, splitAtOffset: 0 }
   }
 
-  if (last.__type === 'text') {
+  if (isInlineNodeWithEditableText(last)) {
     return { splitAtNodeId: last.id, splitAtOffset: last.text.length }
   }
 
