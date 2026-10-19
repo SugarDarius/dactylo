@@ -115,3 +115,21 @@ export function toggleMarkFlag(marks: Marks, mark: MarkKey): Marks {
     [mark]: !isMarkEnabled(marks, mark),
   }
 }
+
+/**
+ * Normalizes marks between active marks and a text node marks.
+ *
+ * When a text is inserted not by typing a character, then it means the text node is
+ * inserted by an external source (e.g: copy/paste, Ai agent). So in that case the intent
+ * is to say the final marks applied are the ones from the operation not the current active marks.
+ *
+ * By design it's a cascade: Text|Link node marks > Active marks.
+ */
+export function applyNormalizedMarks(
+  /** Active marks in the editor context. */
+  editor: Marks,
+  /** Marks required for inserting a text */
+  text: Marks,
+): Marks {
+  return { ...editor, ...text }
+}

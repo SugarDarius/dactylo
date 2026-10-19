@@ -41,7 +41,12 @@ import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import { GraphemeOffsetCaret } from './grapheme'
 import type { ArrowDirection } from './keyboard'
-import { isMarkEnabled, isMarksEqual, toggleMarkFlag } from './marks'
+import {
+  applyNormalizedMarks,
+  isMarkEnabled,
+  isMarksEqual,
+  toggleMarkFlag,
+} from './marks'
 import type { MarkKey, Marks } from './marks'
 import {
   coalesceInlineNodes,
@@ -339,6 +344,11 @@ export function validateInsertTextOp(
   const { node } = requireInlineNodeWithEditableText(block, op.nodeId, op)
 
   assertOffsetInText(op.offset, node.text.length, op, 'Insert text offset')
+
+  const marks = applyNormalizedMarks(context.activeMarks, op.marks)
+  if (!isMarksEqual(node.marks, marks)) {
+    validationError('Insert text marks do not match node marks', op)
+  }
 }
 
 /** Validates a `delete_text` operation. */
@@ -518,24 +528,6 @@ export function applySplitBlockOp(
   }
 }
 
-/**
- * Normalizes marks between active marks and a text node marks.
- *
- * When a text is inserted not by typing a character, then it means the text node is
- * inserted by an external source (e.g: copy/paste, Ai agent). So in that case the intent
- * is to say the final marks applied are the ones from the operation not the current active marks.
- *
- * By design it's a cascade: Text node marks > Active marks.
- */
-export function applyNormalizedMarks(
-  /** Active marks in the editor context. */
-  editor: Marks,
-  /** Marks required for inserting a text */
-  text: Partial<Marks>,
-): Marks {
-  return { ...editor, ...text }
-}
-
 /** Applies an `insert_text` operation to the editor context. */
 export function applyInsertTextOp(
   context: EditorContext,
@@ -557,53 +549,12 @@ export function applyInsertTextOp(
   const before = node.text.slice(0, op.offset)
   const after = node.text.slice(op.offset)
 
-  const marks = op.marks
-    ? applyNormalizedMarks(context.activeMarks, op.marks)
-    : { ...context.activeMarks }
+  const text = before + op.text + after
 
-  /** When marks are the same we append the text in the same existing node. */
-  if (isMarksEqual(node.marks, marks)) {
-    const text = before + op.text + after
-    const updated: InlineNodeWithEditableText = {
-      ...node,
-      text,
-      updatedAt: new Date(),
-    }
-
-    content[index] = updated
-  }
-  /** Otherwise we split the node and create a new text node to insert the text. */
-  else {
-    const updates: InlineNode[] = []
-
-    if (before.length > 0) {
-      updates.push({
-        ...node,
-        text: before,
-        updatedAt: new Date(),
-      })
-    }
-
-    /* By design the text in the operation is never empty as its validated in the validation phase. */
-    updates.push(
-      createTextNode({
-        marks,
-        metadata: node.metadata,
-        text: op.text,
-      }),
-    )
-
-    if (after.length > 0) {
-      updates.push(
-        createTextNode({
-          marks: node.marks,
-          metadata: node.metadata,
-          text: after,
-        }),
-      )
-    }
-
-    content.splice(index, 1, ...updates)
+  content[index] = {
+    ...node,
+    text,
+    updatedAt: new Date(),
   }
 
   return updateBlockWithInlineContent(context, op.blockId, content)
@@ -1516,6 +1467,90 @@ export class OperationsEngine {
   // --- Composing operations ─────────────────────────────────────────
 
   /**
+   * Builds operations to type one character when `activeMarks` ≠ target node marks.
+   *
+   * Produces `[before?][typedChar][after?]` as separate inline nodes using:
+   * - `delete_text` to trim the tail off the original node when needed
+   * - `insert_inline_node` for the typed character (known `insertNode.id`)
+   * - `insert_inline_node` for the trailing segment when needed
+   *
+   * Does not emit `insert_text` on the original node for the new character.
+   */
+  #buildTypedCharAtCursorWithMarkBoundaryOps(
+    context: EditorContext,
+    cursor: TextCursor,
+    char: string,
+    /** Target node at the caret (text or link). */
+    node: InlineNodeWithEditableText,
+    /** Index of `node` in `block.content`. */
+    nodeIndex: number,
+    blockId: BlockId,
+  ): Operation[] {
+    const { activeMarks } = context
+    const before = node.text.slice(0, cursor.offset)
+    const after = node.text.slice(cursor.offset)
+
+    const insertNode = createTextNode({
+      marks: activeMarks,
+      metadata: node.metadata,
+      text: char,
+    })
+
+    const ops: Operation[] = []
+
+    /** Trim tail so the surviving node is only `before`. */
+    if (after.length > 0) {
+      ops.push({
+        __type: 'delete_text',
+        blockId,
+        length: after.length,
+        nodeId: node.id,
+        offset: cursor.offset,
+        snapshot: { marks: node.marks, text: after },
+      })
+    }
+
+    /**
+     * Insert position for the typed node:
+     * - caret in the middle/end of a non-empty prefix → after the trimmed node
+     * - caret at start (empty prefix) → before the original node
+     */
+    const typedInsertIndex = before.length > 0 ? nodeIndex + 1 : nodeIndex
+
+    ops.push({
+      __type: 'insert_inline_node',
+      blockId,
+      index: typedInsertIndex,
+      node: insertNode,
+    })
+
+    if (after.length > 0) {
+      ops.push({
+        __type: 'insert_inline_node',
+        blockId,
+        index: typedInsertIndex + 1,
+        node: createTextNode({
+          marks: node.marks,
+          metadata: node.metadata,
+          text: after,
+        }),
+      })
+    }
+
+    ops.push({
+      __type: 'set_selection',
+      next: createCursor({
+        blockId,
+        nodeId: insertNode.id,
+        offset: char.length,
+      }),
+      prev: context.selection,
+    })
+
+    return ops
+  }
+
+  /**
    * Builds the finished intent ops for a single typed character (or emoji) at the current selection.
    * Determines behaviors when:
    *  - `space` is typed → manage markdown shortcuts
@@ -1580,29 +1615,58 @@ export class OperationsEngine {
   ): ComposingOpsIntent {
     const { state } = context
 
-    const ops: Operation[] = []
     const block = getBlockWithInlineContent(state, cursor.blockId)
+    const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+    if (!found) {
+      buildError(
+        `Node ${cursor.nodeId} not found in block ${block.id}`,
+        'OperationEngine/buildTypedCharAtCursorOps',
+      )
+    }
 
-    ops.push(
-      {
-        __type: 'insert_text',
-        blockId: block.id,
-        marks: context.activeMarks,
-        nodeId: cursor.nodeId,
-        offset: cursor.offset,
-        text: char,
-      },
-      {
-        __type: 'set_selection',
-        next: createCursor({
+    if (!isInlineNodeWithEditableText(found.node)) {
+      buildError(
+        `Node ${cursor.nodeId} is not an inline node with editable text`,
+        'OperationEngine/buildTypedCharAtCursorOps',
+      )
+    }
+
+    const { node, index } = found
+    const marks = { ...context.activeMarks }
+
+    if (isMarksEqual(node.marks, marks)) {
+      const ops: Operation[] = [
+        {
+          __type: 'insert_text',
           blockId: block.id,
+          marks: context.activeMarks,
           nodeId: cursor.nodeId,
-          offset: cursor.offset + char.length,
-        }),
-        prev: context.selection,
-      },
-    )
+          offset: cursor.offset,
+          text: char,
+        },
+        {
+          __type: 'set_selection',
+          next: createCursor({
+            blockId: block.id,
+            nodeId: cursor.nodeId,
+            offset: cursor.offset + char.length,
+          }),
+          prev: context.selection,
+        },
+      ]
 
+      return this.#buildTypedCharIntentFinisherOps(char, ops, 'cursor')
+    }
+
+    /** Mark boundary: structural ops, no split in apply. */
+    const ops = this.#buildTypedCharAtCursorWithMarkBoundaryOps(
+      context,
+      cursor,
+      char,
+      node,
+      index,
+      block.id,
+    )
     return this.#buildTypedCharIntentFinisherOps(char, ops, 'cursor')
   }
 
