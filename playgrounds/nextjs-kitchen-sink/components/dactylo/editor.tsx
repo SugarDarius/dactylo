@@ -1,10 +1,13 @@
 'use client'
 
+import type { MarkKey } from '@sugardarius/dactylo'
 import {
   Composer,
   useCanEdit,
   useHistoryCommands,
   useHistoryTools,
+  useIsMarkActive,
+  useMarksCommands,
   useSetEditable,
 } from '@sugardarius/dactylo/react'
 import {
@@ -14,7 +17,6 @@ import {
   Italic,
   Strikethrough,
   Underline,
-  Link,
   TextAlignStart,
   TextAlignCenter,
   TextAlignEnd,
@@ -26,7 +28,31 @@ import {
 
 import { Button } from '~/components/ui/button'
 import { Separator } from '~/components/ui/separator'
+import { Toggle } from '~/components/ui/toggle'
 import { cn } from '~/lib/utils'
+
+export function MarkToggleButton({
+  mark,
+  children,
+}: React.PropsWithChildren<{ mark: MarkKey }>) {
+  const { toggle } = useMarksCommands()
+  const canEdit = useCanEdit()
+
+  const active = useIsMarkActive(mark)
+
+  return (
+    <Toggle
+      pressed={active}
+      variant='outline'
+      size='sm'
+      onPressedChange={() => toggle(mark)}
+      disabled={!canEdit}
+      className='border-0'
+    >
+      {children}
+    </Toggle>
+  )
+}
 
 export function Toolbar() {
   const { canUndo, canRedo } = useHistoryTools()
@@ -46,24 +72,21 @@ export function Toolbar() {
       </div>
       <Separator orientation='vertical' />
       <div className='flex items-center'>
-        <Button variant='ghost' size='icon'>
+        <MarkToggleButton mark='bold'>
           <Bold className='size-3.5' />
-        </Button>
-        <Button variant='ghost' size='icon'>
+        </MarkToggleButton>
+        <MarkToggleButton mark='italic'>
           <Italic className='size-3.5' />
-        </Button>
-        <Button variant='ghost' size='icon'>
+        </MarkToggleButton>
+        <MarkToggleButton mark='strikethrough'>
           <Strikethrough className='size-3.5' />
-        </Button>
-        <Button variant='ghost' size='icon'>
+        </MarkToggleButton>
+        <MarkToggleButton mark='underline'>
           <Underline className='size-3.5' />
-        </Button>
-        <Button variant='ghost' size='icon'>
+        </MarkToggleButton>
+        <MarkToggleButton mark='code'>
           <CodeXml className='size-3.5' />
-        </Button>
-        <Button variant='ghost' size='icon'>
-          <Link className='size-3.5' />
-        </Button>
+        </MarkToggleButton>
       </div>
       <Separator orientation='vertical' />
       <div className='flex items-center'>
@@ -127,8 +150,21 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:text-muted-foreground',
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:whitespace-break-spaces',
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:wrap-break-word',
-            '[&_[dactylo-node][dactylo-link-node]]:cursor-pointer [&_[dactylo-node][dactylo-link-node]]:text-cyan-500 [&_[dactylo-node][dactylo-link-node]]:underline [&_[dactylo-node][dactylo-link-node]]:decoration-cyan-500 [&_[dactylo-node][dactylo-link-node]]:underline-offset-2 [&_[dactylo-node][dactylo-link-node]]:hover:text-cyan-400 [&_[dactylo-node][dactylo-link-node]]:hover:decoration-cyan-400',
-            '**:data-[dactylo-italic-mark=true]:font-italic **:data-[dactylo-bold-mark=true]:font-bold **:data-[dactylo-code-mark=true]:font-mono **:data-[dactylo-strikethrough-mark=true]:line-through **:data-[dactylo-underline-mark=true]:underline',
+            '[&_[dactylo-node][dactylo-link-node]]:cursor-pointer',
+            '[&_[dactylo-node][dactylo-link-node]]:text-cyan-500',
+            '[&_[dactylo-node][dactylo-link-node]]:underline',
+            '[&_[dactylo-node][dactylo-link-node]]:decoration-cyan-500',
+            '[&_[dactylo-node][dactylo-link-node]]:underline-offset-2',
+            '[&_[dactylo-node][dactylo-link-node]]:hover:text-cyan-400',
+            '[&_[dactylo-node][dactylo-link-node]]:hover:decoration-cyan-400',
+            '**:data-[dactylo-italic-mark=true]:italic',
+            '**:data-[dactylo-bold-mark=true]:font-bold',
+            '**:data-[dactylo-code-mark=true]:p-0.5',
+            '**:data-[dactylo-code-mark=true]:bg-muted',
+            '**:data-[dactylo-code-mark=true]:rounded-sm',
+            '**:data-[dactylo-code-mark=true]:font-mono',
+            '**:data-[dactylo-strikethrough-mark=true]:line-through',
+            '**:data-[dactylo-underline-mark=true]:underline',
           )}
         />
       </Composer.Root>

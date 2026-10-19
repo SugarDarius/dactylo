@@ -17,7 +17,7 @@ import {
 import type { DocumentState } from '../internals/document'
 import { paintTextForDOM } from '../internals/dom'
 import { isMarkEnabled } from '../internals/marks'
-import type { MarkKey, Marks } from '../internals/marks'
+import type { MarkKey } from '../internals/marks'
 import type { InlineNodeWithEditableText } from '../internals/nodes'
 import { isCursorSelection, isRangeSelection } from '../internals/selection'
 import type {
@@ -287,27 +287,6 @@ export function useIsFocused(): boolean {
 // --- Marks ─────────────────────────────────────────---------------
 
 /**
- * Returns the active marks from the {@link EditorContext}.
- *
- * @example
- * ```tsx
- * const activeMarks = useActiveMarks()
- * console.log(activeMarks)
- * ```
- */
-export function useActiveMarks(): Marks {
-  const { editor } = useComposer()
-
-  const subscribe = useStableCallback(editor.subscribe.bind(editor))
-  const getSnapshot = useStableCallback(() => {
-    const { activeMarks } = editor.getContext()
-    return activeMarks
-  })
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
-}
-
-/**
  * Returns the marks tools.
  *
  * @example
@@ -324,6 +303,15 @@ export function useMarksTools() {
   )
 
   return { isActive } as const
+}
+
+export function useIsMarkActive(mark: MarkKey): boolean {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() => editor.marks.tools.isActive(mark))
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
 /**
@@ -665,32 +653,27 @@ export function useEditableBlock(blockId: BlockId) {
  * @private
  */
 export function useEditableNode(node: InlineNodeWithEditableText) {
-  const activeMarks = useActiveMarks()
   const renderedText = useMemo(() => paintTextForDOM(node.text), [node.text])
 
-  const marksAttributes = useMemo(() => {
-    const bold =
-      isMarkEnabled(node.marks, 'bold') || isMarkEnabled(activeMarks, 'bold')
-    const italic =
-      isMarkEnabled(node.marks, 'italic') ||
-      isMarkEnabled(activeMarks, 'italic')
-    const strikethrough =
-      isMarkEnabled(node.marks, 'strikethrough') ||
-      isMarkEnabled(activeMarks, 'strikethrough')
-    const underline =
-      isMarkEnabled(node.marks, 'underline') ||
-      isMarkEnabled(activeMarks, 'underline')
-    const code =
-      isMarkEnabled(node.marks, 'code') || isMarkEnabled(activeMarks, 'code')
-
-    return {
-      [EDITABLE_NODE_BOLD_MARK_DATA_NAME]: bold,
-      [EDITABLE_NODE_ITALIC_MARK_DATA_NAME]: italic,
-      [EDITABLE_NODE_STRIKETHROUGH_MARK_DATA_NAME]: strikethrough,
-      [EDITABLE_NODE_UNDERLINE_MARK_DATA_NAME]: underline,
-      [EDITABLE_NODE_CODE_MARK_DATA_NAME]: code,
-    }
-  }, [activeMarks, node.marks])
+  const marksAttributes = useMemo(
+    () => ({
+      [EDITABLE_NODE_BOLD_MARK_DATA_NAME]: isMarkEnabled(node.marks, 'bold'),
+      [EDITABLE_NODE_ITALIC_MARK_DATA_NAME]: isMarkEnabled(
+        node.marks,
+        'italic',
+      ),
+      [EDITABLE_NODE_STRIKETHROUGH_MARK_DATA_NAME]: isMarkEnabled(
+        node.marks,
+        'strikethrough',
+      ),
+      [EDITABLE_NODE_UNDERLINE_MARK_DATA_NAME]: isMarkEnabled(
+        node.marks,
+        'underline',
+      ),
+      [EDITABLE_NODE_CODE_MARK_DATA_NAME]: isMarkEnabled(node.marks, 'code'),
+    }),
+    [node.marks],
+  )
 
   return {
     marksAttributes,
