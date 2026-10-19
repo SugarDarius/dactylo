@@ -172,6 +172,7 @@ export interface DeleteTextOp {
   readonly snapshot: {
     /** Substring removed from the text node. */
     readonly text: string
+
     /** Optional partial marks applied to the removed run. */
     readonly marks?: Partial<Marks>
   }
@@ -214,6 +215,17 @@ export interface SetActiveMarksOp {
 
   /** Active marks after the change. */
   readonly activeMarks: Marks
+
+  /**
+   * Copies the active marks to the given block and node.
+   */
+  readonly copyTo: {
+    /** Block to copy the active marks to. */
+    readonly blockId: BlockId
+
+    /** Node to copy the active marks to. */
+    readonly nodeId: NodeId
+  } | null
 }
 
 /** Applies mark changes to a character range within a text node. */

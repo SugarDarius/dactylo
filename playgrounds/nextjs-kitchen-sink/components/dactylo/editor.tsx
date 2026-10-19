@@ -25,6 +25,7 @@ import {
   Lock,
   LockOpen,
 } from 'lucide-react'
+import { useHotkeys } from 'react-hotkeys-hook'
 
 import { Button } from '~/components/ui/button'
 import { Separator } from '~/components/ui/separator'
@@ -55,10 +56,54 @@ export function MarkToggleButton({
 }
 
 export function Toolbar() {
-  const { canUndo, canRedo } = useHistoryTools()
-  const { undo, redo } = useHistoryCommands()
   const canEdit = useCanEdit()
   const setEditable = useSetEditable()
+
+  const { canUndo, canRedo } = useHistoryTools()
+  const { undo, redo } = useHistoryCommands()
+
+  const { toggle } = useMarksCommands()
+
+  useHotkeys(
+    'mod+b',
+    (event) => {
+      event.preventDefault()
+      toggle('bold')
+    },
+    { enableOnContentEditable: true, enabled: canEdit },
+  )
+
+  useHotkeys(
+    'mod+i',
+    (event) => {
+      event.preventDefault()
+      toggle('italic')
+    },
+    { enableOnContentEditable: true, enabled: canEdit },
+  )
+
+  useHotkeys(
+    'mod+s',
+    (event) => {
+      event.preventDefault()
+      toggle('strikethrough')
+    },
+    { enableOnContentEditable: true, enabled: canEdit },
+  )
+
+  useHotkeys(
+    'mod+u',
+    (event) => {
+      event.preventDefault()
+      toggle('underline')
+    },
+    { enableOnContentEditable: true, enabled: canEdit },
+  )
+
+  useHotkeys('mod+k', (event) => {
+    event.preventDefault()
+    toggle('code')
+  })
 
   return (
     <div className='border-border flex w-full items-center gap-1.5 border-b px-1.5 py-2'>

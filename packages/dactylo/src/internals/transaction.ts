@@ -651,8 +651,8 @@ export class TransactionPipeline {
       case 'set_active_marks': {
         this.#commit(ops, {
           label: transactionPolicyLabel(
-            'toggle-mark',
-            'active',
+            'toggle-active-mark',
+            'on-context',
             String(markKey),
           ),
           pushToHistory: false,

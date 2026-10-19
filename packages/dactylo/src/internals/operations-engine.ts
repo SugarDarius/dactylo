@@ -64,6 +64,7 @@ import type {
   MergeBlocksOp,
   Operation,
   RemoveInlineNodeOp,
+  SetActiveMarksOp,
   SetMarksOp,
   SetSelectionOp,
   SplitBlockOp,
@@ -644,6 +645,38 @@ export function applyDeleteTextOp(
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
+/** Applies a `set_active_marks` operation to the editor context. */
+export function applySetActiveMarksOp(
+  context: EditorContext,
+  op: SetActiveMarksOp,
+): EditorContext {
+  const next = withActiveMarks(context, op.activeMarks)
+  if (op.copyTo === null) {
+    return next
+  }
+
+  const block = getBlockWithInlineContent(next.state, op.copyTo.blockId)
+  const found = findNodeInBlockWithInlineContent(block, op.copyTo.nodeId)
+  if (!found) {
+    applyError(`Node ${op.copyTo.nodeId} not found in block ${block.id}`, op)
+  }
+
+  const { index, node } = found
+
+  if (!isInlineNodeWithEditableText(node) || node.text.length > 0) {
+    return next
+  }
+
+  const content = [...block.content]
+  content[index] = {
+    ...node,
+    marks: op.activeMarks,
+    updatedAt: new Date(),
+  }
+
+  return updateBlockWithInlineContent(next, op.copyTo.blockId, content)
+}
+
 /** Applies a `set_marks` operation to the editor context. */
 export function applySetMarksOp(
   context: EditorContext,
@@ -1211,7 +1244,7 @@ export class OperationsEngine {
         return applyRemoveInlineNodeOp(context, op)
       }
       case 'set_active_marks': {
-        return withActiveMarks(context, op.activeMarks)
+        return applySetActiveMarksOp(context, op)
       }
       case 'set_marks': {
         return applySetMarksOp(context, op)
@@ -1310,6 +1343,7 @@ export class OperationsEngine {
         return {
           __type: 'set_active_marks',
           activeMarks: op.prevActiveMarks,
+          copyTo: op.copyTo,
           prevActiveMarks: op.activeMarks,
         }
       }
@@ -1371,12 +1405,25 @@ export class OperationsEngine {
       const prev = context.activeMarks
       const next = toggleMarkFlag(prev, markKey)
 
+      const { blockId, nodeId } = selection.anchor
+      const block = getBlockWithInlineContent(state, blockId)
+      const found = findNodeInBlockWithInlineContent(block, nodeId)
+
+      let copyTo: { blockId: BlockId; nodeId: NodeId } | null = null
+      if (found) {
+        const { node } = found
+        if (isInlineNodeWithEditableText(node) && node.text.length <= 0) {
+          copyTo = { blockId, nodeId }
+        }
+      }
+
       return {
         kind: 'set_active_marks',
         ops: [
           {
             __type: 'set_active_marks',
             activeMarks: next,
+            copyTo,
             prevActiveMarks: prev,
           },
         ],

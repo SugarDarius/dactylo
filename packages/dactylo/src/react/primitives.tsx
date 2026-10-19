@@ -26,7 +26,6 @@ import {
   useSelectionCommands,
   useEditorConfig,
   useEditableBlock,
-  useComposerCommands,
   useEditable,
   useEditableNode,
 } from './composer'
@@ -43,7 +42,6 @@ import {
 import {
   useIsMounted,
   useIsomorphicLayoutEffect,
-  useStableCallback,
   useStableValue,
 } from './internals/hooks'
 import { mergeRefs } from './internals/utils'
@@ -333,19 +331,7 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
     const mergedRefs = mergeRefs(forwardedRef, editableRef)
 
     const focused = useIsFocused()
-
     const { focus } = useSelectionCommands()
-    const { sendKeydown } = useComposerCommands()
-
-    const handleKeyDown = useStableCallback(
-      (event: React.KeyboardEvent<HTMLDivElement>) => {
-        if (event.isDefaultPrevented()) {
-          return
-        }
-
-        sendKeydown(event.nativeEvent)
-      },
-    )
 
     useIsomorphicLayoutEffect(() => {
       if (autoFocus && !focused && canEdit) {
@@ -365,7 +351,6 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
         spellCheck={spellCheck}
         data-disabled={!canEdit || undefined}
         data-focused={focused || undefined}
-        onKeyDown={handleKeyDown}
         {...{ [EDITABLE_ATTR_NAME]: '' }}
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={canEdit ? 0 : undefined}

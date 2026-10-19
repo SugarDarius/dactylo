@@ -478,7 +478,7 @@ export function useEditable() {
   const cursorSelection = useCursorSelection()
   const rangeSelection = useRangeSelection()
 
-  const { sendInput } = useComposerCommands()
+  const { sendInput, sendKeydown } = useComposerCommands()
 
   /**
    * `beforeinput` event handler used to capture the following input types:
@@ -503,6 +503,10 @@ export function useEditable() {
    */
   const onBeforeInput = useStableCallback((event: InputEvent) => {
     sendInput(event)
+  })
+
+  const onKeydown = useStableCallback((event: KeyboardEvent) => {
+    sendKeydown(event)
   })
 
   const onPointerUp = useStableCallback((event: PointerEvent) => {
@@ -563,7 +567,10 @@ export function useEditable() {
      */
     editable.addEventListener('beforeinput', onBeforeInput)
 
-    /** Listen to compositionstart and compositionend events on the editable element. */
+    /** Listen to global keydown events. */
+    editable.addEventListener('keydown', onKeydown)
+
+    /** Listen to `compositionstart` and `compositionend` events on the editable element. */
     editable.addEventListener('compositionstart', onCompositionStart)
     editable.addEventListener('compositionend', onCompositionEnd)
 
@@ -578,6 +585,8 @@ export function useEditable() {
 
       editable.removeEventListener('beforeinput', onBeforeInput)
 
+      editable.removeEventListener('keydown', onKeydown)
+
       editable.removeEventListener('compositionstart', onCompositionStart)
       editable.removeEventListener('compositionend', onCompositionEnd)
 
@@ -586,11 +595,12 @@ export function useEditable() {
   }, [
     canEdit,
     editor,
+    onBeforeInput,
+    onKeydown,
     onPointerUp,
     onSelectionChange,
     onCompositionStart,
     onCompositionEnd,
-    onBeforeInput,
     onLinkClick,
   ])
 
