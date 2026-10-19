@@ -2127,7 +2127,7 @@ export class OperationsEngine {
       if (!prevNode) {
         buildError(
           `Previous node not found for block ${block.id} at index ${index}`,
-          'OperationsEngine/buildCursorBackspaceOps',
+          'OperationsEngine/buildDeleteBackspaceAtCursorOps',
         )
       }
 

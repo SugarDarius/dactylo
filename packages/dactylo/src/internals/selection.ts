@@ -1,6 +1,6 @@
 import { findFirstInlineNodeInBlock, findLastInlineNodeInBlock } from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
-import { getInlineNodeTextLength } from './nodes'
+import { getInlineNodeTextLength, isInlineNodeWithEditableText } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
 import type { Relax } from './types'
 
@@ -400,7 +400,7 @@ export function cursorFromLinearOffsetInBlock(
 ): TextCursor {
   let remaining = Math.max(0, linear)
   for (const node of block.content) {
-    if (node.__type === 'text') {
+    if (isInlineNodeWithEditableText(node)) {
       if (remaining <= node.text.length) {
         return {
           blockId,

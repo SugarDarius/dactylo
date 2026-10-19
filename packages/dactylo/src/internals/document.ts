@@ -7,7 +7,11 @@ import type { Block, BlockId, BlockWithInlineContent } from './blocks'
 import { DactyloError } from './errors'
 import type { ArrowDirection } from './keyboard'
 import type { Marks } from './marks'
-import { createTextNode, getInlineNodeTextLength } from './nodes'
+import {
+  createTextNode,
+  getInlineNodeTextLength,
+  isInlineNodeWithEditableText,
+} from './nodes'
 import type { InsertBlockOpPosition } from './operations'
 import {
   after,
@@ -648,7 +652,7 @@ export function stepCursorLeft(
     return null
   }
   const { node, index } = found
-  if (node.__type === 'text' && cursor.offset > 0) {
+  if (isInlineNodeWithEditableText(node) && cursor.offset > 0) {
     return {
       ...cursor,
       offset: getPrevOffset(node.text, cursor.offset),
@@ -694,7 +698,7 @@ export function stepCursorRight(
     return null
   }
   const { node, index } = found
-  if (node.__type === 'text' && cursor.offset < node.text.length) {
+  if (isInlineNodeWithEditableText(node) && cursor.offset < node.text.length) {
     return {
       ...cursor,
       offset: getNextOffset(node.text, cursor.offset),
