@@ -1009,6 +1009,42 @@ export function computeTailInlineNode(
   })
 }
 
+/**
+ * Resolves the editable inline node where a typed character will be inserted
+ * after replaying `prefixOps` on the block (same transaction, earlier ops).
+ */
+export function resolveTypedCharInsertTarget(
+  block: BlockWithInlineContent,
+  /** Delete/merge ops that run before insert in the same batch. */
+  prefixOps: readonly Operation[],
+  /** Insert caret (anchor after range delete, or merge split point). */
+  at: TextCursor,
+): { node: InlineNodeWithEditableText; index: number } {
+  const previewContent = previewInlineContentAfterTrimOps(
+    block.content,
+    [...prefixOps],
+    block.id,
+  )
+  const previewBlock: BlockWithInlineContent = {
+    ...block,
+    content: previewContent,
+  }
+  const found = findNodeInBlockWithInlineContent(previewBlock, at.nodeId)
+  if (!found || !isInlineNodeWithEditableText(found.node)) {
+    buildError(
+      `Node ${at.nodeId} not found in block ${block.id} after prefix ops`,
+      'OperationsEngine/resolveTypedCharInsertTarget',
+    )
+  }
+  if (at.offset < 0 || at.offset > found.node.text.length) {
+    buildError(
+      `Insert offset ${at.offset} out of bounds for text length ${found.node.text.length}`,
+      'OperationsEngine/resolveTypedCharInsertTarget',
+    )
+  }
+  return { index: found.index, node: found.node }
+}
+
 /** Intent for building composing operations. */
 export interface ComposingOpsIntent {
   /** The operations to apply. */
@@ -1477,7 +1513,7 @@ export class OperationsEngine {
    * Does not emit `insert_text` on the original node for the new character.
    */
   #buildTypedCharAtCursorWithMarkBoundaryOps(
-    context: EditorContext,
+    activeMarks: Marks,
     cursor: TextCursor,
     char: string,
     /** Target node at the caret (text or link). */
@@ -1485,8 +1521,9 @@ export class OperationsEngine {
     /** Index of `node` in `block.content`. */
     nodeIndex: number,
     blockId: BlockId,
+    /** Previous selection for undo inversion. */
+    prevSelection: Selection | null,
   ): Operation[] {
-    const { activeMarks } = context
     const before = node.text.slice(0, cursor.offset)
     const after = node.text.slice(cursor.offset)
 
@@ -1544,7 +1581,7 @@ export class OperationsEngine {
         nodeId: insertNode.id,
         offset: char.length,
       }),
-      prev: context.selection,
+      prev: prevSelection,
     })
 
     return ops
@@ -1660,45 +1697,79 @@ export class OperationsEngine {
 
     /** Mark boundary: structural ops, no split in apply. */
     const ops = this.#buildTypedCharAtCursorWithMarkBoundaryOps(
-      context,
+      context.activeMarks,
       cursor,
       char,
       node,
       index,
       block.id,
+      context.selection,
     )
     return this.#buildTypedCharIntentFinisherOps(char, ops, 'cursor')
   }
 
   /**
-   * Builds operations for a single typed character (or emoji) at the current range selection
-   * Returns `insert_text` and `set_selection` operations.
+   * Builds insert + selection ops after a range was (or will be) deleted in the same batch.
+   *
+   * Same marks as `context.activeMarks`: `insert_text` + collapsed `set_selection`.
+   * Different marks: structural boundary ops via  {@link #buildTypedCharAtCursorWithMarkBoundaryOps} (no split in `applyInsertTextOp`).
    */
   #buildTypedCharInsertAndSelectionAtRangeOps(
     context: EditorContext,
     range: RangeSelection,
     char: string,
     at: TextCursor,
+    opts: {
+      /**
+       * Ops already queued for this block before insert (e.g. range `delete_text`).
+       * Required so the target node's text/index match validate/apply order.
+       */
+      prefixOps?: readonly Operation[]
+      /**
+       * When the live document does not yet contain the target tree
+       * cross-block merge preview), resolve the node from this block instead of `state`.
+       */
+      blockSnapshot?: BlockWithInlineContent
+    } = {},
   ): Operation[] {
-    return [
-      {
-        __type: 'insert_text',
-        blockId: at.blockId,
-        marks: context.activeMarks,
-        nodeId: at.nodeId,
-        offset: at.offset,
-        text: char,
-      },
-      {
-        __type: 'set_selection',
-        next: createCursor({
+    const { prefixOps = [], blockSnapshot } = opts
+    const block =
+      blockSnapshot ?? getBlockWithInlineContent(context.state, at.blockId)
+
+    const { node, index } = resolveTypedCharInsertTarget(block, prefixOps, at)
+
+    const marks = { ...context.activeMarks }
+    if (isMarksEqual(node.marks, marks)) {
+      return [
+        {
+          __type: 'insert_text',
           blockId: at.blockId,
+          marks: context.activeMarks,
           nodeId: at.nodeId,
-          offset: at.offset + char.length,
-        }),
-        prev: range,
-      },
-    ]
+          offset: at.offset,
+          text: char,
+        },
+        {
+          __type: 'set_selection',
+          next: createCursor({
+            blockId: at.blockId,
+            nodeId: at.nodeId,
+            offset: at.offset + char.length,
+          }),
+          prev: range,
+        },
+      ]
+    }
+
+    return this.#buildTypedCharAtCursorWithMarkBoundaryOps(
+      context.activeMarks,
+      at,
+      char,
+      node,
+      index,
+      at.blockId,
+      range,
+    )
   }
 
   /**
@@ -1772,17 +1843,28 @@ export class OperationsEngine {
       context.activeMarks,
     )
 
+    const mergedContentPreview = coalesceInlineNodes([
+      ...targetHead,
+      ...tailContent,
+    ])
+
+    const mergedBlockSnapshot: BlockWithInlineContent = {
+      ...startBlock,
+      content: mergedContentPreview,
+    }
+
+    const mergeBlockOp: MergeBlocksOp = {
+      __type: 'merge_blocks',
+      atIndex: targetHead.length,
+      mergedTailSnapshot: [...tailContent],
+      sourceBlockId: endBlock.id,
+      sourceSnapshot: trimmedSourceSnapshot,
+      splitAtNodeId,
+      splitAtOffset,
+      targetBlockId: startBlock.id,
+    }
     ops.push(
-      {
-        __type: 'merge_blocks',
-        atIndex: targetHead.length,
-        mergedTailSnapshot: [...tailContent],
-        sourceBlockId: endBlock.id,
-        sourceSnapshot: trimmedSourceSnapshot,
-        splitAtNodeId,
-        splitAtOffset,
-        targetBlockId: startBlock.id,
-      },
+      mergeBlockOp,
       ...this.#buildTypedCharInsertAndSelectionAtRangeOps(
         context,
         range,
@@ -1791,6 +1873,10 @@ export class OperationsEngine {
           blockId: startBlock.id,
           nodeId: splitAtNodeId,
           offset: splitAtOffset,
+        },
+        {
+          blockSnapshot: mergedBlockSnapshot,
+          prefixOps: [mergeBlockOp],
         },
       ),
     )
@@ -1858,18 +1944,20 @@ export class OperationsEngine {
           )
         }
 
-        const ops: Operation[] = [
-          {
-            __type: 'delete_text',
-            blockId: block.id,
-            length: deleteLength,
-            nodeId: node.id,
-            offset: deleteOffset,
-            snapshot: {
-              marks: node.marks,
-              text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
-            },
+        const deleteTextOp: DeleteTextOp = {
+          __type: 'delete_text',
+          blockId: block.id,
+          length: deleteLength,
+          nodeId: node.id,
+          offset: deleteOffset,
+          snapshot: {
+            marks: node.marks,
+            text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
           },
+        } as const
+
+        const ops: Operation[] = [
+          deleteTextOp,
           ...this.#buildTypedCharInsertAndSelectionAtRangeOps(
             context,
             range,
@@ -1878,6 +1966,9 @@ export class OperationsEngine {
               blockId: block.id,
               nodeId: node.id,
               offset: deleteOffset,
+            },
+            {
+              prefixOps: [deleteTextOp],
             },
           ),
         ]
@@ -1901,6 +1992,9 @@ export class OperationsEngine {
           range,
           char,
           anchor,
+          {
+            prefixOps: deleteOps,
+          },
         ),
       ]
 
