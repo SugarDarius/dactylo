@@ -21,6 +21,8 @@ export {
   useSelectionCommands,
   useDocumentState,
   useActiveMarks,
+  useMarksTools,
+  useMarksCommands,
   useCommandsListener,
   useToolsListener,
 } from './composer'

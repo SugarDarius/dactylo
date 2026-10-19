@@ -17,7 +17,7 @@ import {
 import type { DocumentState } from '../internals/document'
 import { paintTextForDOM } from '../internals/dom'
 import { isMarkEnabled } from '../internals/marks'
-import type { Marks } from '../internals/marks'
+import type { MarkKey, Marks } from '../internals/marks'
 import type { InlineNodeWithEditableText } from '../internals/nodes'
 import { isCursorSelection, isRangeSelection } from '../internals/selection'
 import type {
@@ -127,29 +127,6 @@ export function useDocumentState(): DocumentState {
     const { state } = editor.getContext()
 
     return state
-  })
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
-}
-
-// --- Marks ─────────────────────────────────────────---------------
-
-/**
- * Returns the active marks from the {@link EditorContext}.
- *
- * @example
- * ```tsx
- * const activeMarks = useActiveMarks()
- * console.log(activeMarks)
- * ```
- */
-export function useActiveMarks(): Marks {
-  const { editor } = useComposer()
-
-  const subscribe = useStableCallback(editor.subscribe.bind(editor))
-  const getSnapshot = useStableCallback(() => {
-    const { activeMarks } = editor.getContext()
-    return activeMarks
   })
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
@@ -305,6 +282,69 @@ export function useIsFocused(): boolean {
   )
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+// --- Marks ─────────────────────────────────────────---------------
+
+/**
+ * Returns the active marks from the {@link EditorContext}.
+ *
+ * @example
+ * ```tsx
+ * const activeMarks = useActiveMarks()
+ * console.log(activeMarks)
+ * ```
+ */
+export function useActiveMarks(): Marks {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() => {
+    const { activeMarks } = editor.getContext()
+    return activeMarks
+  })
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns the marks tools.
+ *
+ * @example
+ * ```tsx
+ * const { isActive } = useMarksTools()
+ * console.log(isActive('bold'))
+ * ```
+ */
+export function useMarksTools() {
+  const { editor } = useComposer()
+
+  const isActive = useStableCallback((mark: MarkKey) =>
+    editor.marks.tools.isActive(mark),
+  )
+
+  return { isActive } as const
+}
+
+/**
+ * Returns the marks commands.
+ *
+ * @example
+ * ```tsx
+ * const { toggle } = useMarksCommands()
+ * toggle('bold')
+ * toggle('bold', 'ai-agent')
+ * ```
+ */
+export function useMarksCommands() {
+  const { editor } = useComposer()
+
+  const toggle = useStableCallback(
+    (mark: MarkKey, source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.marks.commands.toggle(mark, source),
+  )
+
+  return { toggle } as const
 }
 
 // --- Composer ------─────────────────────────────────────────------
