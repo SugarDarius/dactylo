@@ -208,6 +208,8 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '**:data-[dactylo-code-mark=true]:bg-muted',
             '**:data-[dactylo-code-mark=true]:rounded-sm',
             '**:data-[dactylo-code-mark=true]:font-mono',
+            '**:data-[dactylo-code-mark=true]:text-xs',
+            '**:data-[dactylo-code-mark=true]:text-red-600',
             '**:data-[dactylo-strikethrough-mark=true]:line-through',
             '**:data-[dactylo-underline-mark=true]:underline',
           )}
