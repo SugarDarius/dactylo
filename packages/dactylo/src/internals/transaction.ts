@@ -750,7 +750,9 @@ export class TransactionPipeline {
         return false
       }
 
+      case 'insertReplacementText':
       case 'insertFromPaste': {
+        // @todo: handle `insertReplacementText` as it gets data from transfer
         // @todo: handle data types of pastes
         if (isCursorSelection(this.#context.selection)) {
           /** In any case we prevent native browser behavior as we want full control over paste. */
@@ -880,12 +882,9 @@ export class TransactionPipeline {
         return true
       }
 
-      case 'insertReplacementText':
       case 'insertText': {
         /** In any case we prevent native browser behavior as we want full control over text input. */
         prevent()
-
-        // @todo: handle `insertReplacementText` as it gets data from transfer
 
         const { data } = event
         /**
