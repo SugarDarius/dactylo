@@ -1,3 +1,5 @@
+import { PLAIN_TEXT_LINK_PATTERN } from './constants'
+
 /**
  * Utility function to assert that a value is never
  * that can be used in a switch statement with TypeScript.
@@ -38,4 +40,19 @@ export function canUseDOM(): boolean {
     typeof document !== 'undefined' &&
     document.createElement !== undefined
   )
+}
+
+/** Clones a regular expression. */
+export function cloneRegExp(regex: RegExp): RegExp {
+  return new RegExp(regex.source, regex.flags)
+}
+
+/** Normalizes a URL to a full URL. */
+export function normalizeUrl(url: string): string {
+  const trimmed = url.trim()
+  if (PLAIN_TEXT_LINK_PATTERN.test(trimmed)) {
+    return trimmed
+  }
+
+  return `https://${trimmed}`
 }

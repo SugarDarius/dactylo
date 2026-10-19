@@ -98,7 +98,7 @@ export interface LineBreakNode extends INode {
   readonly __type: 'line_break'
 }
 
-/** Discriminated union of all existing nodes in Dactylo. */
+/** Discriminated union of inline nodes supported by {@link Dactylo} */
 export type InlineNode = Relax<
   TextNode | LinkNode | MentionNode | LineBreakNode
 >

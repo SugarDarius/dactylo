@@ -79,28 +79,28 @@ export interface ParagraphBlock extends IBlockWithInlineContext {
   readonly __type: 'paragraph'
 }
 
-/** Block representing a divider */
+/** Block representing a divider. */
 export interface DividerBlock extends IBlock {
   readonly __type: 'divider'
 }
 
-/** Discriminated union of all existing blocks in Dactylo. */
+/** Discriminated union of blocks supported by {@link Dactylo}, */
 export type Block = Relax<HeadingBlock | ParagraphBlock | DividerBlock>
 
 /** Allowed blocks to own inline content */
 export type BlockWithInlineContent = HeadingBlock | ParagraphBlock
 
-/** Discriminated union of all existing blocks without `posKey` in Dactylo. */
+/** Discriminated union of blocks without `posKey`. */
 export type BlockWithoutPosKey = Relax<
   | Omit<HeadingBlock, 'posKey'>
   | Omit<ParagraphBlock, 'posKey'>
   | Omit<DividerBlock, 'posKey'>
 >
 
-/** Discriminated union of all existing block types in Dactylo. */
+/** Discriminated union of block types.. */
 export type BlockType = Block['__type']
 
-/** Generates a 24 characters long unique block ID */
+/** Generates a 24 characters long unique block ID. */
 export function generateBlockId(): BlockId {
   return `bl_${nanoid(21)}` as BlockId
 }

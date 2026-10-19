@@ -90,11 +90,11 @@ export const CLIPBOARD_DATA_TYPE_NAME = 'application/x-dactylo-data'
 
 /** Markdown link pattern. */
 export const MARKDOWN_LINK_PATTERN =
-  /(?<link>\[(?<text>(?:\[[^\]]*\]|[^[\]])*)\]\([ \t]*<?(?<url>(?:\([^)]*\)|[^()\s])*?)>?[ \t]*(?:(?<quote>['"])(?<title>.*?)\k<quote>[ \t]*)?\))/gu
+  /(?<link>\[(?<text>(?:\[[^\]]*\]|[^[\]])*)\]\([ \t]*<?(?<url>(?:\([^)]*\)|[^()\s])*?)>?[ \t]*(?:(?<quote>['"])(?<title>.*?)\k<quote>[ \t]*)?\))/u
 
 /** Plain text lines split pattern. */
-export const PLAIN_TEXT_LINES_SPLIT_PATTERN = /\r?\n/gu
+export const PLAIN_TEXT_LINES_SPLIT_PATTERN = /\r?\n/u
 
 /** Plain text link pattern. */
 export const PLAIN_TEXT_LINK_PATTERN =
-  /(?<host>[-a-zA-Z0-9^\p{L}\p{C}\u00A1-\uFFFF@:%_+.~#?&//=]{2,256})(?<tld>\.[a-z]{2,4})(?<port>:[0-9]*)?(?<path>\/[-a-zA-Z0-9\u00A1-\uFFFF()@:%,_+.~#?&//=]*)?(?<trail>[-a-zA-Z0-9()@:%,_+.~#?&//=]*)?/giu
+  /(?:https?:\/\/(?:www\.)?localhost(?::\d{1,5})?(?:\/[-a-zA-Z0-9().@:%_+~#?&//=]*)?|localhost(?::\d{1,5})?(?:\/[-a-zA-Z0-9().@:%_+~#?&//=]*)?|(?:https?:\/\/(?:www\.)?|www\.)[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b[-a-zA-Z0-9().@:%_+~#?&//=]*)/iu

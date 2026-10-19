@@ -66,12 +66,18 @@ import type {
   SetSelectionOp,
   SplitBlockOp,
 } from './operations'
-import { plainTextHasLinks, splitPlainText } from './plain-text'
+import {
+  plainTextHasLinks,
+  plainTextToEditableTextNodes,
+  splitPlainText,
+} from './plain-text'
 import {
   areSelectionsEqual,
   createCursor,
   createRange,
   cursorAtBlockStart,
+  cursorFromLinearOffsetInBlock,
+  getLinearOffsetInBlock,
   isCursorAtBlockEnd,
   isCursorSelection,
   isRangeSelection,
@@ -864,6 +870,46 @@ export function previewInlineContentAfterTrimOps(
   return next
 }
 
+/** Preview inline content after paste-slice ops (delete_text + insert_inline_node). */
+export function previewInlineContentAfterPasteSliceOps(
+  content: readonly InlineNode[],
+  ops: readonly Operation[],
+  blockId: BlockId,
+): InlineNode[] {
+  const next = [...content]
+
+  for (const op of ops) {
+    if (op.blockId !== blockId) {
+      continue
+    }
+
+    if (op.__type === 'delete_text') {
+      const idx = next.findIndex((n) => n.id === op.nodeId)
+      if (idx === -1) {
+        continue
+      }
+
+      const node = next[idx]
+      if (!node || !isInlineNodeWithEditableText(node)) {
+        continue
+      }
+
+      const before = node.text.slice(0, op.offset)
+      const after = node.text.slice(op.offset + op.length)
+
+      next[idx] = {
+        ...node,
+        text: before + after,
+        updatedAt: new Date(),
+      }
+    } else if (op.__type === 'insert_inline_node') {
+      next.splice(op.index, 0, op.node)
+    }
+  }
+
+  return coalesceInlineNodes(next)
+}
+
 /**
  * Inline nodes that move to the tail block when splitting a cursor.
  * Used by operations emitters to populate {@link SplitBlockOp} tailSnapshot field for undo.
@@ -954,6 +1000,27 @@ export function computeSplitMergeAtIndex(
       })
     }
   }
+}
+
+/** Computes the tail node for a sliced inline node with editable text. */
+export function computeTailInlineNode(
+  node: InlineNodeWithEditableText,
+  tailText: string,
+): InlineNode {
+  if (node.__type === 'link') {
+    return createLinkNode({
+      marks: node.marks,
+      metadata: node.metadata,
+      text: tailText,
+      url: node.url,
+    })
+  }
+
+  return createTextNode({
+    marks: node.marks,
+    metadata: node.metadata,
+    text: tailText,
+  })
 }
 
 /** Intent for building composing operations. */
@@ -1416,6 +1483,7 @@ export class OperationsEngine {
       type === 'cursor' ? 'insert-char-at-cursor' : 'insert-char-at-range'
 
     // @todo: handle markdown shortcut
+    // @todo: handle autolink detection
     if (char === ' ') {
       return {
         label: `markdown-shortcut`,
@@ -1761,12 +1829,90 @@ export class OperationsEngine {
     return null
   }
 
+  #buildPasteInlineSliceOps(
+    context: EditorContext,
+    cursor: TextCursor,
+    blockId: BlockId,
+    nodeIndex: number,
+    node: InlineNodeWithEditableText,
+    sliceNodes: InlineNode[],
+  ): ComposingOpsIntent | null {
+    if (sliceNodes.length === 0) {
+      return null
+    }
+
+    const block = getBlockWithInlineContent(context.state, blockId)
+    const after = node.text.slice(cursor.offset)
+
+    const ops: Operation[] = []
+
+    if (after.length > 0) {
+      ops.push({
+        __type: 'delete_text',
+        blockId,
+        length: after.length,
+        nodeId: node.id,
+        offset: cursor.offset,
+        snapshot: { marks: node.marks, text: after },
+      })
+    }
+
+    let insertIndex = nodeIndex + 1
+    for (const sliceNode of sliceNodes) {
+      ops.push({
+        __type: 'insert_inline_node',
+        blockId,
+        index: insertIndex,
+        node: sliceNode,
+      })
+      insertIndex += 1
+    }
+
+    const pastedLength = sliceNodes.reduce(
+      (sum, n) => sum + getInlineNodeTextLength(n),
+      0,
+    )
+
+    const startLinear = getLinearOffsetInBlock(block, cursor)
+    const targetLinear =
+      after.length > 0 ? startLinear + pastedLength : startLinear + pastedLength
+
+    const previewContent = previewInlineContentAfterPasteSliceOps(
+      block.content,
+      ops,
+      blockId,
+    )
+
+    const previewBlock: BlockWithInlineContent = {
+      ...block,
+      content: previewContent,
+    }
+
+    const nextAnchor = cursorFromLinearOffsetInBlock(
+      blockId,
+      previewBlock,
+      targetLinear,
+      (text, offset) =>
+        this.#graphemeOffsetCaret.snapOffsetToBoundary(text, offset),
+    )
+
+    ops.push({
+      __type: 'set_selection',
+      next: createCursor(nextAnchor),
+      prev: context.selection,
+    })
+    return { label: 'past-inline-slice', ops }
+  }
+
+  /** Builds operations for a pasted line. */
   #buildPasteLineOps(
     context: EditorContext,
     /** Collapsed cursor anchor for the pending edit. */
     cursor: TextCursor,
     /** The block id to paste the line into. */
     blockId: BlockId,
+    /** The node index in the block. */
+    nodeIndex: number,
     /** The node to paste the line into. */
     node: InlineNodeWithEditableText,
     /** The line to paste. */
@@ -1778,7 +1924,11 @@ export class OperationsEngine {
     }
 
     const hasLinks = this.#autolinkConfig.enabled && plainTextHasLinks(line)
-    if (!hasLinks && isMarksEqual(context.activeMarks, node.marks)) {
+    /**
+     * 1️⃣ First case: When pasting a line without links,
+     * we can insert the text directly into the node and takes always the node's marks.
+     */
+    if (!hasLinks) {
       const ops: Operation[] = [
         {
           __type: 'insert_text',
@@ -1802,9 +1952,15 @@ export class OperationsEngine {
       return { label: 'past-text', ops }
     }
 
-    // @todo: handle slice for pasted links
-
-    return null
+    const sliced = plainTextToEditableTextNodes(line, node.marks)
+    return this.#buildPasteInlineSliceOps(
+      context,
+      cursor,
+      blockId,
+      nodeIndex,
+      node,
+      sliced,
+    )
   }
 
   /** Builds operations for a pasted plain text.*/
@@ -1839,6 +1995,7 @@ export class OperationsEngine {
         context,
         cursor,
         block.id,
+        found.index,
         found.node,
         line,
       )
