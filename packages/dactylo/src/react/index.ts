@@ -20,6 +20,7 @@ export {
   useSelectionTools,
   useSelectionCommands,
   useDocumentState,
+  useActiveMarks,
   useCommandsListener,
   useToolsListener,
 } from './composer'

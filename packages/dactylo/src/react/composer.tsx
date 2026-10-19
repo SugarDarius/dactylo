@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useId, useMemo, useRef, useSyncExternalStore } from 'react'
 
 import type {
   Dactylo,
@@ -8,7 +8,9 @@ import type {
 } from '../dactylo'
 import type { BlockId } from '../internals/blocks'
 import type { DocumentState } from '../internals/document'
+import { paintTextForDOM } from '../internals/dom'
 import type { Marks } from '../internals/marks'
+import type { InlineNodeWithEditableText } from '../internals/nodes'
 import { isCursorSelection, isRangeSelection } from '../internals/selection'
 import type {
   CursorSelection,
@@ -605,6 +607,20 @@ export function useEditableBlock(blockId: BlockId) {
     editableRef,
     isEmpty,
     withActiveSelection,
+  } as const
+}
+
+/**
+ * Wires an inline node's with editable text surface to {@link Dactylo}.
+ * Works only for inline nodes  {@link TextNode}, and {@link LinkNode}.
+ *
+ * @private
+ */
+export function useEditableNode(node: InlineNodeWithEditableText) {
+  const renderedText = useMemo(() => paintTextForDOM(node.text), [node.text])
+
+  return {
+    renderedText,
   } as const
 }
 

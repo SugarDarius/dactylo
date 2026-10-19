@@ -19,7 +19,6 @@ import {
   BLOCK_ATTR_NAME,
   LINK_NODE_ATTR_NAME,
 } from '../internals/constants'
-import { paintTextForDOM } from '../internals/dom'
 import {
   ComposerProvider,
   useDocumentState,
@@ -29,6 +28,7 @@ import {
   useEditableBlock,
   useComposerCommands,
   useEditable,
+  useEditableNode,
 } from './composer'
 import type { ComposerContext } from './composer'
 import {
@@ -120,7 +120,7 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 /** Adds a {@link TextNode} to the composer. */
 const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
   ({ node, ...props }, forwardedRef) => {
-    const rendered = useMemo(() => paintTextForDOM(node.text), [node.text])
+    const { renderedText } = useEditableNode(node)
     return (
       <span
         {...props}
@@ -133,7 +133,7 @@ const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
         aria-roledescription='text-node'
         // @todo: handle marks
       >
-        {rendered}
+        {renderedText}
       </span>
     )
   },
@@ -143,7 +143,7 @@ ComposerTextNode.displayName = COMPOSER_TEXT_NODE_NAME
 /** Adds a {@link LinkNode} to the composer. */
 const ComposerLinkNode = forwardRef<HTMLAnchorElement, ComposerLinkNodeProps>(
   ({ node, ...props }, forwardedRef) => {
-    const rendered = useMemo(() => paintTextForDOM(node.text), [node.text])
+    const { renderedText } = useEditableNode(node)
     return (
       <a
         {...props}
@@ -158,7 +158,7 @@ const ComposerLinkNode = forwardRef<HTMLAnchorElement, ComposerLinkNodeProps>(
         title={node.url.title}
         // @todo: handle marks
       >
-        {rendered}
+        {renderedText}
       </a>
     )
   },
