@@ -212,6 +212,10 @@ export function getIncomingTypingDeleteOp(
  *
  * One undo step runs a single `insert_text` restoring the merged run, then
  * selection inverse — one Cmd+Z puts back every character removed in the burst.
+ *
+ * Does not merge transactions that include `remove_inline_node` /
+ * `insert_inline_node`; those are kept as separate undo steps (see
+ * {@link historyEntryHasInlineStructureMutation}).
  */
 
 export function buildCoalescedDeleteEntry(
@@ -339,6 +343,26 @@ export function buildCoalescedTypingEntry(
     inverseOps: ordered,
     ops: forwardOps,
   }
+}
+
+/**
+ * Backspace coalescing only merges pure text deletes on one node.
+ * Entries that also add/remove inline nodes (e.g. absorbing an empty boundary
+ * text node after a link) must stay separate so undo restores structure via
+ * `insert_inline_node` before `insert_text`.
+ */
+export function historyEntryHasInlineStructureMutation(
+  ops: readonly Operation[],
+): boolean {
+  for (const op of ops) {
+    if (
+      op.__type === 'remove_inline_node' ||
+      op.__type === 'insert_inline_node'
+    ) {
+      return true
+    }
+  }
+  return false
 }
 
 /** Event emitted when working with the history stack. */
@@ -516,6 +540,14 @@ export class HistoryStack {
     nextInsert: InsertTextOp,
   ): boolean {
     if (
+      historyEntryHasInlineStructureMutation(last.ops) ||
+      historyEntryHasInlineStructureMutation(entry.ops)
+    ) {
+      this.#typingBurstController.reset()
+      return false
+    }
+
+    if (
       prevInsert.blockId !== nextInsert.blockId ||
       prevInsert.nodeId !== nextInsert.nodeId ||
       prevInsert.offset + prevInsert.text.length !== nextInsert.offset
@@ -561,6 +593,14 @@ export class HistoryStack {
     prevDelete: DeleteTextOp,
     nextDelete: DeleteTextOp,
   ): boolean {
+    if (
+      historyEntryHasInlineStructureMutation(last.ops) ||
+      historyEntryHasInlineStructureMutation(entry.ops)
+    ) {
+      this.#typingBurstController.reset()
+      return false
+    }
+
     if (
       prevDelete.blockId !== nextDelete.blockId ||
       prevDelete.nodeId !== nextDelete.nodeId ||

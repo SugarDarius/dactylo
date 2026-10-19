@@ -127,7 +127,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:text-muted-foreground',
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:whitespace-break-spaces',
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:wrap-break-word',
-            '[&_[dactylo-node][dactylo-link-node]]:cursor-pointer [&_[dactylo-node][dactylo-link-node]]:underline [&_[dactylo-node][dactylo-link-node]]:decoration-cyan-500 [&_[dactylo-node][dactylo-link-node]]:underline-offset-2 [&_[dactylo-node][dactylo-link-node]]:hover:decoration-cyan-400',
+            '[&_[dactylo-node][dactylo-link-node]]:cursor-pointer [&_[dactylo-node][dactylo-link-node]]:text-cyan-500 [&_[dactylo-node][dactylo-link-node]]:underline [&_[dactylo-node][dactylo-link-node]]:decoration-cyan-500 [&_[dactylo-node][dactylo-link-node]]:underline-offset-2 [&_[dactylo-node][dactylo-link-node]]:hover:text-cyan-400 [&_[dactylo-node][dactylo-link-node]]:hover:decoration-cyan-400',
           )}
         />
       </Composer.Root>

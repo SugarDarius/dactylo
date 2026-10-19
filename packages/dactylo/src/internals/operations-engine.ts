@@ -50,6 +50,7 @@ import {
   createTextNode,
   getInlineNodeTextLength,
   isInlineNodeWithEditableText,
+  isTextNode,
   splitInlineNodeWithEditableTextAt,
 } from './nodes'
 import type { InlineNode, InlineNodeWithEditableText, NodeId } from './nodes'
@@ -1495,6 +1496,7 @@ export class OperationsEngine {
     }
 
     // @todo: handle mentions
+    /** Apply inline composition ops for mentions. */
     if (
       this.#mentionsConfig.enabled &&
       char === this.#mentionsConfig.character
@@ -1503,6 +1505,7 @@ export class OperationsEngine {
     }
 
     // @todo: handle inline command trigger
+    /** Apply inline composition ops for inline command trigger. */
     if (
       this.#inlineCommandTriggerConfig.enabled &&
       char === this.#inlineCommandTriggerConfig.character
@@ -2078,8 +2081,56 @@ export class OperationsEngine {
   }
 
   /**
-   * Builds operations when user presses `Backspace` key at the current cursor position.
-   * Merges with the previous block or node if rules are met.
+   * Drops an empty structural `text` node and places the caret at the end of
+   * the previous editable inline sibling (text or link).
+   *
+   * Used when Backspace at node start would merge into `prevNode`, and when
+   * deleting the last character in a boundary text node (e.g. a lone space after
+   * a link) would otherwise require a second Backspace at `offset === 0`.
+   *
+   * Caller must ensure `node.text.length === 0` and `prevNode` is editable text.
+   */
+  #buildBackspaceAbsorbEmptyTextNodeIntoPrevOps(
+    context: EditorContext,
+    blockId: BlockId,
+    /** Content index of the empty text node to remove. */
+    index: number,
+    /** Empty text node snapshot (undo). */
+    node: InlineNodeWithEditableText,
+    /** Previous sibling to receive the caret (text or link). */
+    prevNode: InlineNodeWithEditableText,
+  ): Operation[] {
+    const endOffset = getInlineNodeTextLength(prevNode)
+    return [
+      {
+        __type: 'remove_inline_node',
+        blockId,
+        index,
+        snapshot: node,
+      },
+      {
+        __type: 'set_selection',
+        next: createCursor({
+          blockId,
+          nodeId: prevNode.id,
+          offset: endOffset,
+        }),
+        prev: context.selection,
+      },
+    ]
+  }
+
+  /**
+   * Builds operations for `Backspace` with a collapsed caret.
+   *
+   * When the caret is at offset `0` inside the current inline node:
+   * - At block start → merge with the previous block, or no-op at document start.
+   * - After a line break / mention → remove those nodes and optionally join text.
+   * - After text or link → remove the current node and merge its text into the
+   *   previous node. **Empty** text nodes (e.g. ZWSP placeholders after a link)
+   *   must not emit `insert_text` with `""` — see {@link validateInsertTextOp}.
+   *
+   * When the caret is inside the node (`offset > 0`), deletes the previous grapheme.
    */
   #buildDeleteBackspaceAtCursorOps(
     context: EditorContext,
@@ -2198,36 +2249,57 @@ export class OperationsEngine {
             ops,
           }
         }
-        /** Merge the current node with the previous node. */
+        /**
+         * Join the caret node into the previous text or link node.
+         * Structural empty text siblings carry no model text; only remove them
+         * and place the caret at the end of the previous node.
+         */
         default: {
-          const offset = getInlineNodeTextLength(prevNode)
-          const ops: Operation[] = [
-            {
-              __type: 'remove_inline_node',
-              blockId: block.id,
-              index,
-              snapshot: node,
-            },
-            {
-              __type: 'insert_text',
-              blockId: block.id,
-              marks: node.marks,
-              nodeId: prevNode.id,
-              offset,
-              text: node.text,
-            },
-            {
-              __type: 'set_selection',
-              next: createCursor({
-                blockId: block.id,
-                nodeId: prevNode.id,
-                offset,
-              }),
-              prev: context.selection,
-            },
-          ]
+          const mergeOffset = getInlineNodeTextLength(prevNode)
+          const mergingText = node.text
 
-          return { label: 'merge-node-and-insert-text', ops }
+          const ops: Operation[] = []
+
+          if (mergingText.length > 0) {
+            ops.push(
+              {
+                __type: 'remove_inline_node',
+                blockId: block.id,
+                index,
+                snapshot: node,
+              },
+              {
+                __type: 'insert_text',
+                blockId: block.id,
+                marks: node.marks,
+                nodeId: prevNode.id,
+                offset: mergeOffset,
+                text: mergingText,
+              },
+              {
+                __type: 'set_selection',
+                next: createCursor({
+                  blockId: block.id,
+                  nodeId: prevNode.id,
+                  offset: mergeOffset + mergingText.length,
+                }),
+                prev: context.selection,
+              },
+            )
+
+            return { label: 'merge-node-and-insert-text', ops }
+          }
+
+          ops.push(
+            ...this.#buildBackspaceAbsorbEmptyTextNodeIntoPrevOps(
+              context,
+              block.id,
+              index,
+              node,
+              prevNode,
+            ),
+          )
+          return { label: 'remove-empty-node-at-boundary', ops }
         }
       }
     }
@@ -2242,6 +2314,10 @@ export class OperationsEngine {
       node.text,
       cursor.offset,
     )
+
+    const remainingLength = node.text.length - length
+    const prevNode = index > 0 ? block.content[index - 1] : undefined
+
     if (length <= 0) {
       return null
     }
@@ -2258,16 +2334,44 @@ export class OperationsEngine {
           text: node.text.slice(start, start + length),
         },
       },
-      {
-        __type: 'set_selection',
-        next: createCursor({
-          blockId: cursor.blockId,
-          nodeId: cursor.nodeId,
-          offset: start,
-        }),
-        prev: context.selection,
-      },
     ]
+
+    /**
+     * Boundary UX: `[link][text " "]` → one Backspace deletes the space and
+     * lands inside the link at its end, instead of leaving an empty text node.
+     */
+    const shouldAbsorbIntoPrev =
+      remainingLength === 0 &&
+      isTextNode(node) &&
+      prevNode !== undefined &&
+      isInlineNodeWithEditableText(prevNode)
+
+    if (shouldAbsorbIntoPrev) {
+      ops.push(
+        ...this.#buildBackspaceAbsorbEmptyTextNodeIntoPrevOps(
+          context,
+          block.id,
+          index,
+          node,
+          prevNode,
+        ),
+      )
+
+      return {
+        label: 'delete-last-char-absorb-empty-into-prev',
+        ops,
+      }
+    }
+
+    ops.push({
+      __type: 'set_selection',
+      next: createCursor({
+        blockId: cursor.blockId,
+        nodeId: cursor.nodeId,
+        offset: start,
+      }),
+      prev: context.selection,
+    })
 
     return { coalesce: true, label: 'delete-previous-character', ops }
   }

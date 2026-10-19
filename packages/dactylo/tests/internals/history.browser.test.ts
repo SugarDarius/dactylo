@@ -318,6 +318,63 @@ describe('History', () => {
     })
   })
 
+  // "Hello [link]d[text] " → one Backspace deletes the space and
+  // lands inside the link at its end, instead of leaving an empty text node.
+  test('does not coalesce delete burst into absorb entry that removes inline node', () => {
+    const stack = new HistoryStack()
+    const { blockId, nodeId } = ids()
+    stack.push(
+      createDeleteHistoryEntry({
+        blockId,
+        char: 'd',
+        cursorAfter: 1,
+        cursorBefore: 2,
+        nodeId,
+        offset: 1,
+      }),
+      true,
+    )
+    // Simulates delete-last-char-absorb-empty-into-prev forward ops shape
+    // oxlint-disable-next-line unicorn/prefer-single-call
+    stack.push(
+      {
+        inverseOps: [],
+        ops: [
+          {
+            __type: 'delete_text',
+            blockId,
+            length: 1,
+            nodeId,
+            offset: 0,
+            snapshot: { marks: {}, text: ' ' },
+          },
+          {
+            __type: 'remove_inline_node',
+            blockId,
+            index: 2,
+            snapshot: {
+              __type: 'text',
+              createdAt: new Date(),
+              id: nodeId,
+              marks: {
+                bold: false,
+                code: false,
+                italic: false,
+                strikethrough: false,
+                underline: false,
+              },
+              metadata: {},
+              text: '',
+              updatedAt: new Date(),
+            },
+          },
+        ],
+      },
+      false,
+    )
+    expect(stack.undoDepth).toBe(2)
+  })
+
   test('clears redo stack on new push', () => {
     const stack = new HistoryStack()
     const { blockId, nodeId } = ids()
