@@ -773,9 +773,6 @@ export class TransactionPipeline {
                   return false
                 }
 
-                /** stop native browser behavior as we got a real intent. */
-                prevent()
-
                 const { ops, label, coalesce, skipHistory } = intent
                 this.#commit(ops, {
                   coalesce,

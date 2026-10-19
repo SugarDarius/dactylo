@@ -128,6 +128,11 @@ export function createTextNode(opts: {
   }
 }
 
+/** Whether the node is a text node. */
+export function isTextNode(node: InlineNode): node is TextNode {
+  return node.__type === 'text'
+}
+
 /** Creates a {@link LineBreakNode}.  */
 export function createLineBreakNode(
   opts: {
@@ -141,6 +146,11 @@ export function createLineBreakNode(
     metadata: opts.metadata ?? {},
     updatedAt: null,
   }
+}
+
+/** Whether the node is a line break node. */
+export function isLineBreakNode(node: InlineNode): node is LineBreakNode {
+  return node.__type === 'line_break'
 }
 
 /** Creates a {@link LinkNode}. */
@@ -163,6 +173,11 @@ export function createLinkNode(opts: {
     updatedAt: null,
     url: opts.url,
   }
+}
+
+/** Whether the node is a link node. */
+export function isLinkNode(node: InlineNode): node is LinkNode {
+  return node.__type === 'link'
 }
 
 /** Whether the node is an editable text node or a link node. */

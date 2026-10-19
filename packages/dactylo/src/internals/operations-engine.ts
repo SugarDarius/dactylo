@@ -11,6 +11,7 @@ import type {
   BlockWithInlineContent,
   BlockWithoutPosKey,
 } from './blocks'
+import { INLINE_DETECTOR_TRIGGER_CHARACTER } from './constants'
 import {
   collectTextSpansInRange,
   compareTextCursors,
@@ -1485,7 +1486,7 @@ export class OperationsEngine {
     // @todo: handle markdown shortcut
     // @todo: handle autolink detection
     // @todo: handle links finished
-    if (char === ' ') {
+    if (char === INLINE_DETECTOR_TRIGGER_CHARACTER) {
       return {
         label: `markdown-shortcut`,
         ops,

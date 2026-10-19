@@ -100,3 +100,11 @@ export const PLAIN_TEXT_LINES_SPLIT_PATTERN = /\r?\n/u
 /** Plain text link pattern. */
 export const PLAIN_TEXT_LINK_PATTERN =
   /(?:https?:\/\/(?:www\.)?localhost(?::\d{1,5})?(?:\/[-a-zA-Z0-9().@:%_+~#?&//=]*)?|localhost(?::\d{1,5})?(?:\/[-a-zA-Z0-9().@:%_+~#?&//=]*)?|(?:https?:\/\/(?:www\.)?|www\.)[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b[-a-zA-Z0-9().@:%_+~#?&//=]*)/iu
+
+/**
+ * Character to use to trigger:
+ *  - autolink detection
+ *  - link finished
+ *  - markdown shortcut detection
+ **/
+export const INLINE_DETECTOR_TRIGGER_CHARACTER = ' '
