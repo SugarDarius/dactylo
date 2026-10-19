@@ -120,7 +120,7 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 /** Adds a {@link TextNode} to the composer. */
 const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
   ({ node, ...props }, forwardedRef) => {
-    const { renderedText } = useEditableNode(node)
+    const { renderedText, marksAttributes } = useEditableNode(node)
     return (
       <span
         {...props}
@@ -129,9 +129,9 @@ const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
           [NODE_ATTR_NAME]: '',
           [NODE_ID_DATA_NAME]: node.id,
           [TEXT_NODE_ATTR_NAME]: '',
+          ...marksAttributes,
         }}
         aria-roledescription='text-node'
-        // @todo: handle marks
       >
         {renderedText}
       </span>
@@ -143,7 +143,7 @@ ComposerTextNode.displayName = COMPOSER_TEXT_NODE_NAME
 /** Adds a {@link LinkNode} to the composer. */
 const ComposerLinkNode = forwardRef<HTMLAnchorElement, ComposerLinkNodeProps>(
   ({ node, ...props }, forwardedRef) => {
-    const { renderedText } = useEditableNode(node)
+    const { renderedText, marksAttributes } = useEditableNode(node)
     return (
       <a
         {...props}
@@ -152,11 +152,11 @@ const ComposerLinkNode = forwardRef<HTMLAnchorElement, ComposerLinkNodeProps>(
           [NODE_ATTR_NAME]: '',
           [NODE_ID_DATA_NAME]: node.id,
           [LINK_NODE_ATTR_NAME]: '',
+          ...marksAttributes,
         }}
         aria-roledescription='link-node'
         href={node.url.href}
         title={node.url.title}
-        // @todo: handle marks
       >
         {renderedText}
       </a>

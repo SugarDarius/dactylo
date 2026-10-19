@@ -75,6 +75,15 @@ export const NODE_ATTR_NAME = 'dactylo-node'
 /** Node ID data name. */
 export const NODE_ID_DATA_NAME = 'data-dactylo-node-id'
 
+/** Editable node marks data attributes names. */
+export const EDITABLE_NODE_BOLD_MARK_DATA_NAME = 'data-dactylo-bold-mark'
+export const EDITABLE_NODE_ITALIC_MARK_DATA_NAME = 'data-dactylo-italic-mark'
+export const EDITABLE_NODE_STRIKETHROUGH_MARK_DATA_NAME =
+  'data-dactylo-strikethrough-mark'
+export const EDITABLE_NODE_UNDERLINE_MARK_DATA_NAME =
+  'data-dactylo-underline-mark'
+export const EDITABLE_NODE_CODE_MARK_DATA_NAME = 'data-dactylo-code-mark'
+
 /** Text node attribute name. */
 export const TEXT_NODE_ATTR_NAME = 'dactylo-text-node'
 /** Link node attribute name. */

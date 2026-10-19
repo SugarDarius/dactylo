@@ -7,8 +7,16 @@ import type {
   DactyloToolEvent,
 } from '../dactylo'
 import type { BlockId } from '../internals/blocks'
+import {
+  EDITABLE_NODE_BOLD_MARK_DATA_NAME,
+  EDITABLE_NODE_ITALIC_MARK_DATA_NAME,
+  EDITABLE_NODE_STRIKETHROUGH_MARK_DATA_NAME,
+  EDITABLE_NODE_UNDERLINE_MARK_DATA_NAME,
+  EDITABLE_NODE_CODE_MARK_DATA_NAME,
+} from '../internals/constants'
 import type { DocumentState } from '../internals/document'
 import { paintTextForDOM } from '../internals/dom'
+import { isMarkEnabled } from '../internals/marks'
 import type { Marks } from '../internals/marks'
 import type { InlineNodeWithEditableText } from '../internals/nodes'
 import { isCursorSelection, isRangeSelection } from '../internals/selection'
@@ -617,9 +625,35 @@ export function useEditableBlock(blockId: BlockId) {
  * @private
  */
 export function useEditableNode(node: InlineNodeWithEditableText) {
+  const activeMarks = useActiveMarks()
   const renderedText = useMemo(() => paintTextForDOM(node.text), [node.text])
 
+  const marksAttributes = useMemo(() => {
+    const bold =
+      isMarkEnabled(node.marks, 'bold') || isMarkEnabled(activeMarks, 'bold')
+    const italic =
+      isMarkEnabled(node.marks, 'italic') ||
+      isMarkEnabled(activeMarks, 'italic')
+    const strikethrough =
+      isMarkEnabled(node.marks, 'strikethrough') ||
+      isMarkEnabled(activeMarks, 'strikethrough')
+    const underline =
+      isMarkEnabled(node.marks, 'underline') ||
+      isMarkEnabled(activeMarks, 'underline')
+    const code =
+      isMarkEnabled(node.marks, 'code') || isMarkEnabled(activeMarks, 'code')
+
+    return {
+      [EDITABLE_NODE_BOLD_MARK_DATA_NAME]: bold,
+      [EDITABLE_NODE_ITALIC_MARK_DATA_NAME]: italic,
+      [EDITABLE_NODE_STRIKETHROUGH_MARK_DATA_NAME]: strikethrough,
+      [EDITABLE_NODE_UNDERLINE_MARK_DATA_NAME]: underline,
+      [EDITABLE_NODE_CODE_MARK_DATA_NAME]: code,
+    }
+  }, [activeMarks, node.marks])
+
   return {
+    marksAttributes,
     renderedText,
   } as const
 }
