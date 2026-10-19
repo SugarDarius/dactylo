@@ -77,6 +77,8 @@ export const NODE_ID_DATA_NAME = 'data-dactylo-node-id'
 
 /** Text node attribute name. */
 export const TEXT_NODE_ATTR_NAME = 'dactylo-text-node'
+/** Link node attribute name. */
+export const LINK_NODE_ATTR_NAME = 'dactylo-link-node'
 /** Line break node attribute name. */
 export const LINE_BREAK_NODE_ATTR_NAME = 'dactylo-line-break-node'
 

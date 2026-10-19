@@ -1484,6 +1484,7 @@ export class OperationsEngine {
 
     // @todo: handle markdown shortcut
     // @todo: handle autolink detection
+    // @todo: handle links finished
     if (char === ' ') {
       return {
         label: `markdown-shortcut`,

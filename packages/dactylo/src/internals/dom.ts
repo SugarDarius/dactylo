@@ -11,6 +11,7 @@ import {
   BLOCK_CONTENT_EDITABLE_DATA_NAME,
   LINE_BREAK_NODE_ATTR_NAME,
   TEXT_NODE_ATTR_NAME,
+  LINK_NODE_ATTR_NAME,
 } from './constants'
 import type { NodeId } from './nodes'
 import type { TextCursor } from './selection'
@@ -265,7 +266,7 @@ export function findEditableElement(
   })
 }
 
-/** Nearest ancestor marked `[dactylo-node]`. */
+/** Finds nearest ancestor marked `[dactylo-node]`. */
 export function findClosestDactyloNode(node: Node): HTMLElement | null {
   let current: Node | null = node
   while (current) {
@@ -379,7 +380,7 @@ export function getDOMPointFromTextCursor(
 
   if (
     node.hasAttribute(TEXT_NODE_ATTR_NAME) ||
-    node instanceof HTMLAnchorElement
+    node.hasAttribute(LINK_NODE_ATTR_NAME)
   ) {
     const point = getDOMPointFromInlineTextHost(node, cursor.offset)
     if (point) {
@@ -492,7 +493,10 @@ export function getTextCursorFromDOMPoint(
   const { node, offset } = point
   if (node.nodeType === Node.TEXT_NODE) {
     const host = findClosestDactyloNode(node)
-    if (!host?.hasAttribute(TEXT_NODE_ATTR_NAME)) {
+    if (
+      !host?.hasAttribute(TEXT_NODE_ATTR_NAME) &&
+      !host?.hasAttribute(LINK_NODE_ATTR_NAME)
+    ) {
       return null
     }
 
@@ -521,7 +525,10 @@ export function getTextCursorFromDOMPoint(
       return { blockId, nodeId, offset: 0 }
     }
 
-    if (node.hasAttribute(TEXT_NODE_ATTR_NAME)) {
+    if (
+      node.hasAttribute(TEXT_NODE_ATTR_NAME) ||
+      node.hasAttribute(LINK_NODE_ATTR_NAME)
+    ) {
       return cursorAtTextHostBoundary(node, blockId, nodeId, offset)
     }
   }

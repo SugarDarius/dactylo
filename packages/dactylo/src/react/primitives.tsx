@@ -17,6 +17,7 @@ import {
   NODE_ID_DATA_NAME,
   NODE_ATTR_NAME,
   BLOCK_ATTR_NAME,
+  LINK_NODE_ATTR_NAME,
 } from '../internals/constants'
 import { paintTextForDOM } from '../internals/dom'
 import {
@@ -37,6 +38,7 @@ import {
   COMPOSER_BLOCKS_NAME,
   COMPOSER_TEXT_NODE_NAME,
   COMPOSER_LINE_BREAK_NODE_NAME,
+  COMPOSER_LINK_NODE_NAME,
 } from './internals/constants'
 import {
   useIsMounted,
@@ -52,6 +54,7 @@ import type {
   ComposerTextNodeProps,
   ComposerInlineContentProps,
   ComposerLineBreakNodeProps,
+  ComposerLinkNodeProps,
 } from './types'
 
 /** Base style for the editable area of the composer. */
@@ -114,7 +117,7 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 
 // --- Composer.Editable ─────────────────────────────────────────---
 
-/** Adds a text node to the composer. */
+/** Adds a {@link TextNode} to the composer. */
 const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
   ({ node, ...props }, forwardedRef) => {
     const rendered = useMemo(() => paintTextForDOM(node.text), [node.text])
@@ -137,7 +140,32 @@ const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
 )
 ComposerTextNode.displayName = COMPOSER_TEXT_NODE_NAME
 
-/** Adds a line break to the composer. */
+/** Adds a {@link LinkNode} to the composer. */
+const ComposerLinkNode = forwardRef<HTMLAnchorElement, ComposerLinkNodeProps>(
+  ({ node, ...props }, forwardedRef) => {
+    const rendered = useMemo(() => paintTextForDOM(node.text), [node.text])
+    return (
+      <a
+        {...props}
+        ref={forwardedRef}
+        {...{
+          [NODE_ATTR_NAME]: '',
+          [NODE_ID_DATA_NAME]: node.id,
+          [LINK_NODE_ATTR_NAME]: '',
+        }}
+        aria-roledescription='link-node'
+        href={node.url.href}
+        title={node.url.title}
+        // @todo: handle marks
+      >
+        {rendered}
+      </a>
+    )
+  },
+)
+ComposerLinkNode.displayName = COMPOSER_LINK_NODE_NAME
+
+/** Adds a {@link LineBreakNode} to the composer. */
 export const ComposerLineBreakNode = forwardRef<
   HTMLBRElement,
   ComposerLineBreakNodeProps
@@ -167,6 +195,10 @@ const ComposerInlineContent = ({ content }: ComposerInlineContentProps) => {
           items.push(<ComposerTextNode key={node.id} node={node} />)
           break
         }
+        case 'link': {
+          items.push(<ComposerLinkNode key={node.id} node={node} />)
+          break
+        }
         case 'line_break': {
           items.push(<ComposerLineBreakNode key={node.id} node={node} />)
           break
@@ -183,7 +215,7 @@ const ComposerInlineContent = ({ content }: ComposerInlineContentProps) => {
   return children
 }
 
-/** Adds a paragraph block to the composer. */
+/** Adds a {@link ParagraphBlock} to the composer. */
 const ComposerParagraphBlock = forwardRef<
   HTMLDivElement,
   ComposerParagraphBlockProps
@@ -352,5 +384,6 @@ export {
   ComposerEditable as Editable,
   ComposerParagraphBlock as ParagraphBlock,
   ComposerTextNode as TextNode,
+  ComposerLinkNode as LinkNode,
   ComposerLineBreakNode as LineBreakNode,
 }

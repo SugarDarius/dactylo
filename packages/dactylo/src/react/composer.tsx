@@ -18,6 +18,7 @@ import type { TransactionSource } from '../internals/transaction'
 import { noop } from '../internals/utils'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
+import { findLinkAnchorFromEventTarget, openLink } from './internals/dom'
 import {
   useIsomorphicLayoutEffect,
   useStableCallback,
@@ -463,6 +464,20 @@ export function useEditable() {
     editor.dom.commands.syncSelection()
   })
 
+  const onLinkClick = useStableCallback((event: MouseEvent) => {
+    if (event.defaultPrevented) {
+      return
+    }
+
+    const anchor = findLinkAnchorFromEventTarget(event.target)
+    if (!anchor) {
+      return
+    }
+
+    event.preventDefault()
+    openLink(anchor)
+  })
+
   /**
    * Attach the orchestrator to the editable element when it is mounted.
    * And adds the event listeners to the editable element.
@@ -489,6 +504,10 @@ export function useEditable() {
     /** Listen to compositionstart and compositionend events on the editable element. */
     editable.addEventListener('compositionstart', onCompositionStart)
     editable.addEventListener('compositionend', onCompositionEnd)
+
+    /** Listen to link clicks on the editable element. */
+    editable.addEventListener('click', onLinkClick)
+
     return () => {
       editor.dom.commands.detach()
 
@@ -499,6 +518,8 @@ export function useEditable() {
 
       editable.removeEventListener('compositionstart', onCompositionStart)
       editable.removeEventListener('compositionend', onCompositionEnd)
+
+      editable.removeEventListener('click', onLinkClick)
     }
   }, [
     canEdit,
@@ -508,6 +529,7 @@ export function useEditable() {
     onCompositionStart,
     onCompositionEnd,
     onBeforeInput,
+    onLinkClick,
   ])
 
   /**

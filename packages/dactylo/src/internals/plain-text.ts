@@ -83,7 +83,7 @@ export function collectPlainTextLinks(line: string): PlainTextLinkMatch[] {
 
     const text = match.groups?.text ?? full
     const url = match.groups?.url ?? ''
-    const title = match.groups?.title ?? ''
+    const title = match.groups?.title ?? full
 
     /** We don't want to collect matches without a URL. */
     if (!url) {
@@ -124,7 +124,7 @@ export function collectPlainTextLinks(line: string): PlainTextLinkMatch[] {
         href: normalized,
         kind: 'link',
         text: full,
-        title: '',
+        title: full,
       },
       start,
     })
