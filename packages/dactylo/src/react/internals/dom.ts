@@ -23,11 +23,11 @@ export function openLink(anchor: HTMLAnchorElement): void {
   }
 
   const { target, rel } = anchor
-  let safeRel = rel
 
+  let safeRel = undefined
   if (target === '_blank') {
-    safeRel = rel.length <= 0 ? 'noopener noreferrer' : rel
+    safeRel = rel.length <= 0 ? 'noopener,noreferrer' : rel
   }
 
-  window.open(href, target, safeRel)
+  window.open(href, target || undefined, safeRel)
 }
