@@ -53,11 +53,18 @@ import {
   createLinkNode,
   createTextNode,
   getInlineNodeTextLength,
+  isCanonicalEmptyInlineContent,
+  isInlineContentTextEmpty,
   isInlineNodeWithEditableText,
   isTextNode,
   splitInlineNodeWithEditableTextAt,
 } from './nodes'
-import type { InlineNode, InlineNodeWithEditableText, NodeId } from './nodes'
+import type {
+  InlineNode,
+  InlineNodeWithEditableText,
+  NodeId,
+  TextNode,
+} from './nodes'
 import type {
   DeleteBlockOp,
   DeleteTextOp,
@@ -1033,10 +1040,12 @@ export function resolveTypedCharInsertTarget(
     [...prefixOps],
     block.id,
   )
+
   const previewBlock: BlockWithInlineContent = {
     ...block,
     content: previewContent,
   }
+
   const found = findNodeInBlockWithInlineContent(previewBlock, at.nodeId)
   if (!found || !isInlineNodeWithEditableText(found.node)) {
     buildError(
@@ -1044,12 +1053,14 @@ export function resolveTypedCharInsertTarget(
       'OperationsEngine/resolveTypedCharInsertTarget',
     )
   }
+
   if (at.offset < 0 || at.offset > found.node.text.length) {
     buildError(
       `Insert offset ${at.offset} out of bounds for text length ${found.node.text.length}`,
       'OperationsEngine/resolveTypedCharInsertTarget',
     )
   }
+
   return { index: found.index, node: found.node }
 }
 
@@ -1803,18 +1814,16 @@ export class OperationsEngine {
       forwards,
       startBlock.id,
     )
-    if (targetHead.length === 0) {
-      const placeholder = createTextNode({
-        marks: context.activeMarks,
-        text: '',
-      })
-      ops.push({
-        __type: 'insert_inline_node',
-        blockId: startBlock.id,
-        index: 0,
-        node: placeholder,
-      })
-      targetHead = [placeholder]
+
+    const collapsedHead = this.#buildCollapseEmptyBlockToActiveMarksOps(
+      startBlock.id,
+      targetHead,
+      context.activeMarks,
+    )
+
+    if (collapsedHead) {
+      ops.push(...collapsedHead.ops)
+      targetHead = [collapsedHead.placeholder]
     }
 
     const deleted = this.#buildDeleteBlocksBetweenOps(
@@ -1983,6 +1992,7 @@ export class OperationsEngine {
 
       /** Same block, but multiple inline nodes. */
       const deleteOps = this.#buildDeleteRangeWithinBlockOps(
+        context,
         block,
         anchor,
         focus,
@@ -2242,18 +2252,14 @@ export class OperationsEngine {
     const ops: Operation[] = []
 
     let targetHead = [...prevBlock.content]
-    if (targetHead.length === 0) {
-      const placeholder = createTextNode({
-        marks: context.activeMarks,
-        text: '',
-      })
-      ops.push({
-        __type: 'insert_inline_node',
-        blockId: prevBlock.id,
-        index: 0,
-        node: placeholder,
-      })
-      targetHead = [placeholder]
+    const collapsedHead = this.#buildCollapseEmptyBlockToActiveMarksOps(
+      prevBlock.id,
+      targetHead,
+      context.activeMarks,
+    )
+    if (collapsedHead) {
+      ops.push(...collapsedHead.ops)
+      targetHead = [collapsedHead.placeholder]
     }
 
     const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
@@ -2625,6 +2631,67 @@ export class OperationsEngine {
     ]
   }
 
+  /** Builds operations to collapse an empty block to the active marks. */
+  #buildCollapseEmptyBlockToActiveMarksOps(
+    blockId: BlockId,
+    contentAfterPriorOps: readonly InlineNode[],
+    activeMarks: Marks,
+  ): { ops: Operation[]; placeholder: TextNode } | null {
+    if (!isInlineContentTextEmpty(contentAfterPriorOps)) {
+      return null
+    }
+
+    if (isCanonicalEmptyInlineContent(contentAfterPriorOps, activeMarks)) {
+      return null
+    }
+
+    const placeholder = createTextNode({ marks: activeMarks, text: '' })
+    const ops: Operation[] = []
+
+    for (let i = contentAfterPriorOps.length - 1; i >= 0; i -= 1) {
+      const snapshot = contentAfterPriorOps[i]
+      if (!snapshot) {
+        continue
+      }
+
+      ops.push({
+        __type: 'remove_inline_node',
+        blockId,
+        index: i,
+        snapshot,
+      })
+    }
+
+    ops.push({
+      __type: 'insert_inline_node',
+      blockId,
+      index: 0,
+      node: placeholder,
+    })
+
+    return { ops, placeholder }
+  }
+
+  /** Builds operations to rewrite the selection of a collapsed empty block. */
+  #buildRewriteCollapsedEmptyBlockSelectionOps(
+    incomingOps: Operation[],
+    blockId: BlockId,
+    placeholderId: NodeId,
+    range: RangeSelection,
+  ): Operation[] {
+    const ops: Operation[] = incomingOps.filter(
+      (op) => op.__type !== 'set_selection',
+    )
+
+    ops.push({
+      __type: 'set_selection',
+      next: createCursor({ blockId, nodeId: placeholderId, offset: 0 }),
+      prev: range,
+    })
+
+    return ops
+  }
+
   /**
    * Removes inline nodes in `[firstIndex, lastIndex]` (inclusive).
    * Emits `remove_inline_node` from highest index → lowest so indices stay valid.
@@ -2664,6 +2731,7 @@ export class OperationsEngine {
    * Joins surviving head/tail text when marks match.
    */
   #buildDeleteRangeWithinBlockOps(
+    context: EditorContext,
     block: BlockWithInlineContent,
     anchor: TextCursor,
     focus: TextCursor,
@@ -2692,7 +2760,7 @@ export class OperationsEngine {
 
     /** Same text node → single delete_text. */
     if (aNi === fNi && isInlineNodeWithEditableText(aNode)) {
-      const ops = this.#buildDeleteTextRunOps(
+      let ops = this.#buildDeleteTextRunOps(
         block.id,
         aNode,
         anchor.offset,
@@ -2701,7 +2769,33 @@ export class OperationsEngine {
       )
 
       if (!setSelection) {
-        return ops.filter((op) => op.__type !== 'set_selection')
+        return ops.filter((op) => op.__type !== 'set_selection') as Operation[]
+      }
+
+      const preview = previewInlineContentAfterTrimOps(
+        block.content,
+        ops,
+        block.id,
+      )
+      const collapsed = this.#buildCollapseEmptyBlockToActiveMarksOps(
+        block.id,
+        preview,
+        context.activeMarks,
+      )
+
+      if (collapsed) {
+        ops = ops.filter((op) => op.__type !== 'set_selection') as Operation[]
+        ops.push(...collapsed.ops)
+
+        /** Rewrite the selection to the collapsed placeholder. */
+        const rewritten = this.#buildRewriteCollapsedEmptyBlockSelectionOps(
+          ops,
+          block.id,
+          collapsed.placeholder.id,
+          range,
+        )
+
+        return rewritten
       }
 
       return ops
@@ -2800,6 +2894,33 @@ export class OperationsEngine {
             snapshot: fNode,
           })
         }
+      }
+    }
+
+    const preview = previewInlineContentAfterTrimOps(
+      block.content,
+      ops,
+      block.id,
+    )
+    const collapsed = this.#buildCollapseEmptyBlockToActiveMarksOps(
+      block.id,
+      preview,
+      context.activeMarks,
+    )
+
+    if (collapsed) {
+      ops.push(...collapsed.ops)
+
+      /** Rewrite the selection to the collapsed placeholder. */
+      if (setSelection) {
+        const rewritten = this.#buildRewriteCollapsedEmptyBlockSelectionOps(
+          ops,
+          block.id,
+          collapsed.placeholder.id,
+          range,
+        )
+
+        return rewritten
       }
     }
 
@@ -3032,6 +3153,7 @@ export class OperationsEngine {
     if (anchor.blockId === focus.blockId) {
       const block = getBlockWithInlineContent(state, anchor.blockId)
       const ops = this.#buildDeleteRangeWithinBlockOps(
+        context,
         block,
         anchor,
         focus,
@@ -3058,18 +3180,16 @@ export class OperationsEngine {
       forwards,
       startBlock.id,
     )
-    if (targetHead.length === 0) {
-      const placeholder = createTextNode({
-        marks: context.activeMarks,
-        text: '',
-      })
-      ops.push({
-        __type: 'insert_inline_node',
-        blockId: startBlock.id,
-        index: 0,
-        node: placeholder,
-      })
-      targetHead = [placeholder]
+
+    const collapsedHead = this.#buildCollapseEmptyBlockToActiveMarksOps(
+      startBlock.id,
+      targetHead,
+      context.activeMarks,
+    )
+
+    if (collapsedHead) {
+      ops.push(...collapsedHead.ops)
+      targetHead = [collapsedHead.placeholder]
     }
 
     const between = this.#buildDeleteBlocksBetweenOps(
@@ -3103,27 +3223,45 @@ export class OperationsEngine {
       context.activeMarks,
     )
 
-    ops.push(
-      {
-        __type: 'merge_blocks',
-        atIndex: targetHead.length,
-        mergedTailSnapshot: [...tailContent],
-        sourceBlockId: endBlock.id,
-        sourceSnapshot: trimmedSourceSnapshot,
-        splitAtNodeId,
-        splitAtOffset,
-        targetBlockId: startBlock.id,
-      },
-      {
-        __type: 'set_selection',
-        next: createCursor({
+    const mergedPreview = coalesceInlineNodes([...targetHead, ...tailContent])
+    const collapsedMerged = this.#buildCollapseEmptyBlockToActiveMarksOps(
+      startBlock.id,
+      mergedPreview,
+      context.activeMarks,
+    )
+
+    ops.push({
+      __type: 'merge_blocks',
+      atIndex: targetHead.length,
+      mergedTailSnapshot: [...tailContent],
+      sourceBlockId: endBlock.id,
+      sourceSnapshot: trimmedSourceSnapshot,
+      splitAtNodeId,
+      splitAtOffset,
+      targetBlockId: startBlock.id,
+    })
+
+    if (collapsedMerged) {
+      ops.push(...collapsedMerged.ops)
+    }
+
+    const nextSelection = collapsedMerged
+      ? createCursor({
+          blockId: startBlock.id,
+          nodeId: collapsedMerged.placeholder.id,
+          offset: 0,
+        })
+      : createCursor({
           blockId: startBlock.id,
           nodeId: splitAtNodeId,
           offset: splitAtOffset,
-        }),
-        prev: range,
-      },
-    )
+        })
+
+    ops.push({
+      __type: 'set_selection',
+      next: nextSelection,
+      prev: range,
+    })
 
     return { label: 'delete-range-cross-blocks', ops }
   }

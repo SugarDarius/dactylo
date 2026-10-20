@@ -187,6 +187,53 @@ export function isInlineNodeWithEditableText(
   return node.__type === 'text' || node.__type === 'link'
 }
 
+/** Returns the text length of an inline node. */
+export function getInlineNodeTextLength(node: InlineNode): number {
+  switch (node.__type) {
+    case 'text':
+    case 'link':
+    case 'mention': {
+      return node.text.length
+    }
+    case 'line_break': {
+      return 0
+    }
+    default: {
+      assertNever(node, { hint: 'InlineNode/#getInlineNodeTextLength' })
+    }
+  }
+}
+
+/** Whether the inline content is empty. */
+export function isInlineContentTextEmpty(
+  content: readonly InlineNode[],
+): boolean {
+  for (const node of content) {
+    if (getInlineNodeTextLength(node) > 0) {
+      return false
+    }
+  }
+
+  return true
+}
+
+/** Whether the inline content is canonical empty. */
+export function isCanonicalEmptyInlineContent(
+  content: readonly InlineNode[],
+  activeMarks: Marks,
+): boolean {
+  if (content.length !== 1) {
+    return false
+  }
+
+  const [first] = content
+  if (!first || !isInlineNodeWithEditableText(first)) {
+    return false
+  }
+
+  return first.text.length === 0 && isMarksEqual(first.marks, activeMarks)
+}
+
 /**
  * Merges adjacent text nodes with identical marks into a single node.
  *
@@ -301,21 +348,4 @@ export function splitInlineNodeWithEditableTextAt(
   }
 
   return replacement
-}
-
-/** Returns the text length of an inline node. */
-export function getInlineNodeTextLength(node: InlineNode): number {
-  switch (node.__type) {
-    case 'text':
-    case 'link':
-    case 'mention': {
-      return node.text.length
-    }
-    case 'line_break': {
-      return 0
-    }
-    default: {
-      assertNever(node, { hint: 'InlineNode/#getInlineNodeTextLength' })
-    }
-  }
 }
