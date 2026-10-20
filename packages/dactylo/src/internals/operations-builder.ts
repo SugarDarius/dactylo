@@ -22,7 +22,7 @@ import type { Operation } from './operations'
 import { createCursor } from './selection'
 import type { TextCursor, RangeSelection } from './selection'
 
-// --- Core -─────────────────────────────────────────---------------
+// --- Errors -───────────────────────────────────────---------------
 
 /** Throws a build error {@link DactyloError} when something goes wrong while building operations. */
 export function buildError(message: string, hint: string): never {
@@ -42,6 +42,8 @@ export function rangeCollapsedError(message: string, hint: string): never {
   })
 }
 
+// --- Interfaces -───────────────────────────────────---------------
+
 /** Intent for building composing operations. */
 export interface ComposingOpsIntent {
   /** The operations to apply. */
@@ -56,6 +58,8 @@ export interface ComposingOpsIntent {
   /** When `true` history is skipped. */
   readonly skipHistory?: true
 }
+
+// --- Core -─────────────────────────────────────────---------------
 
 /** Rule describing a list of operations to apply to the document. */
 export interface OperationRule<S, I> {
