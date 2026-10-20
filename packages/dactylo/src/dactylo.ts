@@ -137,7 +137,6 @@ export type DactyloCommand =
   /** Selection commands */
   | 'selection/focus'
   | 'selection/blur'
-  | 'selection/clear'
 
   /** DOM commands */
   | 'dom/attach'
@@ -1429,11 +1428,12 @@ export class Dactylo {
     this.#editable = next
 
     if (next === false) {
-      this.#safeExecuteCommand(
-        'selection/clear',
-        () => this.#pipeline.clearSelection(source),
-        noop,
-      )
+      /**
+       * We don't call `safeExecuteCommand` because
+       * we want to clear the selection in any case whether the editor
+       * is editable or not.
+       */
+      this.#pipeline.clearSelection(source)
     }
 
     this.#eventSources.editable.notify({ editable: next })
