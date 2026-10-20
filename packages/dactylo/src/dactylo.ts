@@ -137,6 +137,7 @@ export type DactyloCommand =
   /** Selection commands */
   | 'selection/focus'
   | 'selection/blur'
+  | 'selection/clear'
 
   /** DOM commands */
   | 'dom/attach'
@@ -812,6 +813,7 @@ export class Dactylo {
         payload: opts?.payload,
         tool,
       })
+
       this.#eventSources.tools.notify({
         durationMs,
         error: wrapped,
@@ -1425,9 +1427,15 @@ export class Dactylo {
     }
 
     this.#editable = next
+
     if (next === false) {
-      this.#pipeline.clearSelection(source)
+      this.#safeExecuteCommand(
+        'selection/clear',
+        () => this.#pipeline.clearSelection(source),
+        noop,
+      )
     }
+
     this.#eventSources.editable.notify({ editable: next })
   }
 
