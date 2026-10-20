@@ -44,12 +44,12 @@ import {
 import type { Selection, RangeSelection, TextCursor } from './selection'
 
 /** Situation of a typed char operation when there is no selection. */
-export interface TypedCharOperationNoSelectionSituation {
+export interface TypedCharOpNoSelectionSituation {
   readonly kind: 'no-selection'
 }
 
 /** Situation of a typed char operation when there is a cursor selection. */
-export interface TypedCharOperationCursorSelectionSituation {
+export interface TypedCharOpCursorSelectionSituation {
   readonly kind: 'cursor-selection'
 
   /** The cursor at which the typing operation is applied. */
@@ -66,7 +66,7 @@ export interface TypedCharOperationCursorSelectionSituation {
 }
 
 /** Situation of a typed char operation when there is a range selection. */
-export interface TypedCharOperationRangeSelectionSituation {
+export interface TypedCharOpRangeSelectionSituation {
   readonly kind: 'range-selection'
 
   /** The range at which the typing operation is applied. */
@@ -101,21 +101,21 @@ export interface TypedCharOperationRangeSelectionSituation {
 }
 
 /** Situation of a typed char operation. */
-export type TypedCharOperationSituation =
-  | TypedCharOperationNoSelectionSituation
-  | TypedCharOperationCursorSelectionSituation
-  | TypedCharOperationRangeSelectionSituation
+export type TypedCharOpSituation =
+  | TypedCharOpNoSelectionSituation
+  | TypedCharOpCursorSelectionSituation
+  | TypedCharOpRangeSelectionSituation
 
 /** Input given to a typed char operation. */
-export interface TypedCharOperationInput {
+export interface TypedCharOpInput {
   /** The character to insert. */
   readonly char: string
 }
 
 /** Typed char operation rule. */
-export type TypedCharOperationRule = OperationRule<
-  TypedCharOperationSituation,
-  TypedCharOperationInput
+export type TypedCharOpRule = OperationRule<
+  TypedCharOpSituation,
+  TypedCharOpInput
 >
 
 /**
@@ -204,12 +204,12 @@ export function buildInsertTypedCharWithMarkBoundaryOps(
 }
 
 /** Rules for cursor selection. */
-export const cursorRules: TypedCharOperationRule[] = [
+export const cursorRules: TypedCharOpRule[] = [
   {
     build: (
       context: EditorContext,
-      situation: TypedCharOperationSituation,
-      input: TypedCharOperationInput,
+      situation: TypedCharOpSituation,
+      input: TypedCharOpInput,
     ): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
@@ -242,7 +242,7 @@ export const cursorRules: TypedCharOperationRule[] = [
     name: 'cursor/match-active-marks/insert-char',
     when: (
       context: EditorContext,
-      situation: TypedCharOperationSituation,
+      situation: TypedCharOpSituation,
     ): boolean => {
       if (situation.kind !== 'cursor-selection') {
         return false
@@ -256,8 +256,8 @@ export const cursorRules: TypedCharOperationRule[] = [
   {
     build: (
       context: EditorContext,
-      situation: TypedCharOperationSituation,
-      input: TypedCharOperationInput,
+      situation: TypedCharOpSituation,
+      input: TypedCharOpInput,
     ): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
@@ -278,7 +278,7 @@ export const cursorRules: TypedCharOperationRule[] = [
     name: 'cursor/mark-boundary/structural-insert-char',
     when: (
       context: EditorContext,
-      situation: TypedCharOperationSituation,
+      situation: TypedCharOpSituation,
     ): boolean => {
       if (situation.kind !== 'cursor-selection') {
         return false
@@ -317,14 +317,14 @@ export function resolveTypedCharInsertTarget(
   if (!found || !isInlineNodeWithEditableText(found.node)) {
     buildError(
       `Node ${at.nodeId} not found in block ${block.id} after prefix ops`,
-      'TypedCharOperationsBuilder/#resolveTypedCharInsertTarget',
+      'TypedCharOpsBuilder/#resolveTypedCharInsertTarget',
     )
   }
 
   if (at.offset < 0 || at.offset > found.node.text.length) {
     buildError(
       `Insert offset ${at.offset} out of bounds for text length ${found.node.text.length}`,
-      'TypedCharOperationsBuilder/#resolveTypedCharInsertTarget',
+      'TypedCharOpsBuilder/#resolveTypedCharInsertTarget',
     )
   }
 
@@ -397,7 +397,7 @@ export function buildInsertTypeCharAndSelectionAtRangeOps(
 }
 
 /** Rules for range selection. */
-export const rangeRules: TypedCharOperationRule[] = [
+export const rangeRules: TypedCharOpRule[] = [
   {
     /**
      * 💡 Range selection is within the same node.
@@ -406,8 +406,8 @@ export const rangeRules: TypedCharOperationRule[] = [
      */
     build: (
       context: EditorContext,
-      situation: TypedCharOperationSituation,
-      input: TypedCharOperationInput,
+      situation: TypedCharOpSituation,
+      input: TypedCharOpInput,
     ): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
@@ -426,7 +426,7 @@ export const rangeRules: TypedCharOperationRule[] = [
       if (deleteLength <= 0) {
         rangeCollapsedError(
           'Range selection is collapsed; expected non-empty text range.',
-          'TypedCharOperationsBuilder/#build',
+          'TypedCharOpsBuilder/#build',
         )
       }
 
@@ -463,10 +463,7 @@ export const rangeRules: TypedCharOperationRule[] = [
     },
     /** Same node text/link → `delete_text` + `insert_text` + `set_selection` */
     name: 'range/same-node/delete-then-insert-char',
-    when: (
-      _context: EditorContext,
-      situation: TypedCharOperationSituation,
-    ): boolean =>
+    when: (_context: EditorContext, situation: TypedCharOpSituation): boolean =>
       situation.kind === 'range-selection' &&
       situation.topology.kind === 'same-node',
   },
@@ -478,8 +475,8 @@ export const rangeRules: TypedCharOperationRule[] = [
      */
     build: (
       context: EditorContext,
-      situation: TypedCharOperationSituation,
-      input: TypedCharOperationInput,
+      situation: TypedCharOpSituation,
+      input: TypedCharOpInput,
     ): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
@@ -518,10 +515,7 @@ export const rangeRules: TypedCharOperationRule[] = [
     },
     /** Same block, multiple nodes → range delete (no head/tail) + `insert_text` at anchor. */
     name: 'range/same-block/delete-then-insert-char',
-    when: (
-      _context: EditorContext,
-      situation: TypedCharOperationSituation,
-    ): boolean =>
+    when: (_context: EditorContext, situation: TypedCharOpSituation): boolean =>
       situation.kind === 'range-selection' &&
       situation.topology.kind === 'same-block',
   },
@@ -532,8 +526,8 @@ export const rangeRules: TypedCharOperationRule[] = [
      */
     build: (
       context: EditorContext,
-      situation: TypedCharOperationSituation,
-      input: TypedCharOperationInput,
+      situation: TypedCharOpSituation,
+      input: TypedCharOpInput,
     ): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
@@ -644,10 +638,7 @@ export const rangeRules: TypedCharOperationRule[] = [
     },
     /** Cross-blocks → forward trim → delete middle → backward trim → merge → insert at split */
     name: 'range/cross-block/surgery-then-insert-char',
-    when: (
-      _context: EditorContext,
-      situation: TypedCharOperationSituation,
-    ): boolean =>
+    when: (_context: EditorContext, situation: TypedCharOpSituation): boolean =>
       situation.kind === 'range-selection' &&
       situation.topology.kind === 'cross-block',
   },
@@ -656,7 +647,7 @@ export const rangeRules: TypedCharOperationRule[] = [
 // --- Builder ───────────────────────────────────────---------------
 
 /** Options for constructing a typing operations builder. */
-export interface TypedCharOperationsBuilderOptions {
+export interface TypedCharOpsBuilderOptions {
   /** Configuration for mentions. */
   readonly mentions: {
     /** Whether to enable mentions. */
@@ -677,9 +668,9 @@ export interface TypedCharOperationsBuilderOptions {
 }
 
 /** Typed char operations builder. */
-export class TypedCharOperationsBuilder implements OperationsBuilder<
-  TypedCharOperationSituation,
-  TypedCharOperationInput,
+export class TypedCharOpsBuilder implements OperationsBuilder<
+  TypedCharOpSituation,
+  TypedCharOpInput,
   ComposingOpsIntent
 > {
   /** Configuration for mentions. */
@@ -688,13 +679,13 @@ export class TypedCharOperationsBuilder implements OperationsBuilder<
   /** Configuration for inline command trigger. */
   readonly #inlineCommandTriggerConfig: OperationBuilderInlineCommandTriggerConfig
 
-  constructor(options: TypedCharOperationsBuilderOptions) {
+  constructor(options: TypedCharOpsBuilderOptions) {
     this.#mentionsConfig = options.mentions
     this.#inlineCommandTriggerConfig = options.inlineCommandTrigger
   }
 
-  /** Describes the {@link TypedCharOperationSituation}. */
-  describe(context: EditorContext): TypedCharOperationSituation {
+  /** Describes the {@link TypedCharOpSituation}. */
+  describe(context: EditorContext): TypedCharOpSituation {
     const { selection, state } = context
 
     if (selection === null) {
@@ -711,14 +702,14 @@ export class TypedCharOperationsBuilder implements OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'TypedCharOperationsBuilder/#describe',
+          'TypedCharOpsBuilder/#describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'TypedCharOperationsBuilder/#describe',
+          'TypedCharOpsBuilder/#describe',
         )
       }
 
@@ -739,10 +730,10 @@ export class TypedCharOperationsBuilder implements OperationsBuilder<
      * We cannot accept this case as it's a contract-violation
      * because a {@link RangeSelection} is a non-empty text range.
      */
-    if (compareTextCursors(state, anchor, focus) <= 0) {
+    if (compareTextCursors(state, anchor, focus) >= 0) {
       rangeCollapsedError(
         'Range selection is collapsed; expected anchor to precede focus.',
-        'TypedCharOperationRule/#describeSituation',
+        'TypedCharOpRule/#describeSituation',
       )
     }
 
@@ -757,14 +748,14 @@ export class TypedCharOperationsBuilder implements OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'TypedCharOperationsBuilder/#describe',
+          'TypedCharOpsBuilder/#describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'TypedCharOperationsBuilder/#describe',
+          'TypedCharOpsBuilder/#describe',
         )
       }
 
@@ -855,7 +846,7 @@ export class TypedCharOperationsBuilder implements OperationsBuilder<
    */
   build(
     context: EditorContext,
-    input: TypedCharOperationInput,
+    input: TypedCharOpInput,
   ): ComposingOpsIntent | null {
     const { char } = input
 
@@ -873,7 +864,7 @@ export class TypedCharOperationsBuilder implements OperationsBuilder<
     if (match.done) {
       warn(
         'No rule applied for the given situation and input.',
-        'TypedCharOperationsBuilder/#buildTypedCharOps',
+        'TypedCharOpsBuilder/#buildTypedCharOps',
       )
       return null
     }
@@ -884,7 +875,7 @@ export class TypedCharOperationsBuilder implements OperationsBuilder<
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',
-        'TypedCharOperationsBuilder/#buildTypedCharOps',
+        'TypedCharOpsBuilder/#buildTypedCharOps',
       )
       return null
     }
