@@ -169,7 +169,7 @@ export function Editor() {
 | Native keys for composing                        | 🚧 **In Progress** | Handling native composing keys like `Enter`, `shift+enter`, `backspace`, `ArrowLeft`, … |
 | Context subscriptions                            | ✅ **Done**        | Subscribe and listen to context changes natively                                        |
 | Command & tool events                            | ✅ **Done**        | Subscribe and listen to dactylo aspect changes natively                                 |
-| Marks                                            | 🚧 **In Progress** | Apply marks in the editor (bold, code, italic, strikethrough,… )                        |
+| Marks                                            | ✅ **Done**        | Apply marks in the editor (bold, code, italic, strikethrough,… )                        |
 | Markdown inline shortcuts                        | 🚧 **In Progress** | Use Build-in markdown inline shortcuts for headings, divider, links, lists and marks    |
 | Autolink detection                               | 🚧 **In Progress** | Automatically transform links from pastes into inline nodes (configurable)              |
 | Mentions (`@…`)                                  | 🚧 **In Progress** | Enables build-in inline composition for inserting mentions (configurable)               |
@@ -229,7 +229,7 @@ export function Editor() {
 | Events API                   | 🚧 **In Progress** | Observe events from document state, transaction pipeline, history, errors, and editor's aspects |
 | Tools API                    | 🚧 **In Progress** | Exposes tools api to read document state                                                        |
 | Commands API                 | 🚧 **In Progress** | Exposes commands api to mutate document state                                                   |
-| Marks API                    | 🚧 **In Progress** | Apply marks on eligible inline nodes                                                            |
+| Marks API                    | ✅ **Done**        | Apply marks on eligible inline nodes                                                            |
 | Document API                 | 🚧 **In Progress** | Init (with JSON or Markdown), replace, and reset document state                                 |
 | History API                  | 🚧 **In Progress** | Work with build-in history                                                                      |
 | Composer API                 | 🚧 **In Progress** | Sends and reads composing events                                                                |
