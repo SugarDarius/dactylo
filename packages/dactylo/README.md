@@ -158,7 +158,7 @@ export function Editor() {
 - 🚧 **In Progress** → Under implementation
 - 📆 **Planned** → Planned / considered for implementation
 
-### Core
+### Core (🚧 **In Progress**)
 
 | Feature                                          | Status             | Description                                                                             |
 | ------------------------------------------------ | ------------------ | --------------------------------------------------------------------------------------- |
@@ -190,7 +190,7 @@ export function Editor() {
 | Emojis inline trigger (`:…`)                     | 📆 **Planned**     | Enables inline composition for inserting emojis (configurable)                          |
 | Hashtags (`#…`)                                  | 📆 **Planned**     | Enables built-in support for hashtags                                                   |
 
-### Blocks
+### Blocks (🚧 **In Progress**)
 
 | Feature              | Status             | Description                                                                                                     |
 | -------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------- |
@@ -205,13 +205,13 @@ export function Editor() {
 | Quote                | 📆 **Planned**     | Quote block with inline content only (maybe a sub-kind of ParagraphBlock?)                                      |
 | Table                | 📆 **Planned**     | Table block with inline content                                                                                 |
 | Code                 | 📆 **Planned**     | Safe code block rendering code with inline content                                                              |
-| Slot                 | 📆 **Planned**     | Hosting custom content owned by developer with custom data inside and no inline content                         |
 | Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
 | Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
 | Tabs                 | 📆 **Planned**     | Tabs block with sub blocks inside                                                                               |
 | 2 / 3 / 4 columns    | 📆 **Planned**     | Columns block with sub blocks inside                                                                            |
+| Slot                 | 📆 **Planned**     | Hosting custom content and data owned by developer with no inline content                                       |
 
-### Inline Nodes
+### Inline Nodes (🚧 **In Progress**)
 
 | Feature       | Status             | Notes                                                                                    |
 | ------------- | ------------------ | ---------------------------------------------------------------------------------------- |
@@ -222,7 +222,7 @@ export function Editor() {
 | HashtagNode   | 📆 **Planned**     | Inline hashtag containing artefact data                                                  |
 | Isolation     | 📆 **Planned**     | Apply isolation for specific use case like UI rendering (comments, background colors, …) |
 
-### API
+### API (🚧 **In Progress**)
 
 | Feature                      | Status             | Notes                                                                                           |
 | ---------------------------- | ------------------ | ----------------------------------------------------------------------------------------------- |
@@ -243,12 +243,25 @@ export function Editor() {
 | Batching transactions        | 🚧 **In Progress** | Supports for batching big number for transactions (Ai Agent use case)                           |
 | Table of contents            | 📆 **Planned**     | Build-in table of content based on headings contained in the document                           |
 
-### React integration
+### React integration (🚧 **In Progress**)
 
 | Feature    | Status             | Description                                            |
 | ---------- | ------------------ | ------------------------------------------------------ |
 | Primitives | 🚧 **In Progress** | Exposes React primitives for building a Dactylo editor |
 | Hooks      | 🚧 **In Progress** | Exposes external hooks to work with Dactylo            |
+
+### DevTools extension (📆 **Planned**)
+
+Chrome-based extension that integrates with Dactylo and local development environment.
+Allowing inspect, visualize, and troubleshot.
+
+| Feature   | Status         | Description                                                  |
+| --------- | -------------- | ------------------------------------------------------------ |
+| Inspect   | 📆 **Planned** | Inspect blocks and inline nodes                              |
+| Highlight | 📆 **Planned** | Highlight transactions, context changes, and history changes |
+| Search    | 📆 **Planned** | Search blocks and inline nodes                               |
+
+| Potentially incoming with release of slot blocks
 
 ## License
 
