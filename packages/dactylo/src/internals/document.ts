@@ -157,21 +157,6 @@ export function deleteBlock(
   }
 }
 
-/** Immutable update: remove a block and refresh cached order. */
-export function removeBlock(
-  state: DocumentState,
-  blockId: BlockId,
-): DocumentState {
-  const blocks = new Map(state.blocks)
-  blocks.delete(blockId)
-
-  return {
-    ...state,
-    blockOrderById: state.blockOrderById.filter((id) => id !== blockId),
-    blocks,
-  }
-}
-
 /** Returns the block index in the document state. */
 export function getBlockIndex(state: DocumentState, blockId: BlockId): number {
   const index = state.blockOrderById.indexOf(blockId)

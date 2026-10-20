@@ -25,7 +25,6 @@ import {
   insertBlock,
   isBlockWithInlineContentEmpty,
   normalizeRange,
-  removeBlock,
   replaceBlock,
   resolveInsertAfterBlockId,
   stepTextCursor,
@@ -470,10 +469,10 @@ export function applyMergeBlocksOp(
     metadata: mergedMetadata,
   })
 
-  let doc = replaceBlock(context.state, op.targetBlockId, updatedTarget)
-  doc = removeBlock(doc, op.sourceBlockId)
+  let state = replaceBlock(context.state, op.targetBlockId, updatedTarget)
+  state = deleteBlock(state, op.sourceBlockId)
 
-  return withDocumentState(context, doc)
+  return withDocumentState(context, state)
 }
 
 /** Applies a `split_block` operation to the editor context. */
