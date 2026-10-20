@@ -648,27 +648,36 @@ export function applySetMarksOp(
     )
   }
 
-  /**
-   * Apply operation only on a non-empty range.
-   * Otherwise for this operation it's a no-op as the range is empty.
-   */
-  if (op.from !== op.to) {
-    const replacement = splitInlineNodeWithEditableTextAt(
-      node,
-      op.from,
-      op.to,
-      op.nextMarks,
-    )
-    if (replacement.length === 0) {
-      content.splice(index, 1)
-    } else {
-      content.splice(index, 1, ...replacement)
+  /** We don't apply op on an empty range. */
+  if (op.from === op.to) {
+    return context
+  }
+
+  /** Whole-node mark toggle: update marks only (undo = invert mark swap on same node). */
+  if (op.from === 0 && op.to === node.text.length) {
+    content[index] = {
+      ...node,
+      marks: op.nextMarks,
+      updatedAt: new Date(),
     }
 
     return updateBlockWithInlineContent(context, op.blockId, content)
   }
 
-  return context
+  /** Partial range via `set_marks`: new toggles use structural ops from {@link buildSetMarksOps}. */
+  const replacement = splitInlineNodeWithEditableTextAt(
+    node,
+    op.from,
+    op.to,
+    op.nextMarks,
+  )
+  if (replacement.length === 0) {
+    content.splice(index, 1)
+  } else {
+    content.splice(index, 1, ...replacement)
+  }
+
+  return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
 /** Applies a `insert_inline_node` operation to the editor context. */

@@ -244,9 +244,12 @@ export function coalesceInlineNodes(
 
 /**
  * Splits an inline node with editable text into up to three segments around `[from, to)`.
- * Empty segments are omitted. The leading segment keeps the original node id.
+ * Empty segments are omitted.
  *
- * Returns a replacement inline nodes (one to three entries).
+ * ID policy:
+ * - Leading segment keeps the original node id.
+ * - When there is no leading segment, the middle (marked) segment keeps the original id.
+ * - All other segments receive new ids.
  */
 export function splitInlineNodeWithEditableTextAt(
   /** Text node to split. */
@@ -269,13 +272,22 @@ export function splitInlineNodeWithEditableTextAt(
   }
 
   if (middle.length > 0) {
-    replacement.push(
-      createTextNode({
+    if (before.length === 0) {
+      replacement.push({
+        ...node,
         marks: middleMarks,
-        metadata: node.metadata,
         text: middle,
-      }),
-    )
+        updatedAt: new Date(),
+      })
+    } else {
+      replacement.push(
+        createTextNode({
+          marks: middleMarks,
+          metadata: node.metadata,
+          text: middle,
+        }),
+      )
+    }
   }
 
   if (after.length > 0) {
