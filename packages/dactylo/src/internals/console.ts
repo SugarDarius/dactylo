@@ -43,6 +43,7 @@ function makeConsole() {
     warn,
     /** Emits a warning only once. */
     warnOnce,
+    /** Emits a warning only once if the condition is met. */
     warnOnceIf: (
       condition: boolean,
       message: string,

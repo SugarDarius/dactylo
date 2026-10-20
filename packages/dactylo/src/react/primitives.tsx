@@ -3,6 +3,7 @@
 import { forwardRef, useDebugValue, useMemo } from 'react'
 
 import { Dactylo } from '../dactylo'
+import { warn, warnOnce } from '../internals/console'
 import {
   BLOCKS_ATTR_NAME,
   BLOCK_CONTENT_EDITABLE_DATA_NAME,
@@ -188,6 +189,7 @@ const ComposerInlineContent = ({ content }: ComposerInlineContentProps) => {
     const items = []
 
     for (const node of content) {
+      const type = node.__type
       switch (node.__type) {
         case 'text': {
           items.push(<ComposerTextNode key={node.id} node={node} />)
@@ -202,7 +204,7 @@ const ComposerInlineContent = ({ content }: ComposerInlineContentProps) => {
           break
         }
         default: {
-          break
+          warnOnce(`Skipping rendering for unsupported node type: ${type}.`)
         }
       }
     }
@@ -275,19 +277,30 @@ const ComposerBlocks = forwardRef<
     for (const blockId of blockOrderById) {
       const block = blocks.get(blockId)
       if (!block) {
-        /** Skip blocks that are not in the document. It should never happen. */
+        /**
+         * Skipping rendering for blocks that are not in the document state.
+         * It should never happens because `blockOrderById` from {@link DocumentState}
+         * is always n sync `blocks` after each inserts.
+         *
+         * 👉🏻 We don't throw an error because we don't want to break users' UI
+         * to keep a seamless experience.
+         */
+        warn(
+          `Block ${blockId} not found in document state. Skipping rendering…`,
+        )
         continue
       }
 
-      switch (block.__type) {
+      const type = block.__type
+      switch (type) {
         case 'paragraph': {
           items.push(
-            <ComposerParagraphBlock key={blockId} block={block} {...props} />,
+            <ComposerParagraphBlock key={blockId} {...props} block={block} />,
           )
           break
         }
         default: {
-          break
+          warnOnce(`Skipping rendering for unsupported block type: ${type}.`)
         }
       }
     }
