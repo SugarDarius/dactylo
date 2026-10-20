@@ -190,7 +190,7 @@ const ComposerInlineContent = ({ content }: ComposerInlineContentProps) => {
 
     for (const node of content) {
       const type = node.__type
-      switch (node.__type) {
+      switch (type) {
         case 'text': {
           items.push(<ComposerTextNode key={node.id} node={node} />)
           break
