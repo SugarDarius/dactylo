@@ -114,6 +114,9 @@ export interface RangeSelection {
 /** Discriminated union of all supported selection shapes in {@link Dactylo}. */
 export type Selection = Relax<CursorSelection | RangeSelection>
 
+/** The topology of a range selection. */
+export type RangeSelectionTopology = 'same-node' | 'same-block' | 'cross-blocks'
+
 /** Checks if the selection is active or not. */
 export function isSelectionActive(
   selection: Selection | null,
@@ -133,6 +136,22 @@ export function isRangeSelection(
   selection: Selection | null,
 ): selection is RangeSelection {
   return isSelectionActive(selection) && selection.__type === 'range'
+}
+
+/** Gets the topology of a range selection. */
+export function getRangeSelectionTopology(
+  range: RangeSelection,
+): RangeSelectionTopology {
+  const { anchor, focus } = range
+  if (anchor.blockId !== focus.blockId) {
+    return 'cross-blocks'
+  }
+
+  if (anchor.nodeId === focus.nodeId) {
+    return 'same-node'
+  }
+
+  return 'same-block'
 }
 
 /** Checks whether the block has an active cursor selection within. */
