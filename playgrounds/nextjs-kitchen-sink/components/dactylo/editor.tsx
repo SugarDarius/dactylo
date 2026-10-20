@@ -150,17 +150,19 @@ export function Toolbar() {
       </div>
       <Separator orientation='vertical' />
       <div className='flex items-center'>
-        <Button
-          variant='ghost'
-          size='icon'
-          onClick={() => setEditable(!canEdit)}
+        <Toggle
+          pressed={!canEdit}
+          variant='outline'
+          size='sm'
+          onPressedChange={() => setEditable(!canEdit)}
+          className='border-0'
         >
           {canEdit ? (
             <Lock className='size-3.5' />
           ) : (
             <LockOpen className='size-3.5' />
           )}
-        </Button>
+        </Toggle>
       </div>
     </div>
   )
