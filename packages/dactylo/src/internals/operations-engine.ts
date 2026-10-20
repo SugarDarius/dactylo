@@ -1841,6 +1841,7 @@ export class OperationsEngine {
       backward,
       endBlock.id,
     )
+
     const trimmedSourceSnapshot: BlockWithInlineContent = {
       ...endBlock,
       content: tailContent,
@@ -2722,10 +2723,6 @@ export class OperationsEngine {
     return ops
   }
 
-  /**
-   * Builds operations for a range backspace within a single block (possibly multiple inline nodes).
-   * Joins surviving head/tail text when marks match.
-   */
   /**
    * Builds operations for a range backspace within a single block (possibly multiple inline nodes).
    * Joins surviving head/tail text when marks match.

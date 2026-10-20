@@ -1,8 +1,28 @@
+import { findNodeInBlockWithInlineContent } from './blocks'
+import type { BlockId, BlockWithInlineContent } from './blocks'
+import { getBlock } from './document'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
+import { isMarksEqual } from './marks'
+import type { Marks } from './marks'
+import {
+  coalesceInlineNodes,
+  createTextNode,
+  isCanonicalEmptyInlineContent,
+  isInlineContentTextEmpty,
+  isInlineNodeWithEditableText,
+} from './nodes'
+import type {
+  InlineNode,
+  InlineNodeWithEditableText,
+  NodeId,
+  TextNode,
+} from './nodes'
 import type { Operation } from './operations'
+import { createCursor } from './selection'
+import type { TextCursor, RangeSelection } from './selection'
 
-// --- Core- ─────────────────────────────────────────---------------
+// --- Core -─────────────────────────────────────────---------------
 
 /** Throws a build error {@link DactyloError} when something goes wrong while building operations. */
 export function buildError(message: string, hint: string): never {
@@ -110,4 +130,653 @@ export interface OperationBuilderInlineCommandTriggerConfig {
 
   /** The character to use for inline command trigger. */
   readonly character: string
+}
+
+// --- Builders & Helpers ─────────────────────────────---------------
+
+/**
+ * Previews in-memory the inline content of a block
+ * after a list of trim operations without applying them into the document.
+ *
+ * Purpose:
+ * After delete or replace a cross-block range selection the engine does:
+ *  1. Trims the start block from the anchor forward (e.g `#buildForwardTrimBlockOps`
+ *  2. Deletes blocks in the middle.
+ *  3. Trims end block from the focus backward (e.g `#buildBackwardTrimBlockOps`)
+ *  4. Emits a `merge_blocks` operation that joins the trimmed end into the trimmed start.
+ *
+ * Several fields on that `merge_blocks` op must match the document at the moment this op
+ * is validated/applied; after the trim ops in the same transaction have already run.
+ * The build still works from the original block snapshots, so it uses this helper
+ * to replay only the relevant inline ops.
+ *
+ * Why coalescing matters?
+ * Forward trim can leave adjacent text nodes with the same marks; real apply merges them.
+ * If the preview skipped coalescing, `validateMergeBlocksOp` could disagree with the state
+ * seen when `merge_blocks` runs.
+ *
+ * Baseline: "what will this block’s inline tree be after these trim ops?"
+ * So the engine can build a correct `merge_blocks` op (merge index, undo snapshots, split point, …)
+ * before anything is dispatched to the document.
+ */
+export function previewInlineContentAfterTrimOps(
+  content: readonly InlineNode[],
+  ops: Operation[],
+  blockId: BlockId,
+): InlineNode[] {
+  let next = [...content]
+
+  for (const op of ops) {
+    if (op.blockId !== blockId) {
+      continue
+    }
+
+    if (op.__type === 'delete_text') {
+      const idx = next.findIndex((n) => n.id === op.nodeId)
+      if (idx === -1) {
+        continue
+      }
+
+      const node = next[idx]
+      if (!node || !isInlineNodeWithEditableText(node)) {
+        continue
+      }
+
+      const before = node.text.slice(0, op.offset)
+      const after = node.text.slice(op.offset + op.length)
+
+      next[idx] = {
+        ...node,
+        text: before + after,
+        updatedAt: new Date(),
+      }
+    } else if (op.__type === 'remove_inline_node') {
+      next.splice(op.index, 1)
+    }
+    next = coalesceInlineNodes(next)
+  }
+
+  return next
+}
+
+/**
+ * Resolves undo fields when merging two blocks for a {@link MergeBlocksOp}.
+ * After a merge, the previous block’s content and the current block’s content
+ * live in one block, often in one coalesced text node.
+ *
+ * Undo must cut the document exactly at the old block boundary—as if
+ * `Enter` had been pressed there before the merge—not at an arbitrary position
+ *
+ * Branch-by-branch logic:
+ *  1. Target has no inline content (last node is missing)
+ *   1.2 Both blocks have no inline content
+ *  2. Target’s last inline node is text (usual case)
+ *  3. Target’s last inline node is not text (line break, link, mentions, ...)
+ *
+ * Mental model (`Backspace merge`):
+ * ```
+ * Before:
+ *    Target:  [ ... , T_last(text:"abc") ]
+ *    Source:  [ S_first(text:"def"), ... ]
+ *
+ * merge_blocks (atIndex = end of target)
+ *
+ * After:
+ *    Target:  [ ... , coalesced "abcdef"? , ... ]
+ *
+ * Undo `split_block` at (T_last.id, 3)
+ *    Head block keeps "abc"
+ *    New/restored source block gets "def" + rest
+ * ```
+ *
+ */
+export function resolvesMergeBlocksUndoFields(
+  source: BlockWithInlineContent,
+  target: BlockWithInlineContent,
+  marks: Marks,
+): { splitAtNodeId: NodeId; splitAtOffset: number } {
+  const last = target.content[target.content.length - 1]
+  if (!last) {
+    const [first] = source.content
+    /**
+     * Degenerate case (two empty paragraphs). There is no real join point in the document.
+     * The helper still returns some id/offset pair so MergeBlocksOp can be constructed;
+     * in practice merges like this are rare, and undo leans on sourceSnapshot / mergedTailSnapshot /
+     * atIndex as well.
+     * The fallback id is not in the document until something else creates it—treat this as a
+     * spec placeholder for an edge case, not a happy-path path.
+     */
+    if (!first) {
+      const fallback = createTextNode({ marks, text: '' })
+      return { splitAtNodeId: fallback.id, splitAtOffset: 0 }
+    }
+
+    return { splitAtNodeId: first.id, splitAtOffset: 0 }
+  }
+
+  if (isInlineNodeWithEditableText(last)) {
+    return { splitAtNodeId: last.id, splitAtOffset: last.text.length }
+  }
+
+  return { splitAtNodeId: last.id, splitAtOffset: 0 }
+}
+
+/**
+ * Deletes `[from.offset, to.offset)` inside one editable text node.
+ * Fast path for range backspace when anchor/focus share the same node.
+ */
+export function buildDeleteTextRunOps(
+  blockId: BlockId,
+  node: InlineNodeWithEditableText,
+  from: number,
+  to: number,
+  range: RangeSelection,
+): Operation[] {
+  const length = to - from
+  if (length <= 0) {
+    rangeCollapsedError(
+      'Range selection is collapsed; expected non-empty text range.',
+      'OperationBuilder/#buildDeleteTextRunOps',
+    )
+  }
+
+  return [
+    {
+      __type: 'delete_text',
+      blockId,
+      length,
+      nodeId: node.id,
+      offset: from,
+      snapshot: {
+        marks: node.marks,
+        text: node.text.slice(from, to),
+      },
+    },
+    {
+      __type: 'set_selection',
+      next: createCursor({ blockId, nodeId: node.id, offset: from }),
+      prev: range,
+    },
+  ]
+}
+
+/** Builds operations to collapse an empty block to the active marks. */
+export function buildCollapseEmptyBlockToActiveMarksOps(
+  blockId: BlockId,
+  contentAfterPriorOps: readonly InlineNode[],
+  activeMarks: Marks,
+): { ops: Operation[]; placeholder: TextNode } | null {
+  if (!isInlineContentTextEmpty(contentAfterPriorOps)) {
+    return null
+  }
+
+  if (isCanonicalEmptyInlineContent(contentAfterPriorOps, activeMarks)) {
+    return null
+  }
+
+  const placeholder = createTextNode({ marks: activeMarks, text: '' })
+  const ops: Operation[] = []
+
+  for (let i = contentAfterPriorOps.length - 1; i >= 0; i -= 1) {
+    const snapshot = contentAfterPriorOps[i]
+    if (!snapshot) {
+      continue
+    }
+
+    ops.push({
+      __type: 'remove_inline_node',
+      blockId,
+      index: i,
+      snapshot,
+    })
+  }
+
+  ops.push({
+    __type: 'insert_inline_node',
+    blockId,
+    index: 0,
+    node: placeholder,
+  })
+
+  return { ops, placeholder }
+}
+
+/** Builds operations to rewrite the selection of a collapsed empty block. */
+export function buildRewriteCollapsedEmptyBlockSelectionOps(
+  incomingOps: Operation[],
+  blockId: BlockId,
+  placeholderId: NodeId,
+  range: RangeSelection,
+): Operation[] {
+  const ops: Operation[] = incomingOps.filter(
+    (op) => op.__type !== 'set_selection',
+  )
+
+  ops.push({
+    __type: 'set_selection',
+    next: createCursor({ blockId, nodeId: placeholderId, offset: 0 }),
+    prev: range,
+  })
+
+  return ops
+}
+
+/**
+ * Removes inline nodes in `[firstIndex, lastIndex]` (inclusive).
+ * Emits `remove_inline_node` from highest index → lowest so indices stay valid.
+ */
+export function buildRemoveInlineNodeRangeOps(
+  blockId: BlockId,
+  content: readonly InlineNode[],
+  firstIndex: number,
+  lastIndex: number,
+): Operation[] {
+  const ops: Operation[] = []
+
+  for (let i = lastIndex; i >= firstIndex; i -= 1) {
+    const snapshot = content[i]
+
+    if (!snapshot) {
+      continue
+    }
+
+    ops.push({
+      __type: 'remove_inline_node',
+      blockId,
+      index: i,
+      snapshot,
+    })
+  }
+
+  return ops
+}
+
+/**
+ * Builds operations for a range delete within a single block (possibly multiple inline nodes).
+ * Joins surviving head/tail text when marks match.
+ */
+export function buildDeleteRangeWithinBlockOps(
+  context: EditorContext,
+  block: BlockWithInlineContent,
+  anchor: TextCursor,
+  focus: TextCursor,
+  range: RangeSelection,
+  opts: {
+    /** Whether to join survivors. */
+    joinSurvivors?: boolean
+    /** Whether to set the selection. */
+    setSelection?: boolean
+  } = {},
+): Operation[] {
+  const { joinSurvivors = true, setSelection = true } = opts
+
+  const anchorFound = findNodeInBlockWithInlineContent(block, anchor.nodeId)
+  const focusFound = findNodeInBlockWithInlineContent(block, focus.nodeId)
+
+  if (!anchorFound || !focusFound) {
+    buildError(
+      'Anchor or focus node missing in block',
+      'OperationBuilder/#buildDeleteRangeWithinBlockOps',
+    )
+  }
+
+  const { index: aNi, node: aNode } = anchorFound
+  const { index: fNi, node: fNode } = focusFound
+
+  /** Same text node → single `delete_text`. */
+  if (aNi === fNi && isInlineNodeWithEditableText(aNode)) {
+    let ops = buildDeleteTextRunOps(
+      block.id,
+      aNode,
+      anchor.offset,
+      focus.offset,
+      range,
+    )
+
+    if (!setSelection) {
+      return ops.filter((op) => op.__type !== 'set_selection') as Operation[]
+    }
+
+    const preview = previewInlineContentAfterTrimOps(
+      block.content,
+      ops,
+      block.id,
+    )
+
+    const collapsed = buildCollapseEmptyBlockToActiveMarksOps(
+      block.id,
+      preview,
+      context.activeMarks,
+    )
+
+    if (collapsed) {
+      ops = ops.filter((op) => op.__type !== 'set_selection') as Operation[]
+      ops.push(...collapsed.ops)
+
+      /** Rewrite the selection to the collapsed placeholder. */
+      const rewritten = buildRewriteCollapsedEmptyBlockSelectionOps(
+        ops,
+        block.id,
+        collapsed.placeholder.id,
+        range,
+      )
+
+      return rewritten
+    }
+
+    return ops
+  }
+
+  const ops: Operation[] = []
+
+  /**
+   * Head of last node first.
+   * Must run before removing nodes between anchor/focus: otherwise
+   * `updateBlockWithInlineContent` may coalesce adjacent text nodes and
+   * drop the focus node id before this delete_text is validated/applied.
+   */
+  if (fNi !== aNi && isInlineNodeWithEditableText(fNode) && focus.offset > 0) {
+    ops.push({
+      __type: 'delete_text',
+      blockId: block.id,
+      length: focus.offset,
+      nodeId: fNode.id,
+      offset: 0,
+      snapshot: {
+        marks: fNode.marks,
+        text: fNode.text.slice(0, focus.offset),
+      },
+    })
+  }
+
+  /** Tail of first node. */
+  if (isInlineNodeWithEditableText(aNode)) {
+    const tailLen = aNode.text.length - anchor.offset
+    if (tailLen > 0) {
+      ops.push({
+        __type: 'delete_text',
+        blockId: block.id,
+        length: tailLen,
+        nodeId: aNode.id,
+        offset: anchor.offset,
+        snapshot: {
+          marks: aNode.marks,
+          text: aNode.text.slice(anchor.offset),
+        },
+      })
+    }
+  } else if (aNode && anchor.offset === 0) {
+    ops.push({
+      __type: 'remove_inline_node',
+      blockId: block.id,
+      index: aNi,
+      snapshot: aNode,
+    })
+  }
+
+  /** Fully selected nodes between anchor and focus. */
+  const betweenFirst = aNi + 1
+  const betweenLast = fNi - 1
+
+  if (betweenFirst <= betweenLast) {
+    const inlines = buildRemoveInlineNodeRangeOps(
+      block.id,
+      block.content,
+      betweenFirst,
+      betweenLast,
+    )
+    ops.push(...inlines)
+  }
+
+  /** Join head + tail text when both ends are text with equal marks. */
+  if (
+    joinSurvivors &&
+    isInlineNodeWithEditableText(aNode) &&
+    isInlineNodeWithEditableText(fNode) &&
+    aNi !== fNi &&
+    isMarksEqual(aNode.marks, fNode.marks)
+  ) {
+    const headText = aNode.text.slice(0, anchor.offset)
+    const tailText = fNode.text.slice(focus.offset)
+
+    if (tailText.length > 0 && headText.length >= 0) {
+      ops.push({
+        __type: 'insert_text',
+        blockId: block.id,
+        marks: aNode.marks,
+        nodeId: aNode.id,
+        offset: anchor.offset,
+        text: tailText,
+      })
+      if (focus.offset < fNode.text.length) {
+        ops.push({
+          __type: 'remove_inline_node',
+          blockId: block.id,
+          index: fNi,
+          snapshot: fNode,
+        })
+      }
+    }
+  }
+
+  const preview = previewInlineContentAfterTrimOps(block.content, ops, block.id)
+
+  const collapsed = buildCollapseEmptyBlockToActiveMarksOps(
+    block.id,
+    preview,
+    context.activeMarks,
+  )
+
+  if (collapsed) {
+    ops.push(...collapsed.ops)
+
+    /** Rewrite the selection to the collapsed placeholder. */
+    if (setSelection) {
+      const rewritten = buildRewriteCollapsedEmptyBlockSelectionOps(
+        ops,
+        block.id,
+        collapsed.placeholder.id,
+        range,
+      )
+
+      return rewritten
+    }
+  }
+
+  if (setSelection) {
+    ops.push({
+      __type: 'set_selection',
+      next: createCursor({
+        blockId: block.id,
+        nodeId: anchor.nodeId,
+        offset: anchor.offset,
+      }),
+      prev: range,
+    })
+  }
+
+  return ops
+}
+
+/**
+ * Deletes from `from` (inclusive) through the end of the block.
+ * Keeps `[block start, from)`.
+ */
+export function buildForwardTrimBlockOps(
+  block: BlockWithInlineContent,
+  from: TextCursor,
+): Operation[] {
+  const found = findNodeInBlockWithInlineContent(block, from.nodeId)
+  if (!found) {
+    buildError(
+      `Node ${from.nodeId} not found in block ${block.id}`,
+      'OperationBuilder/#buildForwardTrimBlockOps',
+    )
+  }
+
+  const { index: fromNi, node: fromNode } = found
+  const ops: Operation[] = []
+
+  if (isInlineNodeWithEditableText(fromNode)) {
+    const tailLen = fromNode.text.length - from.offset
+    if (tailLen > 0) {
+      ops.push({
+        __type: 'delete_text',
+        blockId: block.id,
+        length: tailLen,
+        nodeId: fromNode.id,
+        offset: from.offset,
+        snapshot: {
+          marks: fromNode.marks,
+          text: fromNode.text.slice(from.offset),
+        },
+      })
+    }
+  }
+
+  const lastIndex = block.content.length - 1
+  if (fromNi < lastIndex) {
+    const inlines = buildRemoveInlineNodeRangeOps(
+      block.id,
+      block.content,
+      fromNi + 1,
+      lastIndex,
+    )
+    ops.push(...inlines)
+  }
+
+  /** Anchor on line_break / mention at offset 0: remove that node too. */
+  if (!isInlineNodeWithEditableText(fromNode) && from.offset === 0) {
+    ops.push({
+      __type: 'remove_inline_node',
+      blockId: block.id,
+      index: fromNi,
+      snapshot: fromNode,
+    })
+  }
+
+  return ops
+}
+
+/**
+ * Deletes from the start of the block through `to` (exclusive).
+ * Keeps `[to, block end)`.
+ */
+export function buildBackwardTrimBlockOps(
+  block: BlockWithInlineContent,
+  to: TextCursor,
+): Operation[] {
+  const found = findNodeInBlockWithInlineContent(block, to.nodeId)
+  if (!found) {
+    buildError(
+      `Node ${to.nodeId} not found in block ${block.id}`,
+      'OperationsEngine/buildBackwardTrimBlockOps',
+    )
+  }
+
+  const { index: toNi, node: toNode } = found
+
+  const ops: Operation[] = []
+  const fullyConsumesFocusText =
+    isInlineNodeWithEditableText(toNode) && to.offset >= toNode.text.length
+
+  /** Partial prefix removal on the focus text node. */
+  if (
+    isInlineNodeWithEditableText(toNode) &&
+    to.offset > 0 &&
+    !fullyConsumesFocusText
+  ) {
+    ops.push({
+      __type: 'delete_text',
+      blockId: block.id,
+      length: to.offset,
+      nodeId: toNode.id,
+      offset: 0,
+      snapshot: {
+        marks: toNode.marks,
+        text: toNode.text.slice(0, to.offset),
+      },
+    })
+  }
+
+  /**
+   * Fully consumed focus node (`dd` at end of selection):
+   * remove the whole inline node (undo = insert_inline_node with full snapshot).
+   * Must run at original `toNi` *before* removing nodes `[0, toNi)`.
+   */
+  if (fullyConsumesFocusText && toNi > 0) {
+    ops.push({
+      __type: 'remove_inline_node',
+      blockId: block.id,
+      index: toNi,
+      snapshot: toNode,
+    })
+  }
+
+  if (toNi > 0) {
+    const inlines = buildRemoveInlineNodeRangeOps(
+      block.id,
+      block.content,
+      0,
+      toNi - 1,
+    )
+    ops.push(...inlines)
+  }
+
+  /** Fully consumed first inline in the block. */
+  if (fullyConsumesFocusText && toNi === 0) {
+    ops.push({
+      __type: 'remove_inline_node',
+      blockId: block.id,
+      index: 0,
+      snapshot: toNode,
+    })
+  }
+
+  return ops
+}
+
+/**
+ * Builds `delete_block` ops for every block strictly between `startBlockId`
+ * and `endBlockId` in document order.
+ */
+export function buildDeleteBlocksBetweenOps(
+  context: EditorContext,
+  startBlockId: BlockId,
+  endBlockId: BlockId,
+): Operation[] {
+  const { state } = context
+  const order = state.blockOrderById
+
+  const startBi = order.indexOf(startBlockId)
+  const endBi = order.indexOf(endBlockId)
+
+  if (startBi === -1 || endBi === -1 || endBi <= startBi) {
+    return []
+  }
+
+  const ops: Operation[] = []
+
+  for (let bi = startBi + 1; bi < endBi; bi += 1) {
+    const blockId = order[bi]
+    if (!blockId) {
+      continue
+    }
+
+    const block = getBlock(state, blockId)
+
+    let afterBlockId: BlockId | null = null
+    if (bi > 0) {
+      afterBlockId = order[bi - 1] ?? null
+    }
+
+    ops.push({
+      __type: 'delete_block',
+      afterBlockId,
+      blockId,
+      snapshot: block,
+    })
+  }
+
+  return ops
 }
