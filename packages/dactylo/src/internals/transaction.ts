@@ -768,31 +768,24 @@ export class TransactionPipeline {
         return false
       }
 
-      /** Typing commands input types bucket. */
+      /** `shift+Enter` is considered as a soft break. */
       case 'insertLineBreak': {
         /** In any case we prevent native browser behavior as we want full control over line breaks. */
         prevent()
-        /** `shift+Enter` is considered as a soft break. */
-        if (isCursorSelection(this.#context.selection)) {
-          const { ops, label, coalesce } =
-            this.#operationsEngine.buildSoftBreakOps(
-              this.#context,
-              this.#context.selection.anchor,
-            )
 
-          this.#commit(ops, {
-            coalesce,
-            label: transactionPolicyLabel('input', 'digest-event', label),
-            pushToHistory: true,
-            source: 'user',
-          })
-
-          return true
+        const intent = this.#operationsEngine.buildSoftBreakOps(this.#context)
+        if (intent === null) {
+          return false
         }
 
-        // @todo: handle range selection
+        const { ops, label } = intent
+        this.#commit(ops, {
+          label: transactionPolicyLabel('input', 'digest-event', label),
+          pushToHistory: true,
+          source: 'user',
+        })
 
-        return false
+        return true
       }
       case 'insertParagraph': {
         /** In any case we prevent native browser behavior as we want full control over paragraph breaks. */

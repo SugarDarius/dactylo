@@ -44,7 +44,6 @@ import type { MarkKey, Marks } from './marks'
 import { MarksOpsBuilder } from './marks-ops-builder'
 import {
   coalesceInlineNodes,
-  createLineBreakNode,
   createLinkNode,
   createTextNode,
   getInlineNodeTextLength,
@@ -88,6 +87,7 @@ import {
   isSelectionActive,
 } from './selection'
 import type { TextCursor, Selection, RangeSelection } from './selection'
+import { SoftBreakOpsBuilder } from './soft-break-ops-builder'
 import { TypedCharOpsBuilder } from './typed-char-ops-builder'
 import { assertNever } from './utils'
 
@@ -1101,6 +1101,9 @@ export class OperationsEngine {
   /** Paste plain text ops builder. */
   readonly #pastePlainTextOpsBuilder: PastePlainTextOpsBuilder
 
+  /** Soft break ops builder. */
+  readonly #softBreakOpsBuilder: SoftBreakOpsBuilder
+
   /** Grapheme offset caret instance. */
   readonly #graphemeOffsetCaret: GraphemeOffsetCaret
 
@@ -1118,6 +1121,7 @@ export class OperationsEngine {
       autolink: options.autolink,
       graphemeOffsetCaret: this.#graphemeOffsetCaret,
     })
+    this.#softBreakOpsBuilder = new SoftBreakOpsBuilder()
   }
 
   // --- Core engine ─────────────────────────────────────────---------
@@ -2487,169 +2491,8 @@ export class OperationsEngine {
   }
 
   /** Builds operations when user presses `shift+Enter` key as a soft break. */
-  // @todo: handle other upcoming blocks like lists, quotes, ...
-  buildSoftBreakOps(
-    context: EditorContext,
-    cursor: TextCursor,
-  ): ComposingOpsIntent {
-    const block = getBlockWithInlineContent(context.state, cursor.blockId)
-
-    const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
-    if (!found) {
-      buildError(
-        `Node ${cursor.nodeId} not found in block ${block.id}`,
-        'OperationsEngine/buildSoftBreakOps',
-      )
-    }
-
-    const { index, node } = found
-
-    const isBlockEnd = isCursorAtBlockEnd(cursor, block)
-    /** At block end we insert a new line break node followed by an empty text node. */
-    if (isBlockEnd) {
-      const insertedText = createTextNode({
-        marks: context.activeMarks,
-        text: '',
-      })
-
-      const ops: Operation[] = [
-        {
-          __type: 'insert_inline_node',
-          blockId: block.id,
-          index: index + 1,
-          node: createLineBreakNode(),
-        },
-        {
-          __type: 'insert_inline_node',
-          blockId: block.id,
-          index: index + 2,
-          node: insertedText,
-        },
-        {
-          __type: 'set_selection',
-          next: createCursor({
-            blockId: cursor.blockId,
-            nodeId: insertedText.id,
-            offset: 0,
-          }),
-          prev: context.selection,
-        },
-      ]
-
-      return { label: 'insert-line-break-node', ops }
-    }
-
-    /** Otherwise we split the node at the cursor position. */
-    const type = node.__type
-    switch (type) {
-      case 'text': {
-        const tailText = node.text.slice(cursor.offset)
-        const insertedText = createTextNode({
-          marks: node.marks,
-          metadata: node.metadata,
-          text: tailText,
-        })
-
-        const ops: Operation[] = [
-          {
-            __type: 'delete_text',
-            blockId: block.id,
-            length: tailText.length,
-            nodeId: node.id,
-            offset: cursor.offset,
-            snapshot: {
-              marks: node.marks,
-              text: tailText,
-            },
-          },
-          {
-            __type: 'insert_inline_node',
-            blockId: block.id,
-            index: index + 1,
-            node: createLineBreakNode(),
-          },
-          {
-            __type: 'insert_inline_node',
-            blockId: block.id,
-            index: index + 2,
-            node: insertedText,
-          },
-          {
-            __type: 'set_selection',
-            next: createCursor({
-              blockId: cursor.blockId,
-              nodeId: insertedText.id,
-              offset: 0,
-            }),
-            prev: context.selection,
-          },
-        ]
-
-        return {
-          label: 'split-inline-node-and-insert-line-break-node',
-          ops,
-        }
-      }
-      case 'link': {
-        const tailText = node.text.slice(cursor.offset)
-        const insertedLink = createLinkNode({
-          marks: node.marks,
-          metadata: node.metadata,
-          text: tailText,
-          url: node.url,
-        })
-
-        const ops: Operation[] = [
-          {
-            __type: 'delete_text',
-            blockId: block.id,
-            length: tailText.length,
-            nodeId: node.id,
-            offset: cursor.offset,
-            snapshot: {
-              marks: node.marks,
-              text: tailText,
-            },
-          },
-          {
-            __type: 'insert_inline_node',
-            blockId: block.id,
-            index: index + 1,
-            node: createLineBreakNode(),
-          },
-          {
-            __type: 'insert_inline_node',
-            blockId: block.id,
-            index: index + 2,
-            node: insertedLink,
-          },
-          {
-            __type: 'set_selection',
-            next: createCursor({
-              blockId: cursor.blockId,
-              nodeId: insertedLink.id,
-              offset: 0,
-            }),
-            prev: context.selection,
-          },
-        ]
-
-        return {
-          label: 'split-inline-node-and-insert-line-break-node',
-          ops,
-        }
-      }
-      case 'line_break':
-      case 'mention': {
-        return buildError(
-          `Split tail is not allowed on ${type} node`,
-          'OperationsEngine/buildSoftBreakOps',
-        )
-      }
-      default: {
-        assertNever(type, { hint: 'OperationsEngine/buildSoftBreakOps' })
-      }
-    }
+  buildSoftBreakOps(context: EditorContext): BuilderOpsIntent | null {
+    return this.#softBreakOpsBuilder.build(context)
   }
 
   // --- Selection operations ─────────────────────────────────────────
