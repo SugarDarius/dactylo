@@ -11,6 +11,7 @@ import type {
   BlockWithInlineContent,
   BlockWithoutPosKey,
 } from './blocks'
+import type { TextPlainData } from './clipboard'
 import {
   compareTextCursors,
   computeInsertBlockPosKey,
@@ -75,18 +76,12 @@ import type {
   SplitBlockOp,
 } from './operations'
 import type { BuilderOpsIntent } from './operations-builder'
-import {
-  plainTextHasLinks,
-  plainTextToEditableTextNodes,
-  splitPlainText,
-} from './plain-text'
+import { PastePlainTextOpsBuilder } from './paste-plain-text-ops-builder'
 import {
   areSelectionsEqual,
   createCursor,
   createRange,
   cursorAtBlockStart,
-  cursorFromLinearOffsetInBlock,
-  getLinearOffsetInBlock,
   isCursorAtBlockEnd,
   isCursorSelection,
   isRangeSelection,
@@ -867,46 +862,6 @@ export function previewInlineContentAfterTrimOps(
   return next
 }
 
-/** Preview inline content after paste-slice ops (delete_text + insert_inline_node). */
-export function previewInlineContentAfterPasteSliceOps(
-  content: readonly InlineNode[],
-  ops: readonly Operation[],
-  blockId: BlockId,
-): InlineNode[] {
-  const next = [...content]
-
-  for (const op of ops) {
-    if (op.blockId !== blockId) {
-      continue
-    }
-
-    if (op.__type === 'delete_text') {
-      const idx = next.findIndex((n) => n.id === op.nodeId)
-      if (idx === -1) {
-        continue
-      }
-
-      const node = next[idx]
-      if (!node || !isInlineNodeWithEditableText(node)) {
-        continue
-      }
-
-      const before = node.text.slice(0, op.offset)
-      const after = node.text.slice(op.offset + op.length)
-
-      next[idx] = {
-        ...node,
-        text: before + after,
-        updatedAt: new Date(),
-      }
-    } else if (op.__type === 'insert_inline_node') {
-      next.splice(op.index, 0, op.node)
-    }
-  }
-
-  return coalesceInlineNodes(next)
-}
-
 /**
  * Inline nodes that move to the tail block when splitting a cursor.
  * Used by operations emitters to populate {@link SplitBlockOp} tailSnapshot field for undo.
@@ -1137,30 +1092,32 @@ export interface OperationEngineAutolinkConfig {
  * It allows to handle inline composition with mentions and slash command
  */
 export class OperationsEngine {
-  /** Marks ops builder */
+  /** Marks ops builder. */
   readonly #marksOpsBuilder: MarksOpsBuilder
 
-  /** Typed char ops builder */
+  /** Typed char ops builder. */
   readonly #typedCharOpsBuilder: TypedCharOpsBuilder
+
+  /** Paste plain text ops builder. */
+  readonly #pastePlainTextOpsBuilder: PastePlainTextOpsBuilder
 
   /** Grapheme offset caret instance. */
   readonly #graphemeOffsetCaret: GraphemeOffsetCaret
 
-  /** Configuration for autolink detection. */
-  readonly #autolinkConfig: OperationEngineAutolinkConfig
-
   constructor(options: OperationsEngineOptions) {
-    this.#marksOpsBuilder = new MarksOpsBuilder()
+    this.#graphemeOffsetCaret = new GraphemeOffsetCaret({
+      locales: options.locales,
+    })
 
+    this.#marksOpsBuilder = new MarksOpsBuilder()
     this.#typedCharOpsBuilder = new TypedCharOpsBuilder({
       inlineCommandTrigger: options.inlineCommandTrigger,
       mentions: options.mentions,
     })
-
-    this.#graphemeOffsetCaret = new GraphemeOffsetCaret({
-      locales: options.locales,
+    this.#pastePlainTextOpsBuilder = new PastePlainTextOpsBuilder({
+      autolink: options.autolink,
+      graphemeOffsetCaret: this.#graphemeOffsetCaret,
     })
-    this.#autolinkConfig = options.autolink
   }
 
   // --- Core engine ─────────────────────────────────────────---------
@@ -1403,180 +1360,13 @@ export class OperationsEngine {
     return this.#typedCharOpsBuilder.build(context, { char })
   }
 
-  #buildPasteInlineSliceOps(
-    context: EditorContext,
-    cursor: TextCursor,
-    blockId: BlockId,
-    nodeIndex: number,
-    node: InlineNodeWithEditableText,
-    sliceNodes: InlineNode[],
-  ): ComposingOpsIntent | null {
-    if (sliceNodes.length === 0) {
-      return null
-    }
-
-    const block = getBlockWithInlineContent(context.state, blockId)
-    const after = node.text.slice(cursor.offset)
-
-    const ops: Operation[] = []
-
-    if (after.length > 0) {
-      ops.push({
-        __type: 'delete_text',
-        blockId,
-        length: after.length,
-        nodeId: node.id,
-        offset: cursor.offset,
-        snapshot: { marks: node.marks, text: after },
-      })
-    }
-
-    let insertIndex = nodeIndex + 1
-    for (const sliceNode of sliceNodes) {
-      ops.push({
-        __type: 'insert_inline_node',
-        blockId,
-        index: insertIndex,
-        node: sliceNode,
-      })
-      insertIndex += 1
-    }
-
-    const pastedLength = sliceNodes.reduce(
-      (sum, n) => sum + getInlineNodeTextLength(n),
-      0,
-    )
-
-    const startLinear = getLinearOffsetInBlock(block, cursor)
-    const targetLinear =
-      after.length > 0 ? startLinear + pastedLength : startLinear + pastedLength
-
-    const previewContent = previewInlineContentAfterPasteSliceOps(
-      block.content,
-      ops,
-      blockId,
-    )
-
-    const previewBlock: BlockWithInlineContent = {
-      ...block,
-      content: previewContent,
-    }
-
-    const nextAnchor = cursorFromLinearOffsetInBlock(
-      blockId,
-      previewBlock,
-      targetLinear,
-      (text, offset) =>
-        this.#graphemeOffsetCaret.snapOffsetToBoundary(text, offset),
-    )
-
-    ops.push({
-      __type: 'set_selection',
-      next: createCursor(nextAnchor),
-      prev: context.selection,
-    })
-    return { label: 'past-inline-slice', ops }
-  }
-
-  /** Builds operations for a pasted line. */
-  #buildPasteLineOps(
-    context: EditorContext,
-    /** Collapsed cursor anchor for the pending edit. */
-    cursor: TextCursor,
-    /** The block id to paste the line into. */
-    blockId: BlockId,
-    /** The node index in the block. */
-    nodeIndex: number,
-    /** The node to paste the line into. */
-    node: InlineNodeWithEditableText,
-    /** The line to paste. */
-    line: string,
-  ): ComposingOpsIntent | null {
-    /** We don't want to execute the pipeline for an empty line. */
-    if (line.length <= 0) {
-      return null
-    }
-
-    const hasLinks = this.#autolinkConfig.enabled && plainTextHasLinks(line)
-    /**
-     * 1️⃣ First case: When pasting a line without links,
-     * we can insert the text directly into the node and takes always the node's marks.
-     */
-    if (!hasLinks) {
-      const ops: Operation[] = [
-        {
-          __type: 'insert_text',
-          blockId,
-          marks: node.marks,
-          nodeId: node.id,
-          offset: cursor.offset,
-          text: line,
-        },
-        {
-          __type: 'set_selection',
-          next: createCursor({
-            blockId,
-            nodeId: node.id,
-            offset: cursor.offset + line.length,
-          }),
-          prev: context.selection,
-        },
-      ]
-
-      return { label: 'past-text', ops }
-    }
-
-    const sliced = plainTextToEditableTextNodes(line, node.marks)
-    return this.#buildPasteInlineSliceOps(
-      context,
-      cursor,
-      blockId,
-      nodeIndex,
-      node,
-      sliced,
-    )
-  }
-
-  /** Builds operations for a pasted plain text.*/
+  /** Builds operations for a pasted plain text. */
   buildPlainTextPasteOps(
     context: EditorContext,
-    /** Collapsed cursor anchor for the pending edit. */
-    cursor: TextCursor,
-    /** The plain text to paste. */
-    plain: string,
-  ): ComposingOpsIntent | null {
-    /** We don't want to execute the pipeline for an empty text. */
-    if (plain.length <= 0) {
-      return null
-    }
-
-    const { state } = context
-
-    const block = getBlockWithInlineContent(state, cursor.blockId)
-    const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
-    if (!found || !isInlineNodeWithEditableText(found.node)) {
-      buildError(
-        `Node ${cursor.nodeId} not found in block ${block.id}`,
-        'OperationsEngine/buildPlainTextPasteOps',
-      )
-    }
-
-    const lines = splitPlainText(plain)
-    if (lines.length === 1) {
-      const [line] = lines as [string]
-
-      return this.#buildPasteLineOps(
-        context,
-        cursor,
-        block.id,
-        found.index,
-        found.node,
-        line,
-      )
-    }
-
-    // @todo: handle past for multi lines
-    return null
+    /** The plain text data to paste. */
+    data: TextPlainData,
+  ): BuilderOpsIntent | null {
+    return this.#pastePlainTextOpsBuilder.build(context, { data })
   }
 
   /** Merges the current block into the previous block when backspacing at block start. */

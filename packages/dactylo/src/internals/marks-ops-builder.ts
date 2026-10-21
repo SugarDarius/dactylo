@@ -23,12 +23,12 @@ import type {
 import { isCursorSelection } from './selection'
 import type { RangeSelection } from './selection'
 
-/** Situation of a marks operation when there is no selection. */
+/** Situation with no selection. */
 export interface MarksOpNoSelectionSituation {
   readonly kind: 'no-selection'
 }
 
-/** Situation of a marks operation when there is a cursor selection. */
+/** Situation with a cursor selection. */
 export interface MarksOpCursorSelectionSituation {
   readonly kind: 'cursor-selection'
 
@@ -36,7 +36,7 @@ export interface MarksOpCursorSelectionSituation {
   readonly block: BlockWithInlineContent
 }
 
-/** Situation of a marks operation when there is a range selection. */
+/** Situation with a range selection. */
 export interface MarksOpRangeSelectionSituation {
   readonly kind: 'range-selection'
 
@@ -57,7 +57,7 @@ export interface MarksOpInput {
 }
 
 /** Marks operation rule. */
-export type MarksOpRule = OperationRule<MarksOpSituation, MarksOpInput>
+export type MarksOpRule = OperationRule<MarksOpSituation, MarksOpInput, unknown>
 
 /** Rules for cursor selection. */
 export const cursorRules: MarksOpRule[] = [
@@ -230,7 +230,13 @@ export class MarksOpsBuilder implements OperationsBuilder<
     const rules = isCursorKind ? cursorRules : rangeRules
 
     /** For marks operations, by design we can only match one rule. */
-    const match = iterRules(rules, context, situation).next()
+    const match = iterRules({
+      context,
+      input,
+      resources: null,
+      rules,
+      situation,
+    }).next()
     if (match.done) {
       warn(
         'No rule applied for the given situation and input.',
@@ -240,7 +246,7 @@ export class MarksOpsBuilder implements OperationsBuilder<
     }
 
     const build = match.value
-    const ops = build({ context, input, situation })
+    const ops = build({ context, input, resources: null, situation })
 
     if (ops === null) {
       warn(

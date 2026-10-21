@@ -59,69 +59,6 @@ export interface BuilderOpsIntent {
   readonly skipHistory?: true
 }
 
-// --- Core -─────────────────────────────────────────---------------
-
-/** Rule describing a list of operations to apply to the document. */
-export interface OperationRule<S, I> {
-  /** Name given to the operation rule. */
-  readonly name: string
-
-  /**
-   * Determines whether the operation rule should be applied
-   * based on the {@link EditorContext}, and given situation.
-   */
-  readonly when: (params: { context: EditorContext; situation: S }) => boolean
-
-  /**
-   * Builds a list of operation to apply to the document
-   * based on the {@link EditorContext}, given situation, and input.
-   */
-  readonly build: (params: {
-    context: EditorContext
-    situation: S
-    input: I
-  }) => Operation[] | null
-}
-
-/**
- * Iterates over the rules that should be applied to the given situation and input..
- * @yields {(context: EditorContext, situation: S, input: I) => Operation[] | null} The build function for the rule.
- */
-export function* iterRules<S, I>(
-  rules: OperationRule<S, I>[],
-  context: EditorContext,
-  situation: S,
-): Generator<
-  (params: {
-    context: EditorContext
-    situation: S
-    input: I
-  }) => Operation[] | null
-> {
-  for (const rule of rules) {
-    if (rule.when({ context, situation })) {
-      yield rule.build
-    }
-  }
-}
-
-/** Shared interface to implement by operation builders. */
-export interface OperationsBuilder<S, I> {
-  /**
-   * Describes the situation of the operation builder.
-   * based on the given {@link EditorContext}.
-   */
-  readonly describe: (context: EditorContext) => S
-
-  /**
-   * Builds the output for the {@link EditorContext} and given input.
-   * Returns `null` when no output should be produced.
-   */
-  readonly build: (context: EditorContext, input: I) => BuilderOpsIntent | null
-}
-
-// --- Config ────────────────────────────────────────---------------
-
 /** Configuration for mentions. */
 export interface OperationBuilderMentionsConfig {
   /** Whether to enable mentions. */
@@ -138,6 +75,83 @@ export interface OperationBuilderInlineCommandTriggerConfig {
 
   /** The character to use for inline command trigger. */
   readonly character: string
+}
+
+/** Configuration for autolink detection. */
+export interface OperationBuilderAutolinkConfig {
+  /** Whether to enable autolink detection. */
+  readonly enabled: boolean
+}
+
+// --- Core -─────────────────────────────────────────---------------
+
+/** Rule describing a list of operations to apply to the document. */
+export interface OperationRule<S, I, R> {
+  /** Name given to the operation rule. */
+  readonly name: string
+
+  /**
+   * Determines whether the operation rule should be applied
+   * based on the {@link EditorContext}, and given situation.
+   */
+  readonly when: (params: {
+    context: EditorContext
+    situation: S
+    input: I
+    resources: R
+  }) => boolean
+
+  /**
+   * Builds a list of operation to apply to the document
+   * based on the {@link EditorContext}, given situation, and input.
+   */
+  readonly build: (params: {
+    context: EditorContext
+    situation: S
+    input: I
+    resources: R
+  }) => Operation[] | null
+}
+
+/**
+ * Iterates over the rules that should be applied to the given situation and input..
+ * @yields {(params: { context: EditorContext, situation: S, input: I}) => Operation[] | null} The build function for the rule.
+ */
+export function* iterRules<S, I, R>(params: {
+  rules: OperationRule<S, I, R>[]
+  context: EditorContext
+  situation: S
+  input: I
+  resources: R
+}): Generator<
+  (params: {
+    context: EditorContext
+    situation: S
+    input: I
+    resources: R
+  }) => Operation[] | null
+> {
+  const { rules, ...rest } = params
+  for (const rule of rules) {
+    if (rule.when({ ...rest })) {
+      yield rule.build
+    }
+  }
+}
+
+/** Shared interface to implement by operation builders. */
+export interface OperationsBuilder<S, I> {
+  /**
+   * Describes the situation of the operation builder.
+   * based on the given {@link EditorContext}.
+   */
+  readonly describe: (context: EditorContext, input: I) => S
+
+  /**
+   * Builds the output for the {@link EditorContext} and given input.
+   * Returns `null` when no output should be produced.
+   */
+  readonly build: (context: EditorContext, input: I) => BuilderOpsIntent | null
 }
 
 // --- Builders & Helpers ─────────────────────────────---------------

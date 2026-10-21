@@ -43,12 +43,11 @@ import {
 } from './selection'
 import type { Selection, RangeSelection, TextCursor } from './selection'
 
-/** Situation of a typed char operation when there is no selection. */
+/** Situation with no selection. */
 export interface TypedCharOpNoSelectionSituation {
   readonly kind: 'no-selection'
 }
 
-/** Situation of a typed char operation when there is a cursor selection. */
 export interface TypedCharOpCursorSelectionSituation {
   readonly kind: 'cursor-selection'
 
@@ -65,7 +64,7 @@ export interface TypedCharOpCursorSelectionSituation {
   readonly index: number
 }
 
-/** Situation of a typed char operation when there is a range selection. */
+/** Situation with a range selection. */
 export interface TypedCharOpRangeSelectionSituation {
   readonly kind: 'range-selection'
 
@@ -115,7 +114,8 @@ export interface TypedCharOpInput {
 /** Typed char operation rule. */
 export type TypedCharOpRule = OperationRule<
   TypedCharOpSituation,
-  TypedCharOpInput
+  TypedCharOpInput,
+  unknown
 >
 
 /**
@@ -769,6 +769,7 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
    *  - `slash_command_character` is typed → manage inline composition for slash commands
    *  -  others chars are typed → insert the char and continue typing
    */
+  // @todo: transform this into rules
   #complete(
     ops: Operation[],
     char: string,
@@ -832,7 +833,13 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
     const rules = isCursorKind ? cursorRules : rangeRules
 
     /** For typed char operations, by design we can only match one rule. */
-    const match = iterRules(rules, context, situation).next()
+    const match = iterRules({
+      context,
+      input,
+      resources: null,
+      rules,
+      situation,
+    }).next()
     if (match.done) {
       warn(
         'No rule applied for the given situation and input.',
@@ -842,7 +849,7 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
     }
 
     const build = match.value
-    const ops = build({ context, input, situation })
+    const ops = build({ context, input, resources: null, situation })
 
     if (ops === null) {
       warn(

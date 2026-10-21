@@ -727,54 +727,42 @@ export class TransactionPipeline {
 
       case 'insertReplacementText':
       case 'insertFromPaste': {
-        // @todo: handle `insertReplacementText` as it gets data from transfer
-        // @todo: handle data types of pastes
-        if (isCursorSelection(this.#context.selection)) {
-          /** In any case we prevent native browser behavior as we want full control over paste. */
-          prevent()
+        /** In any case we prevent native browser behavior as we want full control over paste. */
+        prevent()
 
-          const transferredData = readTransferredData(event.dataTransfer)
-          if (transferredData !== null) {
-            const type = transferredData.__type
-            switch (type) {
-              case 'text/plain': {
-                const intent = this.#operationsEngine.buildPlainTextPasteOps(
-                  this.#context,
-                  this.#context.selection.anchor,
-                  transferredData.text,
-                )
-                /** 👉🏻 See {@link buildPlainTextPasteOps} jsdoc on why it can return `null` */
-                if (intent === null) {
-                  return false
-                }
-
-                const { ops, label, coalesce, skipHistory } = intent
-                this.#commit(ops, {
-                  coalesce,
-                  label: transactionPolicyLabel('input', 'digest-event', label),
-                  pushToHistory: !skipHistory,
-                  source: 'user',
-                })
-
-                return true
-              }
-              case 'text/html':
-              case 'dactylo': {
-                warn(
-                  `\`${type}\` clipboard data type is not is not implemented yet.`,
-                )
+        const transferredData = readTransferredData(event.dataTransfer)
+        if (transferredData !== null) {
+          const type = transferredData.__type
+          switch (type) {
+            case 'text/plain': {
+              const intent = this.#operationsEngine.buildPlainTextPasteOps(
+                this.#context,
+                transferredData,
+              )
+              if (intent === null) {
                 return false
               }
-              default: {
-                return false
-              }
+
+              const { ops, label, coalesce, skipHistory } = intent
+              this.#commit(ops, {
+                coalesce,
+                label: transactionPolicyLabel('input', 'digest-event', label),
+                pushToHistory: !skipHistory,
+                source: 'user',
+              })
+
+              return true
+            }
+            case 'text/html':
+            case 'dactylo': {
+              warn(`Clipboard data type \`${type}\` is not implemented yet.`)
+              return false
+            }
+            default: {
+              return false
             }
           }
-
-          return false
         }
-
-        // @todo: handle range selection
 
         return false
       }
