@@ -719,12 +719,6 @@ export class TransactionPipeline {
         return false
       }
 
-      // @todo: handle clipboard input types `deleteFromCut`
-      case 'deleteFromCut': {
-        prevent()
-        return false
-      }
-
       /** Using `mod+v` or paste command to paste content from clipboard. */
       case 'insertReplacementText':
       case 'insertFromPaste': {
@@ -810,7 +804,11 @@ export class TransactionPipeline {
         return true
       }
 
-      /** Using `Backspace` to delete content backward. */
+      /**
+       *  Using `mod+x` or cut command to cut content from clipboard.
+       * - Using `Backspace` to delete content backward.
+       */
+      case 'deleteByCut':
       case 'deleteContentBackward': {
         /** In any case we prevent native browser behavior as we want full control over backspace. */
         prevent()
@@ -918,6 +916,7 @@ export class TransactionPipeline {
   digestKeydownEvent(event: KeyboardEvent): boolean {
     const prevent = () => {
       event.preventDefault()
+      event.stopPropagation()
     }
 
     const shortcut = detectPlatformShortcut(event)
