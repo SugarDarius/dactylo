@@ -219,7 +219,7 @@ export function isMarkActiveInContext(
       return false
     }
 
-    return spans.every((span) => {
+    return spans.some((span) => {
       const block = getBlockWithInlineContent(context.state, span.blockId)
       const found = findNodeInBlockWithInlineContent(block, span.nodeId)
 
