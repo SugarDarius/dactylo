@@ -14,7 +14,7 @@ import type { MarkKey } from './marks'
 import type { Operation, InsertBlockOpPosition } from './operations'
 import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
-import { isCursorSelection, isSelectionActive } from './selection'
+import { isSelectionActive } from './selection'
 import type { Selection } from './selection'
 import { warnHistoryInputType } from './warnings'
 
@@ -725,6 +725,7 @@ export class TransactionPipeline {
         return false
       }
 
+      /** Using `mod+v` or paste command to paste content from clipboard. */
       case 'insertReplacementText':
       case 'insertFromPaste': {
         /** In any case we prevent native browser behavior as we want full control over paste. */
@@ -787,31 +788,29 @@ export class TransactionPipeline {
 
         return true
       }
+
+      /** `Enter` is considered as a hard break. */
       case 'insertParagraph': {
         /** In any case we prevent native browser behavior as we want full control over paragraph breaks. */
         prevent()
-        /** `Enter` solo is considered as a hard break. */
-        if (isCursorSelection(this.#context.selection)) {
-          const { ops, label, coalesce } =
-            this.#operationsEngine.buildHardBreakOps(
-              this.#context,
-              this.#context.selection.anchor,
-            )
 
-          this.#commit(ops, {
-            coalesce,
-            label: transactionPolicyLabel('input', 'digest-event', label),
-            pushToHistory: true,
-            source: 'user',
-          })
-
-          return true
+        const intent = this.#operationsEngine.buildHardBreakOps(this.#context)
+        if (intent === null) {
+          return false
         }
 
-        // @todo: handle range selection
+        const { ops, label } = intent
 
-        return false
+        this.#commit(ops, {
+          label: transactionPolicyLabel('input', 'digest-event', label),
+          pushToHistory: true,
+          source: 'user',
+        })
+
+        return true
       }
+
+      /** Using `Backspace` to delete content backward. */
       case 'deleteContentBackward': {
         /** In any case we prevent native browser behavior as we want full control over backspace. */
         prevent()
@@ -836,6 +835,7 @@ export class TransactionPipeline {
         return true
       }
 
+      /** Typing any character. */
       case 'insertText': {
         /** In any case we prevent native browser behavior as we want full control over text input. */
         prevent()

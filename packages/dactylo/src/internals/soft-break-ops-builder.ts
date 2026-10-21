@@ -79,6 +79,10 @@ export type SoftBreakOpsRule = OperationRule<
 /** Rules for cursor selection. */
 export const cursorRules: SoftBreakOpsRule[] = [
   {
+    /**
+     * 💡 Selection is a cursor and it's at block end.
+     * 🎯 Inserts a new line break node after the current node
+     * and a new text node with empty text.      */
     build: ({ context, situation }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
@@ -128,6 +132,10 @@ export const cursorRules: SoftBreakOpsRule[] = [
     },
   },
   {
+    /**
+     * 💡 Selection is a cursor and it's not at block end.
+     * 🎯 Splits the node at the cursor position.
+     */
     build: ({ context, situation }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
@@ -300,7 +308,7 @@ export class SoftBreakOpsBuilder implements OperationsBuilder<
     if (compareTextCursors(state, anchor, focus) >= 0) {
       rangeCollapsedError(
         'Range selection is collapsed; expected anchor to precede focus.',
-        'MarksOpsBuilder/#describe',
+        'SoftBreakOpsBuilder/#describe',
       )
     }
 

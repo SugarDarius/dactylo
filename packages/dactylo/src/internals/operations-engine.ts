@@ -1,5 +1,4 @@
 import {
-  createParagraphBlockAfter,
   findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
   sortBlockOrder,
@@ -38,6 +37,7 @@ import {
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import { GraphemeOffsetCaret } from './grapheme'
+import { HardBreakOpsBuilder } from './hard-break-ops-builder'
 import type { ArrowDirection } from './keyboard'
 import { applyNormalizedMarks, isMarksEqual } from './marks'
 import type { MarkKey, Marks } from './marks'
@@ -80,8 +80,6 @@ import {
   areSelectionsEqual,
   createCursor,
   createRange,
-  cursorAtBlockStart,
-  isCursorAtBlockEnd,
   isCursorSelection,
   isRangeSelection,
   isSelectionActive,
@@ -862,98 +860,6 @@ export function previewInlineContentAfterTrimOps(
   return next
 }
 
-/**
- * Inline nodes that move to the tail block when splitting a cursor.
- * Used by operations emitters to populate {@link SplitBlockOp} tailSnapshot field for undo.
- *
- * It mirrors tail extraction in {@link applySplitBlockOp}.
- */
-export function computeSplitTailSnapshot(
-  block: BlockWithInlineContent,
-  atNode: { node: InlineNode; index: number },
-  atOffset: number,
-): InlineNode[] {
-  const { node, index } = atNode
-
-  const type = node.__type
-  switch (type) {
-    case 'text': {
-      const tailText = node.text.slice(atOffset)
-      return [
-        createTextNode({
-          marks: node.marks,
-          metadata: node.metadata,
-          text: tailText,
-        }),
-        ...block.content.slice(index + 1),
-      ]
-    }
-    case 'link': {
-      const tailText = node.text.slice(atOffset)
-      return [
-        createLinkNode({
-          marks: node.marks,
-          metadata: node.metadata,
-          text: tailText,
-          url: node.url,
-        }),
-        ...block.content.slice(index + 1),
-      ]
-    }
-    case 'line_break':
-    case 'mention': {
-      return buildError(
-        `Split tail is not allowed on ${type} node`,
-        'OperationsEngine/computeSplitTailSnapshot',
-      )
-    }
-    default: {
-      assertNever(type, {
-        hint: 'OperationsEngine/computeSplitTailSnapshot',
-      })
-    }
-  }
-}
-
-/**
- * Insertion index for {@link MergeBlocksOp} when undoing this split.
- * It Mirrors head extraction in {@link applySplitBlockOp}.
- */
-export function computeSplitMergeAtIndex(
-  block: BlockWithInlineContent,
-  atNode: { node: InlineNode; index: number },
-  atOffset: number,
-): number {
-  const { node, index } = atNode
-  const { content } = block
-
-  const headNodes: InlineNode[] = content.slice(0, index)
-
-  const type = node.__type
-  switch (type) {
-    case 'text':
-    case 'link': {
-      const headText = node.text.slice(0, atOffset)
-      if (headText.length > 0 || headNodes.length === 0) {
-        headNodes.push({ ...node, text: headText })
-      }
-      return coalesceInlineNodes(headNodes).length
-    }
-    case 'line_break':
-    case 'mention': {
-      return buildError(
-        `Split head is not allowed on ${type} node`,
-        'OperationsEngine/computeSplitMergeAtIndex',
-      )
-    }
-    default: {
-      assertNever(type, {
-        hint: 'OperationsEngine/computeSplitMergeAtIndex',
-      })
-    }
-  }
-}
-
 /** Computes the tail node for a sliced inline node with editable text. */
 export function computeTailInlineNode(
   node: InlineNodeWithEditableText,
@@ -1104,6 +1010,9 @@ export class OperationsEngine {
   /** Soft break ops builder. */
   readonly #softBreakOpsBuilder: SoftBreakOpsBuilder
 
+  /** Hard break ops builder. */
+  readonly #hardBreakOpsBuilder: HardBreakOpsBuilder
+
   /** Grapheme offset caret instance. */
   readonly #graphemeOffsetCaret: GraphemeOffsetCaret
 
@@ -1122,6 +1031,7 @@ export class OperationsEngine {
       graphemeOffsetCaret: this.#graphemeOffsetCaret,
     })
     this.#softBreakOpsBuilder = new SoftBreakOpsBuilder()
+    this.#hardBreakOpsBuilder = new HardBreakOpsBuilder()
   }
 
   // --- Core engine ─────────────────────────────────────────---------
@@ -2425,69 +2335,8 @@ export class OperationsEngine {
   }
 
   /** Builds operations when user presses `Enter` key as a hard break. */
-  buildHardBreakOps(
-    context: EditorContext,
-    cursor: TextCursor,
-  ): ComposingOpsIntent {
-    const block = getBlockWithInlineContent(context.state, cursor.blockId)
-
-    const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
-    if (!found || !isInlineNodeWithEditableText(found.node)) {
-      buildError(
-        `Node ${cursor.nodeId} not found in block ${block.id}`,
-        'OperationsEngine/buildHardBreakOps',
-      )
-    }
-
-    const isBlockEnd = isCursorAtBlockEnd(cursor, block)
-    /** At block end we insert a new block after the current one. */
-    if (isBlockEnd) {
-      const insertedBlock = createParagraphBlockAfter(block, [
-        createTextNode({ marks: context.activeMarks, text: '' }),
-      ])
-      const ops: Operation[] = [
-        {
-          __type: 'insert_block',
-          afterBlockId: block.id,
-          block: insertedBlock,
-        },
-        {
-          __type: 'set_selection',
-          next: cursorAtBlockStart(insertedBlock.id, insertedBlock),
-          prev: context.selection,
-        },
-      ]
-
-      return { label: 'insert-block', ops }
-    }
-
-    /** Otherwise we split the block at the cursor position. */
-    const atIndex = computeSplitMergeAtIndex(block, found, cursor.offset)
-    const tailSnapshot = computeSplitTailSnapshot(block, found, cursor.offset)
-    const insertedBlock = createParagraphBlockAfter(
-      block,
-      tailSnapshot,
-      block.metadata,
-    )
-
-    const ops: Operation[] = [
-      {
-        __type: 'split_block',
-        atIndex,
-        atNodeId: cursor.nodeId,
-        atOffset: cursor.offset,
-        blockId: block.id,
-        newBlock: insertedBlock,
-        tailSnapshot,
-      },
-      {
-        __type: 'set_selection',
-        next: cursorAtBlockStart(insertedBlock.id, insertedBlock),
-        prev: context.selection,
-      },
-    ]
-
-    return { label: 'split-block', ops }
+  buildHardBreakOps(context: EditorContext): BuilderOpsIntent | null {
+    return this.#hardBreakOpsBuilder.build(context)
   }
 
   /** Builds operations when user presses `shift+Enter` key as a soft break. */

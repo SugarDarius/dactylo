@@ -7,6 +7,7 @@ import { isMarksEqual } from './marks'
 import type { Marks } from './marks'
 import {
   coalesceInlineNodes,
+  createLinkNode,
   createTextNode,
   isCanonicalEmptyInlineContent,
   isInlineContentTextEmpty,
@@ -21,6 +22,7 @@ import type {
 import type { Operation } from './operations'
 import { createCursor } from './selection'
 import type { TextCursor, RangeSelection } from './selection'
+import { assertNever } from './utils'
 
 // --- Errors -───────────────────────────────────────---------------
 
@@ -801,4 +803,82 @@ export function buildDeleteBlocksBetweenOps(
   }
 
   return ops
+}
+
+/**
+ * Insertion index for {@link MergeBlocksOp} when undoing this split.
+ * It Mirrors head extraction in {@link applySplitBlockOp}.
+ */
+export function computeSplitMergeAtIndex(
+  block: BlockWithInlineContent,
+  atNode: { node: InlineNodeWithEditableText; index: number },
+  atOffset: number,
+): number {
+  const { node, index } = atNode
+  const { content } = block
+
+  const headNodes: InlineNode[] = content.slice(0, index)
+
+  const type = node.__type
+  switch (type) {
+    case 'text':
+    case 'link': {
+      const headText = node.text.slice(0, atOffset)
+      if (headText.length > 0 || headNodes.length === 0) {
+        headNodes.push({ ...node, text: headText })
+      }
+      return coalesceInlineNodes(headNodes).length
+    }
+    default: {
+      assertNever(type, {
+        hint: 'OperationsBuilder/computeSplitMergeAtIndex',
+      })
+    }
+  }
+}
+
+/**
+ * Inline nodes that move to the tail block when splitting a cursor.
+ * Used by operations emitters to populate {@link SplitBlockOp} tailSnapshot field for undo.
+ *
+ * It mirrors tail extraction in {@link applySplitBlockOp}.
+ */
+export function computeSplitTailSnapshot(
+  block: BlockWithInlineContent,
+  atNode: { node: InlineNodeWithEditableText; index: number },
+  atOffset: number,
+): InlineNode[] {
+  const { node, index } = atNode
+
+  const type = node.__type
+  switch (type) {
+    case 'text': {
+      const tailText = node.text.slice(atOffset)
+      return [
+        createTextNode({
+          marks: node.marks,
+          metadata: node.metadata,
+          text: tailText,
+        }),
+        ...block.content.slice(index + 1),
+      ]
+    }
+    case 'link': {
+      const tailText = node.text.slice(atOffset)
+      return [
+        createLinkNode({
+          marks: node.marks,
+          metadata: node.metadata,
+          text: tailText,
+          url: node.url,
+        }),
+        ...block.content.slice(index + 1),
+      ]
+    }
+    default: {
+      assertNever(type, {
+        hint: 'OperationsBuilder/computeSplitTailSnapshot',
+      })
+    }
+  }
 }

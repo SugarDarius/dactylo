@@ -372,7 +372,7 @@ export class PastePlainTextOpsBuilder implements OperationsBuilder<
     if (compareTextCursors(state, anchor, focus) >= 0) {
       rangeCollapsedError(
         'Range selection is collapsed; expected anchor to precede focus.',
-        'MarksOpsBuilder/#describe',
+        'PastePlainTextOpsBuilder/#describe',
       )
     }
 
