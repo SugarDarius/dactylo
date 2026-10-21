@@ -9,10 +9,13 @@ import {
 } from './document'
 import type { EditorContext } from './editor-context'
 import type { GraphemeOffsetCaret } from './grapheme'
+import { isMarksEqual } from './marks'
 import {
   coalesceInlineNodes,
+  createTextNode,
   getInlineNodeTextLength,
   isInlineNodeWithEditableText,
+  isLinkNode,
 } from './nodes'
 import type { InlineNode, InlineNodeWithEditableText } from './nodes'
 import type { Operation } from './operations'
@@ -108,6 +111,29 @@ export function previewInlineContentAfterPasteSliceOps(
 
   for (const op of ops) {
     if (op.blockId !== blockId) {
+      continue
+    }
+
+    if (op.__type === 'insert_text') {
+      const idx = next.findIndex((n) => n.id === op.nodeId)
+      if (idx === -1) {
+        continue
+      }
+
+      const current = next[idx]
+      if (!current || !isInlineNodeWithEditableText(current)) {
+        continue
+      }
+
+      const left = current.text.slice(0, op.offset)
+      const right = current.text.slice(op.offset)
+
+      next[idx] = {
+        ...current,
+        text: left + op.text + right,
+        updatedAt: new Date(),
+      }
+
       continue
     }
 
@@ -207,12 +233,20 @@ export const cursorRules: PastePlainTextOpsRule[] = [
       const [line] = lines as [string]
       const { block, node, index, at } = situation
 
+      const before = node.text.slice(0, at.offset)
+      const after = node.text.slice(at.offset)
+
       const sliced = plainTextToEditableTextNodes(line, node.marks)
       if (sliced.length === 0) {
         return null
       }
 
-      const after = node.text.slice(at.offset)
+      const lastSlice = sliced[sliced.length - 1]
+      const shouldAddTrailing = lastSlice && isLinkNode(lastSlice)
+      if (shouldAddTrailing) {
+        sliced.push(createTextNode({ marks: node.marks, text: ' ' }))
+      }
+
       const ops: Operation[] = []
 
       if (after.length > 0) {
@@ -226,15 +260,54 @@ export const cursorRules: PastePlainTextOpsRule[] = [
         })
       }
 
-      let insertIndex = index + 1
-      for (const sliceNode of sliced) {
+      let nextInsertIndex = before.length > 0 ? index + 1 : index
+      for (let i = 0; i < sliced.length; i += 1) {
+        const sliceNode = sliced[i]
+        if (!sliceNode) {
+          continue
+        }
+
+        const mergeLeadingTextIntoCaretNode =
+          i === 0 &&
+          sliceNode.__type === 'text' &&
+          node.__type === 'text' &&
+          isMarksEqual(sliceNode.marks, node.marks)
+
+        if (mergeLeadingTextIntoCaretNode) {
+          ops.push({
+            __type: 'insert_text',
+            blockId: block.id,
+            marks: node.marks,
+            nodeId: node.id,
+            offset: at.offset,
+            text: sliceNode.text,
+          })
+          // New siblings always go after the caret node once it holds pasted text.
+          nextInsertIndex = index + 1
+          continue
+        }
+
         ops.push({
           __type: 'insert_inline_node',
           blockId: block.id,
-          index: insertIndex,
+          index: nextInsertIndex,
           node: sliceNode,
         })
-        insertIndex += 1
+
+        nextInsertIndex += 1
+      }
+
+      if (after.length > 0) {
+        ops.push({
+          __type: 'insert_inline_node',
+          blockId: block.id,
+          index: nextInsertIndex,
+          node: createTextNode({
+            marks: node.marks,
+            metadata: node.metadata,
+            text: after,
+          }),
+        })
       }
 
       const pastedLength = sliced.reduce(
@@ -243,10 +316,7 @@ export const cursorRules: PastePlainTextOpsRule[] = [
       )
 
       const startLinear = getLinearOffsetInBlock(block, at)
-      const targetLinear =
-        after.length > 0
-          ? startLinear + pastedLength
-          : startLinear + pastedLength
+      const targetLinear = startLinear + pastedLength
 
       const previewContent = previewInlineContentAfterPasteSliceOps(
         block.content,

@@ -254,7 +254,7 @@ export function coalesceInlineNodes(
 
   for (const node of nodes) {
     /** We don't coalesce links and mentions, only text nodes. */
-    if (node.__type !== 'text') {
+    if (!isTextNode(node)) {
       if (pending) {
         result.push(pending)
         pending = null

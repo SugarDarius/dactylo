@@ -187,7 +187,6 @@ export function plainTextToEditableTextNodes(
           text: segment.text,
           url: { href: segment.href, title: segment.title },
         }),
-        createTextNode({ marks, text: '' }),
       )
     }
   }
