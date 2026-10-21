@@ -44,8 +44,8 @@ export function rangeCollapsedError(message: string, hint: string): never {
 
 // --- Interfaces -───────────────────────────────────---------------
 
-/** Intent for building composing operations. */
-export interface ComposingOpsIntent {
+/** Intent when building ops to send to {@link TransactionPipeline}. */
+export interface BuilderOpsIntent {
   /** The operations to apply. */
   readonly ops: Operation[]
 
@@ -70,17 +70,17 @@ export interface OperationRule<S, I> {
    * Determines whether the operation rule should be applied
    * based on the {@link EditorContext}, and given situation.
    */
-  readonly when: (context: EditorContext, situation: S) => boolean
+  readonly when: (params: { context: EditorContext; situation: S }) => boolean
 
   /**
    * Builds a list of operation to apply to the document
    * based on the {@link EditorContext}, given situation, and input.
    */
-  readonly build: (
-    context: EditorContext,
-    situation: S,
-    input: I,
-  ) => Operation[] | null
+  readonly build: (params: {
+    context: EditorContext
+    situation: S
+    input: I
+  }) => Operation[] | null
 }
 
 /**
@@ -92,17 +92,21 @@ export function* iterRules<S, I>(
   context: EditorContext,
   situation: S,
 ): Generator<
-  (context: EditorContext, situation: S, input: I) => Operation[] | null
+  (params: {
+    context: EditorContext
+    situation: S
+    input: I
+  }) => Operation[] | null
 > {
   for (const rule of rules) {
-    if (rule.when(context, situation)) {
+    if (rule.when({ context, situation })) {
       yield rule.build
     }
   }
 }
 
 /** Shared interface to implement by operation builders. */
-export interface OperationsBuilder<S, I, O> {
+export interface OperationsBuilder<S, I> {
   /**
    * Describes the situation of the operation builder.
    * based on the given {@link EditorContext}.
@@ -113,7 +117,7 @@ export interface OperationsBuilder<S, I, O> {
    * Builds the output for the {@link EditorContext} and given input.
    * Returns `null` when no output should be produced.
    */
-  readonly build: (context: EditorContext, input: I) => O | null
+  readonly build: (context: EditorContext, input: I) => BuilderOpsIntent | null
 }
 
 // --- Config ────────────────────────────────────────---------------

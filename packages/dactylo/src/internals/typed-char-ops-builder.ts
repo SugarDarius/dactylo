@@ -18,7 +18,7 @@ import {
 import type { InlineNodeWithEditableText } from './nodes'
 import type { DeleteTextOp, MergeBlocksOp, Operation } from './operations'
 import type {
-  ComposingOpsIntent,
+  BuilderOpsIntent,
   OperationBuilderInlineCommandTriggerConfig,
   OperationBuilderMentionsConfig,
   OperationRule,
@@ -206,11 +206,7 @@ export function buildInsertTypedCharWithMarkBoundaryOps(
 /** Rules for cursor selection. */
 export const cursorRules: TypedCharOpRule[] = [
   {
-    build: (
-      context: EditorContext,
-      situation: TypedCharOpSituation,
-      input: TypedCharOpInput,
-    ): Operation[] | null => {
+    build: ({ context, situation, input }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -240,10 +236,7 @@ export const cursorRules: TypedCharOpRule[] = [
       return ops
     },
     name: 'cursor/match-active-marks/insert-char',
-    when: (
-      context: EditorContext,
-      situation: TypedCharOpSituation,
-    ): boolean => {
+    when: ({ context, situation }): boolean => {
       if (situation.kind !== 'cursor-selection') {
         return false
       }
@@ -254,11 +247,7 @@ export const cursorRules: TypedCharOpRule[] = [
     },
   },
   {
-    build: (
-      context: EditorContext,
-      situation: TypedCharOpSituation,
-      input: TypedCharOpInput,
-    ): Operation[] | null => {
+    build: ({ context, situation, input }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -276,10 +265,7 @@ export const cursorRules: TypedCharOpRule[] = [
       )
     },
     name: 'cursor/mark-boundary/structural-insert-char',
-    when: (
-      context: EditorContext,
-      situation: TypedCharOpSituation,
-    ): boolean => {
+    when: ({ context, situation }): boolean => {
       if (situation.kind !== 'cursor-selection') {
         return false
       }
@@ -404,11 +390,7 @@ export const rangeRules: TypedCharOpRule[] = [
      * 🎯 Deleting the selection in-node, and insert replacement char
      * at current anchor position (no survivor join).
      */
-    build: (
-      context: EditorContext,
-      situation: TypedCharOpSituation,
-      input: TypedCharOpInput,
-    ): Operation[] | null => {
+    build: ({ context, situation, input }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-node'
@@ -463,7 +445,7 @@ export const rangeRules: TypedCharOpRule[] = [
     },
     /** Same node text/link → `delete_text` + `insert_text` + `set_selection` */
     name: 'range/same-node/delete-then-insert-char',
-    when: (_context: EditorContext, situation: TypedCharOpSituation): boolean =>
+    when: ({ situation }): boolean =>
       situation.kind === 'range-selection' &&
       situation.topology.kind === 'same-node',
   },
@@ -473,11 +455,7 @@ export const rangeRules: TypedCharOpRule[] = [
      * 🎯 Deleting the selection in-block, and insert replacement char
      * at current anchor position (no survivor join).
      */
-    build: (
-      context: EditorContext,
-      situation: TypedCharOpSituation,
-      input: TypedCharOpInput,
-    ): Operation[] | null => {
+    build: ({ context, situation, input }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-block'
@@ -515,7 +493,7 @@ export const rangeRules: TypedCharOpRule[] = [
     },
     /** Same block, multiple nodes → range delete (no head/tail) + `insert_text` at anchor. */
     name: 'range/same-block/delete-then-insert-char',
-    when: (_context: EditorContext, situation: TypedCharOpSituation): boolean =>
+    when: ({ situation }): boolean =>
       situation.kind === 'range-selection' &&
       situation.topology.kind === 'same-block',
   },
@@ -524,11 +502,7 @@ export const rangeRules: TypedCharOpRule[] = [
      * 💡 Range selection is across multiple blocks.
      * 🎯 Perform surgery with: forward trim → delete middle → backward trim → merge → insert at split.
      */
-    build: (
-      context: EditorContext,
-      situation: TypedCharOpSituation,
-      input: TypedCharOpInput,
-    ): Operation[] | null => {
+    build: ({ context, situation, input }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'cross-block'
@@ -638,7 +612,7 @@ export const rangeRules: TypedCharOpRule[] = [
     },
     /** Cross-blocks → forward trim → delete middle → backward trim → merge → insert at split */
     name: 'range/cross-block/surgery-then-insert-char',
-    when: (_context: EditorContext, situation: TypedCharOpSituation): boolean =>
+    when: ({ situation }): boolean =>
       situation.kind === 'range-selection' &&
       situation.topology.kind === 'cross-block',
   },
@@ -670,8 +644,7 @@ export interface TypedCharOpsBuilderOptions {
 /** Typed char operations builder. */
 export class TypedCharOpsBuilder implements OperationsBuilder<
   TypedCharOpSituation,
-  TypedCharOpInput,
-  ComposingOpsIntent
+  TypedCharOpInput
 > {
   /** Configuration for mentions. */
   readonly #mentionsConfig: OperationBuilderMentionsConfig
@@ -800,7 +773,7 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
     ops: Operation[],
     char: string,
     type: 'cursor' | 'range',
-  ): ComposingOpsIntent {
+  ): BuilderOpsIntent {
     const label =
       type === 'cursor' ? 'insert-char-at-cursor' : 'insert-char-at-range'
 
@@ -847,9 +820,7 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
   build(
     context: EditorContext,
     input: TypedCharOpInput,
-  ): ComposingOpsIntent | null {
-    const { char } = input
-
+  ): BuilderOpsIntent | null {
     const situation = this.describe(context)
     const { kind } = situation
 
@@ -857,7 +828,8 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
       return null
     }
 
-    const rules = kind === 'cursor-selection' ? cursorRules : rangeRules
+    const isCursorKind = kind === 'cursor-selection'
+    const rules = isCursorKind ? cursorRules : rangeRules
 
     /** For typed char operations, by design we can only match one rule. */
     const match = iterRules(rules, context, situation).next()
@@ -870,7 +842,7 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
     }
 
     const build = match.value
-    const ops = build(context, situation, { char })
+    const ops = build({ context, input, situation })
 
     if (ops === null) {
       warn(
@@ -880,10 +852,6 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
       return null
     }
 
-    return this.#complete(
-      ops,
-      char,
-      kind === 'cursor-selection' ? 'cursor' : 'range',
-    )
+    return this.#complete(ops, input.char, isCursorKind ? 'cursor' : 'range')
   }
 }

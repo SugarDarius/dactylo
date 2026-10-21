@@ -16,7 +16,6 @@ import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
 import { isCursorSelection, isSelectionActive } from './selection'
 import type { Selection } from './selection'
-import { assertNever } from './utils'
 import { warnHistoryInputType } from './warnings'
 
 /** The source of a transaction. */
@@ -641,41 +640,17 @@ export class TransactionPipeline {
       markKey,
     )
 
-    /** No-op if we don't detect any active selection. */
     if (intent === null) {
       return
     }
 
-    const { ops, kind } = intent
-    switch (kind) {
-      case 'set_active_marks': {
-        this.#commit(ops, {
-          label: transactionPolicyLabel(
-            'toggle-active-mark',
-            'on-context',
-            String(markKey),
-          ),
-          pushToHistory: false,
-          source,
-        })
-        break
-      }
-      case 'set_marks': {
-        this.#commit(ops, {
-          label: transactionPolicyLabel(
-            'toggle-mark',
-            'on-selection',
-            String(markKey),
-          ),
-          pushToHistory: true,
-          source,
-        })
-        break
-      }
-      default: {
-        assertNever(kind, { hint: 'TransactionPipeline/#toggleMark' })
-      }
-    }
+    const { ops, label, coalesce, skipHistory } = intent
+    this.#commit(ops, {
+      coalesce,
+      label: transactionPolicyLabel('marks', 'toggle', label),
+      pushToHistory: !skipHistory,
+      source,
+    })
   }
 
   // --- Composing operations ─────────────────────────────────────────
@@ -894,7 +869,6 @@ export class TransactionPipeline {
             data,
           )
 
-          /** 👉🏻 See {@link buildTypedCharOps} jsdoc on why it can return `null` */
           if (intent === null) {
             return false
           }
@@ -1017,7 +991,7 @@ export class TransactionPipeline {
 
       this.#commit(ops, {
         label: transactionPolicyLabel(
-          'input',
+          'keydown',
           'digest-event',
           `arrow-navigation-${arrowDirection}`,
         ),

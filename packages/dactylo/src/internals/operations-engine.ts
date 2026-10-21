@@ -12,7 +12,6 @@ import type {
   BlockWithoutPosKey,
 } from './blocks'
 import {
-  collectTextSpansInRange,
   compareTextCursors,
   computeInsertBlockPosKey,
   createCursorAtDocumentEnd,
@@ -39,13 +38,9 @@ import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import { GraphemeOffsetCaret } from './grapheme'
 import type { ArrowDirection } from './keyboard'
-import {
-  applyNormalizedMarks,
-  isMarkEnabled,
-  isMarksEqual,
-  toggleMarkFlag,
-} from './marks'
+import { applyNormalizedMarks, isMarksEqual } from './marks'
 import type { MarkKey, Marks } from './marks'
+import { MarksOpsBuilder } from './marks-ops-builder'
 import {
   coalesceInlineNodes,
   createLineBreakNode,
@@ -79,6 +74,7 @@ import type {
   SetSelectionOp,
   SplitBlockOp,
 } from './operations'
+import type { BuilderOpsIntent } from './operations-builder'
 import {
   plainTextHasLinks,
   plainTextToEditableTextNodes,
@@ -1141,6 +1137,9 @@ export interface OperationEngineAutolinkConfig {
  * It allows to handle inline composition with mentions and slash command
  */
 export class OperationsEngine {
+  /** Marks ops builder */
+  readonly #marksOpsBuilder: MarksOpsBuilder
+
   /** Typed char ops builder */
   readonly #typedCharOpsBuilder: TypedCharOpsBuilder
 
@@ -1151,6 +1150,8 @@ export class OperationsEngine {
   readonly #autolinkConfig: OperationEngineAutolinkConfig
 
   constructor(options: OperationsEngineOptions) {
+    this.#marksOpsBuilder = new MarksOpsBuilder()
+
     this.#typedCharOpsBuilder = new TypedCharOpsBuilder({
       inlineCommandTrigger: options.inlineCommandTrigger,
       mentions: options.mentions,
@@ -1379,140 +1380,14 @@ export class OperationsEngine {
   // --- Marks operations ─────────────────────────────────────────----
 
   /**
-   * Builds the operations to toggle a mark on or off
-   * and indicates if we should push the operation to the history stack.
-   *
-   * Returns `set_active_marks` operation when the selection is a cursor.
-   * Returns `set_marks` operation when the selection is a range.
-   * Returns `null` when the selection is null.
+   * Builds the operations to toggle a mark on or off.
+   * Returns `null` when there is no active selection or no rules were matched.
    */
   buildSetMarksOps(
     context: EditorContext,
-    markKey: MarkKey,
-  ): {
-    /** The operations to apply. */
-    ops: Operation[]
-    /** The kind of the operation. */
-    kind: 'set_active_marks' | 'set_marks'
-  } | null {
-    const { selection, state } = context
-
-    /** When we don't have any selection it's a no-op. */
-    if (selection === null) {
-      return null
-    }
-
-    /**
-     * When the selection is a cursor, we enable the active mark for the given mark key
-     * for the whole document (e.g the mark is active on typing).
-     */
-    if (isCursorSelection(selection)) {
-      const prev = context.activeMarks
-      const next = toggleMarkFlag(prev, markKey)
-
-      const { blockId, nodeId } = selection.anchor
-      const block = getBlockWithInlineContent(state, blockId)
-      const found = findNodeInBlockWithInlineContent(block, nodeId)
-
-      let copyTo: { blockId: BlockId; nodeId: NodeId } | null = null
-      if (found) {
-        const { node } = found
-        if (isInlineNodeWithEditableText(node) && node.text.length <= 0) {
-          copyTo = { blockId, nodeId }
-        }
-      }
-
-      return {
-        kind: 'set_active_marks',
-        ops: [
-          {
-            __type: 'set_active_marks',
-            activeMarks: next,
-            copyTo,
-            prevActiveMarks: prev,
-          },
-        ],
-      }
-    }
-    /**
-     * When the selection is a range, we enable the active mark for the given mark key
-     * only for the range of text nodes.
-     */
-    else if (isRangeSelection(selection)) {
-      const normalized = normalizeRange(state, selection)
-      const { anchor, focus } = normalized
-
-      /**
-       * Anchor must precede focus in document order.
-       * We cannot accept this case as it's a contract-violation
-       * because a {@link RangeSelection} is a non-empty text range.
-       */
-      if (compareTextCursors(state, anchor, focus) >= 0) {
-        rangeCollapsedError(
-          'Range selection is collapsed; expected anchor to precede focus.',
-          'OperationsEngine/buildSetMarksOps',
-        )
-      }
-
-      /**
-       * Collecting text spans must yield at least one text slice.
-       * An empty span list is also a contract-violation (collapsed range stored as `range`, stale cursors,
-       * or range or non-text-only inline nodes) - not a cue to toggle {@link EditorContext} active marks.
-       *
-       * Use only `selection.__type === 'cursor'` to toggle active marks.
-       */
-      const spans = collectTextSpansInRange(state, normalized)
-      if (spans.length <= 0) {
-        throw DactyloError.from({
-          code: 'RANGE_SELECTION_NO_TEXT_SPANS',
-          hint: 'Ensure the range covers at least one text node with non-zero length.',
-          message: 'Range selection produced no text spans.',
-        })
-      }
-
-      const enabling = spans.every((span) => {
-        const block = getBlockWithInlineContent(state, span.blockId)
-        const found = findNodeInBlockWithInlineContent(block, span.nodeId)
-
-        if (!found || !isInlineNodeWithEditableText(found.node)) {
-          return false
-        }
-
-        /** Toggle the mark on or off depending on the current state of the mark. */
-        return !isMarkEnabled(found.node.marks, markKey)
-      })
-
-      const ops: Operation[] = []
-
-      for (const span of spans) {
-        const block = getBlockWithInlineContent(state, span.blockId)
-        const found = findNodeInBlockWithInlineContent(block, span.nodeId)
-
-        if (!found || !isInlineNodeWithEditableText(found.node)) {
-          continue
-        }
-
-        const { node } = found
-        const nextMarks: Marks = { ...node.marks, [markKey]: enabling }
-
-        ops.push({
-          __type: 'set_marks',
-          blockId: span.blockId,
-          from: span.from,
-          nextMarks,
-          nodeId: span.nodeId,
-          prevMarks: { ...node.marks },
-          to: span.to,
-        })
-      }
-
-      return {
-        kind: 'set_marks',
-        ops,
-      }
-    }
-
-    return null
+    mark: MarkKey,
+  ): BuilderOpsIntent | null {
+    return this.#marksOpsBuilder.build(context, { mark })
   }
 
   // --- Composing operations ─────────────────────────────────────────
@@ -1524,7 +1399,7 @@ export class OperationsEngine {
   buildTypedCharOps(
     context: EditorContext,
     char: string,
-  ): ComposingOpsIntent | null {
+  ): BuilderOpsIntent | null {
     return this.#typedCharOpsBuilder.build(context, { char })
   }
 
