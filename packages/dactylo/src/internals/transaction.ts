@@ -938,7 +938,7 @@ export class TransactionPipeline {
 
           return true
         }
-        // @todo: handle copy with clipboard data type
+        // @todo: handle copy with native clipboard event (→ digestClipboardEvent)
         // @todo: handle escape behaviors
         // @todo: hand select all behaviors
         case 'copy':
