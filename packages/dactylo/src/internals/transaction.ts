@@ -732,6 +732,7 @@ export class TransactionPipeline {
 
         const transferredData = readTransferredData(event.dataTransfer)
         if (transferredData !== null) {
+          // @todo: handle other clipboard data types
           const type = transferredData.__type
           switch (type) {
             case 'text/plain': {
