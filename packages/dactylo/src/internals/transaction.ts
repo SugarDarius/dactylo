@@ -846,7 +846,7 @@ export class TransactionPipeline {
          * Allowing surrogate pairs and ZWJ sequences (aka. emoji pickers).
          */
         if (data && data.length > 0) {
-          const intent = this.#operationsEngine.buildTypedCharOps(
+          const intent = this.#operationsEngine.buildInsertTextOps(
             this.#context,
             data,
           )

@@ -38,6 +38,7 @@ import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import { GraphemeOffsetCaret } from './grapheme'
 import { HardBreakOpsBuilder } from './hard-break-ops-builder'
+import { InsertTextOpsBuilder } from './insert-text-ops-builder'
 import type { ArrowDirection } from './keyboard'
 import { applyNormalizedMarks, isMarksEqual } from './marks'
 import type { MarkKey, Marks } from './marks'
@@ -86,7 +87,6 @@ import {
 } from './selection'
 import type { TextCursor, Selection, RangeSelection } from './selection'
 import { SoftBreakOpsBuilder } from './soft-break-ops-builder'
-import { TypedCharOpsBuilder } from './typed-char-ops-builder'
 import { assertNever } from './utils'
 
 // --- Validate ─────────────────────────────────────────------------
@@ -1001,8 +1001,8 @@ export class OperationsEngine {
   /** Marks ops builder. */
   readonly #marksOpsBuilder: MarksOpsBuilder
 
-  /** Typed char ops builder. */
-  readonly #typedCharOpsBuilder: TypedCharOpsBuilder
+  /** Insert text ops builder. */
+  readonly #insertTextOpsBuilder: InsertTextOpsBuilder
 
   /** Paste plain text ops builder. */
   readonly #pastePlainTextOpsBuilder: PastePlainTextOpsBuilder
@@ -1022,7 +1022,7 @@ export class OperationsEngine {
     })
 
     this.#marksOpsBuilder = new MarksOpsBuilder()
-    this.#typedCharOpsBuilder = new TypedCharOpsBuilder({
+    this.#insertTextOpsBuilder = new InsertTextOpsBuilder({
       inlineCommandTrigger: options.inlineCommandTrigger,
       mentions: options.mentions,
     })
@@ -1251,9 +1251,7 @@ export class OperationsEngine {
   // --- Marks operations ─────────────────────────────────────────----
 
   /**
-   * Builds the operations to toggle a mark on or off.
-   * Returns `null` when there is no active selection or no rules were matched.
-   */
+   * Builds the operations to toggle a mark on or off. */
   buildSetMarksOps(
     context: EditorContext,
     mark: MarkKey,
@@ -1263,15 +1261,12 @@ export class OperationsEngine {
 
   // --- Composing operations ─────────────────────────────────────────
 
-  /**
-   * Builds operations for a single typed character (or emoji) at the current selection.
-   * Returns `null` when there is no active selection or no rules were matched.
-   */
-  buildTypedCharOps(
+  /** Builds operations to insert a text (char or emoji). */
+  buildInsertTextOps(
     context: EditorContext,
-    char: string,
+    text: string,
   ): BuilderOpsIntent | null {
-    return this.#typedCharOpsBuilder.build(context, { char })
+    return this.#insertTextOpsBuilder.build(context, { text })
   }
 
   /** Builds operations for a pasted plain text. */

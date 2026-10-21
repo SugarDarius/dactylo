@@ -49,13 +49,13 @@ export interface PastePlainTextOpsNoSelectionSituation {
 export interface PastePlainTextOpsCursorSelectionSituation {
   readonly kind: 'cursor-selection'
 
-  /** The cursor at which the typing operation is applied. */
+  /** The cursor at which ops are applied. */
   readonly at: TextCursor
 
-  /** Block with inline content subject to the operation.  */
+  /** Block with inline content subject to ops.  */
   readonly block: BlockWithInlineContent
 
-  /** Inline node with editable text subject to the operation. */
+  /** Inline node with editable text subject to ops. */
   readonly node: InlineNodeWithEditableText
 
   /** Index of the inline node with editable text in the block. */
@@ -70,19 +70,19 @@ export interface PastePlainTextOpsRangeSelectionSituation {
   readonly range: RangeSelection
 }
 
-/** Situation of a paste operation. */
+/** Situation for paste plain text operations. */
 export type PastePlainTextOpsSituation =
   | PastePlainTextOpsNoSelectionSituation
   | PastePlainTextOpsCursorSelectionSituation
   | PastePlainTextOpsRangeSelectionSituation
 
-/** Input for a paste operation. */
+/** Input for paste plain text operations. */
 export interface PastePlainTextOpsInput {
   /** The plain text data to paste. */
   readonly data: TextPlainData
 }
 
-/** Resources for a paste operation. */
+/** Resources for paste plain text operations. */
 export interface PastePlainTextOpsResources {
   /** Whether autolink detection is enabled. */
   readonly autolinkEnabled: boolean
@@ -91,7 +91,7 @@ export interface PastePlainTextOpsResources {
   readonly graphemeOffsetCaret: GraphemeOffsetCaret
 }
 
-/** Paste operation rule. */
+/** Paste plain text operations rule. */
 export type PastePlainTextOpsRule = OperationRule<
   PastePlainTextOpsSituation,
   PastePlainTextOpsInput,

@@ -41,13 +41,13 @@ export interface HardBreakOpsNoSelectionSituation {
 export interface HardBreakOpsCursorSelectionSituation {
   readonly kind: 'cursor-selection'
 
-  /** The cursor at which the typing operation is applied. */
+  /** The cursor at which ops are applied. */
   readonly at: TextCursor
 
-  /** Block with inline content subject to the operation.  */
+  /** Block with inline content subject to ops.  */
   readonly block: BlockWithInlineContent
 
-  /** Inline node with editable text subject to the operation. */
+  /** Inline node with editable text subject to ops. */
   readonly node: InlineNodeWithEditableText
 
   /** Index of the inline node with editable text in the block. */
@@ -62,13 +62,13 @@ export interface HardBreakOpsRangeSelectionSituation {
   readonly range: RangeSelection
 }
 
-/** Situation of a hard break operation. */
+/** Situation for hard break operations. */
 export type HardBreakOpsSituation =
   | HardBreakOpsNoSelectionSituation
   | HardBreakOpsCursorSelectionSituation
   | HardBreakOpsRangeSelectionSituation
 
-/** Hard break operation rule. */
+/** Hard break operations rule. */
 export type HardBreakOpsRule = OperationRule<
   HardBreakOpsSituation,
   unknown,

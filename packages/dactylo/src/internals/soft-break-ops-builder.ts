@@ -42,13 +42,13 @@ export interface SoftBreakOpsNoSelectionSituation {
 export interface SoftBreakOpsCursorSelectionSituation {
   readonly kind: 'cursor-selection'
 
-  /** The cursor at which the typing operation is applied. */
+  /** The cursor at which ops are applied. */
   readonly at: TextCursor
 
-  /** Block with inline content subject to the operation.  */
+  /** Block with inline content subject to ops.  */
   readonly block: BlockWithInlineContent
 
-  /** Inline node with editable text subject to the operation. */
+  /** Inline node with editable text subject to ops. */
   readonly node: InlineNodeWithEditableText
 
   /** Index of the inline node with editable text in the block. */
@@ -63,13 +63,13 @@ export interface SoftBreakOpsRangeSelectionSituation {
   readonly range: RangeSelection
 }
 
-/** Situation of a soft break operation. */
+/** Situation for soft break operations. */
 export type SoftBreakOpsSituation =
   | SoftBreakOpsNoSelectionSituation
   | SoftBreakOpsCursorSelectionSituation
   | SoftBreakOpsRangeSelectionSituation
 
-/** Soft break operation rule. */
+/** Soft break operations rule. */
 export type SoftBreakOpsRule = OperationRule<
   SoftBreakOpsSituation,
   unknown,
@@ -256,6 +256,7 @@ export const cursorRules: SoftBreakOpsRule[] = [
 /** Rules for range selection. */
 export const rangeRules: SoftBreakOpsRule[] = []
 
+/** Soft break operations builder. */
 export class SoftBreakOpsBuilder implements OperationsBuilder<
   SoftBreakOpsSituation,
   SoftBreakOpsRule

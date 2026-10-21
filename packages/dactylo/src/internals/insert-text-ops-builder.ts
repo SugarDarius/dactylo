@@ -44,14 +44,14 @@ import {
 import type { Selection, RangeSelection, TextCursor } from './selection'
 
 /** Situation with no selection. */
-export interface TypedCharOpNoSelectionSituation {
+export interface InsertTextOpsNoSelectionSituation {
   readonly kind: 'no-selection'
 }
 
-export interface TypedCharOpCursorSelectionSituation {
+export interface InsertTextOpsCursorSelectionSituation {
   readonly kind: 'cursor-selection'
 
-  /** The cursor at which the typing operation is applied. */
+  /** The cursor at which ops are applied. */
   readonly at: TextCursor
 
   /** Block with inline content subject to the operation.  */
@@ -65,7 +65,7 @@ export interface TypedCharOpCursorSelectionSituation {
 }
 
 /** Situation with a range selection. */
-export interface TypedCharOpRangeSelectionSituation {
+export interface InsertTextOpsRangeSelectionSituation {
   readonly kind: 'range-selection'
 
   /** The range at which the typing operation is applied. */
@@ -99,39 +99,39 @@ export interface TypedCharOpRangeSelectionSituation {
       }
 }
 
-/** Situation of a typed char operation. */
-export type TypedCharOpSituation =
-  | TypedCharOpNoSelectionSituation
-  | TypedCharOpCursorSelectionSituation
-  | TypedCharOpRangeSelectionSituation
+/** Situation of a inserted text operations. */
+export type InsertTextOpsSituation =
+  | InsertTextOpsNoSelectionSituation
+  | InsertTextOpsCursorSelectionSituation
+  | InsertTextOpsRangeSelectionSituation
 
-/** Input given to a typed char operation. */
-export interface TypedCharOpInput {
-  /** The character to insert. */
-  readonly char: string
+/** Input given to an inserted text operation. */
+export interface InsertTextOpsInput {
+  /** The text to insert. */
+  readonly text: string
 }
 
-/** Typed char operation rule. */
-export type TypedCharOpRule = OperationRule<
-  TypedCharOpSituation,
-  TypedCharOpInput,
+/** Inserted text operation rule. */
+export type InsertTextOpsRule = OperationRule<
+  InsertTextOpsSituation,
+  InsertTextOpsInput,
   unknown
 >
 
 /**
- * Builds operations to type one character when `activeMarks` ≠ target node marks.
+ * Builds operations to insert text when `activeMarks` ≠ target node marks.
  *
- * Produces `[before?][typedChar][after?]` as separate inline nodes using:
+ * Produces `[before?][inserted_text][after?]` as separate inline nodes using:
  * - `delete_text` to trim the tail off the original node when needed
- * - `insert_inline_node` for the typed character (known `insertNode.id`)
+ * - `insert_inline_node` for the inserted text (known `insertNode.id`)
  * - `insert_inline_node` for the trailing segment when needed
  *
  * Does not emit `insert_text` on the original node for the new character.
  */
-export function buildInsertTypedCharWithMarkBoundaryOps(
+export function buildInsertTextWithMarkBoundaryOps(
   activeMarks: Marks,
   cursor: TextCursor,
-  char: string,
+  text: string,
   /** Target node at the caret (text or link). */
   node: InlineNodeWithEditableText,
   /** Index of `node` in `block.content`. */
@@ -146,7 +146,7 @@ export function buildInsertTypedCharWithMarkBoundaryOps(
   const insertNode = createTextNode({
     marks: activeMarks,
     metadata: node.metadata,
-    text: char,
+    text,
   })
 
   const ops: Operation[] = []
@@ -164,16 +164,16 @@ export function buildInsertTypedCharWithMarkBoundaryOps(
   }
 
   /**
-   * Insert position for the typed node:
+   * Insert position for the inserted text node:
    * - caret in the middle/end of a non-empty prefix → after the trimmed node
    * - caret at start (empty prefix) → before the original node
    */
-  const typedInsertIndex = before.length > 0 ? nodeIndex + 1 : nodeIndex
+  const insertIndex = before.length > 0 ? nodeIndex + 1 : nodeIndex
 
   ops.push({
     __type: 'insert_inline_node',
     blockId,
-    index: typedInsertIndex,
+    index: insertIndex,
     node: insertNode,
   })
 
@@ -181,7 +181,7 @@ export function buildInsertTypedCharWithMarkBoundaryOps(
     ops.push({
       __type: 'insert_inline_node',
       blockId,
-      index: typedInsertIndex + 1,
+      index: insertIndex + 1,
       node: createTextNode({
         marks: node.marks,
         metadata: node.metadata,
@@ -195,7 +195,7 @@ export function buildInsertTypedCharWithMarkBoundaryOps(
     next: createCursor({
       blockId,
       nodeId: insertNode.id,
-      offset: char.length,
+      offset: text.length,
     }),
     prev: prevSelection,
   })
@@ -204,7 +204,7 @@ export function buildInsertTypedCharWithMarkBoundaryOps(
 }
 
 /** Rules for cursor selection. */
-export const cursorRules: TypedCharOpRule[] = [
+export const cursorRules: InsertTextOpsRule[] = [
   {
     build: ({ context, situation, input }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
@@ -220,14 +220,14 @@ export const cursorRules: TypedCharOpRule[] = [
           marks: context.activeMarks,
           nodeId: node.id,
           offset: at.offset,
-          text: input.char,
+          text: input.text,
         },
         {
           __type: 'set_selection',
           next: createCursor({
             blockId: block.id,
             nodeId: node.id,
-            offset: at.offset + input.char.length,
+            offset: at.offset + input.text.length,
           }),
           prev: context.selection,
         },
@@ -235,7 +235,7 @@ export const cursorRules: TypedCharOpRule[] = [
 
       return ops
     },
-    name: 'cursor/match-active-marks/insert-char',
+    name: 'cursor/match-active-marks/insert-text',
     when: ({ context, situation }): boolean => {
       if (situation.kind !== 'cursor-selection') {
         return false
@@ -254,17 +254,17 @@ export const cursorRules: TypedCharOpRule[] = [
 
       const { at, block, node, index } = situation
 
-      return buildInsertTypedCharWithMarkBoundaryOps(
+      return buildInsertTextWithMarkBoundaryOps(
         context.activeMarks,
         at,
-        input.char,
+        input.text,
         node,
         index,
         block.id,
         context.selection,
       )
     },
-    name: 'cursor/mark-boundary/structural-insert-char',
+    name: 'cursor/mark-boundary/structural-insert-text',
     when: ({ context, situation }): boolean => {
       if (situation.kind !== 'cursor-selection') {
         return false
@@ -278,10 +278,10 @@ export const cursorRules: TypedCharOpRule[] = [
 ]
 
 /**
- * Resolves the editable inline node where a typed character will be inserted
+ * Resolves the editable inline node where a text will be inserted
  * after replaying `prefixOps` on the block (same transaction, earlier ops).
  */
-export function resolveTypedCharInsertTarget(
+export function resolveTextInsertTarget(
   block: BlockWithInlineContent,
   /** Delete/merge ops that run before insert in the same batch. */
   prefixOps: readonly Operation[],
@@ -303,14 +303,14 @@ export function resolveTypedCharInsertTarget(
   if (!found || !isInlineNodeWithEditableText(found.node)) {
     buildError(
       `Node ${at.nodeId} not found in block ${block.id} after prefix ops`,
-      'TypedCharOpsBuilder/#resolveTypedCharInsertTarget',
+      'InsertTextOpsBuilder/#resolveTextInsertTarget',
     )
   }
 
   if (at.offset < 0 || at.offset > found.node.text.length) {
     buildError(
       `Insert offset ${at.offset} out of bounds for text length ${found.node.text.length}`,
-      'TypedCharOpsBuilder/#resolveTypedCharInsertTarget',
+      'InsertTextOpsBuilder/#resolveTextInsertTarget',
     )
   }
 
@@ -321,12 +321,13 @@ export function resolveTypedCharInsertTarget(
  * Builds insert + selection ops after a range was (or will be) deleted in the same batch.
  *
  * Same marks as `context.activeMarks`: `insert_text` + collapsed `set_selection`.
- * Different marks: structural boundary ops via  {@link #buildInsertTypedCharWithMarkBoundaryOps} (no split in `applyInsertTextOp`).
+ * Different marks:
+ *  Structural boundary ops via  {@link #buildInsertTextWithMarkBoundaryOps} (no split in `applyInsertTextOp`).
  */
-export function buildInsertTypeCharAndSelectionAtRangeOps(
+export function buildInsertTextAndSelectionAtRangeOps(
   context: EditorContext,
   range: RangeSelection,
-  char: string,
+  text: string,
   at: TextCursor,
   opts: {
     /**
@@ -345,7 +346,7 @@ export function buildInsertTypeCharAndSelectionAtRangeOps(
   const block =
     blockSnapshot ?? getBlockWithInlineContent(context.state, at.blockId)
 
-  const { node, index } = resolveTypedCharInsertTarget(block, prefixOps, at)
+  const { node, index } = resolveTextInsertTarget(block, prefixOps, at)
 
   if (isMarksEqual(node.marks, context.activeMarks)) {
     const ops: Operation[] = [
@@ -355,14 +356,14 @@ export function buildInsertTypeCharAndSelectionAtRangeOps(
         marks: context.activeMarks,
         nodeId: at.nodeId,
         offset: at.offset,
-        text: char,
+        text,
       },
       {
         __type: 'set_selection',
         next: createCursor({
           blockId: at.blockId,
           nodeId: at.nodeId,
-          offset: at.offset + char.length,
+          offset: at.offset + text.length,
         }),
         prev: range,
       },
@@ -371,10 +372,10 @@ export function buildInsertTypeCharAndSelectionAtRangeOps(
     return ops
   }
 
-  return buildInsertTypedCharWithMarkBoundaryOps(
+  return buildInsertTextWithMarkBoundaryOps(
     context.activeMarks,
     at,
-    char,
+    text,
     node,
     index,
     block.id,
@@ -383,7 +384,7 @@ export function buildInsertTypeCharAndSelectionAtRangeOps(
 }
 
 /** Rules for range selection. */
-export const rangeRules: TypedCharOpRule[] = [
+export const rangeRules: InsertTextOpsRule[] = [
   {
     /**
      * 💡 Range selection is within the same node.
@@ -408,7 +409,7 @@ export const rangeRules: TypedCharOpRule[] = [
       if (deleteLength <= 0) {
         rangeCollapsedError(
           'Range selection is collapsed; expected non-empty text range.',
-          'TypedCharOpsBuilder/#build',
+          'InsertTextOpsBuilder/#build',
         )
       }
 
@@ -426,10 +427,10 @@ export const rangeRules: TypedCharOpRule[] = [
 
       const ops: Operation[] = [
         deleteTextOp,
-        ...buildInsertTypeCharAndSelectionAtRangeOps(
+        ...buildInsertTextAndSelectionAtRangeOps(
           context,
           range,
-          input.char,
+          input.text,
           {
             blockId: block.id,
             nodeId: node.id,
@@ -478,10 +479,10 @@ export const rangeRules: TypedCharOpRule[] = [
 
       const ops: Operation[] = [
         ...deleteOps,
-        ...buildInsertTypeCharAndSelectionAtRangeOps(
+        ...buildInsertTextAndSelectionAtRangeOps(
           context,
           range,
-          input.char,
+          input.text,
           anchor,
           {
             prefixOps: deleteOps,
@@ -592,10 +593,10 @@ export const rangeRules: TypedCharOpRule[] = [
 
       ops.push(
         mergeBlockOp,
-        ...buildInsertTypeCharAndSelectionAtRangeOps(
+        ...buildInsertTextAndSelectionAtRangeOps(
           context,
           range,
-          input.char,
+          input.text,
           {
             blockId: startBlock.id,
             nodeId: splitAtNodeId,
@@ -621,7 +622,7 @@ export const rangeRules: TypedCharOpRule[] = [
 // --- Builder ───────────────────────────────────────---------------
 
 /** Options for constructing a typing operations builder. */
-export interface TypedCharOpsBuilderOptions {
+export interface InsertTextOpsBuilderOptions {
   /** Configuration for mentions. */
   readonly mentions: {
     /** Whether to enable mentions. */
@@ -641,10 +642,10 @@ export interface TypedCharOpsBuilderOptions {
   }
 }
 
-/** Typed char operations builder. */
-export class TypedCharOpsBuilder implements OperationsBuilder<
-  TypedCharOpSituation,
-  TypedCharOpInput
+/** inserted text operations builder. */
+export class InsertTextOpsBuilder implements OperationsBuilder<
+  InsertTextOpsSituation,
+  InsertTextOpsInput
 > {
   /** Configuration for mentions. */
   readonly #mentionsConfig: OperationBuilderMentionsConfig
@@ -652,13 +653,13 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
   /** Configuration for inline command trigger. */
   readonly #inlineCommandTriggerConfig: OperationBuilderInlineCommandTriggerConfig
 
-  constructor(options: TypedCharOpsBuilderOptions) {
+  constructor(options: InsertTextOpsBuilderOptions) {
     this.#mentionsConfig = options.mentions
     this.#inlineCommandTriggerConfig = options.inlineCommandTrigger
   }
 
-  /** Describes the {@link TypedCharOpSituation}. */
-  describe(context: EditorContext): TypedCharOpSituation {
+  /** Describes the {@link InsertTextOpsSituation}. */
+  describe(context: EditorContext): InsertTextOpsSituation {
     const { selection, state } = context
 
     if (selection === null) {
@@ -675,14 +676,14 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'TypedCharOpsBuilder/#describe',
+          'InsertTextOpsBuilder/#describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'TypedCharOpsBuilder/#describe',
+          'InsertTextOpsBuilder/#describe',
         )
       }
 
@@ -706,7 +707,7 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
     if (compareTextCursors(state, anchor, focus) >= 0) {
       rangeCollapsedError(
         'Range selection is collapsed; expected anchor to precede focus.',
-        'TypedCharOpRule/#describeSituation',
+        'InsertTextOpsRule/#describeSituation',
       )
     }
 
@@ -721,14 +722,14 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'TypedCharOpsBuilder/#describe',
+          'InsertTextOpsBuilder/#describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'TypedCharOpsBuilder/#describe',
+          'InsertTextOpsBuilder/#describe',
         )
       }
 
@@ -760,7 +761,7 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
   }
 
   /**
-   * Completes intent for a single typed character (or emoji) at the current selection.
+   * Completes intent for a single inserted text (char or emoji) at the current selection.
    * Determines behaviors when:
    *  - {@link INLINE_DETECTOR_TRIGGER_CHARACTER} is typed:
    *   - → manage markdown shortcuts
@@ -769,19 +770,11 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
    *  - `slash_command_character` is typed → manage inline composition for slash commands
    *  -  others chars are typed → insert the char and continue typing
    */
-  // @todo: transform this into rules
-  #complete(
-    ops: Operation[],
-    char: string,
-    type: 'cursor' | 'range',
-  ): BuilderOpsIntent {
-    const label =
-      type === 'cursor' ? 'insert-char-at-cursor' : 'insert-char-at-range'
-
+  #complete(ops: Operation[], text: string): BuilderOpsIntent {
     // @todo: handle markdown shortcut
     // @todo: handle autolink detection
     // @todo: handle links finished
-    if (char === INLINE_DETECTOR_TRIGGER_CHARACTER) {
+    if (text === INLINE_DETECTOR_TRIGGER_CHARACTER) {
       return {
         label: `markdown-shortcut`,
         ops,
@@ -793,7 +786,7 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
     /** Apply inline composition ops for mentions. */
     if (
       this.#mentionsConfig.enabled &&
-      char === this.#mentionsConfig.character
+      text === this.#mentionsConfig.character
     ) {
       return { label: 'mention', ops, skipHistory: true }
     }
@@ -802,25 +795,25 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
     /** Apply inline composition ops for inline command trigger. */
     if (
       this.#inlineCommandTriggerConfig.enabled &&
-      char === this.#inlineCommandTriggerConfig.character
+      text === this.#inlineCommandTriggerConfig.character
     ) {
       return { label: 'inline-command-trigger', ops, skipHistory: true }
     }
 
     return {
       coalesce: true,
-      label: `${label}:${char}`,
+      label: `insert-text:${text}`,
       ops,
     }
   }
 
   /**
-   * Builds operations for a single typed character (or emoji) at the current selection.
+   * Builds operations for a single inserted textacter (or emoji) at the current selection.
    * Returns `null` when there is no active selection or no rules were matched.
    */
   build(
     context: EditorContext,
-    input: TypedCharOpInput,
+    input: InsertTextOpsInput,
   ): BuilderOpsIntent | null {
     const situation = this.describe(context)
     const { kind } = situation
@@ -832,7 +825,7 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
     const isCursorKind = kind === 'cursor-selection'
     const rules = isCursorKind ? cursorRules : rangeRules
 
-    /** For typed char operations, by design we can only match one rule. */
+    /** For inserted text operations, by design we can only match one rule. */
     const match = iterRules({
       context,
       input,
@@ -843,7 +836,7 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
     if (match.done) {
       warn(
         'No rule applied for the given situation and input.',
-        'TypedCharOpsBuilder/#buildTypedCharOps',
+        'InsertTextOpsBuilder/#buildInsertTextOps',
       )
       return null
     }
@@ -854,11 +847,11 @@ export class TypedCharOpsBuilder implements OperationsBuilder<
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',
-        'TypedCharOpsBuilder/#buildTypedCharOps',
+        'InsertTextOpsBuilder/#buildInsertTextOps',
       )
       return null
     }
 
-    return this.#complete(ops, input.char, isCursorKind ? 'cursor' : 'range')
+    return this.#complete(ops, input.text)
   }
 }

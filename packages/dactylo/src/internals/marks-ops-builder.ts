@@ -24,20 +24,20 @@ import { isCursorSelection } from './selection'
 import type { RangeSelection } from './selection'
 
 /** Situation with no selection. */
-export interface MarksOpNoSelectionSituation {
+export interface MarksOpsNoSelectionSituation {
   readonly kind: 'no-selection'
 }
 
 /** Situation with a cursor selection. */
-export interface MarksOpCursorSelectionSituation {
+export interface MarksOpsCursorSelectionSituation {
   readonly kind: 'cursor-selection'
 
-  /** Block with inline content subject to the operation.  */
+  /** Block with inline content subject to ops.  */
   readonly block: BlockWithInlineContent
 }
 
 /** Situation with a range selection. */
-export interface MarksOpRangeSelectionSituation {
+export interface MarksOpsRangeSelectionSituation {
   readonly kind: 'range-selection'
 
   /** The range at which the marks operation is applied. */
@@ -45,22 +45,26 @@ export interface MarksOpRangeSelectionSituation {
 }
 
 /** Situation of a marks operation. */
-export type MarksOpSituation =
-  | MarksOpNoSelectionSituation
-  | MarksOpCursorSelectionSituation
-  | MarksOpRangeSelectionSituation
+export type MarksOpsSituation =
+  | MarksOpsNoSelectionSituation
+  | MarksOpsCursorSelectionSituation
+  | MarksOpsRangeSelectionSituation
 
 /** Input given to a marks operation. */
-export interface MarksOpInput {
+export interface MarksOpsInput {
   /** The mark to toggle. */
   readonly mark: MarkKey
 }
 
 /** Marks operation rule. */
-export type MarksOpRule = OperationRule<MarksOpSituation, MarksOpInput, unknown>
+export type MarksOpsRule = OperationRule<
+  MarksOpsSituation,
+  MarksOpsInput,
+  unknown
+>
 
 /** Rules for cursor selection. */
-export const cursorRules: MarksOpRule[] = [
+export const cursorRules: MarksOpsRule[] = [
   {
     /**
      * 💡 Selection is a cursor selection.
@@ -107,7 +111,7 @@ export const cursorRules: MarksOpRule[] = [
 ]
 
 /** Rules for range selection. */
-export const rangeRules: MarksOpRule[] = [
+export const rangeRules: MarksOpsRule[] = [
   {
     /**
      * 💡 Selection is a range selection.
@@ -182,11 +186,11 @@ export const rangeRules: MarksOpRule[] = [
 
 /** Marks operations builder. */
 export class MarksOpsBuilder implements OperationsBuilder<
-  MarksOpSituation,
-  MarksOpInput
+  MarksOpsSituation,
+  MarksOpsInput
 > {
-  /** Describes the {@link MarksOpSituation}. */
-  describe(context: EditorContext): MarksOpSituation {
+  /** Describes the {@link MarksOpsSituation}. */
+  describe(context: EditorContext): MarksOpsSituation {
     const { selection, state } = context
     if (selection === null) {
       return { kind: 'no-selection' }
@@ -218,7 +222,7 @@ export class MarksOpsBuilder implements OperationsBuilder<
   }
 
   /** Builds the operations to toggle a mark on or off. */
-  build(context: EditorContext, input: MarksOpInput): BuilderOpsIntent | null {
+  build(context: EditorContext, input: MarksOpsInput): BuilderOpsIntent | null {
     const situation = this.describe(context)
     const { kind } = situation
 
