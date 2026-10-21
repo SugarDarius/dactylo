@@ -275,7 +275,7 @@ export const cursorRules: PastePlainTextOpsRule[] = [
 
       return ops
     },
-    name: 'cursor/paste-plain-text/single-line/with0links',
+    name: 'cursor/paste-plain-text/single-line/with-links',
     when: ({ situation, input, resources }) => {
       if (situation.kind !== 'cursor-selection') {
         return false

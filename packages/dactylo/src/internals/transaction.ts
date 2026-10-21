@@ -815,11 +815,10 @@ export class TransactionPipeline {
         /** In any case we prevent native browser behavior as we want full control over backspace. */
         prevent()
 
-        const intent = this.#operationsEngine.buildDeleteBackspaceOps(
+        const intent = this.#operationsEngine.buildDeleteContentOps(
           this.#context,
         )
 
-        /** 👉🏻 See {@link buildCursorBackspaceOps} jsdoc on why it can return `null` */
         if (intent === null) {
           return false
         }
