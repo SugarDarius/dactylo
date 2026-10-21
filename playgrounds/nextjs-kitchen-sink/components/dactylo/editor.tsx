@@ -100,10 +100,14 @@ export function Toolbar() {
     { enableOnContentEditable: true, enabled: canEdit },
   )
 
-  useHotkeys('mod+k', (event) => {
-    event.preventDefault()
-    toggle('code')
-  })
+  useHotkeys(
+    'mod+k',
+    (event) => {
+      event.preventDefault()
+      toggle('code')
+    },
+    { enableOnContentEditable: true, enabled: canEdit },
+  )
 
   return (
     <div className='border-border flex w-full items-center gap-1.5 border-b px-1.5 py-2'>
