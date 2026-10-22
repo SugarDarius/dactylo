@@ -426,7 +426,8 @@ export function buildSoftBreakInlineOpsAtCaret(
 }
 
 /**
- * Builds soft break and selection ops after a range delete in the same op batch.
+ * Builds soft-break and selection ops after a range delete in the same op batch.
+ *
  * Resolves the editable target at `at` by replaying prefix ops on block snapshot.
  * Mirrors contract from {@link buildInsertTextAndSelectionAtRangeOps}
  */
@@ -486,6 +487,10 @@ export function buildSoftBreakAndSelectionAtRangeOps(
 /** Rules for range selection. */
 export const rangeRules: SoftBreakOpsRule[] = [
   {
+    /**
+     * 💡 Range selection lies entirely inside one text/link node.
+     * 🎯 Delete the selected run in-node, then soft-break at anchor (no survivor join).
+     */
     build: ({ context, situation }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
