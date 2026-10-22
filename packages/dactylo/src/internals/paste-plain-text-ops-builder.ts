@@ -190,6 +190,13 @@ export function buildPastePlainTextSingleLineAtCaretOps(
     sliced.push(createTextNode({ marks: node.marks, text: ' ' }))
   }
 
+  const [firstSlice] = sliced
+  const mergeLeadingTextIntoCaretNode =
+    firstSlice !== undefined &&
+    firstSlice.__type === 'text' &&
+    node.__type === 'text' &&
+    isMarksEqual(firstSlice.marks, node.marks)
+
   const ops: Operation[] = []
 
   if (after.length > 0) {
@@ -203,6 +210,24 @@ export function buildPastePlainTextSingleLineAtCaretOps(
     })
   }
 
+  /**
+   * Inserting link (or other inline) nodes before an empty caret text node leaves
+   * a trailing empty sibling; apply-time coalesce drops its id without an op.
+   * Undo `set_selection.prev` still points at that node → validateOp fails.
+   */
+  if (
+    node.__type === 'text' &&
+    before.length === 0 &&
+    !mergeLeadingTextIntoCaretNode
+  ) {
+    ops.push({
+      __type: 'remove_inline_node',
+      blockId: block.id,
+      index,
+      snapshot: node,
+    })
+  }
+
   let nextInsertIndex = before.length > 0 ? index + 1 : index
   for (let i = 0; i < sliced.length; i += 1) {
     const sliceNode = sliced[i]
@@ -210,20 +235,14 @@ export function buildPastePlainTextSingleLineAtCaretOps(
       continue
     }
 
-    const mergeLeadingTextIntoCaretNode =
-      i === 0 &&
-      sliceNode.__type === 'text' &&
-      node.__type === 'text' &&
-      isMarksEqual(sliceNode.marks, node.marks)
-
-    if (mergeLeadingTextIntoCaretNode) {
+    if (i === 0 && mergeLeadingTextIntoCaretNode) {
       ops.push({
         __type: 'insert_text',
         blockId: block.id,
         marks: node.marks,
         nodeId: node.id,
         offset: at.offset,
-        text: sliceNode.text,
+        text: firstSlice.text,
       })
       nextInsertIndex = index + 1
       continue
