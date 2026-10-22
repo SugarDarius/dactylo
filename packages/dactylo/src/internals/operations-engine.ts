@@ -143,7 +143,7 @@ export function assertRangeInText(
   from: number,
   /** Range end (exclusive). */
   to: number,
-  /** Length of the target text node. */
+  /** Target node text length. */
   textLength: number,
   op: Operation,
 ): void {
@@ -215,20 +215,20 @@ export function validateDeleteBlockOp(
 ): void | never {
   if (op.snapshot.id !== op.blockId) {
     validationError(
-      `Snapshot block ID ${op.snapshot.id} does not match the deleted block ID ${op.blockId}`,
+      `Snapshot block ID ${op.snapshot.id} does not match deleted block ID ${op.blockId}`,
       op,
     )
   }
 
   if (op.snapshot.id !== op.blockId) {
     validationError(
-      `Snapshot block ID ${op.snapshot.id} does not match the deleted block ID ${op.blockId}`,
+      `Snapshot block ID ${op.snapshot.id} does not match deleted block ID ${op.blockId}`,
       op,
     )
   }
 
   if (context.state.blockOrderById.length === 1) {
-    validationError(`Cannot delete the last block in the document`, op)
+    validationError(`Cannot delete last block in document`, op)
   }
 }
 
@@ -408,7 +408,7 @@ export function applyError(message: string, op: Operation): never {
   })
 }
 
-/** Applies an `insert_block` operation to the editor context. */
+/** Applies an `insert_block` operation to {@link EditorContext}. */
 export function applyInsertBlockOp(
   context: EditorContext,
   op: InsertBlockOp,
@@ -419,7 +419,7 @@ export function applyInsertBlockOp(
   return withDocumentState(context, state)
 }
 
-/** Applies a `delete_block` operation to the editor context. */
+/** Applies a `delete_block` operation to {@link EditorContext}. */
 export function applyDeleteBlockOp(
   context: EditorContext,
   op: DeleteBlockOp,
@@ -429,9 +429,9 @@ export function applyDeleteBlockOp(
 }
 
 /**
- * Applies a `merge_blocks` operation to the editor context.
- * It splices source content into the target at `op.atIndex`,
- * then removes the source blocks.
+ * Applies a `merge_blocks` operation to {@link EditorContext}.
+ * It splices source content into target at `op.atIndex`,
+ * then removes source blocks.
  */
 export function applyMergeBlocksOp(
   context: EditorContext,
@@ -460,7 +460,7 @@ export function applyMergeBlocksOp(
   return withDocumentState(context, state)
 }
 
-/** Applies a `split_block` operation to the editor context. */
+/** Applies a `split_block` operation to {@link EditorContext}. */
 export function applySplitBlockOp(
   context: EditorContext,
   op: SplitBlockOp,
@@ -512,7 +512,7 @@ export function applySplitBlockOp(
   }
 }
 
-/** Applies an `insert_text` operation to the editor context. */
+/** Applies an `insert_text` operation to {@link EditorContext}. */
 export function applyInsertTextOp(
   context: EditorContext,
   op: InsertTextOp,
@@ -544,7 +544,7 @@ export function applyInsertTextOp(
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
-/** Applies a `delete_text` operation to the editor context. */
+/** Applies a `delete_text` operation to {@link EditorContext}. */
 export function applyDeleteTextOp(
   context: EditorContext,
   op: DeleteTextOp,
@@ -580,7 +580,7 @@ export function applyDeleteTextOp(
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
-/** Applies a `set_active_marks` operation to the editor context. */
+/** Applies a `set_active_marks` operation to {@link EditorContext}. */
 export function applySetActiveMarksOp(
   context: EditorContext,
   op: SetActiveMarksOp,
@@ -612,7 +612,7 @@ export function applySetActiveMarksOp(
   return updateBlockWithInlineContent(next, op.copyTo.blockId, content)
 }
 
-/** Applies a `set_marks` operation to the editor context. */
+/** Applies a `set_marks` operation to {@link EditorContext}. */
 export function applySetMarksOp(
   context: EditorContext,
   op: SetMarksOp,
@@ -665,7 +665,7 @@ export function applySetMarksOp(
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
-/** Applies a `insert_inline_node` operation to the editor context. */
+/** Applies a `insert_inline_node` operation to {@link EditorContext}. */
 export function applyInsertInlineNodeOp(
   context: EditorContext,
   op: InsertInlineNodeOp,
@@ -678,7 +678,7 @@ export function applyInsertInlineNodeOp(
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
-/** Applies a `remove_inline_node` operation to the editor context. */
+/** Applies a `remove_inline_node` operation to {@link EditorContext}. */
 export function applyRemoveInlineNodeOp(
   context: EditorContext,
   op: RemoveInlineNodeOp,
@@ -711,7 +711,7 @@ export interface OperationsEngineOptions {
     /** Whether to enable mentions. */
     readonly enabled: boolean
 
-    /** The character to trigger a mention. */
+    /** Character to trigger a mention. */
     readonly character: string
   }
 
@@ -720,11 +720,11 @@ export interface OperationsEngineOptions {
     /** Whether to enable inline command trigger. */
     readonly enabled: boolean
 
-    /** The character to trigger an inline command. */
+    /** Character to trigger an inline command. */
     readonly character: string
   }
 
-  /** The locales to use when handling text operations. */
+  /** Locales to use when handling text operations. */
   readonly locales: Intl.LocalesArgument
 
   /** Configuration for autolink detection. */
@@ -739,7 +739,7 @@ export interface OperationEngineMentionsConfig {
   /** Whether to enable mentions. */
   readonly enabled: boolean
 
-  /** The character to use for mentions. */
+  /** Character to use for mentions. */
   readonly character: string
 }
 
@@ -748,7 +748,7 @@ export interface OperationEngineInlineCommandTriggerConfig {
   /** Whether to enable inline command trigger. */
   readonly enabled: boolean
 
-  /** The character to use for inline command trigger. */
+  /** Character to use for inline command trigger. */
   readonly character: string
 }
 
@@ -759,14 +759,13 @@ export interface OperationEngineAutolinkConfig {
 }
 
 /**
- * Engine to build operations for the editor.
- * It is responsible for building the operations for the editor
- * based on the current state and the input events for:
+ * Engine to build operations to use in {@link TransactionPipeline}.
+ * Ops are built based on current state and input events for:
  *  - Validating operations
  *  - Applying operations
  *  - Inverting operations
  *
- * It allows to handle inline composition with mentions and slash command
+ * It allows to handle inline composition with mentions and slash command.
  */
 export class OperationsEngine {
   /** Marks ops builder. */
@@ -814,8 +813,8 @@ export class OperationsEngine {
   // --- Core engine ─────────────────────────────────────────---------
 
   /**
-   * Validates an operation against current state.
-   * Throws when operation does not respect the rules implemented in the editor.
+   * Validate operation against current {@link EditorContext}.
+   * Throws when operation does not respect rules implemented.
    */
   validateOp(context: EditorContext, op: Operation): void {
     const type = op.__type
@@ -869,7 +868,7 @@ export class OperationsEngine {
     }
   }
 
-  /** Applies a single operation to the editor context. */
+  /** Apply single operation to {@link EditorContext}. */
   applyOp(context: EditorContext, op: Operation): EditorContext {
     const type = op.__type
     switch (type) {
@@ -912,7 +911,7 @@ export class OperationsEngine {
     }
   }
 
-  /** Reverts an operation to restore the prior context. */
+  /** Revert operation to restore prior context. */
   invertOp(op: Operation): Operation {
     const type = op.__type
     switch (type) {
@@ -1028,7 +1027,7 @@ export class OperationsEngine {
   // --- Marks operations ─────────────────────────────────────────----
 
   /**
-   * Builds the operations to toggle a mark on or off. */
+   * Builds operations to toggle a mark on or off. */
   buildSetMarksOps(
     context: EditorContext,
     mark: MarkKey,
@@ -1064,7 +1063,7 @@ export class OperationsEngine {
   /** Builds operations for a pasted plain text. */
   buildPlainTextPasteOps(
     context: EditorContext,
-    /** The plain text data to paste. */
+    /** Plain text data to paste. */
     data: TextPlainData,
   ): BuilderOpsIntent | null {
     return this.#pastePlainTextOpsBuilder.build(context, { data })
@@ -1073,10 +1072,8 @@ export class OperationsEngine {
   // --- Selection operations ─────────────────────────────────────────
 
   /**
-   * Builds the operations to navigate the selection with arrow keys.
-   * Extends the existing selection when `extend` is `true`.
-   *
-   * Returns `null` when the selection would not change.
+   * Builds operations to navigate selection with arrow keys.
+   * Extends existing selection when `extend` is set to `true`.
    */
   buildArrowNavigationOps(
     context: EditorContext,
@@ -1161,10 +1158,7 @@ export class OperationsEngine {
     return ops
   }
 
-  /**
-   * Builds the operations to set the selection to the end of the last block in document order.
-   * Returns `null` when the selection is already set so we can skip it.
-   */
+  /** Builds operations to set selection to end of last block in document order. */
   buildPutCursorSelectionAtDocumentEndOps(
     context: EditorContext,
   ): Operation[] | null {
@@ -1178,7 +1172,7 @@ export class OperationsEngine {
 
     const prev = context.selection
 
-    /** Skip if the selection is already at the end of the document. */
+    /** Skip if selection is already at document's end. */
     if (
       prev?.__type === 'cursor' &&
       prev.anchor.blockId === next.anchor.blockId &&
@@ -1197,12 +1191,12 @@ export class OperationsEngine {
     ]
   }
 
-  /** Builds the operations to update selection. */
+  /** Builds operations to update selection. */
   buildUpdateSelectionOps(
     context: EditorContext,
     next: Selection | null,
   ): Operation[] | null {
-    /** Skip if the selection is already the same. */
+    /** Skip if next selection is equal to current selection. */
     if (areSelectionsEqual(context.selection, next)) {
       return null
     }
@@ -1218,11 +1212,11 @@ export class OperationsEngine {
     return ops
   }
 
-  /** Builds the operations to clear the selection. */
+  /** Builds operations to clear selection. */
   buildClearSelectionOps(context: EditorContext): Operation[] | null {
     const { selection } = context
 
-    /** Skip if the selection is already set to `null`. */
+    /** Skip if selection is already set to `null`. */
     if (!selection) {
       return null
     }
@@ -1240,7 +1234,7 @@ export class OperationsEngine {
 
   // --- Blocks operations ─────────────────────────────────────────---
 
-  /** Builds the operations to insert a block at the given position. */
+  /** Builds operations to insert a block at given position. */
   buildInsertBlockOps(
     context: EditorContext,
     insertPos: InsertBlockOpPosition,
@@ -1262,17 +1256,23 @@ export class OperationsEngine {
     ]
   }
 
-  /** Builds the operations to delete a block by ID. */
+  /** Builds operations to delete a block by ID. */
   buildDeleteBlockOps(
     context: EditorContext,
     blockId: BlockId,
   ): Operation[] | null {
     const { state } = context
+    // @todo: improve by creating a invariant checker
     const block = getBlock(state, blockId)
     const idx = getBlockIndex(state, blockId)
     const isEmpty = isBlockWithInlineContentEmpty(state, blockId)
 
-    /** Invariant: skip deletion of the first empty block. */
+    /**
+     * Invariant UX:
+     *  - When block is the only one in document
+     *  - When block is empty
+     * Then skip deletion because document must have at least one block.
+     */
     if (idx === 0 && isEmpty) {
       return null
     }
