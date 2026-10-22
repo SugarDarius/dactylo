@@ -265,7 +265,14 @@ export function isInlineContentWithoutVisibleText(
   return true
 }
 
-/** Whether the inline content is canonical empty. */
+/**
+ * Whether inline content matches the editor's canonical "empty paragraph" shape:
+ * exactly one {@link TextNode} with `text === ""` and marks equal to `activeMarks`.
+ *
+ * Empty {@link LinkNode} (or other editable-text inline types) are **not** canonical:
+ * an empty block must present as plain text so typing and placeholders stay on a
+ * `<span>`/text node, not a lingering `<a>`.
+ */
 export function isCanonicalEmptyInlineContent(
   content: readonly InlineNode[],
   activeMarks: Marks,
@@ -275,7 +282,7 @@ export function isCanonicalEmptyInlineContent(
   }
 
   const [first] = content
-  if (!first || !isInlineNodeWithEditableText(first)) {
+  if (!first || !isTextNode(first)) {
     return false
   }
 

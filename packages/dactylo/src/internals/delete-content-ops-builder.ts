@@ -24,6 +24,7 @@ import {
   buildDeleteRangeWithinBlockOps,
   buildError,
   buildForwardTrimBlockOps,
+  buildMergeCollapseEmptyBlockIntoOps,
   iterRules,
   previewInlineContentAfterTrimOps,
   rangeCollapsedError,
@@ -519,7 +520,14 @@ export const cursorRules: DeleteContentOpsRule[] = [
       )
       ops.push(...absorbOps)
 
-      return ops
+      const merged = buildMergeCollapseEmptyBlockIntoOps(
+        context,
+        block.id,
+        block.content,
+        ops,
+      )
+
+      return merged
     },
     name: 'cursor/delete-content/inside-node/delete-and-absorb-empty-into-prev',
     when: ({ situation, resources }): boolean => {
@@ -567,7 +575,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
         return null
       }
 
-      const { at, node } = situation
+      const { at, node, block } = situation
       const { start, length } = resources.graphemeOffsetCaret.getDeleteRange(
         node.text,
         at.offset,
@@ -596,7 +604,14 @@ export const cursorRules: DeleteContentOpsRule[] = [
         },
       ]
 
-      return ops
+      const merged = buildMergeCollapseEmptyBlockIntoOps(
+        context,
+        block.id,
+        block.content,
+        ops,
+      )
+
+      return merged
     },
     name: 'cursor/delete-content/inside-node/delete-previous-grapheme',
     when: ({ situation, resources }): boolean => {

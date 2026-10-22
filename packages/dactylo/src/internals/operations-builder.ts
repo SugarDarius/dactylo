@@ -456,7 +456,16 @@ export function buildDeleteTextRunOps(
   ]
 }
 
-/** Builds operations to collapse an empty block to the active marks. */
+/**
+ * When a block has no visible text ({@link isInlineContentTextEmpty}) but still
+ * holds non-canonical inline structure (e.g. a lone empty {@link LinkNode}),
+ * strip all inline nodes and insert one empty {@link TextNode} with `activeMarks`.
+ *
+ * Undo restores removed nodes via `remove_inline_node` snapshots.
+ *
+ * Returns pps plus the new placeholder node id for selection rewrite, or `null`
+ * if the block is not text-empty or is already canonically empty text.
+ */
 export function buildCollapseEmptyBlockToActiveMarksOps(
   blockId: BlockId,
   contentAfterPriorOps: readonly InlineNode[],
@@ -495,6 +504,57 @@ export function buildCollapseEmptyBlockToActiveMarksOps(
   })
 
   return { ops, placeholder }
+}
+
+/**
+ * Previews inline content after applying `priorOps`, then appends
+ * {@link buildCollapseEmptyBlockToActiveMarksOps} when the block would be
+ * text-empty but not canonically empty (e.g. empty link shell).
+ *
+ * When collapse runs, any trailing `set_selection` in `priorOps` is dropped and
+ * replaced with a caret on the new placeholder text node (undo `prev` = `selectionBefore`).
+ */
+export function buildMergeCollapseEmptyBlockIntoOps(
+  context: EditorContext,
+  blockId: BlockId,
+  contentBefore: readonly InlineNode[],
+  priorOps: Operation[],
+): Operation[] {
+  const preview = previewInlineContentAfterTrimOps(
+    contentBefore,
+    priorOps,
+    blockId,
+  )
+
+  const collapsed = buildCollapseEmptyBlockToActiveMarksOps(
+    blockId,
+    preview,
+    context.activeMarks,
+  )
+
+  if (!collapsed) {
+    return priorOps
+  }
+
+  const withoutSelection = priorOps.filter(
+    (op) => op.__type !== 'set_selection',
+  ) as Operation[]
+
+  const ops: Operation[] = [
+    ...withoutSelection,
+    ...collapsed.ops,
+    {
+      __type: 'set_selection',
+      next: createCursor({
+        blockId,
+        nodeId: collapsed.placeholder.id,
+        offset: 0,
+      }),
+      prev: context.selection,
+    },
+  ]
+
+  return ops
 }
 
 /** Builds operations to rewrite the selection of a collapsed empty block. */
