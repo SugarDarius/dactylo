@@ -16,6 +16,7 @@ import {
 } from '../internals/constants'
 import type { DocumentState } from '../internals/document'
 import { paintTextForDOM } from '../internals/dom'
+import type { EditorContext } from '../internals/editor-context'
 import { isMarkEnabled } from '../internals/marks'
 import type { MarkKey } from '../internals/marks'
 import type { InlineNodeWithEditableText } from '../internals/nodes'
@@ -34,6 +35,7 @@ import {
   useIsomorphicLayoutEffect,
   useStableCallback,
   useStableValue,
+  useSyncExternalStoreWithSelector,
 } from './internals/hooks'
 
 // --- Composer Context ─────────────────────────────────────────--------
@@ -50,6 +52,39 @@ export const { Provider: ComposerProvider, useContext: useComposer } =
   })
 
 // --- Editor ─────────────────────────────────────────--------------
+
+/**
+ * Subscribe to {@link EditorContext} and re-render only when
+ * the selector changes (referentially or per `isEqual`).
+ *
+ * @example
+ * ```tsx
+ * const { state } = useEditorContextStore(({ state }) => state)
+ * console.log(state)
+ * ```
+ */
+export function useEditorContextStore<S>(
+  selector: (context: EditorContext) => S,
+  isEqual?: (a: S, b: S) => boolean,
+): S {
+  const selectorRef = useRef(selector)
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() => editor.getContext())
+
+  const stableSelector = useStableCallback((context: EditorContext) =>
+    selectorRef.current(context),
+  )
+
+  return useSyncExternalStoreWithSelector(
+    subscribe,
+    getSnapshot,
+    getSnapshot,
+    stableSelector,
+    isEqual,
+  )
+}
 
 /**
  * Returns the editor {@link DactyloStaticConfig}.
@@ -120,16 +155,7 @@ export function useSetEditable() {
  * ```
  */
 export function useDocumentState(): DocumentState {
-  const { editor } = useComposer()
-
-  const subscribe = useStableCallback(editor.subscribe.bind(editor))
-  const getSnapshot = useStableCallback(() => {
-    const { state } = editor.getContext()
-
-    return state
-  })
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  return useEditorContextStore(({ state }) => state)
 }
 
 // --- Selection ─────────────────────────────────────────-----------
@@ -144,15 +170,7 @@ export function useDocumentState(): DocumentState {
  * ```
  */
 export function useSelection(): Selection | null {
-  const { editor } = useComposer()
-
-  const subscribe = useStableCallback(editor.subscribe.bind(editor))
-  const getSnapshot = useStableCallback(() => {
-    const { selection } = editor.getContext()
-    return selection
-  })
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  return useEditorContextStore(({ selection }) => selection)
 }
 
 /**
@@ -165,19 +183,13 @@ export function useSelection(): Selection | null {
  * ```
  */
 export function useCursorSelection(): CursorSelection | null {
-  const { editor } = useComposer()
-
-  const subscribe = useStableCallback(editor.subscribe.bind(editor))
-  const getSnapshot = useStableCallback(() => {
-    const { selection } = editor.getContext()
+  return useEditorContextStore(({ selection }) => {
     if (!isCursorSelection(selection)) {
       return null
     }
 
     return selection
   })
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
 /**
@@ -190,19 +202,13 @@ export function useCursorSelection(): CursorSelection | null {
  * ```
  */
 export function useRangeSelection(): RangeSelection | null {
-  const { editor } = useComposer()
-
-  const subscribe = useStableCallback(editor.subscribe.bind(editor))
-  const getSnapshot = useStableCallback(() => {
-    const { selection } = editor.getContext()
+  return useEditorContextStore(({ selection }) => {
     if (!isRangeSelection(selection)) {
       return null
     }
 
     return selection
   })
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
 /**
@@ -279,6 +285,26 @@ export function useIsFocused(): boolean {
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() =>
     editor.selection.tools.isFocused(),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns whether the block has an active selection.
+ *
+ * @example
+ * ```tsx
+ * const isWithActiveSelection = useIsBlockWithActiveSelection(blockId)
+ * console.log(isWithActiveSelection)
+ * ```
+ */
+export function useIsBlockWithActiveSelection(blockId: BlockId): boolean {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.selection.tools.isBlockWithActiveSelection(blockId),
   )
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
@@ -398,6 +424,26 @@ export function useBlocksCommands() {
   )
 
   return { delete: $delete } as const
+}
+
+/**
+ * Returns whether the block is empty.
+ *
+ * @example
+ * ```tsx
+ * const isEmpty = useIsBlockEmpty(blockId)
+ * console.log(isEmpty)
+ * ```
+ */
+export function useIsBlockEmpty(blockId: BlockId): boolean {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.blocks.tools.isWithEmptyInlineContent(blockId),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
 // --- History ------─────────────────────────────────────────-------
@@ -641,11 +687,8 @@ export function useEditableBlock(blockId: BlockId) {
 
   const canEdit = useCanEdit()
 
-  const { isBlockWithActiveSelection } = useSelectionTools()
-  const { isWithEmptyInlineContent } = useBlocksTools()
-
-  const isEmpty = isWithEmptyInlineContent(blockId)
-  const withActiveSelection = isBlockWithActiveSelection(blockId)
+  const withActiveSelection = useIsBlockWithActiveSelection(blockId)
+  const isEmpty = useIsBlockEmpty(blockId)
 
   return {
     canEdit,
