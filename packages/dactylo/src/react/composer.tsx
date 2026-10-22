@@ -302,12 +302,18 @@ export function useIsFocused(): boolean {
 export function useIsBlockWithActiveSelection(blockId: BlockId): boolean {
   const { editor } = useComposer()
 
-  const subscribe = useStableCallback(editor.subscribe.bind(editor))
-  const getSnapshot = useStableCallback(() =>
-    editor.selection.tools.isBlockWithActiveSelection(blockId),
-  )
+  return useEditorContextStore(({ state }) => {
+    /**
+     * Block-scoped UI may still re-render once after
+     * undo/delete before React unmounts the block.
+     * Treat missing blocks as empty instead of throwing.
+     */
+    if (!state.blocks.has(blockId)) {
+      return true
+    }
 
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+    return editor.selection.tools.isBlockWithActiveSelection(blockId)
+  })
 }
 
 // --- Marks ─────────────────────────────────────────---------------
@@ -438,12 +444,18 @@ export function useBlocksCommands() {
 export function useIsBlockEmpty(blockId: BlockId): boolean {
   const { editor } = useComposer()
 
-  const subscribe = useStableCallback(editor.subscribe.bind(editor))
-  const getSnapshot = useStableCallback(() =>
-    editor.blocks.tools.isWithEmptyInlineContent(blockId),
-  )
+  return useEditorContextStore(({ state }) => {
+    /**
+     * Block-scoped UI  may still re-render once after
+     * undo/delete before React unmounts the block.
+     * Treat missing blocks as empty instead of throwing.
+     */
+    if (!state.blocks.has(blockId)) {
+      return true
+    }
 
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+    return editor.blocks.tools.isWithEmptyInlineContent(blockId)
+  })
 }
 
 // --- History ------─────────────────────────────────────────-------
