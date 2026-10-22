@@ -217,6 +217,54 @@ export function isInlineContentTextEmpty(
   return true
 }
 
+/** Whether editable text has no user-visible characters (empty or whitespace only). */
+export function isEditableTextWithoutVisibleCharacters(text: string): boolean {
+  if (text.length === 0) {
+    return true
+  }
+  return !/\S/u.test(text)
+}
+
+/**
+ * Whether inline content has no user-visible text.
+ *
+ * Unlike {@link isCanonicalEmptyInlineContent}, does **not** compare
+ * `TextNode.marks` to {@link EditorContext.activeMarks}. Use this for
+ * placeholder / `data-empty` / `isWithEmptyInlineContent`.
+ *
+ * Collapse skip logic should keep using {@link isCanonicalEmptyInlineContent}.
+ */
+export function isInlineContentWithoutVisibleText(
+  content: readonly InlineNode[],
+): boolean {
+  for (const node of content) {
+    switch (node.__type) {
+      case 'text':
+      case 'link': {
+        if (!isEditableTextWithoutVisibleCharacters(node.text)) {
+          return false
+        }
+        break
+      }
+      case 'mention': {
+        if (node.text.length > 0) {
+          return false
+        }
+        break
+      }
+      case 'line_break': {
+        break
+      }
+      default: {
+        assertNever(node, {
+          hint: 'InlineNode/#isInlineContentWithoutVisibleText',
+        })
+      }
+    }
+  }
+  return true
+}
+
 /** Whether the inline content is canonical empty. */
 export function isCanonicalEmptyInlineContent(
   content: readonly InlineNode[],

@@ -9,7 +9,7 @@ import type { ArrowDirection } from './keyboard'
 import type { Marks } from './marks'
 import {
   createTextNode,
-  isCanonicalEmptyInlineContent,
+  isInlineContentWithoutVisibleText,
   isInlineNodeWithEditableText,
 } from './nodes'
 import type { InsertBlockOpPosition } from './operations'
@@ -232,11 +232,10 @@ export function getBlockWithInlineContent(
 /** Checks whether a block content is empty. */
 export function isBlockWithInlineContentEmpty(
   state: DocumentState,
-  activeMarks: Marks,
   blockId: BlockId,
 ): boolean {
   const block = getBlockWithInlineContent(state, blockId)
-  return isCanonicalEmptyInlineContent(block.content, activeMarks)
+  return isInlineContentWithoutVisibleText(block.content)
 }
 
 /** Immutable update: replace one block in document state. */

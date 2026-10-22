@@ -1378,7 +1378,6 @@ export class Dactylo {
             () =>
               isBlockWithInlineContentEmpty(
                 this.#pipeline.context.state,
-                this.#pipeline.context.activeMarks,
                 blockId,
               ),
             negate,

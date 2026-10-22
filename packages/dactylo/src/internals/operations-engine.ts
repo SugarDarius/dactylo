@@ -1181,11 +1181,11 @@ export class OperationsEngine {
     context: EditorContext,
     blockId: BlockId,
   ): Operation[] | null {
-    const { state, activeMarks } = context
+    const { state } = context
     // @todo: improve by creating am invariant checker
     const block = getBlock(state, blockId)
     const idx = getBlockIndex(state, blockId)
-    const isEmpty = isBlockWithInlineContentEmpty(state, activeMarks, blockId)
+    const isEmpty = isBlockWithInlineContentEmpty(state, blockId)
 
     /**
      * Invariant UX:
