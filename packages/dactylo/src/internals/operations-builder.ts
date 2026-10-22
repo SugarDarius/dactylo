@@ -214,9 +214,31 @@ export function previewInlineContentAfterTrimOps(
         text: before + after,
         updatedAt: new Date(),
       }
+    } else if (op.__type === 'insert_text') {
+      const idx = next.findIndex((n) => n.id === op.nodeId)
+      if (idx === -1) {
+        continue
+      }
+
+      const node = next[idx]
+      if (!node || !isInlineNodeWithEditableText(node)) {
+        continue
+      }
+
+      const before = node.text.slice(0, op.offset)
+      const after = node.text.slice(op.offset)
+
+      next[idx] = {
+        ...node,
+        text: before + op.text + after,
+        updatedAt: new Date(),
+      }
     } else if (op.__type === 'remove_inline_node') {
       next.splice(op.index, 1)
+    } else if (op.__type === 'insert_inline_node') {
+      next.splice(op.index, 0, op.node)
     }
+
     next = coalesceInlineNodes(next)
   }
 
@@ -298,7 +320,7 @@ export function resolveTextInsertTarget(
 ): { node: InlineNodeWithEditableText; index: number } {
   const previewContent = previewInlineContentAfterTrimOps(
     block.content,
-    [...prefixOps],
+    prefixOps,
     block.id,
   )
 
@@ -323,6 +345,76 @@ export function resolveTextInsertTarget(
   }
 
   return { index: found.index, node: found.node }
+}
+
+/**
+ * Collapsed caret where typing / soft-break should run after range-delete prefix ops.
+ *
+ * - Anchor node still in preview → clamp offset to surviving text length.
+ * - Block collapsed to placeholder → caret on last `insert_inline_node` for this block.
+ * - Otherwise → first editable inline node in preview.
+ */
+export function resolveRangeInsertCaretAfterPrefixOps(
+  block: BlockWithInlineContent,
+  anchor: TextCursor,
+  prefixOps: Operation[],
+): TextCursor {
+  const preview = previewInlineContentAfterTrimOps(
+    block.content,
+    prefixOps,
+    block.id,
+  )
+
+  const previewBlock: BlockWithInlineContent = {
+    ...block,
+    content: preview,
+  }
+
+  const atAnchor = findNodeInBlockWithInlineContent(previewBlock, anchor.nodeId)
+
+  if (atAnchor && isInlineNodeWithEditableText(atAnchor.node)) {
+    const offset = Math.min(
+      Math.max(anchor.offset, 0),
+      atAnchor.node.text.length,
+    )
+
+    return {
+      blockId: block.id,
+      nodeId: anchor.nodeId,
+      offset,
+    }
+  }
+
+  for (let i = prefixOps.length - 1; i >= 0; i -= 1) {
+    const op = prefixOps[i]
+    if (
+      op &&
+      op.__type === 'insert_inline_node' &&
+      op.blockId === block.id &&
+      isInlineNodeWithEditableText(op.node)
+    ) {
+      return {
+        blockId: block.id,
+        nodeId: op.node.id,
+        offset: 0,
+      }
+    }
+  }
+
+  for (const node of preview) {
+    if (isInlineNodeWithEditableText(node)) {
+      return {
+        blockId: block.id,
+        nodeId: node.id,
+        offset: 0,
+      }
+    }
+  }
+
+  buildError(
+    `No insert caret in block ${block.id} after prefix ops`,
+    'OperationBuilder/resolveRangeInsertCaretAfterPrefixOps',
+  )
 }
 
 /**

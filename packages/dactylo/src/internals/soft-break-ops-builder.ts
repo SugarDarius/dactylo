@@ -31,6 +31,7 @@ import {
   iterRules,
   previewInlineContentAfterTrimOps,
   rangeCollapsedError,
+  resolveRangeInsertCaretAfterPrefixOps,
   resolvesMergeBlocksUndoFields,
   resolveTextInsertTarget,
 } from './operations-builder'
@@ -448,6 +449,8 @@ export function buildSoftBreakAndSelectionAtRangeOps(
   const block =
     blockSnapshot ?? getBlockWithInlineContent(context.state, at.blockId)
 
+  const insertAt = resolveRangeInsertCaretAfterPrefixOps(block, at, prefixOps)
+
   const previewContent = previewInlineContentAfterTrimOps(
     block.content,
     [...prefixOps],
@@ -459,11 +462,11 @@ export function buildSoftBreakAndSelectionAtRangeOps(
     content: previewContent,
   }
 
-  const { node, index } = resolveTextInsertTarget(block, prefixOps, at)
+  const { node, index } = resolveTextInsertTarget(block, prefixOps, insertAt)
   const inline = buildSoftBreakInlineOpsAtCaret(
     context,
     previewBlock,
-    at,
+    insertAt,
     node,
     index,
   )
