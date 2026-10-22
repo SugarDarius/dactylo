@@ -12,6 +12,7 @@ import { createInitialActiveMarks, isMarkEnabled } from './marks'
 import type { MarkKey, Marks } from './marks'
 import { coalesceInlineNodes, isInlineNodeWithEditableText } from './nodes'
 import type { InlineNode } from './nodes'
+import { isSelectionActive } from './selection'
 import type { Selection } from './selection'
 
 /**
@@ -205,7 +206,7 @@ export function isMarkActiveInContext(
 ): boolean {
   const { selection, activeMarks } = context
 
-  if (selection === null) {
+  if (!isSelectionActive(selection)) {
     return false
   }
 

@@ -40,6 +40,7 @@ import {
   createCursor,
   getRangeSelectionTopology,
   isCursorSelection,
+  isSelectionActive,
 } from './selection'
 import type { Selection, RangeSelection, TextCursor } from './selection'
 
@@ -662,7 +663,7 @@ export class InsertTextOpsBuilder implements OperationsBuilder<
   describe(context: EditorContext): InsertTextOpsSituation {
     const { selection, state } = context
 
-    if (selection === null) {
+    if (!isSelectionActive(selection)) {
       return { kind: 'no-selection' }
     }
 

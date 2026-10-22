@@ -20,7 +20,7 @@ import type {
   OperationRule,
   OperationsBuilder,
 } from './operations-builder'
-import { isCursorSelection } from './selection'
+import { isCursorSelection, isSelectionActive } from './selection'
 import type { RangeSelection } from './selection'
 
 /** Situation with no selection. */
@@ -73,7 +73,10 @@ export const cursorRules: MarksOpsRule[] = [
      */
     build: ({ context, situation, input }): Operation[] | null => {
       const { selection } = context
-      if (situation.kind !== 'cursor-selection' || selection === null) {
+      if (
+        situation.kind !== 'cursor-selection' ||
+        !isSelectionActive(selection)
+      ) {
         return null
       }
 
@@ -192,7 +195,7 @@ export class MarksOpsBuilder implements OperationsBuilder<
   /** Describes the {@link MarksOpsSituation}. */
   describe(context: EditorContext): MarksOpsSituation {
     const { selection, state } = context
-    if (selection === null) {
+    if (!isSelectionActive(selection)) {
       return { kind: 'no-selection' }
     }
 

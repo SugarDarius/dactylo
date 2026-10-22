@@ -29,6 +29,7 @@ import {
   cursorAtBlockStart,
   isCursorAtBlockEnd,
   isCursorSelection,
+  isSelectionActive,
 } from './selection'
 import type { RangeSelection, TextCursor } from './selection'
 
@@ -189,7 +190,7 @@ export class HardBreakOpsBuilder implements OperationsBuilder<
   /** Describes the {@link HardBreakOpsSituation}. */
   describe(context: EditorContext): HardBreakOpsSituation {
     const { selection, state } = context
-    if (selection === null) {
+    if (!isSelectionActive(selection)) {
       return { kind: 'no-selection' }
     }
 

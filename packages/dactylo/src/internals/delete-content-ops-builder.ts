@@ -38,6 +38,7 @@ import {
   createCursor,
   getRangeSelectionTopology,
   isCursorSelection,
+  isSelectionActive,
 } from './selection'
 import type { RangeSelection, TextCursor } from './selection'
 
@@ -835,7 +836,7 @@ export class DeleteContentOpsBuilder implements OperationsBuilder<
   /** Describes the {@link DeleteContentOpsSituation}. */
   describe(context: EditorContext): DeleteContentOpsSituation {
     const { selection, state } = context
-    if (selection === null) {
+    if (!isSelectionActive(selection)) {
       return { kind: 'no-selection' }
     }
 

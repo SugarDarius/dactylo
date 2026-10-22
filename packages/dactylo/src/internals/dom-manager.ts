@@ -17,6 +17,7 @@ import {
   createRange,
   isCursorSelection,
   isRangeSelection,
+  isSelectionActive,
 } from './selection'
 import type { RangeSelection, Selection, TextCursor } from './selection'
 import type { CancelCallback } from './types'
@@ -312,7 +313,7 @@ export class DOMManager {
 
     const nextSelection = getSelectionFromEditable(editable)
     if (
-      nextSelection === null ||
+      !isSelectionActive(nextSelection) ||
       areSelectionsEqual(nextSelection, this.#getSelection())
     ) {
       return

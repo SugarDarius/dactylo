@@ -29,6 +29,7 @@ import {
   createCursor,
   isCursorAtBlockEnd,
   isCursorSelection,
+  isSelectionActive,
 } from './selection'
 import type { RangeSelection, TextCursor } from './selection'
 import { assertNever } from './utils'
@@ -264,7 +265,7 @@ export class SoftBreakOpsBuilder implements OperationsBuilder<
   /** Describes the {@link SoftBreakOpsSituation}. */
   describe(context: EditorContext): SoftBreakOpsSituation {
     const { selection, state } = context
-    if (selection === null) {
+    if (!isSelectionActive(selection)) {
       return { kind: 'no-selection' }
     }
 

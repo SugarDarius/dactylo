@@ -117,14 +117,14 @@ export type Selection = Relax<CursorSelection | RangeSelection>
 /** The topology of a range selection. */
 export type RangeSelectionTopology = 'same-node' | 'same-block' | 'cross-blocks'
 
-/** Checks if the selection is active or not. */
+/** Checks whether the selection is active or not. */
 export function isSelectionActive(
   selection: Selection | null,
 ): selection is Selection {
   return selection !== null
 }
 
-/** Checks if a selection is a collapsed cursor selection. */
+/** Checks whether a selection is a collapsed cursor selection. */
 export function isCursorSelection(
   selection: Selection | null,
 ): selection is CursorSelection {
