@@ -795,7 +795,7 @@ export function stepCursorDown(
 }
 
 /**
- * Returns the next caret position, or `null` if already at the boundary.
+ * Returns the next caret position, or `cursor` when step is blocked at a boundary.
  * Must provide the offsets management operations to use for the cursor navigation.
  */
 export function stepTextCursor(
@@ -807,22 +807,22 @@ export function stepTextCursor(
     getPrev: (text: string, offset: number) => number
     snapToBoundary: (text: string, offset: number) => number
   },
-): TextCursor | null {
+): TextCursor {
   switch (direction) {
     case 'left': {
-      return stepCursorLeft(state, cursor, offsets.getPrev)
+      return stepCursorLeft(state, cursor, offsets.getPrev) ?? cursor
     }
     case 'right': {
-      return stepCursorRight(state, cursor, offsets.getNext)
+      return stepCursorRight(state, cursor, offsets.getNext) ?? cursor
     }
     case 'up': {
-      return stepCursorUp(state, cursor, offsets.snapToBoundary)
+      return stepCursorUp(state, cursor, offsets.snapToBoundary) ?? cursor
     }
     case 'down': {
-      return stepCursorDown(state, cursor, offsets.snapToBoundary)
+      return stepCursorDown(state, cursor, offsets.snapToBoundary) ?? cursor
     }
     default: {
-      return null
+      return cursor
     }
   }
 }

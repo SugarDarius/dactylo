@@ -38,8 +38,8 @@ export interface MoveSelectionOpsSelectionSituation {
    */
   readonly rangeAnchor: TextCursor | null
 
-  /** Caret after one step, or `null` at a boundary. */
-  readonly nextFocus: TextCursor | null
+  /** Caret after one step, or `origin` when step is blocked at a boundary. */
+  readonly nextFocus: TextCursor
 }
 
 /** Situation for move selection operations. */
@@ -102,7 +102,7 @@ export const moveRules: MoveSelectionOpsRule[] = [
      */
     name: 'move-selection/from-range-by-step',
     when: ({ context, situation, input }): boolean => {
-      if (situation.kind !== 'with-selection' || situation.nextFocus === null) {
+      if (situation.kind !== 'with-selection') {
         return false
       }
 
@@ -158,43 +158,6 @@ export const moveRules: MoveSelectionOpsRule[] = [
       )
 
       return !areSelectionsEqual(context.selection, next)
-    },
-  },
-  {
-    /**
-     * 💡 At boundary with a range selected, and without `shift` held
-     *    we cannot step further.
-     * 🎯 Collapse the range to origin unless that would not change selection.
-     */
-    build: ({ context, situation }): Operation[] | null => {
-      if (situation.kind !== 'with-selection') {
-        return null
-      }
-
-      const next = createCursor(situation.origin)
-      const ops: Operation[] = [
-        {
-          __type: 'set_selection',
-          next,
-          prev: context.selection,
-        },
-      ]
-
-      return ops
-    },
-    name: 'move-selection/collapse-range-at-boundary',
-    when: ({ context, situation, input }): boolean => {
-      if (situation.kind !== 'with-selection' || situation.nextFocus === null) {
-        return false
-      }
-
-      const { extend } = input
-      if (extend || !isRangeSelection(context.selection)) {
-        return false
-      }
-
-      const collapsed = createCursor(situation.origin)
-      return !areSelectionsEqual(collapsed, context.selection)
     },
   },
 ]
