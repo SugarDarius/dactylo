@@ -164,9 +164,9 @@ export interface OperationsBuilder<S, I> {
  *
  * Purpose:
  * After delete or replace a cross-block range selection the engine does:
- *  1. Trims the start block from the anchor forward (e.g `#buildForwardTrimBlockOps`
+ *  1. Trims the start block from the anchor forward (e.g `buildForwardTrimBlockOps`)
  *  2. Deletes blocks in the middle.
- *  3. Trims end block from the focus backward (e.g `#buildBackwardTrimBlockOps`)
+ *  3. Trims end block from the focus backward (e.g `buildBackwardTrimBlockOps`)
  *  4. Emits a `merge_blocks` operation that joins the trimmed end into the trimmed start.
  *
  * Several fields on that `merge_blocks` op must match the document at the moment this op
