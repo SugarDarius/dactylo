@@ -319,7 +319,7 @@ export class SoftBreakOpsBuilder implements OperationsBuilder<
     }
   }
 
-  /** Builds the operations to apply a soft break. */
+  /** Builds ops to apply a soft break. */
   build(context: EditorContext): BuilderOpsIntent | null {
     const situation = this.describe(context)
     const { kind } = situation

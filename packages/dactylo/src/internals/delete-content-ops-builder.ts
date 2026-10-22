@@ -907,7 +907,7 @@ export class DeleteContentOpsBuilder implements OperationsBuilder<
     }
   }
 
-  /** Builds the operations to delete content. */
+  /** Builds ops to delete content. */
   build(context: EditorContext): BuilderOpsIntent | null {
     const situation = this.describe(context)
     const { kind } = situation

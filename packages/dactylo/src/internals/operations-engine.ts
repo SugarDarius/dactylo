@@ -21,10 +21,8 @@ import {
   getBlockWithInlineContent,
   insertBlock,
   isBlockWithInlineContentEmpty,
-  normalizeRange,
   replaceBlock,
   resolveInsertAfterBlockId,
-  stepTextCursor,
 } from './document'
 import type { DocumentState } from './document'
 import {
@@ -42,6 +40,7 @@ import type { ArrowDirection } from './keyboard'
 import { applyNormalizedMarks, isMarksEqual } from './marks'
 import type { MarkKey } from './marks'
 import { MarksOpsBuilder } from './marks-ops-builder'
+import { MoveSelectionOpsBuilder } from './move-selection-ops-builder'
 import {
   coalesceInlineNodes,
   isInlineNodeWithEditableText,
@@ -66,14 +65,7 @@ import type {
 import { buildError } from './operations-builder'
 import type { BuilderOpsIntent } from './operations-builder'
 import { PastePlainTextOpsBuilder } from './paste-plain-text-ops-builder'
-import {
-  areSelectionsEqual,
-  createCursor,
-  createRange,
-  isCursorSelection,
-  isRangeSelection,
-  isSelectionActive,
-} from './selection'
+import { areSelectionsEqual } from './selection'
 import type { TextCursor, Selection } from './selection'
 import { SoftBreakOpsBuilder } from './soft-break-ops-builder'
 import { assertNever } from './utils'
@@ -786,11 +778,11 @@ export class OperationsEngine {
   /** Hard break ops builder. */
   readonly #hardBreakOpsBuilder: HardBreakOpsBuilder
 
-  /** Grapheme offset caret instance. */
-  readonly #graphemeOffsetCaret: GraphemeOffsetCaret
+  /** Move selection ops builder. */
+  readonly #moveSelectionOpsBuilder: MoveSelectionOpsBuilder
 
   constructor(options: OperationsEngineOptions) {
-    this.#graphemeOffsetCaret = new GraphemeOffsetCaret({
+    const graphemeOffsetCaret = new GraphemeOffsetCaret({
       locales: options.locales,
     })
 
@@ -800,14 +792,17 @@ export class OperationsEngine {
       mentions: options.mentions,
     })
     this.#deleteContentOpsBuilder = new DeleteContentOpsBuilder({
-      graphemeOffsetCaret: this.#graphemeOffsetCaret,
+      graphemeOffsetCaret,
     })
     this.#pastePlainTextOpsBuilder = new PastePlainTextOpsBuilder({
       autolink: options.autolink,
-      graphemeOffsetCaret: this.#graphemeOffsetCaret,
+      graphemeOffsetCaret,
     })
     this.#softBreakOpsBuilder = new SoftBreakOpsBuilder()
     this.#hardBreakOpsBuilder = new HardBreakOpsBuilder()
+    this.#moveSelectionOpsBuilder = new MoveSelectionOpsBuilder({
+      graphemeOffsetCaret,
+    })
   }
 
   // --- Core engine ─────────────────────────────────────────---------
@@ -1079,83 +1074,8 @@ export class OperationsEngine {
     context: EditorContext,
     direction: ArrowDirection,
     extend: boolean,
-  ): Operation[] | null {
-    if (!isSelectionActive(context.selection)) {
-      return null
-    }
-
-    let origin: TextCursor
-    let rangeAnchor: TextCursor | undefined
-
-    if (isCursorSelection(context.selection)) {
-      origin = context.selection.anchor
-      rangeAnchor = extend ? context.selection.anchor : undefined
-    } else {
-      const normalized = normalizeRange(context.state, context.selection)
-      if (extend) {
-        origin = context.selection.focus
-        rangeAnchor = context.selection.anchor
-      } else {
-        const collapseToStart = direction === 'left' || direction === 'up'
-        origin = collapseToStart ? normalized.anchor : normalized.focus
-        rangeAnchor = undefined
-      }
-    }
-
-    const nextFocus = stepTextCursor(context.state, origin, direction, {
-      getNext: (text, offset) =>
-        this.#graphemeOffsetCaret.getNextOffset(text, offset),
-      getPrev: (text, offset) =>
-        this.#graphemeOffsetCaret.getPrevOffset(text, offset),
-      snapToBoundary: (text, offset) =>
-        this.#graphemeOffsetCaret.snapOffsetToBoundary(text, offset),
-    })
-    if (!nextFocus) {
-      if (!extend && isRangeSelection(context.selection)) {
-        const collapsed = createCursor(origin)
-        const isEqual = areSelectionsEqual(
-          {
-            anchor: collapsed.anchor,
-          },
-          { anchor: context.selection.anchor, focus: context.selection.focus },
-        )
-
-        if (isEqual) {
-          return null
-        }
-
-        const ops: Operation[] = [
-          {
-            __type: 'set_selection',
-            next: collapsed,
-            prev: context.selection,
-          },
-        ]
-
-        return ops
-      }
-      return null
-    }
-
-    const next =
-      extend && rangeAnchor
-        ? createRange(rangeAnchor, nextFocus)
-        : createCursor(nextFocus)
-
-    const isEqual = areSelectionsEqual(context.selection, next)
-    if (isEqual) {
-      return null
-    }
-
-    const ops: Operation[] = [
-      {
-        __type: 'set_selection',
-        next,
-        prev: context.selection,
-      },
-    ]
-
-    return ops
+  ): BuilderOpsIntent | null {
+    return this.#moveSelectionOpsBuilder.build(context, { direction, extend })
   }
 
   /** Builds operations to set selection to end of last block in document order. */
@@ -1262,7 +1182,7 @@ export class OperationsEngine {
     blockId: BlockId,
   ): Operation[] | null {
     const { state } = context
-    // @todo: improve by creating a invariant checker
+    // @todo: improve by creating am invariant checker
     const block = getBlock(state, blockId)
     const idx = getBlockIndex(state, blockId)
     const isEmpty = isBlockWithInlineContentEmpty(state, blockId)

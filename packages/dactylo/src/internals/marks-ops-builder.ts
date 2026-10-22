@@ -221,7 +221,7 @@ export class MarksOpsBuilder implements OperationsBuilder<
     return { kind: 'range-selection', range: normalized }
   }
 
-  /** Builds the operations to toggle a mark on or off. */
+  /** Builds ops to toggle a mark on or off. */
   build(context: EditorContext, input: MarksOpsInput): BuilderOpsIntent | null {
     const situation = this.describe(context)
     const { kind } = situation

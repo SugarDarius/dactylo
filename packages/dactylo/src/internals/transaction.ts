@@ -14,7 +14,6 @@ import type { MarkKey } from './marks'
 import type { Operation, InsertBlockOpPosition } from './operations'
 import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
-import { isSelectionActive } from './selection'
 import type { Selection } from './selection'
 import { warnHistoryInputType } from './warnings'
 
@@ -955,25 +954,26 @@ export class TransactionPipeline {
     }
 
     const arrowDirection = detectArrowDirection(event)
-    if (arrowDirection !== null && isSelectionActive(this.#context.selection)) {
+    if (arrowDirection !== null) {
       /** In any case we prevent native browser behavior as we want full control over arrow navigation. */
       prevent()
 
-      const ops = this.#operationsEngine.buildArrowNavigationOps(
+      const intent = this.#operationsEngine.buildArrowNavigationOps(
         this.#context,
         arrowDirection,
         event.shiftKey,
       )
-
-      if (ops === null) {
+      if (intent === null) {
         return false
       }
 
+      const { ops, label } = intent
       this.#commit(ops, {
         label: transactionPolicyLabel(
           'keydown',
           'digest-event',
           `arrow-navigation-${arrowDirection}`,
+          label,
         ),
         pushToHistory: false,
         source: 'user',

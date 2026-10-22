@@ -452,7 +452,7 @@ export class PastePlainTextOpsBuilder implements OperationsBuilder<
     }
   }
 
-  /** Builds the operations to paste the data. */
+  /** Builds ops to paste the data. */
   build(
     context: EditorContext,
     input: PastePlainTextOpsInput,

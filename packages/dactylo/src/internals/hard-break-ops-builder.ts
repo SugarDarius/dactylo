@@ -244,7 +244,7 @@ export class HardBreakOpsBuilder implements OperationsBuilder<
     }
   }
 
-  /** Builds the operations to apply a hard break. */
+  /** Builds ops to apply a hard break. */
   build(context: EditorContext): BuilderOpsIntent | null {
     const situation = this.describe(context)
     const { kind } = situation
