@@ -79,6 +79,42 @@ export function defineSelectionAfterMoveStep(
 /** Rules for move selection operations. */
 export const moveRules: MoveSelectionOpsRule[] = [
   {
+    build: ({ context, situation }): Operation[] | null => {
+      if (situation.kind !== 'with-selection' || situation.nextFocus === null) {
+        return null
+      }
+
+      const next = createCursor(situation.nextFocus)
+      const ops: Operation[] = [
+        {
+          __type: 'set_selection',
+          next,
+          prev: context.selection,
+        },
+      ]
+
+      return ops
+    },
+    /**
+     * 💡 A range is selected and the user presses an arrow without Shift.
+     *    The range collapses toward the arrow end (`origin`), then the caret steps once (`nextFocus`).
+     * 🎯 Set selection to a cursor at `nextFocus` (not a range, not merely `origin`).
+     */
+    name: 'move-selection/from-range-by-step',
+    when: ({ context, situation, input }): boolean => {
+      if (situation.kind !== 'with-selection' || situation.nextFocus === null) {
+        return false
+      }
+
+      if (input.extend || !isRangeSelection(context.selection)) {
+        return false
+      }
+
+      const next = createCursor(situation.nextFocus)
+      return !areSelectionsEqual(context.selection, next)
+    },
+  },
+  {
     /**
      * 💡 Caret moves one step and selection would change.
      * 🎯 Set selection to a cursor, or to an extended range if `shift` is held.
@@ -107,6 +143,11 @@ export const moveRules: MoveSelectionOpsRule[] = [
     name: 'move-selection/by-step',
     when: ({ context, situation, input }): boolean => {
       if (situation.kind !== 'with-selection' || situation.nextFocus === null) {
+        return false
+      }
+
+      /** Range without `shift` held cannot be stepped (`from-range-by-step` rule handles it ☝🏻). */
+      if (isRangeSelection(context.selection) && !input.extend) {
         return false
       }
 
