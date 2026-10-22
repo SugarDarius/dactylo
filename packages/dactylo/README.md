@@ -171,7 +171,7 @@ export function Editor() {
 | Command & tool events                            | ✅ **Done**        | Subscribe and listen to dactylo aspect changes natively                                 |
 | Marks                                            | ✅ **Done**        | Apply marks in the editor (bold, code, italic, strikethrough,… )                        |
 | Markdown inline shortcuts                        | 🚧 **In Progress** | Use Build-in markdown inline shortcuts for headings, divider, links, lists and marks    |
-| Autolink detection                               | 🚧 **In Progress** | Automatically transform links from pastes into inline nodes (configurable)              |
+| Autolink detection                               | ✅ **Done**        | Automatically transform links from pastes into inline nodes (configurable)              |
 | Mentions (`@…`)                                  | 🚧 **In Progress** | Enables build-in inline composition for inserting mentions (configurable)               |
 | Inline command trigger (`/…`)                    | 🚧 **In Progress** | Enables build-in inline composition for triggering external commands (configurable)     |
 | IME composition                                  | 🚧 **In Progress** | Build-in IME composition management                                                     |
@@ -182,7 +182,7 @@ export function Editor() {
 | Placeholders                                     | 🚧 **In Progress** | config for blocks' placeholders                                                         |
 | Locales                                          | 🚧 **In Progress** | Set the locales in the current language                                                 |
 | Read-only mode                                   | ✅ **Done**        | Editor cannot be edited                                                                 |
-| Nested blocks (parent / child)                   | 🚧 **In Progress** | Manage nested blocks at level -1                                                        |
+| Nested blocks (parent / child)                   | 📆 **Planned**     | Manage nested blocks at level -1                                                        |
 | Strings security                                 | 🚧 **In Progress** | Prevents scripting and injections when inserting text                                   |
 | DOM sync                                         | 🚧 **In Progress** | Sync DOM selection with Dactylo Selection                                               |
 | Dactylo owned errors                             | 🚧 **In Progress** | Exposes errors defined by Dactylo                                                       |
