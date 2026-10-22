@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useDebugValue, useMemo } from 'react'
+import { forwardRef, memo, useDebugValue, useMemo } from 'react'
 
 import { Dactylo } from '../dactylo'
 import { warn, warnOnce } from '../internals/console'
@@ -264,62 +264,69 @@ const ComposerParagraphBlock = forwardRef<
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
 /** Renders the composed blocks. */
-const ComposerBlocks = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->((props, forwardedRef) => {
-  const { blockOrderById, blocks } = useDocumentState()
+const ComposerBlocks = memo(
+  forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+    (props, forwardedRef) => {
+      const { blockOrderById, blocks } = useDocumentState()
 
-  // @todo: add performance rendering optimization
-  const children = useMemo(() => {
-    const items = []
+      // @todo: add performance rendering optimization
+      const children = useMemo(() => {
+        const items = []
 
-    for (const blockId of blockOrderById) {
-      const block = blocks.get(blockId)
-      if (!block) {
-        /**
-         * Skipping rendering for blocks that are not in the document state.
-         * It should never happens because `blockOrderById` from {@link DocumentState}
-         * is always n sync `blocks` after each inserts.
-         *
-         * 👉🏻 We don't throw an error because we don't want to break users' UI
-         * to keep a seamless experience.
-         */
-        warn(
-          `Block ${blockId} not found in document state. Skipping rendering…`,
-        )
-        continue
-      }
+        for (const blockId of blockOrderById) {
+          const block = blocks.get(blockId)
+          if (!block) {
+            /**
+             * Skipping rendering for blocks that are not in the document state.
+             * It should never happens because `blockOrderById` from {@link DocumentState}
+             * is always n sync `blocks` after each inserts.
+             *
+             * 👉🏻 We don't throw an error because we don't want to break users' UI
+             * to keep a seamless experience.
+             */
+            warn(
+              `Block ${blockId} not found in document state. Skipping rendering…`,
+            )
+            continue
+          }
 
-      const type = block.__type
-      switch (type) {
-        case 'paragraph': {
-          items.push(
-            <ComposerParagraphBlock key={blockId} {...props} block={block} />,
-          )
-          break
+          const type = block.__type
+          switch (type) {
+            case 'paragraph': {
+              items.push(
+                <ComposerParagraphBlock
+                  key={blockId}
+                  {...props}
+                  block={block}
+                />,
+              )
+              break
+            }
+            default: {
+              warnOnce(
+                `Skipping rendering for unsupported block type: ${type}.`,
+              )
+            }
+          }
         }
-        default: {
-          warnOnce(`Skipping rendering for unsupported block type: ${type}.`)
-        }
-      }
-    }
 
-    return items
-  }, [blockOrderById, blocks, props])
+        return items
+      }, [blockOrderById, blocks, props])
 
-  return (
-    <div
-      ref={forwardedRef}
-      {...props}
-      {...{ [BLOCKS_ATTR_NAME]: '' }}
-      role='group'
-      aria-roledescription='blocks'
-    >
-      {children}
-    </div>
-  )
-})
+      return (
+        <div
+          ref={forwardedRef}
+          {...props}
+          {...{ [BLOCKS_ATTR_NAME]: '' }}
+          role='group'
+          aria-roledescription='blocks'
+        >
+          {children}
+        </div>
+      )
+    },
+  ),
+)
 ComposerBlocks.displayName = COMPOSER_BLOCKS_NAME
 
 /**
