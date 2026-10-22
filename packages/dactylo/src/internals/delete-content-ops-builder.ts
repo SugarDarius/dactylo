@@ -51,7 +51,7 @@ export interface DeleteContentOpsNoSelectionSituation {
 export interface DeleteContentOpsCursorSelectionSituation {
   readonly kind: 'cursor-selection'
 
-  /** The cursor at which ops are applied. */
+  /** Cursor at which ops are applied. */
   readonly at: TextCursor
 
   /** Block with inline content subject to ops.  */
@@ -71,10 +71,10 @@ export interface DeleteContentOpsCursorSelectionSituation {
 export interface DeleteContentOpsRangeSelectionSituation {
   readonly kind: 'range-selection'
 
-  /** The range at which the typing operation is applied. */
+  /** Range at which the typing operation is applied. */
   readonly range: RangeSelection
 
-  /** The topology of the range selection. */
+  /** Range selection topology. */
   readonly topology:
     | {
         readonly kind: 'within-same-block'

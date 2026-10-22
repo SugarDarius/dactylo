@@ -286,6 +286,46 @@ export function resolvesMergeBlocksUndoFields(
 }
 
 /**
+ * Resolves the editable inline node where a text will be inserted
+ * after replaying `prefixOps` on the block (same transaction, earlier ops).
+ */
+export function resolveTextInsertTarget(
+  block: BlockWithInlineContent,
+  /** Delete/merge ops that run before insert in the same batch. */
+  prefixOps: Operation[],
+  /** Insert caret (anchor after range delete, or merge split point). */
+  at: TextCursor,
+): { node: InlineNodeWithEditableText; index: number } {
+  const previewContent = previewInlineContentAfterTrimOps(
+    block.content,
+    [...prefixOps],
+    block.id,
+  )
+
+  const previewBlock: BlockWithInlineContent = {
+    ...block,
+    content: previewContent,
+  }
+
+  const found = findNodeInBlockWithInlineContent(previewBlock, at.nodeId)
+  if (!found || !isInlineNodeWithEditableText(found.node)) {
+    buildError(
+      `Node ${at.nodeId} not found in block ${block.id} after prefix ops`,
+      'OperationBuilder/resolveTextInsertTarget',
+    )
+  }
+
+  if (at.offset < 0 || at.offset > found.node.text.length) {
+    buildError(
+      `Insert offset ${at.offset} out of bounds for text length ${found.node.text.length}`,
+      'OperationBuilder/resolveTextInsertTarget',
+    )
+  }
+
+  return { index: found.index, node: found.node }
+}
+
+/**
  * Deletes `[from.offset, to.offset)` inside one editable text node.
  * Fast path for range backspace when anchor/focus share the same node.
  */
