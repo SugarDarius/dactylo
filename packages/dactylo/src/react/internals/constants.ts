@@ -7,6 +7,9 @@ export const COMPOSER_EDITABLE_NAME = 'Composer.Editable'
 /** The name of the composer blocks component. */
 export const COMPOSER_BLOCKS_NAME = 'Composer.Blocks'
 
+/** The name of the composer block component. */
+export const COMPOSER_BLOCK_NAME = 'Composer.Block'
+
 /** The name of the composer paragraph block component. */
 export const COMPOSER_PARAGRAPH_BLOCK_NAME = 'Composer.ParagraphBlock'
 

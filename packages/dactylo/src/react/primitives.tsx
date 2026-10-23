@@ -3,7 +3,7 @@
 import { forwardRef, memo, useDebugValue, useMemo } from 'react'
 
 import { Dactylo } from '../dactylo'
-import { warn, warnOnce } from '../internals/console'
+import { warnOnce } from '../internals/console'
 import {
   BLOCKS_ATTR_NAME,
   BLOCK_CONTENT_EDITABLE_DATA_NAME,
@@ -22,13 +22,14 @@ import {
 } from '../internals/constants'
 import {
   ComposerProvider,
-  useDocumentState,
   useIsFocused,
   useSelectionCommands,
   useEditorConfig,
   useEditableBlock,
   useEditable,
   useEditableNode,
+  useBlock,
+  useBlockOrderById,
 } from './composer'
 import type { ComposerContext } from './composer'
 import {
@@ -39,6 +40,7 @@ import {
   COMPOSER_TEXT_NODE_NAME,
   COMPOSER_LINE_BREAK_NODE_NAME,
   COMPOSER_LINK_NODE_NAME,
+  COMPOSER_BLOCK_NAME,
 } from './internals/constants'
 import {
   useIsMounted,
@@ -54,6 +56,7 @@ import type {
   ComposerInlineContentProps,
   ComposerLineBreakNodeProps,
   ComposerLinkNodeProps,
+  ComposerBlockProps,
 } from './types'
 
 /** Base style for the editable area of the composer. */
@@ -263,55 +266,45 @@ const ComposerParagraphBlock = forwardRef<
 })
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
+/** Renders a block based on its type.. */
+const ComposerBlock = memo<ComposerBlockProps>(({ blockId, ...props }) => {
+  const block = useBlock(blockId)
+  const rendered = useMemo(() => {
+    /**
+     * Skipping rendering for blocks that are not in the document state.
+     * It should never happens because `blockOrderById` from {@link DocumentState}
+     * is always n sync `blocks` after each inserts.
+     *
+     * 👉🏻 We don't throw an error because we don't want to break users' UI
+     * to keep a seamless experience.
+     */
+    if (!block) {
+      return null
+    }
+
+    const type = block.__type
+    switch (type) {
+      case 'paragraph': {
+        return (
+          <ComposerParagraphBlock key={block.id} {...props} block={block} />
+        )
+      }
+      default: {
+        warnOnce(`Skipping rendering for unsupported block type: ${type}.`)
+        return null
+      }
+    }
+  }, [block, props])
+
+  return rendered
+})
+ComposerBlock.displayName = COMPOSER_BLOCK_NAME
+
 /** Renders the composed blocks. */
 const ComposerBlocks = memo(
   forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
     (props, forwardedRef) => {
-      const { blockOrderById, blocks } = useDocumentState()
-
-      // @todo: add performance rendering optimization
-      const children = useMemo(() => {
-        const items = []
-
-        for (const blockId of blockOrderById) {
-          const block = blocks.get(blockId)
-          if (!block) {
-            /**
-             * Skipping rendering for blocks that are not in the document state.
-             * It should never happens because `blockOrderById` from {@link DocumentState}
-             * is always n sync `blocks` after each inserts.
-             *
-             * 👉🏻 We don't throw an error because we don't want to break users' UI
-             * to keep a seamless experience.
-             */
-            warn(
-              `Block ${blockId} not found in document state. Skipping rendering…`,
-            )
-            continue
-          }
-
-          const type = block.__type
-          switch (type) {
-            case 'paragraph': {
-              items.push(
-                <ComposerParagraphBlock
-                  key={blockId}
-                  {...props}
-                  block={block}
-                />,
-              )
-              break
-            }
-            default: {
-              warnOnce(
-                `Skipping rendering for unsupported block type: ${type}.`,
-              )
-            }
-          }
-        }
-
-        return items
-      }, [blockOrderById, blocks, props])
+      const blockOrderById = useBlockOrderById()
 
       return (
         <div
@@ -321,7 +314,9 @@ const ComposerBlocks = memo(
           role='group'
           aria-roledescription='blocks'
         >
-          {children}
+          {blockOrderById.map((blockId) => (
+            <ComposerBlock key={blockId} blockId={blockId} />
+          ))}
         </div>
       )
     },

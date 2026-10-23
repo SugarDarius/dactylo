@@ -1,5 +1,5 @@
 import type { DactyloOptions } from '../dactylo'
-import type { ParagraphBlock } from '../internals/blocks'
+import type { BlockId, ParagraphBlock } from '../internals/blocks'
 import type {
   InlineNode,
   LineBreakNode,
@@ -56,6 +56,12 @@ export interface ComposerParagraphBlockProps extends React.HTMLAttributes<HTMLDi
   /** The paragraph block to render. */
   block: ParagraphBlock
   // @todo: add custom components.
+}
+
+/** Props for declaring a block wrapper component. */
+export interface ComposerBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** The block ID to render. */
+  blockId: BlockId
 }
 
 /** Props for declaring the composer editable component. */

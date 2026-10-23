@@ -6,7 +6,7 @@ import type {
   DactyloStaticConfig,
   DactyloToolEvent,
 } from '../dactylo'
-import type { BlockId } from '../internals/blocks'
+import type { Block, BlockId } from '../internals/blocks'
 import {
   EDITABLE_NODE_BOLD_MARK_DATA_NAME,
   EDITABLE_NODE_ITALIC_MARK_DATA_NAME,
@@ -171,6 +171,22 @@ export function useBlockOrderById(): readonly BlockId[] {
   return useEditorContextStore(({ state }) => state.blockOrderById, shallow)
 }
 
+/**
+ * Returns the block from the {@link EditorContext}.
+ *
+ * @example
+ * ```tsx
+ * const block = useBlock(blockId)
+ * console.log(block)
+ * ```
+ */
+export function useBlock(blockId: BlockId): Block | null {
+  return useEditorContextStore(
+    ({ state }) => state.blocks.get(blockId) ?? null,
+    shallow,
+  )
+}
+
 // --- Selection ─────────────────────────────────────────-----------
 
 /**
@@ -315,18 +331,12 @@ export function useIsFocused(): boolean {
 export function useIsBlockWithActiveSelection(blockId: BlockId): boolean {
   const { editor } = useComposer()
 
-  return useEditorContextStore(({ state }) => {
-    /**
-     * Block-scoped UI may still re-render once after
-     * undo/delete before React unmounts the block.
-     * Treat missing blocks as empty instead of throwing.
-     */
-    if (!state.blocks.has(blockId)) {
-      return true
-    }
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.selection.tools.isBlockWithActiveSelection(blockId),
+  )
 
-    return editor.selection.tools.isBlockWithActiveSelection(blockId)
-  })
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
 // --- Marks ─────────────────────────────────────────---------------
@@ -456,19 +466,14 @@ export function useBlocksCommands() {
  */
 export function useIsBlockEmpty(blockId: BlockId): boolean {
   const { editor } = useComposer()
+  const block = useBlock(blockId)
 
-  return useEditorContextStore(({ state }) => {
-    /**
-     * Block-scoped UI  may still re-render once after
-     * undo/delete before React unmounts the block.
-     * Treat missing blocks as empty instead of throwing.
-     */
-    if (!state.blocks.has(blockId)) {
-      return true
-    }
-
-    return editor.blocks.tools.isWithEmptyInlineContent(blockId)
-  })
+  /**
+   * Block-scoped UI may still re-render once after
+   * undo/delete before React unmounts the block.
+   * To avoid state rendering treat missing blocks as empty instead of throwing
+   */
+  return block !== null && editor.blocks.tools.isWithEmptyInlineContent(blockId)
 }
 
 // --- History ------─────────────────────────────────────────-------
