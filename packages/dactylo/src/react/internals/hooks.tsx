@@ -61,13 +61,6 @@ export function useIsMounted(): boolean {
  *
  * Source: https://github.com/react/react/blob/main/packages/use-sync-external-store/src/useSyncExternalStoreWithSelector.js
  */
-// oxlint-disable-next-line typescript/no-explicit-any
-export function is(x: any, y: any) {
-  // oxlint-disable-next-line no-self-compare
-  return (x === y && (x !== 0 || 1 / x === 1 / y)) || (x !== x && y !== y)
-}
-export const isObject = typeof Object.is === 'function' ? Object.is : is
-
 export type Inst<Selection> =
   | {
       hasValue: true
@@ -146,7 +139,7 @@ export function useSyncExternalStoreWithSelector<Snapshot, Selection>(
       // oxlint-disable-next-line typescript/no-explicit-any
       const prevSelection: Selection = memoizedSelection as any
 
-      if (is(prevSnapshot, nextSnapshot)) {
+      if (Object.is(prevSnapshot, nextSnapshot)) {
         /** The snapshot is the same as last time. Reuse the previous selection. */
         return prevSelection
       }
