@@ -3,6 +3,7 @@ export type {
   ComposerEditableProps,
   ComposerParagraphBlockProps,
   ComposerTextNodeProps,
+  ComposerLinkNodeProps,
 } from './types'
 export * as Composer from './primitives'
 export {

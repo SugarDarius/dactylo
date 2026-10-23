@@ -385,5 +385,4 @@ export {
   ComposerParagraphBlock as ParagraphBlock,
   ComposerTextNode as TextNode,
   ComposerLinkNode as LinkNode,
-  ComposerLineBreakNode as LineBreakNode,
 }
