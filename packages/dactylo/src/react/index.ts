@@ -22,6 +22,7 @@ export {
   useSelectionCommands,
   useIsBlockWithActiveSelection,
   useDocumentState,
+  useBlockOrderById,
   useMarksTools,
   useIsMarkActive,
   useMarksCommands,

@@ -27,7 +27,7 @@ import type {
   Selection,
 } from '../internals/selection'
 import type { TransactionSource } from '../internals/transaction'
-import { noop } from '../internals/utils'
+import { noop, shallow } from '../internals/utils'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
 import { findLinkAnchorFromEventTarget, openLink } from './internals/dom'
@@ -156,6 +156,19 @@ export function useSetEditable() {
  */
 export function useDocumentState(): DocumentState {
   return useEditorContextStore(({ state }) => state)
+}
+
+/**
+ * Returns the block order by id from the {@link EditorContext}.
+ *
+ * @example
+ * ```tsx
+ * const blockOrderById = useBlockOrderById()
+ * console.log(blockOrderById)
+ * ```
+ */
+export function useBlockOrderById(): readonly BlockId[] {
+  return useEditorContextStore(({ state }) => state.blockOrderById, shallow)
 }
 
 // --- Selection ─────────────────────────────────────────-----------

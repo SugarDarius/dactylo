@@ -68,3 +68,4 @@ export {
   TEXT_NODE_ATTR_NAME,
   LINE_BREAK_NODE_ATTR_NAME,
 } from './internals/constants'
+export { shallow } from './internals/utils'
