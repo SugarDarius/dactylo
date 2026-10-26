@@ -75,6 +75,9 @@ export const NODE_ATTR_NAME = 'dactylo-node'
 /** Node ID data name. */
 export const NODE_ID_DATA_NAME = 'data-dactylo-node-id'
 
+/** Editable node empty data attribute name. */
+export const EDITABLE_NODE_EMPTY_DATA_NAME = 'data-dactylo-editable-node-empty'
+
 /** Editable node marks data attributes names. */
 export const EDITABLE_NODE_BOLD_MARK_DATA_NAME = 'data-dactylo-bold-mark'
 export const EDITABLE_NODE_ITALIC_MARK_DATA_NAME = 'data-dactylo-italic-mark'

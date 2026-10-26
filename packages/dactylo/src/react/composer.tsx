@@ -13,6 +13,7 @@ import {
   EDITABLE_NODE_STRIKETHROUGH_MARK_DATA_NAME,
   EDITABLE_NODE_UNDERLINE_MARK_DATA_NAME,
   EDITABLE_NODE_CODE_MARK_DATA_NAME,
+  EDITABLE_NODE_EMPTY_DATA_NAME,
 } from '../internals/constants'
 import type { DocumentState } from '../internals/document'
 import { paintTextForDOM } from '../internals/dom'
@@ -743,11 +744,11 @@ export function useEditableBlock(blockId: BlockId) {
  */
 export function useEditableNode(node: InlineNodeWithEditableText) {
   const renderedText = useMemo(() => paintTextForDOM(node.text), [node.text])
-
-  const marksAttributes = useMemo(
+  const nodeAttributes = useMemo(
     () => ({
       [EDITABLE_NODE_BOLD_MARK_DATA_NAME]: isMarkEnabled(node.marks, 'bold'),
       [EDITABLE_NODE_CODE_MARK_DATA_NAME]: isMarkEnabled(node.marks, 'code'),
+      [EDITABLE_NODE_EMPTY_DATA_NAME]: node.text.length <= 0,
       [EDITABLE_NODE_ITALIC_MARK_DATA_NAME]: isMarkEnabled(
         node.marks,
         'italic',
@@ -761,11 +762,11 @@ export function useEditableNode(node: InlineNodeWithEditableText) {
         'underline',
       ),
     }),
-    [node.marks],
+    [node.marks, node.text.length],
   )
 
   return {
-    marksAttributes,
+    nodeAttributes,
     renderedText,
   } as const
 }
