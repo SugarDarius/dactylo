@@ -38,7 +38,7 @@ import {
   useSyncExternalStoreWithSelector,
 } from './internals/hooks'
 
-// --- Composer Context ─────────────────────────────────────────--------
+// --- Composer Context ─────────────────────────────────────────----
 
 /** Main Dactylo context. */
 export interface ComposerContext {
@@ -51,7 +51,7 @@ export const { Provider: ComposerProvider, useContext: useComposer } =
     errorMsg: `\`<${COMPOSER_ROOT_NAME} />\` is missing. Did you forget to wrap your component within it?`,
   })
 
-// --- Editor ─────────────────────────────────────────--------------
+// --- Editor Store ───────────────────────────────────--------------
 
 /**
  * Subscribe to {@link EditorContext} and re-render only when
@@ -70,6 +70,10 @@ export function useEditorContextStore<S>(
   const selectorRef = useRef(selector)
   const { editor } = useComposer()
 
+  useIsomorphicLayoutEffect(() => {
+    selectorRef.current = selector
+  })
+
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() => editor.getContext())
 
@@ -85,6 +89,8 @@ export function useEditorContextStore<S>(
     isEqual,
   )
 }
+
+// --- Editor ─────────────────────────────────────────--------------
 
 /**
  * Returns the editor {@link DactyloStaticConfig}.
@@ -199,7 +205,7 @@ export function useBlock(blockId: BlockId): Block | null {
  * ```
  */
 export function useSelection(): Selection | null {
-  return useEditorContextStore(({ selection }) => selection)
+  return useEditorContextStore(({ selection }) => selection, shallow)
 }
 
 /**
@@ -218,7 +224,7 @@ export function useCursorSelection(): CursorSelection | null {
     }
 
     return selection
-  })
+  }, shallow)
 }
 
 /**
@@ -237,7 +243,7 @@ export function useRangeSelection(): RangeSelection | null {
     }
 
     return selection
-  })
+  }, shallow)
 }
 
 /**
