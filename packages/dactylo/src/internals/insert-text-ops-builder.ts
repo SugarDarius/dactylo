@@ -723,6 +723,11 @@ export class InsertTextOpsBuilder implements OperationsBuilder<
     }
   }
 
+  /** Placeholder to avoid any bugs when typing `space` */
+  #isMarkdownShortcut(): boolean {
+    return false
+  }
+
   /**
    * Completes intent for a single inserted text (char or emoji) at the current selection.
    * Determines behaviors when:
@@ -737,7 +742,10 @@ export class InsertTextOpsBuilder implements OperationsBuilder<
     // @todo: handle markdown shortcut
     // @todo: handle autolink detection
     // @todo: handle links finished
-    if (text === INLINE_DETECTOR_TRIGGER_CHARACTER) {
+    if (
+      text === INLINE_DETECTOR_TRIGGER_CHARACTER &&
+      this.#isMarkdownShortcut()
+    ) {
       return {
         label: `markdown-shortcut`,
         ops,
