@@ -12,10 +12,6 @@ export default defineConfig({
   ],
   format: ['esm', 'cjs'],
   minify: true,
-  outputOptions: {
-    banner: '"use client";',
-    comments: { legal: true },
-  },
   platform: 'neutral',
   publint: true,
   sourcemap: true,
