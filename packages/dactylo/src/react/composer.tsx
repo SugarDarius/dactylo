@@ -741,6 +741,7 @@ export function useEditableNode(node: InlineNodeWithEditableText) {
   const marksAttributes = useMemo(
     () => ({
       [EDITABLE_NODE_BOLD_MARK_DATA_NAME]: isMarkEnabled(node.marks, 'bold'),
+      [EDITABLE_NODE_CODE_MARK_DATA_NAME]: isMarkEnabled(node.marks, 'code'),
       [EDITABLE_NODE_ITALIC_MARK_DATA_NAME]: isMarkEnabled(
         node.marks,
         'italic',
@@ -753,7 +754,6 @@ export function useEditableNode(node: InlineNodeWithEditableText) {
         node.marks,
         'underline',
       ),
-      [EDITABLE_NODE_CODE_MARK_DATA_NAME]: isMarkEnabled(node.marks, 'code'),
     }),
     [node.marks],
   )

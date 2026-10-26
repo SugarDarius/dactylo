@@ -151,9 +151,9 @@ const ComposerLinkNode = forwardRef<HTMLAnchorElement, ComposerLinkNodeProps>(
         {...props}
         ref={forwardedRef}
         {...{
+          [LINK_NODE_ATTR_NAME]: '',
           [NODE_ATTR_NAME]: '',
           [NODE_ID_DATA_NAME]: node.id,
-          [LINK_NODE_ATTR_NAME]: '',
           ...marksAttributes,
         }}
         aria-roledescription='link-node'
@@ -176,9 +176,9 @@ export const ComposerLineBreakNode = forwardRef<
     {...props}
     ref={forwardedRef}
     {...{
+      [LINE_BREAK_NODE_ATTR_NAME]: '',
       [NODE_ATTR_NAME]: '',
       [NODE_ID_DATA_NAME]: node.id,
-      [LINE_BREAK_NODE_ATTR_NAME]: '',
     }}
     aria-roledescription='line-break-node'
   />
