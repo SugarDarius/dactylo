@@ -20,7 +20,7 @@
     "oxlint": "catalog:",
     "publint": "catalog:",
     "syncpack": "catalog:",
-    "tsdown": "0.23.1",
+    "tsdown": "catalog:",
     "turbo": "catalog:",
     "typescript": "catalog:",
     "ultracite": "catalog:",

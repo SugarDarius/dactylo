@@ -210,6 +210,9 @@ catalogs:
     syncpack:
       specifier: ^15.3.3
       version: 15.3.3
+    tsdown:
+      specifier: ^0.23.1
+      version: 0.23.1
     turbo:
       specifier: ^2.11.10
       version: 2.11.10
@@ -262,7 +265,7 @@ importers:
         specifier: 'catalog:'
         version: 15.3.3
       tsdown:
-        specifier: 0.23.1
+        specifier: 'catalog:'
         version: 0.23.1(@arethetypeswrong/core@0.18.5)(publint@0.3.25)(typescript@7.0.2)
       turbo:
         specifier: 'catalog:'
