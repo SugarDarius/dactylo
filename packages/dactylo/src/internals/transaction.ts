@@ -937,12 +937,27 @@ export class TransactionPipeline {
 
           return true
         }
+        case 'select-all': {
+          prevent()
+
+          const intent = this.#operationsEngine.buildSelectAllOps(this.#context)
+          if (intent === null) {
+            return false
+          }
+
+          const { ops, label } = intent
+          this.#commit(ops, {
+            label: transactionPolicyLabel('keydown', 'digest-event', label),
+            pushToHistory: false,
+            source: 'user',
+          })
+
+          return true
+        }
         // @todo: handle copy with native clipboard event (→ digestClipboardEvent)
         // @todo: handle escape behaviors
-        // @todo: hand select all behaviors
         case 'copy':
-        case 'escape':
-        case 'select-all': {
+        case 'escape': {
           prevent()
           warn(`\`${shortcut}\` shortcut is not is not implemented yet.`)
           return false

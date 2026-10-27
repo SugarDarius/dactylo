@@ -484,3 +484,32 @@ export function areSelectionsEqual(
     aFocus.offset === bFocus.offset
   )
 }
+
+/**
+ * Builds a forward range that selects inline content inside one
+ * {@link BlockWithInlineContent} (paragraph, heading, …).
+ *
+ * Anchor is at the start of the first inline node with text in `block.content`;
+ * focus is at the end of the last text/link/line_break. Inline nodes between
+ * them (including mentions) are included in the range topology.
+ *
+ * Returns `null` when:
+ * - there is no valid endpoint (e.g. mention-only block),.
+ *
+ * Used by the `select-all` keyboard shortcut when the selection is a cursor.
+ */
+export function createRangeSelectingInlineContentInBlock(
+  block: BlockWithInlineContent,
+): RangeSelection | null {
+  const first = findFirstInlineNodeInBlock(block)
+  const last = findLastInlineNodeInBlock(block)
+
+  const anchor = cursorAtInlineNodeStart(block.id, first)
+  const focus = cursorAtInlineNodeEnd(block.id, last)
+
+  if (anchor.nodeId === focus.nodeId && anchor.offset === focus.offset) {
+    return null
+  }
+
+  return createRange(anchor, focus)
+}

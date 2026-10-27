@@ -11,6 +11,7 @@ import type {
   BlockWithoutPosKey,
 } from './blocks'
 import type { TextPlainData } from './clipboard'
+import { warn } from './console'
 import { DeleteContentOpsBuilder } from './delete-content-ops-builder'
 import {
   computeInsertBlockPosKey,
@@ -43,6 +44,7 @@ import { MarksOpsBuilder } from './marks-ops-builder'
 import { MoveSelectionOpsBuilder } from './move-selection-ops-builder'
 import {
   coalesceInlineNodes,
+  getInlineNodeTextLength,
   isInlineNodeWithEditableText,
   splitInlineNodeWithEditableTextAt,
 } from './nodes'
@@ -65,7 +67,12 @@ import type {
 import { buildError } from './operations-builder'
 import type { BuilderOpsIntent } from './operations-builder'
 import { PastePlainTextOpsBuilder } from './paste-plain-text-ops-builder'
-import { areSelectionsEqual } from './selection'
+import {
+  areSelectionsEqual,
+  createRangeSelectingInlineContentInBlock,
+  isRangeSelection,
+  isSelectionActive,
+} from './selection'
 import type { TextCursor, Selection } from './selection'
 import { SoftBreakOpsBuilder } from './soft-break-ops-builder'
 import { assertNever } from './utils'
@@ -180,10 +187,18 @@ export function validateTextCursor(
     return
   }
 
-  validationError(
-    `Cursor node ${cursor.nodeId} must be text, link, or line_break`,
-    op,
-  )
+  if (found.node.__type === 'mention') {
+    const length = getInlineNodeTextLength(found.node)
+    if (cursor.offset !== 0 && cursor.offset !== length) {
+      validationError(
+        `Cursor offset ${cursor.offset} invalid for mention. Must be 0 or ${length}`,
+        op,
+      )
+    }
+    return
+  }
+
+  validationError(`Cursor node ${cursor.nodeId} must be text, link`, op)
 }
 
 /** Validates an `insert_block` operation. */
@@ -1065,6 +1080,38 @@ export class OperationsEngine {
   }
 
   // --- Selection operations ─────────────────────────────────────────
+
+  /** builds operations to select all content. */
+  buildSelectAllOps(context: EditorContext): BuilderOpsIntent | null {
+    if (!isSelectionActive(context.selection)) {
+      return null
+    }
+
+    if (isRangeSelection(context.selection)) {
+      warn('Select all from a range selection is not implemented yet.')
+      return null
+    }
+
+    const { selection, state } = context
+    const { anchor } = selection
+
+    const block = getBlockWithInlineContent(state, anchor.blockId)
+    const next = createRangeSelectingInlineContentInBlock(block)
+
+    if (next === null) {
+      return null
+    }
+
+    const ops: Operation[] = [
+      {
+        __type: 'set_selection',
+        next,
+        prev: selection,
+      },
+    ]
+
+    return { label: 'select-all', ops }
+  }
 
   /**
    * Builds operations to navigate selection with arrow keys.
