@@ -3,6 +3,7 @@ import { useEffect, useId, useMemo, useRef, useSyncExternalStore } from 'react'
 import type {
   Dactylo,
   DactyloCommandEvent,
+  DactyloEditableEvent,
   DactyloStaticConfig,
   DactyloToolEvent,
 } from '../dactylo'
@@ -147,6 +148,32 @@ export function useSetEditable() {
     ): void => {
       editor.setEditable(next, source)
     },
+  )
+}
+
+/**
+ * Get informed when the editor is editable or not.
+ * When not editable, the editor is in read-only mode.
+ *
+ * @example
+ * ```tsx
+ * useEditableListener(({ editable }) => {
+ *   console.log(editable)
+ * })
+ * ```
+ */
+export function useEditableListener(
+  listener: (event: DactyloEditableEvent) => void,
+): void {
+  const { editor } = useComposer()
+
+  const stableListener = useStableCallback((event: DactyloEditableEvent) => {
+    listener(event)
+  })
+
+  useEffect(
+    () => editor.events.editable.subscribe(stableListener),
+    [editor, stableListener],
   )
 }
 

@@ -30,4 +30,5 @@ export {
   useMarksCommands,
   useCommandsListener,
   useToolsListener,
+  useEditableListener,
 } from './composer'

@@ -4,6 +4,7 @@ import type { MarkKey } from '@sugardarius/dactylo'
 import {
   Composer,
   useCanEdit,
+  useEditableListener,
   useHistoryCommands,
   useHistoryTools,
   useIsMarkActive,
@@ -11,6 +12,8 @@ import {
   useSetEditable,
 } from '@sugardarius/dactylo/react'
 import {
+  BadgeCheck,
+  PencilOff,
   Redo2,
   Undo2,
   Bold,
@@ -27,9 +30,11 @@ import {
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
+import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Kbd } from '~/components/ui/kbd'
 import { Separator } from '~/components/ui/separator'
+import { toast } from '~/components/ui/toast'
 import { Toggle } from '~/components/ui/toggle'
 import {
   Tooltip,
@@ -109,6 +114,13 @@ export function Toolbar() {
   const { undo, redo } = useHistoryCommands()
 
   const { toggle } = useMarksCommands()
+
+  useEditableListener(({ editable }) => {
+    toast.add({
+      title: `Editor is now ${editable ? 'editable' : 'read-only'}.`,
+      type: 'info',
+    })
+  })
 
   useHotkeys(
     'mod+b',
@@ -273,6 +285,19 @@ export function Toolbar() {
             {canEdit ? 'Disable editing' : 'Enable editing'}
           </TooltipContent>
         </Tooltip>
+        <Badge variant={canEdit ? 'default' : 'secondary'}>
+          {canEdit ? (
+            <span className='inline-flex items-center gap-1'>
+              <BadgeCheck className='size-3.5' />
+              Editable
+            </span>
+          ) : (
+            <span className='inline-flex items-center gap-1'>
+              <PencilOff className='size-3.5' />
+              Read-only mode
+            </span>
+          )}
+        </Badge>
       </div>
     </div>
   )
