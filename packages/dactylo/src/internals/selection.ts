@@ -3,6 +3,7 @@ import type { BlockId, BlockWithInlineContent } from './blocks'
 import { getInlineNodeTextLength, isInlineNodeWithEditableText } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
 import type { Relax } from './types'
+import { assertNever } from './utils'
 
 /**
  * {@link Selection} defines how Dactylo tracks cursor position and text selection
@@ -268,6 +269,29 @@ export function cursorAtBlockEnd(
     offset = last.text.length
   } else if (last.__type === 'line_break') {
     offset = 0
+  }
+
+  const type = last.__type
+  switch (type) {
+    case 'text': {
+      offset = last.text.length
+      break
+    }
+    case 'link': {
+      offset = last.text.length
+      break
+    }
+    case 'mention': {
+      offset = last.text.length
+      break
+    }
+    case 'line_break': {
+      offset = 0
+      break
+    }
+    default: {
+      assertNever(type, { hint: 'Selection/#cursorAtBlockEnd' })
+    }
   }
 
   return createCursor({ blockId, nodeId: last.id, offset })
