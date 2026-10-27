@@ -11,7 +11,7 @@ import type {
   BlockWithoutPosKey,
 } from './blocks'
 import type { TextPlainData } from './clipboard'
-import { warn } from './console'
+import { warn, warnOnce } from './console'
 import { DeleteContentOpsBuilder } from './delete-content-ops-builder'
 import {
   computeInsertBlockPosKey,
@@ -1087,6 +1087,7 @@ export class OperationsEngine {
       return null
     }
 
+    // @todo: handle range selection later with a structured algorithm to select all blocks from a range.
     if (isRangeSelection(context.selection)) {
       warn('Select all from a range selection is not implemented yet.')
       return null
@@ -1128,7 +1129,7 @@ export class OperationsEngine {
   /** Builds operations to set selection to end of last block in document order. */
   buildPutCursorSelectionAtDocumentEndOps(
     context: EditorContext,
-  ): Operation[] | null {
+  ): BuilderOpsIntent | null {
     const next = createCursorAtDocumentEnd(context.state)
     if (!next) {
       buildError(
@@ -1149,20 +1150,22 @@ export class OperationsEngine {
       return null
     }
 
-    return [
+    const ops: Operation[] = [
       {
         __type: 'set_selection',
         next,
         prev,
       },
     ]
+
+    return { label: 'put-cursor-at-document-end', ops }
   }
 
   /** Builds operations to update selection. */
   buildUpdateSelectionOps(
     context: EditorContext,
     next: Selection | null,
-  ): Operation[] | null {
+  ): BuilderOpsIntent | null {
     /** Skip if next selection is equal to current selection. */
     if (areSelectionsEqual(context.selection, next)) {
       return null
@@ -1176,11 +1179,11 @@ export class OperationsEngine {
       },
     ]
 
-    return ops
+    return { label: 'update', ops }
   }
 
   /** Builds operations to clear selection. */
-  buildClearSelectionOps(context: EditorContext): Operation[] | null {
+  buildClearSelectionOps(context: EditorContext): BuilderOpsIntent | null {
     const { selection } = context
 
     /** Skip if selection is already set to `null`. */
@@ -1188,6 +1191,7 @@ export class OperationsEngine {
       return null
     }
 
+    // @todo: handle clear selection on all blocks.
     const ops: Operation[] = [
       {
         __type: 'set_selection',
@@ -1196,7 +1200,7 @@ export class OperationsEngine {
       },
     ]
 
-    return ops
+    return { label: 'clear', ops }
   }
 
   // --- Blocks operations ─────────────────────────────────────────---
@@ -1206,7 +1210,7 @@ export class OperationsEngine {
     context: EditorContext,
     insertPos: InsertBlockOpPosition,
     block: BlockWithoutPosKey,
-  ): Operation[] {
+  ): BuilderOpsIntent | null {
     const { state } = context
 
     const afterBlockId = resolveInsertAfterBlockId(state, insertPos)
@@ -1214,20 +1218,22 @@ export class OperationsEngine {
 
     const blockWithPosKey: Block = { ...block, posKey }
 
-    return [
+    const ops: Operation[] = [
       {
         __type: 'insert_block',
         afterBlockId,
         block: blockWithPosKey,
       },
     ]
+
+    return { label: 'insert', ops }
   }
 
   /** Builds operations to delete a block by ID. */
   buildDeleteBlockOps(
     context: EditorContext,
     blockId: BlockId,
-  ): Operation[] | null {
+  ): BuilderOpsIntent | null {
     const { state } = context
     // @todo: improve by creating am invariant checker
     const block = getBlock(state, blockId)
@@ -1241,6 +1247,10 @@ export class OperationsEngine {
      * Then skip deletion because document must have at least one block.
      */
     if (idx === 0 && isEmpty) {
+      warnOnce(
+        `Skipping deletion of block ${blockId} because it is the first empty block.`,
+        'OperationsEngine/buildDeleteBlockOps',
+      )
       return null
     }
 
@@ -1258,6 +1268,6 @@ export class OperationsEngine {
       },
     ]
 
-    return ops
+    return { label: 'delete', ops }
   }
 }

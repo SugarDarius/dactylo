@@ -1,6 +1,6 @@
 import type { BlockId, BlockWithoutPosKey } from './blocks'
 import { readTransferredData } from './clipboard'
-import { warn, warnOnce } from './console'
+import { warn } from './console'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
 import { createInitialEditorContext } from './editor-context'
 import type { EditorContext } from './editor-context'
@@ -959,7 +959,7 @@ export class TransactionPipeline {
         case 'copy':
         case 'escape': {
           prevent()
-          warn(`\`${shortcut}\` shortcut is not is not implemented yet.`)
+          warn(`\`${shortcut}\` shortcut is not implemented yet.`)
           return false
         }
         default: {
@@ -1007,15 +1007,17 @@ export class TransactionPipeline {
   putCursorSelectionAtDocumentEnd(
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    const ops = this.#operationsEngine.buildPutCursorSelectionAtDocumentEndOps(
-      this.#context,
-    )
-    if (ops === null) {
+    const intent =
+      this.#operationsEngine.buildPutCursorSelectionAtDocumentEndOps(
+        this.#context,
+      )
+    if (intent === null) {
       return
     }
 
+    const { ops, label } = intent
     this.#commit(ops, {
-      label: transactionPolicyLabel('selection', 'put-at-document-end'),
+      label: transactionPolicyLabel('selection', label),
       pushToHistory: false,
       source,
     })
@@ -1029,18 +1031,18 @@ export class TransactionPipeline {
     next: Selection | null,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    const ops = this.#operationsEngine.buildUpdateSelectionOps(
+    const intent = this.#operationsEngine.buildUpdateSelectionOps(
       this.#context,
       next,
     )
 
-    /** 👉🏻 See {@link OperationsEngine.buildUpdateSelectionOps} jsdoc on why it can return `null` */
-    if (ops === null) {
+    if (intent === null) {
       return
     }
 
+    const { ops, label } = intent
     this.#commit(ops, {
-      label: transactionPolicyLabel('selection', 'update'),
+      label: transactionPolicyLabel('selection', label),
       pushToHistory: false,
       source,
     })
@@ -1053,13 +1055,14 @@ export class TransactionPipeline {
   clearSelection(
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    const ops = this.#operationsEngine.buildClearSelectionOps(this.#context)
-    if (ops === null) {
+    const intent = this.#operationsEngine.buildClearSelectionOps(this.#context)
+    if (intent === null) {
       return
     }
 
+    const { ops, label } = intent
     this.#commit(ops, {
-      label: transactionPolicyLabel('selection', 'clear'),
+      label: transactionPolicyLabel('selection', label),
       pushToHistory: false,
       source,
     })
@@ -1074,13 +1077,18 @@ export class TransactionPipeline {
     block: BlockWithoutPosKey,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    const ops = this.#operationsEngine.buildInsertBlockOps(
+    const intent = this.#operationsEngine.buildInsertBlockOps(
       this.#context,
       pos,
       block,
     )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
     this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', 'insert'),
+      label: transactionPolicyLabel('blocks', label),
       pushToHistory: true,
       source,
     })
@@ -1091,18 +1099,17 @@ export class TransactionPipeline {
     blockId: BlockId,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    const ops = this.#operationsEngine.buildDeleteBlockOps(
+    const intent = this.#operationsEngine.buildDeleteBlockOps(
       this.#context,
       blockId,
     )
-    if (ops === null) {
-      warnOnce(
-        `Skipping deletion of block ${blockId} because it is the first empty block.`,
-      )
+    if (intent === null) {
       return
     }
+
+    const { ops, label } = intent
     this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', 'delete'),
+      label: transactionPolicyLabel('blocks', label),
       pushToHistory: true,
       source,
     })
