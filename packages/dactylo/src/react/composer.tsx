@@ -584,6 +584,7 @@ export function useEditable() {
   const { editor } = useComposer()
 
   const canEdit = useCanEdit()
+  const focused = useIsFocused()
 
   const cursorSelection = useCursorSelection()
   const rangeSelection = useRangeSelection()
@@ -715,7 +716,7 @@ export function useEditable() {
   ])
 
   /**
-   * PPaints the native selection from editor context:
+   * Paints the native selection from editor context:
    * collapsed caret or range (e.g. shift + arrow keys).
    *
    * Runs only when the editor is editable and when there is a selection.
@@ -736,7 +737,7 @@ export function useEditable() {
     return noop
   }, [canEdit, cursorSelection, rangeSelection, editor])
 
-  return { canEdit, editableRef } as const
+  return { canEdit, editableRef, focused } as const
 }
 
 /**

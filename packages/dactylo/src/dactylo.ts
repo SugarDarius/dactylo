@@ -595,13 +595,13 @@ export class Dactylo {
   /** Whether to enable debug mode. */
   readonly #debug: boolean
 
-  /** Static configuration for the editor. */
+  /** Dactylo static configuration. */
   readonly #config: DactyloStaticConfig
 
-  /** Transaction pipeline to use for the editor */
+  /** Transaction pipeline used to apply operations to the editor context. */
   readonly #pipeline: TransactionPipeline
 
-  /** DOM manager to use for the editor */
+  /** DOM manager used to paint the editor selection to the DOM. */
   readonly #domManager: DOMManager
 
   /** Events emitted by Dactylo. */

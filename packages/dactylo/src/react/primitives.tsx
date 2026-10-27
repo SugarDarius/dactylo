@@ -1,6 +1,13 @@
 'use client'
 
-import { forwardRef, memo, useDebugValue, useMemo } from 'react'
+import {
+  forwardRef,
+  memo,
+  useDebugValue,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react'
 
 import { Dactylo } from '../dactylo'
 import { warnOnce } from '../internals/console'
@@ -22,7 +29,6 @@ import {
 } from '../internals/constants'
 import {
   ComposerProvider,
-  useIsFocused,
   useSelectionCommands,
   useEditorConfig,
   useEditableBlock,
@@ -342,15 +348,23 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
     { children, autoFocus, translate = 'no', spellCheck = 'true', ...props },
     forwardedRef,
   ) => {
-    const { editableRef, canEdit } = useEditable()
+    const didAutoFocusRef = useRef(false)
+
+    const { editableRef, canEdit, focused } = useEditable()
     const mergedRefs = mergeRefs(forwardedRef, editableRef)
 
-    const focused = useIsFocused()
     const { focus } = useSelectionCommands()
 
+    useEffect(() => {
+      if (!canEdit) {
+        didAutoFocusRef.current = false
+      }
+    }, [canEdit])
+
     useIsomorphicLayoutEffect(() => {
-      if (autoFocus && !focused && canEdit) {
+      if (canEdit && autoFocus && !focused && !didAutoFocusRef.current) {
         focus()
+        didAutoFocusRef.current = true
       }
     }, [autoFocus, canEdit, focused, focus])
 
