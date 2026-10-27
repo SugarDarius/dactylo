@@ -180,8 +180,9 @@ export function Editor() {
 | Fractional index for blocks ordering             | ✅ **Done**        | Fast blocks ordering using a factional index                                            |
 | Block / inline node metadata                     | 🚧 **In Progress** | Defines metadata on blocks and inline nodes for rendering and / or external operations  |
 | Placeholders                                     | 🚧 **In Progress** | config for blocks' placeholders                                                         |
-| Locales                                          | 🚧 **In Progress** | Set the locales in the current language                                                 |
 | Read-only mode                                   | ✅ **Done**        | Editor cannot be edited                                                                 |
+| Locales                                          | 🚧 **In Progress** | Set the locales in the current language                                                 |
+| Spellcheck config                                | 📆 **Planned**     | Enable or disable spellcheck                                                            |
 | Nested blocks (parent / child)                   | 📆 **Planned**     | Manage nested blocks at level -1                                                        |
 | Strings security                                 | 🚧 **In Progress** | Prevents scripting and injections when inserting text                                   |
 | DOM sync                                         | 🚧 **In Progress** | Sync DOM selection with Dactylo Selection                                               |
