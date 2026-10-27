@@ -589,6 +589,7 @@ export function useEditable() {
   const cursorSelection = useCursorSelection()
   const rangeSelection = useRangeSelection()
 
+  const { focus } = useSelectionCommands()
   const { sendInput, sendKeydown } = useComposerCommands()
 
   /**
@@ -618,6 +619,10 @@ export function useEditable() {
 
   const onKeydown = useStableCallback((event: KeyboardEvent) => {
     sendKeydown(event)
+  })
+
+  const onFocus = useStableCallback(() => {
+    focus()
   })
 
   const onPointerUp = useStableCallback((event: PointerEvent) => {
@@ -681,6 +686,9 @@ export function useEditable() {
     /** Listen to global keydown events. */
     editable.addEventListener('keydown', onKeydown)
 
+    /** Listen to `focus` event on the editable element. */
+    editable.addEventListener('focus', onFocus)
+
     /** Listen to `compositionstart` and `compositionend` events on the editable element. */
     editable.addEventListener('compositionstart', onCompositionStart)
     editable.addEventListener('compositionend', onCompositionEnd)
@@ -698,6 +706,8 @@ export function useEditable() {
 
       editable.removeEventListener('keydown', onKeydown)
 
+      editable.removeEventListener('focus', onFocus)
+
       editable.removeEventListener('compositionstart', onCompositionStart)
       editable.removeEventListener('compositionend', onCompositionEnd)
 
@@ -708,6 +718,7 @@ export function useEditable() {
     editor,
     onBeforeInput,
     onKeydown,
+    onFocus,
     onPointerUp,
     onSelectionChange,
     onCompositionStart,
