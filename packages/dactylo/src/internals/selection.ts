@@ -261,16 +261,6 @@ export function cursorAtBlockEnd(
   let offset = 0
   const last = findLastInlineNodeInBlock(block)
 
-  if (last.__type === 'text') {
-    offset = last.text.length
-  } else if (last.__type === 'link') {
-    offset = last.text.length
-  } else if (last.__type === 'mention') {
-    offset = last.text.length
-  } else if (last.__type === 'line_break') {
-    offset = 0
-  }
-
   const type = last.__type
   switch (type) {
     case 'text': {
