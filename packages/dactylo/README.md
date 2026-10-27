@@ -243,6 +243,7 @@ export function Editor() {
 | Stats API                    | 📆 **Planned**     | Provides stats like total text length, # of blocks, # number of nodes, # of words & sentences   |
 | Batching transactions        | 🚧 **In Progress** | Supports for batching big number for transactions (Ai Agent use case)                           |
 | Table of contents            | 📆 **Planned**     | Build-in table of content based on headings contained in the document                           |
+| Find & Replace API           | 📆 **Planned**     | Build-in find and replace actions in the document                                               |
 
 ### React integration (🚧 **In Progress**)
 
