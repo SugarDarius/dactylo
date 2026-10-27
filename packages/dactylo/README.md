@@ -240,7 +240,7 @@ export function Editor() {
 | Inline nodes API             | 🚧 **In Progress** | Mutate and reads inline nodes                                                                   |
 | Mentions API                 | 📆 **Planned**     | Mutate and reads mentions as first-class citizen                                                |
 | Export JSON and Markdown API | 📆 **Planned**     | Export document state as JSON and Markdown                                                      |
-| Stats API                    | 📆 **Planned**     | Provides stats like total text length, # of blocks, # number of nodes                           |
+| Stats API                    | 📆 **Planned**     | Provides stats like total text length, # of blocks, # number of nodes, # of words & sentences   |
 | Batching transactions        | 🚧 **In Progress** | Supports for batching big number for transactions (Ai Agent use case)                           |
 | Table of contents            | 📆 **Planned**     | Build-in table of content based on headings contained in the document                           |
 
