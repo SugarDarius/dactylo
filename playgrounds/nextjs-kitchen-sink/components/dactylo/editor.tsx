@@ -18,6 +18,7 @@ import {
   Undo2,
   Bold,
   Italic,
+  Heading1,
   Strikethrough,
   Underline,
   TextAlignStart,
@@ -27,11 +28,21 @@ import {
   CodeXml,
   Lock,
   LockOpen,
+  Plus,
+  Pilcrow,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '~/components/ui/dropdown-menu'
 import { Kbd } from '~/components/ui/kbd'
 import { Separator } from '~/components/ui/separator'
 import { toast } from '~/components/ui/toast'
@@ -245,6 +256,31 @@ export function Toolbar() {
         >
           <CodeXml className='size-3.5' />
         </MarkToggleButton>
+      </div>
+      <Separator orientation='vertical' />
+      <div className='flex items-center'>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant='ghost' size='icon'>
+                <Plus className='size-3.5' />
+              </Button>
+            }
+          />
+          <DropdownMenuContent className='w-40' align='start'>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Basic Blocks</DropdownMenuLabel>
+              <DropdownMenuItem>
+                <Pilcrow className='size-3.5' />
+                Paragraph
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Heading1 className='size-3.5' />
+                Heading 1
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <Separator orientation='vertical' />
       <div className='flex items-center'>
