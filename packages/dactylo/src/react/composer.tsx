@@ -722,8 +722,12 @@ export function useEditable() {
    * Runs only when the editor is editable and when there is a selection.
    */
   useIsomorphicLayoutEffect(() => {
-    if (!canEdit || (!cursorSelection && !rangeSelection)) {
+    if (!canEdit) {
       return
+    }
+
+    if (!cursorSelection && !rangeSelection) {
+      return editor.dom.commands.clearSelection()
     }
 
     if (cursorSelection !== null) {

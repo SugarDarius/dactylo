@@ -448,4 +448,18 @@ export class DOMManager {
 
     return () => cancelAnimationFrame(id)
   }
+
+  /** Clears the selection in the DOM. */
+  clearSelection(): CancelCallback {
+    /** Runs the painting operation before the next browser re-paint. */
+    const id = requestAnimationFrame(() => {
+      const domSelection = window.getSelection()
+      if (!domSelection) {
+        return
+      }
+      domSelection.removeAllRanges()
+    })
+
+    return () => cancelAnimationFrame(id)
+  }
 }

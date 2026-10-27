@@ -144,6 +144,7 @@ export type DactyloCommand =
   | 'dom/paint-caret-at'
   | 'dom/paint-range-at'
   | 'dom/sync-selection'
+  | 'dom/clear-selection'
 
   /** Blocks commands */
   | 'blocks/delete'
@@ -420,6 +421,9 @@ export interface DactyloDomCommands {
 
   /** Synchronizes the DOM selection with the editor state. Client only. */
   readonly syncSelection: (fromSelectionChange?: boolean) => void
+
+  /** Clears the selection in the DOM. Client only. */
+  readonly clearSelection: () => CancelCallback
 }
 
 /** Api to interact with the editor's DOM. */
@@ -1269,6 +1273,21 @@ export class Dactylo {
             { clientOnly: true, payload: { editable } },
           ),
         /**
+         * Clears the selection in the DOM. Client only.
+         *
+         * @example
+         * ```ts
+         * editor.dom.commands.clearSelection()
+         * ```
+         */
+        clearSelection: () =>
+          this.#safeExecuteCommand(
+            'dom/clear-selection',
+            () => this.#domManager.clearSelection(),
+            () => noop,
+            { clientOnly: true },
+          ),
+        /**
          * Detaches the editable `<div />` element from the editor.
          * Client only.
          *
@@ -1284,7 +1303,6 @@ export class Dactylo {
             noop,
             { clientOnly: true },
           ),
-
         /**
          * Paints a collapsed caret at the position of the text cursor in the DOM.
          * Client only.
@@ -1301,7 +1319,6 @@ export class Dactylo {
             () => noop,
             { clientOnly: true },
           ),
-
         /**
          * Paints a range at anchor/focus in the DOM. Client only.
          *
@@ -1317,7 +1334,6 @@ export class Dactylo {
             () => noop,
             { clientOnly: true },
           ),
-
         /**
          * Synchronizes the DOM selection with the editor state.
          * Client only.
