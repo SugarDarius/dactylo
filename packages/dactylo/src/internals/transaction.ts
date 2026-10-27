@@ -954,12 +954,28 @@ export class TransactionPipeline {
 
           return true
         }
-        // @todo: handle copy with native clipboard event (→ digestClipboardEvent)
-        // @todo: handle escape behaviors
-        case 'copy':
         case 'escape': {
           prevent()
-          warn(`\`${shortcut}\` shortcut is not implemented yet.`)
+          const intent = this.#operationsEngine.buildClearSelectionOps(
+            this.#context,
+          )
+          if (intent === null) {
+            return false
+          }
+
+          const { ops, label } = intent
+          this.#commit(ops, {
+            label: transactionPolicyLabel('keydown', 'digest-event', label),
+            pushToHistory: false,
+            source: 'user',
+          })
+
+          return true
+        }
+        // @todo: handle copy with native clipboard event (→ digestClipboardEvent)
+        case 'copy': {
+          prevent()
+          warn('`copy` shortcut is not implemented yet.')
           return false
         }
         default: {
