@@ -28,30 +28,76 @@ import {
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { Button } from '~/components/ui/button'
+import { Kbd } from '~/components/ui/kbd'
 import { Separator } from '~/components/ui/separator'
 import { Toggle } from '~/components/ui/toggle'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '~/components/ui/tooltip'
 import { cn } from '~/lib/utils'
 
 export function MarkToggleButton({
   mark,
+  tooltipContent,
   children,
-}: React.PropsWithChildren<{ mark: MarkKey }>) {
+}: React.PropsWithChildren<{
+  mark: MarkKey
+  tooltipContent: React.ReactNode
+}>) {
   const { toggle } = useMarksCommands()
   const canEdit = useCanEdit()
 
   const active = useIsMarkActive(mark)
 
   return (
-    <Toggle
-      pressed={active}
-      variant='outline'
-      size='sm'
-      onPressedChange={() => toggle(mark)}
-      disabled={!canEdit}
-      className='border-0'
-    >
-      {children}
-    </Toggle>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Toggle
+            pressed={active}
+            variant='outline'
+            size='sm'
+            onPressedChange={() => toggle(mark)}
+            disabled={!canEdit}
+            className='border-0'
+          >
+            {children}
+          </Toggle>
+        }
+      />
+      <TooltipContent>{tooltipContent}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+export function ActionButton({
+  disabled,
+  onClick,
+  tooltipContent,
+  children,
+}: React.PropsWithChildren<{
+  disabled: boolean
+  tooltipContent: React.ReactNode
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void
+}>) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant='ghost'
+            size='icon'
+            disabled={disabled}
+            onClick={onClick}
+          >
+            {children}
+          </Button>
+        }
+      />
+      <TooltipContent>{tooltipContent}</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -101,7 +147,7 @@ export function Toolbar() {
   )
 
   useHotkeys(
-    'mod+k',
+    'mod+e',
     (event) => {
       event.preventDefault()
       toggle('code')
@@ -112,61 +158,121 @@ export function Toolbar() {
   return (
     <div className='border-border flex w-full items-center gap-1.5 border-b px-1.5 py-2'>
       <div className='flex items-center'>
-        <Button variant='ghost' size='icon' disabled={!canUndo} onClick={undo}>
+        <ActionButton
+          disabled={!canUndo}
+          onClick={undo}
+          tooltipContent={
+            <span>
+              Undo <Kbd>⌘Z</Kbd>
+            </span>
+          }
+        >
           <Undo2 className='size-3.5' />
-        </Button>
-        <Button variant='ghost' size='icon' disabled={!canRedo} onClick={redo}>
+        </ActionButton>
+        <ActionButton
+          disabled={!canRedo}
+          onClick={redo}
+          tooltipContent={
+            <span>
+              Redo <Kbd>⌘Y</Kbd>
+            </span>
+          }
+        >
           <Redo2 className='size-3.5' />
-        </Button>
+        </ActionButton>
       </div>
       <Separator orientation='vertical' />
       <div className='flex items-center'>
-        <MarkToggleButton mark='bold'>
+        <MarkToggleButton
+          mark='bold'
+          tooltipContent={
+            <span>
+              Bold <Kbd>⌘B</Kbd>
+            </span>
+          }
+        >
           <Bold className='size-3.5' />
         </MarkToggleButton>
-        <MarkToggleButton mark='italic'>
+        <MarkToggleButton
+          mark='italic'
+          tooltipContent={
+            <span>
+              Italic <Kbd>⌘I</Kbd>
+            </span>
+          }
+        >
           <Italic className='size-3.5' />
         </MarkToggleButton>
-        <MarkToggleButton mark='strikethrough'>
+        <MarkToggleButton
+          mark='strikethrough'
+          tooltipContent={
+            <span>
+              Strikethrough <Kbd>⌘S</Kbd>
+            </span>
+          }
+        >
           <Strikethrough className='size-3.5' />
         </MarkToggleButton>
-        <MarkToggleButton mark='underline'>
+        <MarkToggleButton
+          mark='underline'
+          tooltipContent={
+            <span>
+              Underline <Kbd>⌘U</Kbd>
+            </span>
+          }
+        >
           <Underline className='size-3.5' />
         </MarkToggleButton>
-        <MarkToggleButton mark='code'>
+        <MarkToggleButton
+          mark='code'
+          tooltipContent={
+            <span>
+              Code <Kbd>⌘E</Kbd>
+            </span>
+          }
+        >
           <CodeXml className='size-3.5' />
         </MarkToggleButton>
       </div>
       <Separator orientation='vertical' />
       <div className='flex items-center'>
-        <Button variant='ghost' size='icon'>
+        <Button variant='ghost' size='icon' disabled>
           <TextAlignStart className='size-3.5' />
         </Button>
-        <Button variant='ghost' size='icon'>
+        <Button variant='ghost' size='icon' disabled>
           <TextAlignCenter className='size-3.5' />
         </Button>
-        <Button variant='ghost' size='icon'>
+        <Button variant='ghost' size='icon' disabled>
           <TextAlignEnd className='size-3.5' />
         </Button>
-        <Button variant='ghost' size='icon'>
+        <Button variant='ghost' size='icon' disabled>
           <TextAlignJustify className='size-3.5' />
         </Button>
       </div>
       <Separator orientation='vertical' />
       <div className='flex items-center'>
-        <Toggle
-          pressed={!canEdit}
-          variant='outline'
-          size='sm'
-          onPressedChange={() => setEditable(!canEdit)}
-          className='border-0'
-        >
-          {canEdit ? (
-            <Lock className='size-3.5' />
-          ) : (
-            <LockOpen className='size-3.5' />
-          )}
-        </Toggle>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Toggle
+                pressed={!canEdit}
+                variant='outline'
+                size='sm'
+                onPressedChange={() => setEditable(!canEdit)}
+                className='border-0'
+              >
+                {canEdit ? (
+                  <LockOpen className='size-3.5' />
+                ) : (
+                  <Lock className='size-3.5' />
+                )}
+              </Toggle>
+            }
+          />
+          <TooltipContent>
+            {canEdit ? 'Disable editing' : 'Enable editing'}
+          </TooltipContent>
+        </Tooltip>
       </div>
     </div>
   )

@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 
 import { Toaster } from '~/components/ui/toast'
+import { TooltipProvider } from '~/components/ui/tooltip'
 
 const geistSans = Geist({
   subsets: ['latin'],
@@ -29,7 +30,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className='relative min-h-screen'>
-        {children}
+        <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
       </body>
     </html>
