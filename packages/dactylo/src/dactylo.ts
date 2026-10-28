@@ -23,6 +23,7 @@ import type {
 import { EventSource } from './internals/event-source'
 import type { HistoryEvent, HistoryStackOptions } from './internals/history'
 import type { MarkKey } from './internals/marks'
+import type { InsertBlockPosition } from './internals/operations-builder'
 import {
   isBlockWithActiveCursor,
   isBlockWithActiveRange,
@@ -32,7 +33,7 @@ import {
 import type { Selection } from './internals/selection'
 import { TransactionPipeline } from './internals/transaction'
 import type { Transaction, TransactionSource } from './internals/transaction'
-import type { CancelCallback, Relax } from './internals/types'
+import type { CancelCallback, Metadata, Relax } from './internals/types'
 import { canUseDOM, negate, noop } from './internals/utils'
 
 /** Api to interact with one aspect of the editor. */
@@ -147,6 +148,7 @@ export type DactyloCommand =
   | 'dom/clear-selection'
 
   /** Blocks commands */
+  | 'blocks/insert-paragraph'
   | 'blocks/delete'
 
 /** Event emitted when a command is executed */
@@ -442,8 +444,22 @@ export interface DactyloBlocksTools {
 
 /** Commands to mutate the {@link DocumentState} blocks of the editor. */
 export interface DactyloBlocksCommands {
+  /**
+   * Inserts a {@link ParagraphBlock} at the given position with metadata.
+   * By defaults it inserts after the current selection.
+   */
+  readonly insertParagraph: (
+    opts?: {
+      /** Where to insert the paragraph block. */
+      pos?: InsertBlockPosition
+      /** Metadata to associate with the paragraph block. */
+      metadata?: Metadata
+    },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
   /** Deletes a {@link Block} from the document state by ID. */
-  delete: (
+  readonly delete: (
     blockId: BlockId,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -658,6 +674,7 @@ export class Dactylo {
           autolink: {
             enabled: this.#config.autolink.enabled,
           },
+          debug: this.#debug,
           inlineCommandTrigger: {
             character: this.#config.inlineCommandTrigger.character,
             enabled: this.#config.inlineCommandTrigger.enabled,
@@ -1376,6 +1393,33 @@ export class Dactylo {
             () => this.#pipeline.deleteBlock(blockId, source),
             noop,
             { payload: { blockId, source } },
+          ),
+
+        /**
+         * Inserts a {@link ParagraphBlock} at the given position with metadata.
+         * By defaults it inserts after the current selection.
+         *
+         * @example
+         * ```ts
+         * editor.blocks.commands.insertParagraph()
+         * editor.blocks.commands.insertParagraph({ pos: 'end' })
+         * editor.blocks.commands.insertParagraph({}, 'ai-agent')
+         * ```
+         */
+        insertParagraph: (
+          opts: {
+            /** Where to insert the paragraph block. */
+            pos?: InsertBlockPosition
+            /** Metadata to associate with the paragraph block. */
+            metadata?: Metadata
+          } = {},
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/insert-paragraph',
+            () => this.#pipeline.insertParagraphBlock(opts, source),
+            noop,
+            { payload: { source } },
           ),
       },
       tools: {

@@ -1,17 +1,13 @@
 import {
+  createParagraphBlock,
   findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
   sortBlockOrder,
   touchBlock,
 } from './blocks'
-import type {
-  Block,
-  BlockId,
-  BlockWithInlineContent,
-  BlockWithoutPosKey,
-} from './blocks'
+import type { BlockId, BlockWithInlineContent } from './blocks'
 import type { TextPlainData } from './clipboard'
-import { warn, warnOnce } from './console'
+import { warn, warnOnceIf } from './console'
 import { DeleteContentOpsBuilder } from './delete-content-ops-builder'
 import {
   computeInsertBlockPosKey,
@@ -44,6 +40,7 @@ import { MarksOpsBuilder } from './marks-ops-builder'
 import { MoveSelectionOpsBuilder } from './move-selection-ops-builder'
 import {
   coalesceInlineNodes,
+  createTextNode,
   getInlineNodeTextLength,
   isInlineNodeWithEditableText,
   splitInlineNodeWithEditableTextAt,
@@ -53,7 +50,6 @@ import type {
   DeleteBlockOp,
   DeleteTextOp,
   InsertBlockOp,
-  InsertBlockOpPosition,
   InsertInlineNodeOp,
   InsertTextOp,
   MergeBlocksOp,
@@ -65,16 +61,22 @@ import type {
   SplitBlockOp,
 } from './operations'
 import { buildError } from './operations-builder'
-import type { BuilderOpsIntent } from './operations-builder'
+import type {
+  BuilderOpsIntent,
+  InsertBlockPosition,
+} from './operations-builder'
 import { PastePlainTextOpsBuilder } from './paste-plain-text-ops-builder'
 import {
   areSelectionsEqual,
+  createCursor,
   createRangeSelectingInlineContentInBlock,
+  isCursorSelection,
   isRangeSelection,
   isSelectionActive,
 } from './selection'
 import type { TextCursor, Selection } from './selection'
 import { SoftBreakOpsBuilder } from './soft-break-ops-builder'
+import type { Metadata } from './types'
 import { assertNever } from './utils'
 
 // --- Validate ─────────────────────────────────────────------------
@@ -713,6 +715,12 @@ export function invertError(message: string, op: Operation): never {
 
 /** Options for constructing a {@link OperationsEngine} instance. */
 export interface OperationsEngineOptions {
+  /**
+   * Whether to enable debug mode.
+   * Defaults to `false`
+   */
+  readonly debug: boolean
+
   /** Configuration for mentions. */
   readonly mentions: {
     /** Whether to enable mentions. */
@@ -775,6 +783,9 @@ export interface OperationEngineAutolinkConfig {
  * It allows to handle inline composition with mentions and slash command.
  */
 export class OperationsEngine {
+  /** Whether to enable debug mode. */
+  readonly #debug: boolean
+
   /** Marks ops builder. */
   readonly #marksOpsBuilder: MarksOpsBuilder
 
@@ -797,6 +808,7 @@ export class OperationsEngine {
   readonly #moveSelectionOpsBuilder: MoveSelectionOpsBuilder
 
   constructor(options: OperationsEngineOptions) {
+    this.#debug = options.debug ?? false
     const graphemeOffsetCaret = new GraphemeOffsetCaret({
       locales: options.locales,
     })
@@ -1205,28 +1217,61 @@ export class OperationsEngine {
 
   // --- Blocks operations ─────────────────────────────────────────---
 
-  /** Builds operations to insert a block at given position. */
-  buildInsertBlockOps(
+  /** Builds operations to insert a paragraph block at the given position with metadata. */
+  // @todo: handle default content from string/markdown.
+  buildInsertParagraphBlockOps(
     context: EditorContext,
-    insertPos: InsertBlockOpPosition,
-    block: BlockWithoutPosKey,
+    pos?: InsertBlockPosition,
+    metadata?: Metadata,
   ): BuilderOpsIntent | null {
-    const { state } = context
+    const { state, selection } = context
 
-    const afterBlockId = resolveInsertAfterBlockId(state, insertPos)
-    const posKey = computeInsertBlockPosKey(state, insertPos)
+    /** Do not insert if pos isn't given or selection is not active. */
+    if (!pos || !isSelectionActive(selection)) {
+      warn(
+        'Cannot insert paragraph block without a given insert position or an active selection.',
+      )
+      return null
+    }
 
-    const blockWithPosKey: Block = { ...block, posKey }
+    const finalPos: InsertBlockPosition = pos ?? {
+      blockId: isCursorSelection(selection)
+        ? selection.anchor.blockId
+        : selection.focus.blockId,
+      type: 'after',
+    }
 
+    const posKey = computeInsertBlockPosKey(state, finalPos)
+
+    const insertedText = createTextNode({
+      marks: context.activeMarks,
+      text: '',
+    })
+    const paragraph = createParagraphBlock({
+      content: [insertedText],
+      metadata,
+      posKey,
+    })
+
+    const afterBlockId = resolveInsertAfterBlockId(state, finalPos)
     const ops: Operation[] = [
       {
         __type: 'insert_block',
         afterBlockId,
-        block: blockWithPosKey,
+        block: paragraph,
+      },
+      {
+        __type: 'set_selection',
+        next: createCursor({
+          blockId: paragraph.id,
+          nodeId: insertedText.id,
+          offset: 0,
+        }),
+        prev: selection,
       },
     ]
 
-    return { label: 'insert', ops }
+    return { label: 'insert-paragraph', ops }
   }
 
   /** Builds operations to delete a block by ID. */
@@ -1247,7 +1292,8 @@ export class OperationsEngine {
      * Then skip deletion because document must have at least one block.
      */
     if (idx === 0 && isEmpty) {
-      warnOnce(
+      warnOnceIf(
+        this.#debug,
         `Skipping deletion of block ${blockId} because it is the first empty block.`,
         'OperationsEngine/buildDeleteBlockOps',
       )
@@ -1267,6 +1313,8 @@ export class OperationsEngine {
         snapshot: block,
       },
     ]
+
+    // @todo: add selection update to the previous block and think about a config option
 
     return { label: 'delete', ops }
   }

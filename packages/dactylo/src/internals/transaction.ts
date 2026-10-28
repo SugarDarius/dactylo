@@ -1,4 +1,4 @@
-import type { BlockId, BlockWithoutPosKey } from './blocks'
+import type { BlockId } from './blocks'
 import { readTransferredData } from './clipboard'
 import { warn } from './console'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
@@ -11,10 +11,12 @@ import { HistoryStack, orderInverseOps } from './history'
 import type { HistoryEvent, HistoryStackOptions } from './history'
 import { detectArrowDirection, detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
-import type { Operation, InsertBlockOpPosition } from './operations'
+import type { Operation } from './operations'
+import type { InsertBlockPosition } from './operations-builder'
 import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
 import type { Selection } from './selection'
+import type { Metadata } from './types'
 import { warnHistoryInputType } from './warnings'
 
 /** The source of a transaction. */
@@ -1085,17 +1087,21 @@ export class TransactionPipeline {
 
   // ─── Block operations ───────────────────────────────────────------
 
-  /** Inserts a block at the given document position. */
-  // @todo: to be updated according to the new upcoming blocks API
-  insertBlock(
-    pos: InsertBlockOpPosition,
-    block: BlockWithoutPosKey,
+  /** Inserts a paragraph block at the given document position. */
+  // @todo: handle default content.
+  insertParagraphBlock(
+    opts: {
+      /** Where to insert the paragraph block. */
+      pos?: InsertBlockPosition
+      /** Metadata to associate with the paragraph block. */
+      metadata?: Metadata
+    },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    const intent = this.#operationsEngine.buildInsertBlockOps(
+    const intent = this.#operationsEngine.buildInsertParagraphBlockOps(
       this.#context,
-      pos,
-      block,
+      opts.pos,
+      opts.metadata,
     )
     if (intent === null) {
       return

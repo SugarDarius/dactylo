@@ -22,6 +22,7 @@ import type {
 import type { Operation } from './operations'
 import { createCursor } from './selection'
 import type { TextCursor, RangeSelection } from './selection'
+import type { Relax } from './types'
 import { assertNever } from './utils'
 
 // --- Errors -───────────────────────────────────────---------------
@@ -60,6 +61,28 @@ export interface BuilderOpsIntent {
   /** When `true` history is skipped. */
   readonly skipHistory?: true
 }
+
+/** Describes where a new block should be inserted relative to existing blocks. */
+export type InsertBlockPosition = Relax<
+  | {
+      /** Insert at document start. */
+      type: 'start'
+    }
+  | {
+      /** Insert at document end. */
+      type: 'end'
+    }
+  | {
+      /** Insert immediately after an existing block. */
+      type: 'after'
+      blockId: BlockId
+    }
+  | {
+      /** Insert immediately before an existing block. */
+      type: 'before'
+      blockId: BlockId
+    }
+>
 
 /** Configuration for mentions. */
 export interface OperationBuilderMentionsConfig {

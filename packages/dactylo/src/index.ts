@@ -30,7 +30,6 @@ export {
 export type {
   Block,
   BlockId,
-  BlockWithoutPosKey,
   BlockWithInlineContent,
   BlockType,
   HeadingBlock,

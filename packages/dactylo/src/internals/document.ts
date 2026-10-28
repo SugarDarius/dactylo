@@ -12,7 +12,7 @@ import {
   isInlineContentWithoutVisibleText,
   isInlineNodeWithEditableText,
 } from './nodes'
-import type { InsertBlockOpPosition } from './operations'
+import type { InsertBlockPosition } from './operations-builder'
 import {
   after,
   before,
@@ -251,11 +251,11 @@ export function replaceBlock(
 
 /**
  * Computes the position key (fractional index) where to insert a block
- * from a `InsertBlockOpPosition` in the document.
+ * from a {@link InsertBlockPosition} in the document.
  */
 export function computeInsertBlockPosKey(
   state: DocumentState,
-  pos: InsertBlockOpPosition,
+  pos: InsertBlockPosition,
 ): PosKey {
   switch (pos.type) {
     case 'start': {
@@ -300,12 +300,6 @@ export function computeInsertBlockPosKey(
 
       return between(prevBlock.posKey, block.posKey)
     }
-    case 'between': {
-      const loBlock = getBlock(state, pos.afterBlockId)
-      const hiBlock = getBlock(state, pos.beforeBlockId)
-
-      return between(loBlock.posKey, hiBlock.posKey)
-    }
     default: {
       assertNever(pos, { hint: 'DocumentState/#computeInsertBlockPosKey' })
     }
@@ -314,11 +308,11 @@ export function computeInsertBlockPosKey(
 
 /**
  * Resolves the position where to insert a block from
- * a `InsertBlockOpPosition` in the document.
+ * a {@link InsertBlockPosition} in the document.
  */
 export function resolveInsertAfterBlockId(
   state: DocumentState,
-  pos: InsertBlockOpPosition,
+  pos: InsertBlockPosition,
 ): BlockId | null {
   switch (pos.type) {
     case 'start': {
@@ -333,9 +327,6 @@ export function resolveInsertAfterBlockId(
     case 'before': {
       const { prev } = getBlockNeighbors(state, pos.blockId)
       return prev
-    }
-    case 'between': {
-      return pos.afterBlockId
     }
     default: {
       assertNever(pos, { hint: 'DocumentState/#resolveInsertAfterBlockId' })

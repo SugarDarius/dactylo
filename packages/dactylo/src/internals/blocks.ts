@@ -90,13 +90,6 @@ export type Block = Relax<HeadingBlock | ParagraphBlock | DividerBlock>
 /** Allowed blocks to own inline content */
 export type BlockWithInlineContent = HeadingBlock | ParagraphBlock
 
-/** Discriminated union of blocks without `posKey`. */
-export type BlockWithoutPosKey = Relax<
-  | Omit<HeadingBlock, 'posKey'>
-  | Omit<ParagraphBlock, 'posKey'>
-  | Omit<DividerBlock, 'posKey'>
->
-
 /** Discriminated union of block types.. */
 export type BlockType = Block['__type']
 
