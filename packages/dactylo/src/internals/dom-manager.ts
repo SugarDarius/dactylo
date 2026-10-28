@@ -242,8 +242,14 @@ export class DOMManager {
    */
   #isPainting = false
 
-  /** Pending sync animation frame id. */
-  #syncAfId: number | null = null
+  /** Coalesced sync animation frame id (paint then sync). */
+  #frameAfId: number | null = null
+
+  /** Whether DOM → Model sync was requested for the next frame. */
+  #syncPending = false
+
+  /** Whether Model → DOM paint was requested for the next frame. */
+  #paintPending: 'none' | 'caret' | 'range' | 'clear' = 'none'
 
   /** Whether to enable debug mode. */
   readonly #debug: boolean
@@ -283,12 +289,122 @@ export class DOMManager {
     }
   }
 
-  /** Cancels the scheduled sync animation frame. */
-  #cancelScheduledSync(): void {
-    if (this.#syncAfId !== null) {
-      cancelAnimationFrame(this.#syncAfId)
-      this.#syncAfId = null
+  /** Cancels the coalesced selection frame and pending work. */
+  #cancelScheduledFrame(): void {
+    if (this.#frameAfId !== null) {
+      cancelAnimationFrame(this.#frameAfId)
+      this.#frameAfId = null
     }
+    this.#syncPending = false
+    this.#paintPending = 'none'
+  }
+
+  /** Drops the frame when nothing is left to run. */
+  #maybeCancelFrame(): void {
+    if (
+      this.#frameAfId !== null &&
+      !this.#syncPending &&
+      this.#paintPending === 'none'
+    ) {
+      cancelAnimationFrame(this.#frameAfId)
+      this.#frameAfId = null
+    }
+  }
+
+  /** Flushes the paint operation. */
+  #flushPaint(kind: 'caret' | 'range' | 'clear' | 'none'): void {
+    if (this.#getIMEComposingState()) {
+      return
+    }
+
+    const editable = this.#editable
+    if (!editable) {
+      warnOnceIf(
+        this.#debug,
+        'No editable element found. Attach the orchestrator to the editable element first using `Orchestrator.attach(element)`.',
+      )
+      return
+    }
+
+    switch (kind) {
+      case 'caret': {
+        const selection = this.#getSelection()
+        if (!isCursorSelection(selection)) {
+          break
+        }
+
+        const cursor = selection.anchor
+        const editableContent = findBlockEditableElement(
+          editable,
+          cursor.blockId,
+        )
+
+        if (!editableContent) {
+          throw DactyloError.from({
+            code: 'SELECTION_MANAGER_PAINTING',
+            hint: 'DomManager/#flushPaint/caret',
+            message: `No editable block content found for block id: ${cursor.blockId}`,
+            payload: {
+              blockId: cursor.blockId,
+            },
+          })
+        }
+
+        this.#runPainting(() => {
+          paintCaretAt(editableContent, cursor)
+        })
+
+        break
+      }
+      case 'range': {
+        const selection = this.#getSelection()
+        if (!isRangeSelection(selection)) {
+          break
+        }
+
+        this.#runPainting(() => {
+          paintRangeAt(editable, selection)
+        })
+
+        break
+      }
+      case 'clear': {
+        const domSelection = window.getSelection()
+        if (!domSelection) {
+          break
+        }
+        domSelection.removeAllRanges()
+        break
+      }
+      default: {
+        break
+      }
+    }
+  }
+
+  /** Schedules one rAF that runs model → DOM paint, then DOM → model sync. */
+  #scheduleFrame(): void {
+    if (this.#frameAfId !== null) {
+      return
+    }
+
+    this.#frameAfId = requestAnimationFrame(() => {
+      this.#frameAfId = null
+
+      const paint = this.#paintPending
+      const sync = this.#syncPending
+
+      this.#paintPending = 'none'
+      this.#syncPending = false
+
+      if (paint !== 'none') {
+        this.#flushPaint(paint)
+      }
+
+      if (sync) {
+        this.#sync()
+      }
+    })
   }
 
   /**
@@ -329,7 +445,7 @@ export class DOMManager {
 
   /** Detaches the view manager from the editable element. */
   detach(): void {
-    this.#cancelScheduledSync()
+    this.#cancelScheduledFrame()
     this.#editable = null
   }
 
@@ -363,103 +479,50 @@ export class DOMManager {
         return
       }
     }
-    /** When a sync is already scheduled, skip the schedule. */
-    if (this.#syncAfId !== null) {
-      return
-    }
 
-    this.#syncAfId = requestAnimationFrame(() => {
-      this.#syncAfId = null
-      this.#sync()
-    })
+    this.#syncPending = true
+    this.#scheduleFrame()
   }
 
   /** Paints a collapsed caret at the position of the text cursor in the DOM. */
   paintCaretAt(): CancelCallback {
-    /** Runs the painting operation before the next browser re-paint. */
-    const id = requestAnimationFrame(() => {
-      /** When the IME composition is active, skip the painting. */
-      if (this.#getIMEComposingState()) {
-        return
+    this.#paintPending = 'caret'
+    this.#scheduleFrame()
+
+    return () => {
+      if (this.#paintPending === 'caret') {
+        this.#paintPending = 'none'
       }
 
-      const editable = this.#editable
-      if (!editable) {
-        warnOnceIf(
-          this.#debug,
-          'No editable element found. Attach the orchestrator to the editable element first using `Orchestrator.attach(element)`.',
-        )
-        return
-      }
-
-      const selection = this.#getSelection()
-      if (!isCursorSelection(selection)) {
-        return
-      }
-      const cursor = selection.anchor
-
-      const editableContent = findBlockEditableElement(editable, cursor.blockId)
-      if (!editableContent) {
-        throw DactyloError.from({
-          code: 'SELECTION_MANAGER_PAINTING',
-          hint: 'DomManager/#paintCaretAt',
-          message: `No editable block content found for block id: ${cursor.blockId}`,
-          payload: {
-            blockId: cursor.blockId,
-          },
-        })
-      }
-
-      this.#runPainting(() => {
-        paintCaretAt(editableContent, cursor)
-      })
-    })
-
-    return () => cancelAnimationFrame(id)
+      this.#maybeCancelFrame()
+    }
   }
 
   /** Paints a range at anchor/focus in the DOM. */
   paintRangeAt(): CancelCallback {
-    /** Runs the painting operation before the next browser re-paint. */
-    const id = requestAnimationFrame(() => {
-      /** When the IME composition is active, skip the painting. */
-      if (this.#getIMEComposingState()) {
-        return
+    this.#paintPending = 'range'
+    this.#scheduleFrame()
+
+    return () => {
+      if (this.#paintPending === 'range') {
+        this.#paintPending = 'none'
       }
 
-      const editable = this.#editable
-      if (!editable) {
-        warnOnceIf(
-          this.#debug,
-          'No editable element found. Attach the orchestrator to the editable element first using `Orchestrator.attach(element)`.',
-        )
-        return
-      }
-
-      const selection = this.#getSelection()
-      if (!isRangeSelection(selection)) {
-        return
-      }
-
-      this.#runPainting(() => {
-        paintRangeAt(editable, selection)
-      })
-    })
-
-    return () => cancelAnimationFrame(id)
+      this.#maybeCancelFrame()
+    }
   }
 
   /** Clears the selection in the DOM. */
   clearSelection(): CancelCallback {
-    /** Runs the painting operation before the next browser re-paint. */
-    const id = requestAnimationFrame(() => {
-      const domSelection = window.getSelection()
-      if (!domSelection) {
-        return
-      }
-      domSelection.removeAllRanges()
-    })
+    this.#paintPending = 'clear'
+    this.#scheduleFrame()
 
-    return () => cancelAnimationFrame(id)
+    return () => {
+      if (this.#paintPending === 'clear') {
+        this.#paintPending = 'none'
+      }
+
+      this.#maybeCancelFrame()
+    }
   }
 }
