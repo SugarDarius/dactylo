@@ -238,6 +238,7 @@ export function Editor() {
 | DOM API                      | 🚧 **In Progress** | Sync browser DOM native selection with Dactylo's selection                                      |
 | Blocks API                   | 🚧 **In Progress** | Mutate and reads blocks                                                                         |
 | Inline nodes API             | 🚧 **In Progress** | Mutate and reads inline nodes                                                                   |
+| Metadata API                 | 🚧 **In Progress** | Mutate and reads blocks and inline nodes metadata (config for globals metadata)                 |
 | Mentions API                 | 📆 **Planned**     | Mutate and reads mentions as first-class citizen                                                |
 | Export JSON and Markdown API | 📆 **Planned**     | Export document state as JSON and Markdown                                                      |
 | Stats API                    | 📆 **Planned**     | Provides stats like total text length, # of blocks, # number of nodes, # of words & sentences   |
