@@ -9,6 +9,7 @@ import {
   useHistoryTools,
   useIsMarkActive,
   useMarksCommands,
+  useBlocksCommands,
   useSetEditable,
 } from '@sugardarius/dactylo/react'
 import {
@@ -124,6 +125,7 @@ export function Toolbar() {
   const { canUndo, canRedo } = useHistoryTools()
   const { undo, redo } = useHistoryCommands()
 
+  const { insertParagraph } = useBlocksCommands()
   const { toggle } = useMarksCommands()
 
   useEditableListener(({ editable }) => {
@@ -270,7 +272,7 @@ export function Toolbar() {
           <DropdownMenuContent className='w-40' align='start'>
             <DropdownMenuGroup>
               <DropdownMenuLabel>Basic Blocks</DropdownMenuLabel>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => insertParagraph()}>
                 <Pilcrow className='size-3.5' />
                 Paragraph
               </DropdownMenuItem>

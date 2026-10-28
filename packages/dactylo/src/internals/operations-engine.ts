@@ -1227,19 +1227,23 @@ export class OperationsEngine {
     const { state, selection } = context
 
     /** Do not insert if pos isn't given or selection is not active. */
-    if (!pos || !isSelectionActive(selection)) {
+    if (pos === undefined && !isSelectionActive(selection)) {
       warn(
         'Cannot insert paragraph block without a given insert position or an active selection.',
       )
       return null
     }
 
-    const finalPos: InsertBlockPosition = pos ?? {
-      blockId: isCursorSelection(selection)
-        ? selection.anchor.blockId
-        : selection.focus.blockId,
-      type: 'after',
-    }
+    const finalPos: InsertBlockPosition =
+      pos ??
+      (isSelectionActive(selection)
+        ? {
+            blockId: isCursorSelection(selection)
+              ? selection.anchor.blockId
+              : selection.focus.blockId,
+            type: 'after',
+          }
+        : { type: 'end' })
 
     const posKey = computeInsertBlockPosKey(state, finalPos)
 

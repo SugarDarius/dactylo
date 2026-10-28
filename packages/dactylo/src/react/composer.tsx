@@ -22,6 +22,7 @@ import type { EditorContext } from '../internals/editor-context'
 import { isMarkEnabled } from '../internals/marks'
 import type { MarkKey } from '../internals/marks'
 import type { InlineNodeWithEditableText } from '../internals/nodes'
+import type { InsertBlockPosition } from '../internals/operations-builder'
 import { isCursorSelection, isRangeSelection } from '../internals/selection'
 import type {
   CursorSelection,
@@ -29,6 +30,7 @@ import type {
   Selection,
 } from '../internals/selection'
 import type { TransactionSource } from '../internals/transaction'
+import type { Metadata } from '../internals/types'
 import { noop, shallow } from '../internals/utils'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
@@ -475,18 +477,29 @@ export function useBlocksTools() {
  *
  * @example
  * ```tsx
- * const { delete } = useBlocksCommands()
+ * const { delete, insertParagraph } = useBlocksCommands()
  * delete(blockId)
+ * insertParagraph({ pos: { type: 'end'}, metadata: { fontColor: 'purple' } })
  * ```
  */
 export function useBlocksCommands() {
   const { editor } = useComposer()
 
-  const $delete = useStableCallback((blockId: BlockId) =>
-    editor.blocks.commands.delete(blockId),
+  const insertParagraph = useStableCallback(
+    (
+      opts?: { pos?: InsertBlockPosition; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.insertParagraph(opts, source),
   )
 
-  return { delete: $delete } as const
+  const $delete = useStableCallback(
+    (
+      blockId: BlockId,
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.delete(blockId, source),
+  )
+
+  return { delete: $delete, insertParagraph } as const
 }
 
 /**
