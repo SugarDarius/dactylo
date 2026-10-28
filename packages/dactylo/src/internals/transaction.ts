@@ -708,7 +708,6 @@ export class TransactionPipeline {
     }
 
     // @todo: handle composition input types
-    // @todo: handle insert replacement text
     switch (inputType) {
       /** Not handled input types bucket. */
       case 'historyUndo':
