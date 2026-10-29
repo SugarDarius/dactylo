@@ -135,7 +135,7 @@ export function Toolbar() {
   const { canUndo, canRedo } = useHistoryTools()
   const { undo, redo } = useHistoryCommands()
 
-  const { insertParagraph } = useBlocksCommands()
+  const { insertParagraph, insertDivider } = useBlocksCommands()
   const { toggle } = useMarksCommands()
 
   useEditableListener(({ editable }) => {
@@ -318,7 +318,7 @@ export function Toolbar() {
                 <Heading6 className='size-3.5' />
                 Heading 6
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => insertDivider()}>
                 <Minus className='size-3.5' />
                 Divider
               </DropdownMenuItem>
@@ -410,10 +410,13 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         <Toolbar />
         <Composer.Editable
           autoFocus
+          // @note: for DX convenience add custom components
           className={cn(
+            // base
             'selection:text-accent-foreground relative flex w-full flex-col px-6 py-2 selection:bg-cyan-500',
-            // @note: for DX convenience add custom components
+            // blocks
             '**:[[dactylo-blocks]]:flex **:[[dactylo-blocks]]:flex-col **:[[dactylo-blocks]]:gap-2',
+            // blocks with editable content
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true]]:caret-cyan-500',
             `[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:[content:attr(dactylo-block-placeholder)/'']`,
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:pointer-events-none',
@@ -424,6 +427,16 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:text-muted-foreground',
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:whitespace-break-spaces',
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:wrap-break-word',
+            // divider block
+            '**:[[dactylo-divider-block]]:flex **:[[dactylo-divider-block]]:w-full **:[[dactylo-divider-block]]:flex-col',
+            '[&_[dactylo-divider-block]_[dactylo-block-content]]:flex [&_[dactylo-divider-block]_[dactylo-block-content]]:flex-col',
+            '[&_[dactylo-divider-block]_[dactylo-block-content]]:items-center [&_[dactylo-divider-block]_[dactylo-block-content]]:justify-center',
+            '[&_[dactylo-divider-block]_[dactylo-block-content]]:py-2',
+            '**:[[dactylo-divider-separator]]:bg-border',
+            '**:[[dactylo-divider-separator]]:shrink-0',
+            '**:[[dactylo-divider-separator]]:h-px',
+            '**:[[dactylo-divider-separator]]:w-full',
+            // nodes
             '[&_[dactylo-node][dactylo-link-node]]:cursor-pointer',
             '[&_[dactylo-node][dactylo-link-node]]:text-cyan-500',
             '[&_[dactylo-node][dactylo-link-node]]:underline',
