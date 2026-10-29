@@ -98,7 +98,7 @@ export function generateBlockId(): BlockId {
   return `bl_${nanoid(21)}` as BlockId
 }
 
-/** Creates a paragraph block. */
+/** Creates a {@link ParagraphBlock}. */
 export function createParagraphBlock(opts: {
   content: InlineNode[]
   metadata?: Metadata
@@ -118,7 +118,7 @@ export function createParagraphBlock(opts: {
 }
 
 /**
- * Creates a paragraph block after a given existing block.
+ * Creates a {@link ParagraphBlock} after a given existing block.
  * Computes `posKey` of the new block based on the `afterBlock` position.
  */
 export function createParagraphBlockAfter(
@@ -133,6 +133,27 @@ export function createParagraphBlockAfter(
     parentId: afterBlock.parentId,
     posKey,
   })
+}
+
+/** Creates an {@link HeadingBlock}. */
+export function createHeadingBlock(opts: {
+  level: 1 | 2 | 3 | 4 | 5 | 6
+  content: InlineNode[]
+  metadata?: Metadata
+  posKey: PosKey
+  parentId?: BlockId | null
+}): HeadingBlock {
+  return {
+    __type: 'heading',
+    content: opts.content,
+    createdAt: new Date(),
+    id: generateBlockId(),
+    level: opts.level,
+    metadata: opts.metadata ?? {},
+    parentId: opts.parentId ?? null,
+    posKey: opts.posKey,
+    updatedAt: null,
+  }
 }
 
 /** Returns a shallow copy of a block with a fresh `updatedAt` timestamp. */
