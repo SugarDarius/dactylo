@@ -152,7 +152,7 @@ export function Editor() {
 
 ## Roadmap
 
-👉🏻 The foreseen roadmap to bring live features that Dactylo needs to exposes to developers.
+👉🏻 The foreseen roadmap to bring live features that Dactylo needs to expose to developers.
 
 - ✅ **Done** → Completed
 - 🚧 **In Progress** → Under implementation
