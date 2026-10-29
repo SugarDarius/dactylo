@@ -1229,7 +1229,7 @@ export class OperationsEngine {
   ): BuilderOpsIntent | null {
     const { state, selection } = context
 
-    /** Do not insert if pos isn't given or selection is not active. */
+    /** Do not insert if `pos` isn't given or selection is not active. */
     if (pos === undefined && !isSelectionActive(selection)) {
       warn(
         'Cannot insert paragraph block without a given insert position or an active selection.',

@@ -480,6 +480,12 @@ export function useBlocksTools() {
  * const { delete, insertParagraph } = useBlocksCommands()
  * delete(blockId)
  * insertParagraph({ pos: { type: 'end'}, metadata: { fontColor: 'purple' } })
+ * insertHeading(1)
+ * insertHeading(2, { pos: { type: 'end' } })
+ * insertHeading(3, {}, 'ai-agent')
+ * insertDivider()
+ * insertDivider({ pos: { type: 'end' } })
+ * insertDivider({}, 'ai-agent')
  * ```
  */
 export function useBlocksCommands() {
@@ -492,6 +498,21 @@ export function useBlocksCommands() {
     ) => editor.blocks.commands.insertParagraph(opts, source),
   )
 
+  const insertHeading = useStableCallback(
+    (
+      level: 1 | 2 | 3 | 4 | 5 | 6,
+      opts?: { pos?: InsertBlockPosition; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.insertHeading(level, opts, source),
+  )
+
+  const insertDivider = useStableCallback(
+    (
+      opts?: { pos?: InsertBlockPosition; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.insertDivider(opts, source),
+  )
+
   const $delete = useStableCallback(
     (
       blockId: BlockId,
@@ -499,7 +520,12 @@ export function useBlocksCommands() {
     ) => editor.blocks.commands.delete(blockId, source),
   )
 
-  return { delete: $delete, insertParagraph } as const
+  return {
+    delete: $delete,
+    insertDivider,
+    insertHeading,
+    insertParagraph,
+  } as const
 }
 
 /**
