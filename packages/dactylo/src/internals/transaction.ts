@@ -1,4 +1,4 @@
-import type { BlockId } from './blocks'
+import type { BlockId, HeadingBlock } from './blocks'
 import { readTransferredData } from './clipboard'
 import { warn } from './console'
 import { DEFAULT_BATCH_MAX_SIZE } from './constants'
@@ -1088,7 +1088,6 @@ export class TransactionPipeline {
   // ─── Block operations ───────────────────────────────────────------
 
   /** Inserts a paragraph block at the given document position. */
-  // @todo: handle default content.
   insertParagraphBlock(
     opts: {
       /** Where to insert the paragraph block. */
@@ -1099,6 +1098,63 @@ export class TransactionPipeline {
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
     const intent = this.#operationsEngine.buildInsertParagraphBlockOps(
+      this.#context,
+      opts.pos,
+      opts.metadata,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
+  /** Inserts a heading block at the given document position. */
+  insertHeadingBlock(
+    /** Level of the heading. */
+    level: HeadingBlock['level'],
+    opts: {
+      /** Where to insert the heading block. */
+      pos?: InsertBlockPosition
+      /** Metadata to associate with the heading block. */
+      metadata?: Metadata
+    },
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildInsertHeadingBlockOps(
+      this.#context,
+      level,
+      opts.pos,
+      opts.metadata,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
+  /** Inserts a divider block at the given document position. */
+  insertDividerBlock(
+    opts: {
+      /** Where to insert the divider block. */
+      pos?: InsertBlockPosition
+      /** Metadata to associate with the divider block. */
+      metadata?: Metadata
+    },
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildInsertDividerBlockOps(
       this.#context,
       opts.pos,
       opts.metadata,

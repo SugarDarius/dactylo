@@ -1,11 +1,14 @@
 import {
+  createDividerBlock,
+  createHeadingBlock,
   createParagraphBlock,
+  createParagraphBlockAfter,
   findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
   sortBlockOrder,
   touchBlock,
 } from './blocks'
-import type { BlockId, BlockWithInlineContent } from './blocks'
+import type { BlockId, BlockWithInlineContent, HeadingBlock } from './blocks'
 import type { TextPlainData } from './clipboard'
 import { warn, warnOnceIf } from './console'
 import { DeleteContentOpsBuilder } from './delete-content-ops-builder'
@@ -64,6 +67,7 @@ import { buildError } from './operations-builder'
 import type {
   BuilderOpsIntent,
   InsertBlockPosition,
+  InsertBlockSpec,
 } from './operations-builder'
 import { PastePlainTextOpsBuilder } from './paste-plain-text-ops-builder'
 import {
@@ -711,7 +715,7 @@ export function invertError(message: string, op: Operation): never {
   })
 }
 
-// --- Build ─────────────────────────────────────────---------------
+// --- Engine ─────────────────────────────────────────---------------
 
 /** Options for constructing a {@link OperationsEngine} instance. */
 export interface OperationsEngineOptions {
@@ -1217,12 +1221,11 @@ export class OperationsEngine {
 
   // --- Blocks operations ─────────────────────────────────────────---
 
-  /** Builds operations to insert a paragraph block at the given position with metadata. */
-  // @todo: handle default content from string/markdown.
-  buildInsertParagraphBlockOps(
+  /** Builds operations to insert a {@link Block} according to the given specification and position. */
+  #buildInsertBlockOps(
     context: EditorContext,
+    spec: InsertBlockSpec,
     pos?: InsertBlockPosition,
-    metadata?: Metadata,
   ): BuilderOpsIntent | null {
     const { state, selection } = context
 
@@ -1246,44 +1249,165 @@ export class OperationsEngine {
         : { type: 'end' })
 
     const posKey = computeInsertBlockPosKey(state, finalPos)
-
-    const insertedText = createTextNode({
-      marks: context.activeMarks,
-      text: '',
-    })
-    const paragraph = createParagraphBlock({
-      content: [insertedText],
-      metadata,
-      posKey,
-    })
-
     const afterBlockId = resolveInsertAfterBlockId(state, finalPos)
-    const ops: Operation[] = [
-      {
-        __type: 'insert_block',
-        afterBlockId,
-        block: paragraph,
-      },
-      {
-        __type: 'set_selection',
-        next: createCursor({
-          blockId: paragraph.id,
-          nodeId: insertedText.id,
-          offset: 0,
-        }),
-        prev: selection,
-      },
-    ]
 
-    return { label: 'insert-paragraph', ops }
+    const { type } = spec
+    switch (type) {
+      case 'paragraph': {
+        const insertedText = createTextNode({
+          marks: context.activeMarks,
+          text: '',
+        })
+        const paragraph = createParagraphBlock({
+          content: [insertedText],
+          metadata: spec.metadata,
+          posKey,
+        })
+
+        const ops: Operation[] = [
+          {
+            __type: 'insert_block',
+            afterBlockId,
+            block: paragraph,
+          },
+          {
+            __type: 'set_selection',
+            next: createCursor({
+              blockId: paragraph.id,
+              nodeId: insertedText.id,
+              offset: 0,
+            }),
+            prev: selection,
+          },
+        ]
+
+        return { label: 'insert-paragraph', ops }
+      }
+      case 'heading': {
+        const insertedText = createTextNode({
+          marks: context.activeMarks,
+          text: '',
+        })
+        const heading = createHeadingBlock({
+          content: [insertedText],
+          level: spec.level,
+          metadata: spec.metadata,
+          posKey,
+        })
+
+        const ops: Operation[] = [
+          {
+            __type: 'insert_block',
+            afterBlockId,
+            block: heading,
+          },
+          {
+            __type: 'set_selection',
+            next: createCursor({
+              blockId: heading.id,
+              nodeId: insertedText.id,
+              offset: 0,
+            }),
+            prev: selection,
+          },
+        ]
+
+        return { label: 'insert-heading', ops }
+      }
+      case 'divider': {
+        const divider = createDividerBlock({
+          metadata: spec.metadata,
+          posKey,
+        })
+
+        /**
+         * Invariant UX:
+         * When inserting a divider block,
+         * a {@link ParagraphBlock} is inserted right after it and
+         * the selection is set inside it.
+         */
+        const insertedText = createTextNode({
+          marks: context.activeMarks,
+          text: '',
+        })
+        const paragraph = createParagraphBlockAfter(divider, [insertedText])
+
+        const ops: Operation[] = [
+          {
+            __type: 'insert_block',
+            afterBlockId,
+            block: divider,
+          },
+          {
+            __type: 'insert_block',
+            afterBlockId: divider.id,
+            block: paragraph,
+          },
+          {
+            __type: 'set_selection',
+            next: createCursor({
+              blockId: paragraph.id,
+              nodeId: insertedText.id,
+              offset: 0,
+            }),
+            prev: selection,
+          },
+        ]
+
+        return { label: 'insert-divider', ops }
+      }
+      default: {
+        assertNever(type, { hint: 'OperationsEngine/buildInsertBlockOps' })
+      }
+    }
   }
 
-  /** Builds operations to delete a block by ID. */
+  /** Builds operations to insert a {@link ParagraphBlock}. */
+  buildInsertParagraphBlockOps(
+    context: EditorContext,
+    pos?: InsertBlockPosition,
+    metadata?: Metadata,
+  ): BuilderOpsIntent | null {
+    return this.#buildInsertBlockOps(
+      context,
+      { metadata, type: 'paragraph' },
+      pos,
+    )
+  }
+
+  /** Builds operations to insert an {@link HeadingBlock}. */
+  buildInsertHeadingBlockOps(
+    context: EditorContext,
+    level: HeadingBlock['level'],
+    pos?: InsertBlockPosition,
+    metadata?: Metadata,
+  ): BuilderOpsIntent | null {
+    return this.#buildInsertBlockOps(
+      context,
+      { level, metadata, type: 'heading' },
+      pos,
+    )
+  }
+
+  /** Builds operations to insert a {@link DividerBlock}. */
+  buildInsertDividerBlockOps(
+    context: EditorContext,
+    pos?: InsertBlockPosition,
+    metadata?: Metadata,
+  ): BuilderOpsIntent | null {
+    return this.#buildInsertBlockOps(
+      context,
+      { metadata, type: 'divider' },
+      pos,
+    )
+  }
+
+  /** Builds operations to delete a {@link Block} by ID. */
   buildDeleteBlockOps(
     context: EditorContext,
     blockId: BlockId,
   ): BuilderOpsIntent | null {
-    const { state } = context
+    const { state, selection } = context
     // @todo: improve by creating am invariant checker
     const block = getBlock(state, blockId)
     const idx = getBlockIndex(state, blockId)
@@ -1291,8 +1415,8 @@ export class OperationsEngine {
 
     /**
      * Invariant UX:
-     *  - When block is the only one in document
-     *  - When block is empty
+     *  - When block is the only one in document,
+     *  - When block is empty.
      * Then skip deletion because document must have at least one block.
      */
     if (idx === 0 && isEmpty) {
@@ -1316,9 +1440,17 @@ export class OperationsEngine {
         blockId,
         snapshot: block,
       },
+      /**
+       * Invariant UX:
+       * Assuming after a block deletion we can't predict where
+       * the selection should focus on.
+       */
+      {
+        __type: 'set_selection',
+        next: null,
+        prev: selection,
+      },
     ]
-
-    // @todo: add selection update to the previous block and think about a config option
 
     return { label: 'delete', ops }
   }

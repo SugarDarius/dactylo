@@ -156,6 +156,23 @@ export function createHeadingBlock(opts: {
   }
 }
 
+/** Creates a {@link DividerBlock}. */
+export function createDividerBlock(opts: {
+  metadata?: Metadata
+  posKey: PosKey
+  parentId?: BlockId | null
+}): DividerBlock {
+  return {
+    __type: 'divider',
+    createdAt: new Date(),
+    id: generateBlockId(),
+    metadata: opts.metadata ?? {},
+    parentId: opts.parentId ?? null,
+    posKey: opts.posKey,
+    updatedAt: null,
+  }
+}
+
 /** Returns a shallow copy of a block with a fresh `updatedAt` timestamp. */
 export function touchBlock(block: Block): Block {
   return { ...block, updatedAt: new Date() }

@@ -1,4 +1,4 @@
-import type { BlockId } from './internals/blocks'
+import type { BlockId, HeadingBlock } from './internals/blocks'
 import { error, warnOnceIf } from './internals/console'
 import {
   DEFAULT_HEADING_PLACEHOLDER,
@@ -149,6 +149,8 @@ export type DactyloCommand =
 
   /** Blocks commands */
   | 'blocks/insert-paragraph'
+  | 'blocks/insert-heading'
+  | 'blocks/insert-divider'
   | 'blocks/delete'
 
 /** Event emitted when a command is executed */
@@ -452,7 +454,40 @@ export interface DactyloBlocksCommands {
     opts?: {
       /** Where to insert the paragraph block. */
       pos?: InsertBlockPosition
+
       /** Metadata to associate with the paragraph block. */
+      metadata?: Metadata
+    },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
+   * Inserts a {@link HeadingBlock} at the given position with metadata.
+   * By defaults it inserts after the current selection.
+   */
+  readonly insertHeading: (
+    /** Level of the heading. */
+    level: HeadingBlock['level'],
+
+    opts?: {
+      /** Where to insert the heading block. */
+      pos?: InsertBlockPosition
+
+      /** Metadata to associate with the heading block. */
+      metadata?: Metadata
+    },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
+   * Inserts a {@link DividerBlock} at the given position with metadata.
+   * By defaults it inserts a level 1 after the current selection.
+   */
+  readonly insertDivider: (
+    opts?: {
+      /** Where to insert the divider block. */
+      pos?: InsertBlockPosition
+      /** Metadata to associate with the divider block. */
       metadata?: Metadata
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -1393,6 +1428,63 @@ export class Dactylo {
             () => this.#pipeline.deleteBlock(blockId, source),
             noop,
             { payload: { blockId, source } },
+          ),
+
+        /**
+         * Inserts a {@link DividerBlock} at the given position with metadata.
+         * By defaults it inserts after the current selection.
+         *
+         * @example
+         * ```ts
+         * editor.blocks.commands.insertDivider()
+         * editor.blocks.commands.insertDivider({ pos: 'end' })
+         * editor.blocks.commands.insertDivider({}, 'ai-agent')
+         * ```
+         */
+        insertDivider: (
+          opts: {
+            /** Where to insert the divider block. */
+            pos?: InsertBlockPosition
+            /** Metadata to associate with the divider block. */
+            metadata?: Metadata
+          } = {},
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/insert-divider',
+            () => this.#pipeline.insertDividerBlock(opts, source),
+            noop,
+            { payload: { source } },
+          ),
+
+        /**
+         * Inserts a {@link HeadingBlock} at the given position with metadata.
+         * By defaults it inserts after the current selection.
+         *
+         * @example
+         * ```ts
+         * editor.blocks.commands.insertHeading(1)
+         * editor.blocks.commands.insertHeading(2, { pos: 'end' })
+         * editor.blocks.commands.insertHeading(3, {}, 'ai-agent')
+         * ```
+         */
+        insertHeading: (
+          /** Level of the heading. */
+          level: HeadingBlock['level'],
+
+          opts: {
+            /** Where to insert the heading block. */
+            pos?: InsertBlockPosition
+            /** Metadata to associate with the heading block. */
+            metadata?: Metadata
+          } = {},
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/insert-heading',
+            () => this.#pipeline.insertHeadingBlock(level, opts, source),
+            noop,
+            { payload: { source } },
           ),
 
         /**

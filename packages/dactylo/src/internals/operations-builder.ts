@@ -1,5 +1,5 @@
 import { findNodeInBlockWithInlineContent } from './blocks'
-import type { BlockId, BlockWithInlineContent } from './blocks'
+import type { BlockId, BlockWithInlineContent, HeadingBlock } from './blocks'
 import { getBlock } from './document'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
@@ -22,7 +22,7 @@ import type {
 import type { Operation } from './operations'
 import { createCursor } from './selection'
 import type { TextCursor, RangeSelection } from './selection'
-import type { Relax } from './types'
+import type { Metadata, Relax } from './types'
 import { assertNever } from './utils'
 
 // --- Errors -───────────────────────────────────────---------------
@@ -66,21 +66,46 @@ export interface BuilderOpsIntent {
 export type InsertBlockPosition = Relax<
   | {
       /** Insert at document start. */
-      type: 'start'
+      readonly type: 'start'
     }
   | {
       /** Insert at document end. */
-      type: 'end'
+      readonly type: 'end'
     }
   | {
       /** Insert immediately after an existing block. */
-      type: 'after'
-      blockId: BlockId
+      readonly type: 'after'
+      readonly blockId: BlockId
     }
   | {
       /** Insert immediately before an existing block. */
-      type: 'before'
-      blockId: BlockId
+      readonly type: 'before'
+      readonly blockId: BlockId
+    }
+>
+
+/** Describes which block to create when inserting at a document position. */
+export type InsertBlockSpec = Relax<
+  | {
+      readonly type: 'paragraph'
+
+      /** Metadata to attach to the block. */
+      readonly metadata?: Metadata
+    }
+  | {
+      readonly type: 'heading'
+
+      /** Level of the heading. */
+      readonly level: HeadingBlock['level']
+
+      /** Metadata to attach to the block. */
+      readonly metadata?: Metadata
+    }
+  | {
+      readonly type: 'divider'
+
+      /** Metadata to attach to the block. */
+      readonly metadata?: Metadata
     }
 >
 
