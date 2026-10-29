@@ -70,6 +70,11 @@ export const BLOCK_CONTENT_EDITABLE_DATA_NAME =
 /** Paragraph block attribute name. */
 export const PARAGRAPH_BLOCK_ATTR_NAME = 'dactylo-paragraph-block'
 
+/** Divider block attribute name. */
+export const DIVIDER_BLOCK_ATTR_NAME = 'dactylo-divider-block'
+/** Divider separator attribute name. */
+export const DIVIDER_SEPARATOR_ATTR_NAME = 'dactylo-divider-separator'
+
 /** Node attribute name. */
 export const NODE_ATTR_NAME = 'dactylo-node'
 /** Node ID data name. */

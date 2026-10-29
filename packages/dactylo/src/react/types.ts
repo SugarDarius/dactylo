@@ -1,5 +1,5 @@
 import type { DactyloOptions } from '../dactylo'
-import type { BlockId, ParagraphBlock } from '../internals/blocks'
+import type { BlockId, DividerBlock, ParagraphBlock } from '../internals/blocks'
 import type {
   InlineNode,
   LineBreakNode,
@@ -48,14 +48,18 @@ export interface ComposerLineBreakNodeProps extends React.HTMLAttributes<HTMLBRE
 export interface ComposerInlineContentProps {
   /** The inline content to render. */
   content: InlineNode[]
-  // @todo: add custom components
 }
 
 /** Props for declaring a paragraph block component. */
 export interface ComposerParagraphBlockProps extends React.HTMLAttributes<HTMLDivElement> {
   /** The paragraph block to render. */
   block: ParagraphBlock
-  // @todo: add custom components.
+}
+
+/** Props for declaring a divider block component. */
+export interface ComposerDividerBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** The divider block to render. */
+  block: DividerBlock
 }
 
 /** Props for declaring a block wrapper component. */

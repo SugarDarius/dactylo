@@ -26,6 +26,8 @@ import {
   NODE_ATTR_NAME,
   BLOCK_ATTR_NAME,
   LINK_NODE_ATTR_NAME,
+  DIVIDER_BLOCK_ATTR_NAME,
+  DIVIDER_SEPARATOR_ATTR_NAME,
 } from '../internals/constants'
 import {
   ComposerProvider,
@@ -47,6 +49,7 @@ import {
   COMPOSER_LINE_BREAK_NODE_NAME,
   COMPOSER_LINK_NODE_NAME,
   COMPOSER_BLOCK_NAME,
+  COMPOSER_DIVIDER_BLOCK_NAME,
 } from './internals/constants'
 import {
   useIsMounted,
@@ -63,6 +66,7 @@ import type {
   ComposerLineBreakNodeProps,
   ComposerLinkNodeProps,
   ComposerBlockProps,
+  ComposerDividerBlockProps,
 } from './types'
 
 /** Base style for the editable area of the composer. */
@@ -272,7 +276,32 @@ const ComposerParagraphBlock = forwardRef<
 })
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
-/** Renders a block based on its type.. */
+/** Adds a {@link DividerBlock} to the composer. */
+const ComposerDividerBlock = forwardRef<
+  HTMLDivElement,
+  ComposerDividerBlockProps
+>(({ block, ...props }, forwardedRef) => (
+  <div
+    {...props}
+    ref={forwardedRef}
+    {...{
+      [BLOCK_ATTR_NAME]: '',
+      [BLOCK_ID_DATA_NAME]: block.id,
+      [DIVIDER_BLOCK_ATTR_NAME]: '',
+    }}
+    aria-roledescription='divider-block'
+  >
+    <div
+      aria-roledescription='divider-block-content'
+      {...{ [BLOCK_CONTENT_ATTR_NAME]: '' }}
+    >
+      <div {...{ [DIVIDER_SEPARATOR_ATTR_NAME]: '' }} />
+    </div>
+  </div>
+))
+ComposerDividerBlock.displayName = COMPOSER_DIVIDER_BLOCK_NAME
+
+/** Renders a block based on its type. */
 const ComposerBlock = memo<ComposerBlockProps>(({ blockId, ...props }) => {
   const block = useBlock(blockId)
   const rendered = useMemo(() => {
@@ -294,6 +323,9 @@ const ComposerBlock = memo<ComposerBlockProps>(({ blockId, ...props }) => {
         return (
           <ComposerParagraphBlock key={block.id} {...props} block={block} />
         )
+      }
+      case 'divider': {
+        return <ComposerDividerBlock key={block.id} {...props} block={block} />
       }
       default: {
         warnOnce(`Skipping rendering for unsupported block type: ${type}.`)
@@ -397,6 +429,7 @@ export {
   ComposerRoot as Root,
   ComposerEditable as Editable,
   ComposerParagraphBlock as ParagraphBlock,
+  ComposerDividerBlock as DividerBlock,
   ComposerTextNode as TextNode,
   ComposerLinkNode as LinkNode,
 }
