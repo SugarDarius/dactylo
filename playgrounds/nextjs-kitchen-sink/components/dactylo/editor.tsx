@@ -198,7 +198,7 @@ export function Toolbar() {
           onClick={undo}
           tooltipContent={
             <span>
-              Undo <Kbd>⌘Z</Kbd>
+              Undo <Kbd>⌘+Z</Kbd>
             </span>
           }
         >
@@ -209,7 +209,7 @@ export function Toolbar() {
           onClick={redo}
           tooltipContent={
             <span>
-              Redo <Kbd>⌘Y</Kbd>
+              Redo <Kbd>⌘+Y</Kbd>
             </span>
           }
         >
@@ -222,7 +222,7 @@ export function Toolbar() {
           mark='bold'
           tooltipContent={
             <span>
-              Bold <Kbd>⌘B</Kbd>
+              Bold <Kbd>⌘+B</Kbd>
             </span>
           }
         >
@@ -232,7 +232,7 @@ export function Toolbar() {
           mark='italic'
           tooltipContent={
             <span>
-              Italic <Kbd>⌘I</Kbd>
+              Italic <Kbd>⌘+I</Kbd>
             </span>
           }
         >
@@ -242,7 +242,7 @@ export function Toolbar() {
           mark='strikethrough'
           tooltipContent={
             <span>
-              Strikethrough <Kbd>⌘S</Kbd>
+              Strikethrough <Kbd>⌘+S</Kbd>
             </span>
           }
         >
@@ -252,7 +252,7 @@ export function Toolbar() {
           mark='underline'
           tooltipContent={
             <span>
-              Underline <Kbd>⌘U</Kbd>
+              Underline <Kbd>⌘+U</Kbd>
             </span>
           }
         >
@@ -262,7 +262,7 @@ export function Toolbar() {
           mark='code'
           tooltipContent={
             <span>
-              Code <Kbd>⌘E</Kbd>
+              Code <Kbd>⌘+E</Kbd>
             </span>
           }
         >
