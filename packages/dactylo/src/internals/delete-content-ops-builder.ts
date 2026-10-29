@@ -4,9 +4,10 @@ import { warn } from './console'
 import {
   compareTextCursors,
   getBlockIndex,
-  getBlockNeighbors,
   getBlockWithInlineContent,
+  isBlockWithInlineContentEmpty,
   normalizeRange,
+  resolvePrevInlineBlock,
 } from './document'
 import type { EditorContext } from './editor-context'
 import type { GraphemeOffsetCaret } from './grapheme'
@@ -37,6 +38,7 @@ import type {
 } from './operations-builder'
 import {
   createCursor,
+  cursorAtBlockEnd,
   getRangeSelectionTopology,
   isCursorSelection,
   isSelectionActive,
@@ -164,7 +166,6 @@ export const cursorRules: DeleteContentOpsRule[] = [
      * 🎯 Operations:
      * - Merge the current block with the previous block.
      */
-    // @todo: handle blocks with no inline content
     build: ({ context, situation }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
@@ -173,21 +174,52 @@ export const cursorRules: DeleteContentOpsRule[] = [
       const { state } = context
       const { block, at } = situation
 
-      const neighbors = getBlockNeighbors(state, block.id)
-      /** Should not happen as we already checked if there is only one block in the document. */
-      if (neighbors.prev === null) {
+      const targetBlock = resolvePrevInlineBlock(state, block.id)
+      if (targetBlock === null) {
         buildError(
-          `Previous block ID is not found for block ${at.blockId}`,
-          'DeleteContentOpsBuilder/#build',
+          `No previous inline block for block ${at.blockId}`,
+          'DeleteContentOpsBuilder/cursor/at-block-start/merge-blocks',
         )
       }
 
-      const prevBlock = getBlockWithInlineContent(state, neighbors.prev)
       const ops: Operation[] = []
 
-      let targetHead = [...prevBlock.content]
+      const betweenOps = buildDeleteBlocksBetweenOps(
+        context,
+        targetBlock.id,
+        block.id,
+      )
+      ops.push(...betweenOps)
+
+      const hadStructuralBetween = betweenOps.length > 0
+      const isEmpty = isBlockWithInlineContentEmpty(state, block.id)
+
+      if (isEmpty && hadStructuralBetween) {
+        const order = state.blockOrderById
+        const currentIdx = order.indexOf(block.id)
+        const afterBlockId =
+          currentIdx > 0 ? (order[currentIdx - 1] ?? null) : null
+
+        ops.push(
+          {
+            __type: 'delete_block',
+            afterBlockId,
+            blockId: block.id,
+            snapshot: block,
+          },
+          {
+            __type: 'set_selection',
+            next: cursorAtBlockEnd(targetBlock.id, targetBlock),
+            prev: context.selection,
+          },
+        )
+
+        return ops
+      }
+
+      let targetHead = [...targetBlock.content]
       const collapsedHead = buildCollapseEmptyBlockToActiveMarksOps(
-        prevBlock.id,
+        targetBlock.id,
         targetHead,
         context.activeMarks,
       )
@@ -199,7 +231,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
 
       const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
         block,
-        { ...prevBlock, content: targetHead },
+        { ...targetBlock, content: targetHead },
         context.activeMarks,
       )
 
@@ -212,12 +244,12 @@ export const cursorRules: DeleteContentOpsRule[] = [
           sourceSnapshot: block,
           splitAtNodeId,
           splitAtOffset,
-          targetBlockId: prevBlock.id,
+          targetBlockId: targetBlock.id,
         },
         {
           __type: 'set_selection',
           next: createCursor({
-            blockId: prevBlock.id,
+            blockId: targetBlock.id,
             nodeId: splitAtNodeId,
             offset: splitAtOffset,
           }),
@@ -228,13 +260,17 @@ export const cursorRules: DeleteContentOpsRule[] = [
       return ops
     },
     name: 'cursor/delete-content/at-block-start/merge-blocks',
-    when: ({ situation }): boolean => {
+    when: ({ context, situation }): boolean => {
       if (situation.kind !== 'cursor-selection') {
         return false
       }
 
-      const { blockIndex, nodeIndex, at } = situation
-      return blockIndex > 0 && nodeIndex === 0 && at.offset === 0
+      const { blockIndex, nodeIndex, at, block } = situation
+      if (!(blockIndex > 0 && nodeIndex === 0 && at.offset === 0)) {
+        return false
+      }
+
+      return resolvePrevInlineBlock(context.state, block.id) !== null
     },
   },
   {
