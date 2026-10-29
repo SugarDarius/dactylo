@@ -14,12 +14,20 @@ import {
 } from '@sugardarius/dactylo/react'
 import {
   BadgeCheck,
+  ChevronDown,
   PencilOff,
   Redo2,
   Undo2,
   Bold,
   Italic,
   Heading1,
+  Heading2,
+  Heading3,
+  Heading4,
+  Heading5,
+  Heading6,
+  List,
+  ListOrdered,
   Strikethrough,
   Underline,
   TextAlignStart,
@@ -30,6 +38,7 @@ import {
   Lock,
   LockOpen,
   Plus,
+  Minus,
   Pilcrow,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -43,6 +52,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '~/components/ui/dropdown-menu'
 import { Kbd } from '~/components/ui/kbd'
 import { Separator } from '~/components/ui/separator'
@@ -262,13 +272,21 @@ export function Toolbar() {
       <Separator orientation='vertical' />
       <div className='flex items-center'>
         <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant='ghost' size='icon'>
-                <Plus className='size-3.5' />
-              </Button>
-            }
-          />
+          <Tooltip>
+            <DropdownMenuTrigger
+              render={
+                <TooltipTrigger
+                  render={
+                    <Button variant='ghost'>
+                      <Plus className='size-3.5' />
+                      <ChevronDown className='size-3.5' />
+                    </Button>
+                  }
+                />
+              }
+            />
+            <TooltipContent>Insert</TooltipContent>
+          </Tooltip>
           <DropdownMenuContent className='w-40' align='start'>
             <DropdownMenuGroup>
               <DropdownMenuLabel>Basic Blocks</DropdownMenuLabel>
@@ -279,6 +297,42 @@ export function Toolbar() {
               <DropdownMenuItem>
                 <Heading1 className='size-3.5' />
                 Heading 1
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Heading2 className='size-3.5' />
+                Heading 2
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Heading3 className='size-3.5' />
+                Heading 3
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Heading4 className='size-3.5' />
+                Heading 4
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Heading5 className='size-3.5' />
+                Heading 5
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Heading6 className='size-3.5' />
+                Heading 6
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Minus className='size-3.5' />
+                Divider
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Lists</DropdownMenuLabel>
+              <DropdownMenuItem>
+                <List className='size-3.5' />
+                Bulleted List
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <ListOrdered className='size-3.5' />
+                Numbered List
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
