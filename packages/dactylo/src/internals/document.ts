@@ -221,7 +221,7 @@ export function getBlockWithInlineContent(
   if (!isBlockWithInlineContent(block)) {
     throw DactyloError.from({
       code: 'BLOCK_NOT_ALLOWED_TO_HAVE_INLINE_CONTENT',
-      hint: 'DocumentState/#getBlockWithAllowedInlineContent',
+      hint: 'DocumentState/#getBlockWithInlineContent',
       message: `Block ${blockId} is not allowed to have inline content`,
     })
   }
