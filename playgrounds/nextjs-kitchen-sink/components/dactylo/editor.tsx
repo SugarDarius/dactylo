@@ -405,7 +405,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         placeholder='Welcome to Dactylo! Start writing something…'
         clientOnly={true}
         debug={true}
-        className='relative flex w-full flex-col gap-2 rounded-md shadow-sm'
+        className='dark:shadow-accent-foreground relative flex w-full flex-col gap-2 rounded-md shadow-xs'
       >
         <Toolbar />
         <Composer.Editable

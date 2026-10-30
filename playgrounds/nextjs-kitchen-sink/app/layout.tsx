@@ -5,6 +5,8 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Toaster } from '~/components/ui/toast'
 import { TooltipProvider } from '~/components/ui/tooltip'
 
+import { ThemeProvider } from './theme-provider'
+
 const geistSans = Geist({
   subsets: ['latin'],
   variable: '--font-sans',
@@ -30,8 +32,15 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className='relative min-h-screen'>
-        <TooltipProvider>{children}</TooltipProvider>
-        <Toaster />
+        <ThemeProvider
+          enableSystem
+          attribute='class'
+          defaultTheme='system'
+          disableTransitionOnChange
+        >
+          <TooltipProvider>{children}</TooltipProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   )
