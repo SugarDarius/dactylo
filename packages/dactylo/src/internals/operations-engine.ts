@@ -794,24 +794,6 @@ export interface OperationsEngineOptions {
    */
   readonly debug: boolean
 
-  /** Configuration for mentions. */
-  readonly mentions: {
-    /** Whether to enable mentions. */
-    readonly enabled: boolean
-
-    /** Character to trigger a mention. */
-    readonly character: string
-  }
-
-  /** Configuration for inline command trigger. */
-  readonly inlineCommandTrigger: {
-    /** Whether to enable inline command trigger. */
-    readonly enabled: boolean
-
-    /** Character to trigger an inline command. */
-    readonly character: string
-  }
-
   /** Locales to use when handling text operations. */
   readonly locales: Intl.LocalesArgument
 
@@ -820,30 +802,6 @@ export interface OperationsEngineOptions {
     /** Whether to enable autolink detection. */
     readonly enabled: boolean
   }
-}
-
-/** Configuration for mentions. */
-export interface OperationEngineMentionsConfig {
-  /** Whether to enable mentions. */
-  readonly enabled: boolean
-
-  /** Character to use for mentions. */
-  readonly character: string
-}
-
-/** Configuration for inline command trigger. */
-export interface OperationEngineInlineCommandTriggerConfig {
-  /** Whether to enable inline command trigger. */
-  readonly enabled: boolean
-
-  /** Character to use for inline command trigger. */
-  readonly character: string
-}
-
-/** Configuration for autolink detection. */
-export interface OperationEngineAutolinkConfig {
-  /** Whether to enable autolink detection. */
-  readonly enabled: boolean
 }
 
 /**
@@ -887,10 +845,7 @@ export class OperationsEngine {
     })
 
     this.#marksOpsBuilder = new MarksOpsBuilder()
-    this.#insertTextOpsBuilder = new InsertTextOpsBuilder({
-      inlineCommandTrigger: options.inlineCommandTrigger,
-      mentions: options.mentions,
-    })
+    this.#insertTextOpsBuilder = new InsertTextOpsBuilder()
     this.#deleteContentOpsBuilder = new DeleteContentOpsBuilder({
       graphemeOffsetCaret,
     })

@@ -21,7 +21,7 @@ import type { InlineNodeWithEditableText } from './nodes'
 import type { DeleteTextOp, MergeBlocksOp, Operation } from './operations'
 import type {
   BuilderOpsIntent,
-  OperationBuilderAutolinkConfig,
+  OperationsBuilderAutolinkConfig,
   OperationRule,
   OperationsBuilder,
 } from './operations-builder'
@@ -727,7 +727,7 @@ export class PastePlainTextOpsBuilder implements OperationsBuilder<
   PastePlainTextOpsInput
 > {
   /** Configuration for autolink detection. */
-  readonly #autolinkConfig: OperationBuilderAutolinkConfig
+  readonly #autolinkConfig: OperationsBuilderAutolinkConfig
 
   /** Grapheme offset caret instance. */
   readonly #graphemeOffsetCaret: GraphemeOffsetCaret

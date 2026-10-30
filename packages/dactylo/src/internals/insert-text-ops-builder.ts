@@ -1,7 +1,6 @@
 import { findNodeInBlockWithInlineContent } from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
 import { warn } from './console'
-import { INLINE_DETECTOR_TRIGGER_CHARACTER } from './constants'
 import {
   compareTextCursors,
   getBlockWithInlineContent,
@@ -19,8 +18,6 @@ import type { InlineNodeWithEditableText } from './nodes'
 import type { DeleteTextOp, MergeBlocksOp, Operation } from './operations'
 import type {
   BuilderOpsIntent,
-  OperationBuilderInlineCommandTriggerConfig,
-  OperationBuilderMentionsConfig,
   OperationRule,
   OperationsBuilder,
 } from './operations-builder'
@@ -584,43 +581,11 @@ export const rangeRules: InsertTextOpsRule[] = [
 
 // --- Builder ───────────────────────────────────────---------------
 
-/** Options for constructing a typing operations builder. */
-export interface InsertTextOpsBuilderOptions {
-  /** Configuration for mentions. */
-  readonly mentions: {
-    /** Whether to enable mentions. */
-    readonly enabled: boolean
-
-    /** The character to trigger a mention. */
-    readonly character: string
-  }
-
-  /** Configuration for inline command trigger. */
-  readonly inlineCommandTrigger: {
-    /** Whether to enable inline command trigger. */
-    readonly enabled: boolean
-
-    /** The character to trigger an inline command. */
-    readonly character: string
-  }
-}
-
 /** inserted text operations builder. */
 export class InsertTextOpsBuilder implements OperationsBuilder<
   InsertTextOpsSituation,
   InsertTextOpsInput
 > {
-  /** Configuration for mentions. */
-  readonly #mentionsConfig: OperationBuilderMentionsConfig
-
-  /** Configuration for inline command trigger. */
-  readonly #inlineCommandTriggerConfig: OperationBuilderInlineCommandTriggerConfig
-
-  constructor(options: InsertTextOpsBuilderOptions) {
-    this.#mentionsConfig = options.mentions
-    this.#inlineCommandTriggerConfig = options.inlineCommandTrigger
-  }
-
   /** Describes the {@link InsertTextOpsSituation}. */
   describe(context: EditorContext): InsertTextOpsSituation {
     const { selection, state } = context
@@ -723,61 +688,6 @@ export class InsertTextOpsBuilder implements OperationsBuilder<
     }
   }
 
-  /** Placeholder to avoid any bugs when typing `space` */
-  #isMarkdownShortcut(): boolean {
-    return false
-  }
-
-  /**
-   * Completes intent for a single inserted text (char or emoji) at the current selection.
-   * Determines behaviors when:
-   *  - {@link INLINE_DETECTOR_TRIGGER_CHARACTER} is typed:
-   *   - → manage markdown shortcuts
-   *   - → manage autolink detection
-   *  - `mention_character` is typed → manage inline composition for mentions
-   *  - `slash_command_character` is typed → manage inline composition for slash commands
-   *  -  others chars that are typed → insert the char and continue typing
-   */
-  #complete(ops: Operation[], text: string): BuilderOpsIntent {
-    // @todo: handle markdown shortcut
-    // @todo: handle autolink detection
-    // @todo: handle links finished
-    if (
-      text === INLINE_DETECTOR_TRIGGER_CHARACTER &&
-      this.#isMarkdownShortcut()
-    ) {
-      return {
-        label: `markdown-shortcut`,
-        ops,
-        skipHistory: true,
-      }
-    }
-
-    // @todo: handle mentions
-    /** Apply inline composition ops for mentions. */
-    if (
-      this.#mentionsConfig.enabled &&
-      text === this.#mentionsConfig.character
-    ) {
-      return { label: 'mention', ops, skipHistory: true }
-    }
-
-    // @todo: handle inline command trigger
-    /** Apply inline composition ops for inline command trigger. */
-    if (
-      this.#inlineCommandTriggerConfig.enabled &&
-      text === this.#inlineCommandTriggerConfig.character
-    ) {
-      return { label: 'inline-command-trigger', ops, skipHistory: true }
-    }
-
-    return {
-      coalesce: true,
-      label: `insert-text:${text}`,
-      ops,
-    }
-  }
-
   /**
    * Builds operations for a single inserted textacter (or emoji) at the current selection.
    * Returns `null` when there is no active selection or no rules were matched.
@@ -823,6 +733,10 @@ export class InsertTextOpsBuilder implements OperationsBuilder<
       return null
     }
 
-    return this.#complete(ops, input.text)
+    return {
+      coalesce: true,
+      label: `insert-text:${input.text}`,
+      ops,
+    }
   }
 }

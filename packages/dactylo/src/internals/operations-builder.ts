@@ -109,26 +109,8 @@ export type InsertBlockSpec = Relax<
     }
 >
 
-/** Configuration for mentions. */
-export interface OperationBuilderMentionsConfig {
-  /** Whether to enable mentions. */
-  readonly enabled: boolean
-
-  /** The character to use for mentions. */
-  readonly character: string
-}
-
-/** Configuration for inline command trigger. */
-export interface OperationBuilderInlineCommandTriggerConfig {
-  /** Whether to enable inline command trigger. */
-  readonly enabled: boolean
-
-  /** The character to use for inline command trigger. */
-  readonly character: string
-}
-
 /** Configuration for autolink detection. */
-export interface OperationBuilderAutolinkConfig {
+export interface OperationsBuilderAutolinkConfig {
   /** Whether to enable autolink detection. */
   readonly enabled: boolean
 }

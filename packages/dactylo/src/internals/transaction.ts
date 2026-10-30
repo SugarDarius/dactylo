@@ -1,7 +1,10 @@
 import type { BlockId, HeadingBlock } from './blocks'
 import { readTransferredData } from './clipboard'
 import { warn } from './console'
-import { DEFAULT_BATCH_MAX_SIZE } from './constants'
+import {
+  DEFAULT_BATCH_MAX_SIZE,
+  INLINE_DETECTOR_TRIGGER_CHARACTER,
+} from './constants'
 import { createInitialEditorContext } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
@@ -341,11 +344,56 @@ export interface TransactionPipelineOptions {
   /** Configuration for the history of the transaction pipeline */
   readonly history?: HistoryStackOptions
 
-  /** Configuration for the operations. */
-  readonly operations: {
-    /** Configuration for the operations engine. */
-    readonly engine: OperationsEngineOptions
+  /** Configuration for mentions. */
+  readonly mentions: {
+    /** Whether to enable mentions. */
+    readonly enabled: boolean
+
+    /** Character to trigger a mention. */
+    readonly character: string
   }
+
+  /** Configuration for inline command trigger. */
+  readonly inlineCommandTrigger: {
+    /** Whether to enable inline command trigger. */
+    readonly enabled: boolean
+
+    /** Character to trigger an inline command. */
+    readonly character: string
+  }
+
+  /** Configuration for autolink detection. */
+  readonly autolink: {
+    /** Whether to enable autolink detection. */
+    readonly enabled: boolean
+  }
+
+  /** Configuration for the operations engine. */
+  readonly engine: Omit<OperationsEngineOptions, 'autolink'>
+}
+
+/** Configuration for mentions. */
+export interface TransactionPipelineMentionsConfig {
+  /** Whether to enable mentions. */
+  readonly enabled: boolean
+
+  /** Character to use for mentions. */
+  readonly character: string
+}
+
+/** Configuration for inline command trigger. */
+export interface TransactionPipelineInlineCommandTriggerConfig {
+  /** Whether to enable inline command trigger. */
+  readonly enabled: boolean
+
+  /** Character to use for inline command trigger. */
+  readonly character: string
+}
+
+/** Configuration for autolink detection. */
+export interface TransactionPipelineAutolinkConfig {
+  /** Whether to enable autolink detection. */
+  readonly enabled: boolean
 }
 
 /**
@@ -412,6 +460,15 @@ export class TransactionPipeline {
   /** The history stack to use for the transaction pipeline */
   readonly #history: HistoryStack
 
+  /** The mentions configuration to use for the transaction pipeline. */
+  readonly #mentions: TransactionPipelineMentionsConfig
+
+  /** The inline command trigger configuration to use for the transaction pipeline. */
+  readonly #inlineCommandTrigger: TransactionPipelineInlineCommandTriggerConfig
+
+  /** The autolink configuration to use for the transaction pipeline. */
+  readonly #autolink: TransactionPipelineAutolinkConfig
+
   /** Events emitted by the transaction pipeline */
   readonly #eventSources: TransactionPipelineEventSources
 
@@ -439,8 +496,16 @@ export class TransactionPipeline {
           policy: { source: 'editor', ...policy },
         }),
     })
-    this.#operationsEngine = new OperationsEngine(options.operations.engine)
+    this.#operationsEngine = new OperationsEngine({
+      ...options.engine,
+      autolink: {
+        enabled: options.autolink.enabled,
+      },
+    })
     this.#history = new HistoryStack(options.history)
+    this.#mentions = options.mentions
+    this.#inlineCommandTrigger = options.inlineCommandTrigger
+    this.#autolink = options.autolink
     this.#eventSources = {
       context: new EventSource<EditorContext>(),
       history: new EventSource<HistoryEvent>(),
@@ -532,7 +597,7 @@ export class TransactionPipeline {
    */
   #commit(ops: Operation[], policy?: TransactionPolicy): void {
     if (this.#batch.active) {
-      this.#batch.enqueue(ops, policy)
+      this.#batch.enqueue(ops, { source: 'editor', ...policy })
       return
     }
 
@@ -843,9 +908,10 @@ export class TransactionPipeline {
          * Allowing surrogate pairs and ZWJ sequences (aka. emoji pickers).
          */
         if (data && data.length > 0) {
+          const text = data
           const intent = this.#operationsEngine.buildInsertTextOps(
             this.#context,
-            data,
+            text,
           )
 
           if (intent === null) {
@@ -859,6 +925,32 @@ export class TransactionPipeline {
             pushToHistory: !skipHistory,
             source: 'user',
           })
+
+          /**
+           * Applies ops built when {@link INLINE_DETECTOR_TRIGGER_CHARACTER} is typed for:
+           *  → Autolink detection. User typed `space` at the end of a link.
+           *  → Markdown shortcut detection. User typed `space` at the end of `##`, `**`, etc.
+           */
+          if (text === INLINE_DETECTOR_TRIGGER_CHARACTER) {
+            if (this.#autolink.enabled) {
+              // @todo: detect autolink
+            }
+            // @todo: detect markdown shortcut
+          }
+          /** Applies inline composition ops built for mentions. */
+          else if (
+            this.#mentions.enabled &&
+            text === this.#mentions.character
+          ) {
+            // @todo: apply inline composition ops for mentions
+          }
+          /** Applies inline composition ops built for inline command trigger. */
+          else if (
+            this.#inlineCommandTrigger.enabled &&
+            text === this.#inlineCommandTrigger.character
+          ) {
+            // @todo: apply inline composition ops for inline command trigger
+          }
 
           return true
         }

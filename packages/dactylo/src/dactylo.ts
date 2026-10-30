@@ -702,24 +702,22 @@ export class Dactylo {
       },
     }
     this.#pipeline = new TransactionPipeline({
+      autolink: {
+        enabled: this.#config.autolink.enabled,
+      },
       batch: options.config?.pipeline?.batch,
+      engine: {
+        debug: this.#debug,
+        locales,
+      },
       history: options.config?.pipeline?.history,
-      operations: {
-        engine: {
-          autolink: {
-            enabled: this.#config.autolink.enabled,
-          },
-          debug: this.#debug,
-          inlineCommandTrigger: {
-            character: this.#config.inlineCommandTrigger.character,
-            enabled: this.#config.inlineCommandTrigger.enabled,
-          },
-          locales,
-          mentions: {
-            character: this.#config.mentions.character,
-            enabled: this.#config.mentions.enabled,
-          },
-        },
+      inlineCommandTrigger: {
+        character: this.#config.inlineCommandTrigger.character,
+        enabled: this.#config.inlineCommandTrigger.enabled,
+      },
+      mentions: {
+        character: this.#config.mentions.character,
+        enabled: this.#config.mentions.enabled,
       },
     })
     this.#domManager = new DOMManager({
