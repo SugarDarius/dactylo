@@ -8,7 +8,7 @@ allowBuilds:
 autoInstallPeers: true
 catalog:
   '@arethetypeswrong/core': ^0.18.5
-  '@types/node': ^26.6.4
+  '@types/node': ^26.6.6
   happy-dom: ^21.0.4
   oxfmt: ^0.75.0
   oxlint: ^1.90.0
