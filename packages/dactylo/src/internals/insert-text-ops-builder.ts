@@ -689,7 +689,7 @@ export class InsertTextOpsBuilder implements OperationsBuilder<
   }
 
   /**
-   * Builds operations for a single inserted textacter (or emoji) at the current selection.
+   * Builds operations for a single inserted text (or emoji) at the current selection.
    * Returns `null` when there is no active selection or no rules were matched.
    */
   build(

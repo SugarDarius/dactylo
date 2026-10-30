@@ -37,6 +37,7 @@ import { GraphemeOffsetCaret } from './grapheme'
 import { HardBreakOpsBuilder } from './hard-break-ops-builder'
 import { InsertTextOpsBuilder } from './insert-text-ops-builder'
 import type { ArrowDirection } from './keyboard'
+import { MarkdownShortcutOpsBuilder } from './markdown-shortcut-ops-buider'
 import { applyNormalizedMarks, isMarksEqual } from './marks'
 import type { MarkKey } from './marks'
 import { MarksOpsBuilder } from './marks-ops-builder'
@@ -820,6 +821,9 @@ export class OperationsEngine {
   /** Marks ops builder. */
   readonly #marksOpsBuilder: MarksOpsBuilder
 
+  /** Markdown shortcut ops builder. */
+  readonly #markdownShortcutOpsBuilder: MarkdownShortcutOpsBuilder
+
   /** Insert text ops builder. */
   readonly #insertTextOpsBuilder: InsertTextOpsBuilder
 
@@ -845,6 +849,7 @@ export class OperationsEngine {
     })
 
     this.#marksOpsBuilder = new MarksOpsBuilder()
+    this.#markdownShortcutOpsBuilder = new MarkdownShortcutOpsBuilder()
     this.#insertTextOpsBuilder = new InsertTextOpsBuilder()
     this.#deleteContentOpsBuilder = new DeleteContentOpsBuilder({
       graphemeOffsetCaret,
@@ -1118,6 +1123,16 @@ export class OperationsEngine {
     mark: MarkKey,
   ): BuilderOpsIntent | null {
     return this.#marksOpsBuilder.build(context, { mark })
+  }
+
+  // --- Markdown operations ──────────────────────────────────────----
+
+  /** Builds operations for markdown shortcuts. */
+  buildMarkdownShortcutOps(
+    context: EditorContext,
+    text: string,
+  ): BuilderOpsIntent | null {
+    return this.#markdownShortcutOpsBuilder.build(context, { text })
   }
 
   // --- Composing operations ─────────────────────────────────────────

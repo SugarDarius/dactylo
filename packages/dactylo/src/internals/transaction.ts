@@ -970,7 +970,20 @@ export class TransactionPipeline {
            *  → User typed `*`, ```, `_`, …
            */
           else {
-            // @todo: detect markdown shortcut
+            const mdIntent = this.#operationsEngine.buildMarkdownShortcutOps(
+              this.#context,
+              text,
+            )
+            if (mdIntent === null) {
+              return false
+            }
+
+            const { ops: mdOps, label: mdLabel } = mdIntent
+            this.#commit(mdOps, {
+              label: transactionPolicyLabel('input', 'digest-event', mdLabel),
+              pushToHistory: true,
+              source: 'user',
+            })
           }
 
           return true
