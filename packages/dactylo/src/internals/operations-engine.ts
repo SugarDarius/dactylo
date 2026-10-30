@@ -101,7 +101,7 @@ export function requireBlockWithInlineContent(
   blockId: BlockId,
   op: Operation,
 ): BlockWithInlineContent {
-  const block = getBlockWithInlineContent(state, blockId)
+  const block = getBlock(state, blockId)
 
   if (!isBlockWithInlineContent(block)) {
     validationError(`Block ${blockId} is not allowed to receive inline ops`, op)
