@@ -736,7 +736,7 @@ export class InsertTextOpsBuilder implements OperationsBuilder<
    *   - → manage autolink detection
    *  - `mention_character` is typed → manage inline composition for mentions
    *  - `slash_command_character` is typed → manage inline composition for slash commands
-   *  -  others chars are typed → insert the char and continue typing
+   *  -  others chars that are typed → insert the char and continue typing
    */
   #complete(ops: Operation[], text: string): BuilderOpsIntent {
     // @todo: handle markdown shortcut

@@ -71,6 +71,7 @@ import type {
   InsertBlockSpec,
 } from './operations-builder'
 import { PastePlainTextOpsBuilder } from './paste-plain-text-ops-builder'
+import { sanitizeText } from './sanitize-text'
 import {
   areSelectionsEqual,
   createCursor,
@@ -613,7 +614,8 @@ export function applyInsertTextOp(
   const before = node.text.slice(0, op.offset)
   const after = node.text.slice(op.offset)
 
-  const text = before + op.text + after
+  const sanitized = sanitizeText(op.text)
+  const text = before + sanitized + after
 
   content[index] = {
     ...node,

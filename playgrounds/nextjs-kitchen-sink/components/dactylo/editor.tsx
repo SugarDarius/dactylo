@@ -493,7 +493,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '[&_[dactylo-node][dactylo-link-node]]:hover:text-cyan-400',
             '[&_[dactylo-node][dactylo-link-node]]:hover:decoration-cyan-400',
             '**:data-[dactylo-italic-mark=true]:italic',
-            '**:data-[dactylo-bold-mark=true]:font-bold',
+            '**:data-[dactylo-bold-mark=true]:font-extrabold',
             '**:[&[data-dactylo-code-mark=true]:not([data-dactylo-editable-node-empty=true])]:p-0.5',
             '**:data-[dactylo-code-mark=true]:bg-muted',
             '**:data-[dactylo-code-mark=true]:rounded-sm',

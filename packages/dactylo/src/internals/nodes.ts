@@ -12,6 +12,7 @@ import { nanoid } from 'nanoid'
 
 import { isMarksEqual } from './marks'
 import type { Marks } from './marks'
+import { sanitizeText } from './sanitize-text'
 import type { Brand, Relax, Metadata } from './types'
 import { assertNever } from './utils'
 
@@ -111,7 +112,10 @@ export function generateNodeId(): NodeId {
   return `nd_${nanoid(21)}` as NodeId
 }
 
-/** Creates a {@link TextNode}. */
+/**
+ * Creates a {@link TextNode}.
+ * By default, it sanitizes the text at creation time.
+ */
 export function createTextNode(opts: {
   text: string
   metadata?: Metadata
@@ -123,7 +127,7 @@ export function createTextNode(opts: {
     id: generateNodeId(),
     marks: opts.marks,
     metadata: opts.metadata ?? {},
-    text: opts.text,
+    text: sanitizeText(opts.text),
     updatedAt: null,
   }
 }
@@ -153,7 +157,9 @@ export function isLineBreakNode(node: InlineNode): node is LineBreakNode {
   return node.__type === 'line_break'
 }
 
-/** Creates a {@link LinkNode}. */
+/** Creates a {@link LinkNode}.
+ * By default, it sanitizes the text, and title at creation time.
+ */
 export function createLinkNode(opts: {
   url: {
     href: string
@@ -169,9 +175,12 @@ export function createLinkNode(opts: {
     id: generateNodeId(),
     marks: opts.marks,
     metadata: opts.metadata ?? {},
-    text: opts.text,
+    text: sanitizeText(opts.text),
     updatedAt: null,
-    url: opts.url,
+    url: {
+      href: opts.url.href,
+      title: sanitizeText(opts.url.title),
+    },
   }
 }
 
