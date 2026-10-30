@@ -30,6 +30,7 @@ import {
   DIVIDER_SEPARATOR_ATTR_NAME,
   HEADING_BLOCK_ATTR_NAME,
   HEADING_BLOCK_LEVEL_DATA_NAME,
+  BLOCK_INDEX_DATA_NAME,
 } from '../internals/constants'
 import {
   ComposerProvider,
@@ -236,7 +237,7 @@ const ComposerInlineContent = ({ content }: ComposerInlineContentProps) => {
 const ComposerParagraphBlock = forwardRef<
   HTMLDivElement,
   ComposerParagraphBlockProps
->(({ block, ...props }, forwardedRef) => {
+>(({ block, indexOfRendering, ...props }, forwardedRef) => {
   const { paragraph } = useEditorConfig()
   const { canEdit, editableId, withActiveSelection, isEmpty } =
     useEditableBlock(block.id)
@@ -251,6 +252,7 @@ const ComposerParagraphBlock = forwardRef<
       {...{
         [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
+        [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
         [PARAGRAPH_BLOCK_ATTR_NAME]: '',
       }}
       data-active={isActive ?? undefined}
@@ -302,7 +304,7 @@ const HeadingsPrimitive = Headings.reduce((primitives, heading) => {
 const ComposerHeadingBlock = forwardRef<
   HTMLDivElement,
   ComposerHeadingBlockProps
->(({ block, ...props }, forwardedRef) => {
+>(({ block, indexOfRendering, ...props }, forwardedRef) => {
   const { heading } = useEditorConfig()
   const { canEdit, editableId, withActiveSelection, isEmpty } =
     useEditableBlock(block.id)
@@ -324,6 +326,7 @@ const ComposerHeadingBlock = forwardRef<
       {...{
         [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
+        [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
         [HEADING_BLOCK_ATTR_NAME]: '',
         [HEADING_BLOCK_LEVEL_DATA_NAME]: block.level.toString(),
       }}
@@ -357,13 +360,14 @@ ComposerHeadingBlock.displayName = COMPOSER_HEADING_BLOCK_NAME
 const ComposerDividerBlock = forwardRef<
   HTMLDivElement,
   ComposerDividerBlockProps
->(({ block, ...props }, forwardedRef) => (
+>(({ block, indexOfRendering, ...props }, forwardedRef) => (
   <div
     {...props}
     ref={forwardedRef}
     {...{
       [BLOCK_ATTR_NAME]: '',
       [BLOCK_ID_DATA_NAME]: block.id,
+      [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
       [DIVIDER_BLOCK_ATTR_NAME]: '',
     }}
     aria-roledescription='divider-block'
@@ -432,8 +436,12 @@ const ComposerBlocks = memo(
           role='group'
           aria-roledescription='blocks'
         >
-          {blockOrderById.map((blockId) => (
-            <ComposerBlock key={blockId} blockId={blockId} />
+          {blockOrderById.map((blockId, index) => (
+            <ComposerBlock
+              key={blockId}
+              blockId={blockId}
+              indexOfRendering={index}
+            />
           ))}
         </div>
       )

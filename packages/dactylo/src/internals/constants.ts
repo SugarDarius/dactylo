@@ -59,6 +59,8 @@ export const BLOCKS_ATTR_NAME = 'dactylo-blocks'
 export const BLOCK_ATTR_NAME = 'dactylo-block'
 /** Block ID data name. */
 export const BLOCK_ID_DATA_NAME = 'data-dactylo-block-id'
+/** Block index of rendering data name. */
+export const BLOCK_INDEX_DATA_NAME = 'data-dactylo-block-index'
 /** Block placeholder attribute name. */
 export const BLOCK_PLACEHOLDER_ATTR_NAME = 'dactylo-block-placeholder'
 /** Block content attribute name. */

@@ -59,24 +59,36 @@ export interface ComposerInlineContentProps {
 export interface ComposerParagraphBlockProps extends React.HTMLAttributes<HTMLDivElement> {
   /** The paragraph block to render. */
   block: ParagraphBlock
+
+  /** At which index the paragraph block is rendered inside `<Composer.Editable />`. */
+  indexOfRendering: number
 }
 
 /** Props for declaring a heading block component. */
 export interface ComposerHeadingBlockProps extends React.HTMLAttributes<HTMLDivElement> {
   /** The heading block to render. */
   block: HeadingBlock
+
+  /** At which index the heading block is rendered inside `<Composer.Editable />`. */
+  indexOfRendering: number
 }
 
 /** Props for declaring a divider block component. */
 export interface ComposerDividerBlockProps extends React.HTMLAttributes<HTMLDivElement> {
   /** The divider block to render. */
   block: DividerBlock
+
+  /** At which index the divider block is rendered inside `<Composer.Editable />`. */
+  indexOfRendering: number
 }
 
 /** Props for declaring a block wrapper component. */
 export interface ComposerBlockProps extends React.HTMLAttributes<HTMLDivElement> {
   /** The block ID to render. */
   blockId: BlockId
+
+  /** At which index the block is rendered inside `<Composer.Editable />`. */
+  indexOfRendering: number
 }
 
 /** Props for declaring the composer editable component. */
