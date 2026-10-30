@@ -475,7 +475,7 @@ export function applyMergeBlocksOp(
     ...target.content.slice(op.atIndex),
   ])
 
-  // @todo: add policy to merge blocks metadata
+  // @todo: add a policy config to merge blocks metadata
   const mergedMetadata = { ...target.metadata, ...source.metadata }
   const updatedTarget = touchBlock({
     ...target,

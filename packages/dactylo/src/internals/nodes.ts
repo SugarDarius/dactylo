@@ -12,6 +12,7 @@ import { nanoid } from 'nanoid'
 
 import { isMarksEqual } from './marks'
 import type { Marks } from './marks'
+import { sanitizeLinkHref } from './sanitize-link'
 import { sanitizeText } from './sanitize-text'
 import type { Brand, Relax, Metadata } from './types'
 import { assertNever } from './utils'
@@ -178,7 +179,7 @@ export function createLinkNode(opts: {
     text: sanitizeText(opts.text),
     updatedAt: null,
     url: {
-      href: opts.url.href,
+      href: sanitizeLinkHref(opts.url.href),
       title: sanitizeText(opts.url.title),
     },
   }
