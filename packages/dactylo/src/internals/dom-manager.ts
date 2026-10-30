@@ -72,10 +72,7 @@ export function getSelectionFromEditable(
  * Paints a collapsed caret at cursor position in the DOM
  * and focuses the `editable` element.
  */
-export function paintCaretAt(
-  editable: HTMLDivElement,
-  cursor: TextCursor,
-): void {
+export function paintCaretAt(editable: HTMLElement, cursor: TextCursor): void {
   const point = getDOMPointFromTextCursor(editable, cursor)
   if (!point) {
     throw DactyloError.from({

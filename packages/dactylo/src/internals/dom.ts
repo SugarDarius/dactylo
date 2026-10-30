@@ -120,17 +120,12 @@ export function findFirstElementInSubtree(
  * Finds the DOM blocks element inside
  * the editable `[dactylo-editable]` HTMlDivElement.
  */
-export function findBlocksElement(
-  editable: HTMLDivElement,
-): HTMLDivElement | null {
-  const found = findFirstElementInSubtree(
-    editable,
-    (element) =>
-      element instanceof HTMLDivElement &&
-      element.hasAttribute(BLOCKS_ATTR_NAME),
+export function findBlocksElement(editable: HTMLElement): HTMLElement | null {
+  const found = findFirstElementInSubtree(editable, (element) =>
+    element.hasAttribute(BLOCKS_ATTR_NAME),
   )
 
-  return found instanceof HTMLDivElement ? found : null
+  return found
 }
 
 /** Finds the block id from a DOM node. */
@@ -156,7 +151,7 @@ export function findBlockIdFromDomNode(node: Node | null): BlockId | null {
  * the editable `[dactylo-editable]` HTMlDivElement.
  */
 export function findBlockElement(
-  editable: HTMLDivElement,
+  editable: HTMLElement,
   blockId: BlockId,
 ): HTMLDivElement | null {
   const blocks = findBlocksElement(editable)
@@ -165,10 +160,6 @@ export function findBlockElement(
   }
 
   const found = findFirstElementInSubtree(blocks, (element) => {
-    if (!(element instanceof HTMLDivElement)) {
-      return false
-    }
-
     if (!element.hasAttribute(BLOCK_ATTR_NAME)) {
       return false
     }
@@ -184,23 +175,19 @@ export function findBlockElement(
  * the editable `[dactylo-editable]` HTMlDivElement.
  */
 export function findBlockEditableElement(
-  editable: HTMLDivElement,
+  editable: HTMLElement,
   blockId: BlockId,
-): HTMLDivElement | null {
+): HTMLElement | null {
   const block = findBlockElement(editable, blockId)
   if (!block) {
     return null
   }
 
-  const found = findFirstElementInSubtree(block, (element) => {
-    if (!(element instanceof HTMLDivElement)) {
-      return false
-    }
+  const found = findFirstElementInSubtree(block, (element) =>
+    element.hasAttribute(BLOCK_CONTENT_ATTR_NAME),
+  )
 
-    return element.hasAttribute(BLOCK_CONTENT_ATTR_NAME)
-  })
-
-  return found instanceof HTMLDivElement ? found : null
+  return found
 }
 
 /**
@@ -209,7 +196,7 @@ export function findBlockEditableElement(
  */
 export function findBlockContentEditableFromDOMNode(
   node: Node | null,
-): HTMLDivElement | null {
+): HTMLElement | null {
   let current: Node | null = node
   while (current) {
     if (current instanceof HTMLElement) {
@@ -220,7 +207,7 @@ export function findBlockContentEditableFromDOMNode(
 
       const flag =
         current.dataset[toDatasetProperty(BLOCK_CONTENT_EDITABLE_DATA_NAME)]
-      if (flag === 'true' && current instanceof HTMLDivElement) {
+      if (flag === 'true') {
         return current
       }
     }
@@ -255,7 +242,7 @@ export function readNodeIdFromElement(element: HTMLElement): NodeId | null {
  * the block content `[dactylo-block-content]` HTMlDivElement.
  */
 export function findEditableElement(
-  block: HTMLDivElement,
+  block: HTMLElement,
   nodeId: string,
 ): HTMLSpanElement | HTMLAnchorElement | null {
   return findFirstElementInSubtree(block, (element) => {
@@ -360,7 +347,7 @@ export function getDOMPointFromInlineTextHost(
  * div, which is the empty paragraph before its text span is rendered.
  */
 export function getDOMPointFromTextCursor(
-  editable: HTMLDivElement,
+  editable: HTMLElement,
   cursor: TextCursor,
 ): DOMPoint | null {
   const { nodeId } = cursor
@@ -448,7 +435,7 @@ export function cursorAtTextHostBoundary(
 
 /** Maps child-index on `[dactylo-block-content]` to {@link TextCursor}. */
 export function cursorAtBlockContentChildIndex(
-  blockContent: HTMLDivElement,
+  blockContent: HTMLElement,
   blockId: BlockId,
   index: number,
 ): TextCursor | null {
@@ -486,7 +473,7 @@ export function cursorAtBlockContentChildIndex(
 
 /** Maps one live selection endpoint (`anchor` or `focus`) to {@link TextCursor}. */
 export function getTextCursorFromDOMPoint(
-  blockContent: HTMLDivElement,
+  blockContent: HTMLElement,
   blockId: BlockId,
   point: DOMPoint,
 ): TextCursor | null {
