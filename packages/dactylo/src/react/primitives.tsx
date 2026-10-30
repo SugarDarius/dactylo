@@ -32,6 +32,7 @@ import {
   HEADING_BLOCK_LEVEL_DATA_NAME,
   BLOCK_INDEX_DATA_NAME,
 } from '../internals/constants'
+import { assertNever } from '../internals/utils'
 import {
   ComposerProvider,
   useSelectionCommands,
@@ -54,6 +55,7 @@ import {
   COMPOSER_BLOCK_NAME,
   COMPOSER_DIVIDER_BLOCK_NAME,
   COMPOSER_HEADING_BLOCK_NAME,
+  COMPOSER_HEADING_NAME,
 } from './internals/constants'
 import {
   useIsMounted,
@@ -282,24 +284,41 @@ const ComposerParagraphBlock = forwardRef<
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
 /** Adds a {@link HeadingBlock} to the composer. */
-const Headings = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const
-type HeadingsPrimitives = Record<
-  (typeof Headings)[number],
-  React.ComponentType<React.HTMLAttributes<HTMLHeadingElement>>
->
-const HeadingsPrimitive = Headings.reduce((primitives, heading) => {
-  const Heading = forwardRef<
-    HTMLHeadingElement,
-    React.HTMLAttributes<HTMLHeadingElement>
-  >((props, forwardedRef) => {
-    const Comp = heading
+const ComposerHeadingOne = forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>((props, forwardedRef) => <h1 {...props} ref={forwardedRef} />)
+ComposerHeadingOne.displayName = COMPOSER_HEADING_NAME(1)
 
-    return <Comp {...props} ref={forwardedRef} />
-  })
-  Heading.displayName = `HeadingPrimitive.${heading}`
+const ComposerHeadingTwo = forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>((props, forwardedRef) => <h2 {...props} ref={forwardedRef} />)
+ComposerHeadingTwo.displayName = COMPOSER_HEADING_NAME(2)
 
-  return Object.assign(primitives, { [heading]: Heading })
-}, {} as HeadingsPrimitives)
+const ComposerHeadingThree = forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>((props, forwardedRef) => <h3 {...props} ref={forwardedRef} />)
+ComposerHeadingThree.displayName = COMPOSER_HEADING_NAME(3)
+
+const ComposerHeadingFour = forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>((props, forwardedRef) => <h4 {...props} ref={forwardedRef} />)
+ComposerHeadingFour.displayName = COMPOSER_HEADING_NAME(4)
+
+const ComposerHeadingFive = forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>((props, forwardedRef) => <h5 {...props} ref={forwardedRef} />)
+ComposerHeadingFive.displayName = COMPOSER_HEADING_NAME(5)
+
+const ComposerHeadingSix = forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>((props, forwardedRef) => <h6 {...props} ref={forwardedRef} />)
+ComposerHeadingSix.displayName = COMPOSER_HEADING_NAME(6)
 
 const ComposerHeadingBlock = forwardRef<
   HTMLDivElement,
@@ -309,7 +328,32 @@ const ComposerHeadingBlock = forwardRef<
   const { canEdit, editableId, withActiveSelection, isEmpty } =
     useEditableBlock(block.id)
 
-  const Comp = HeadingsPrimitive[`h${block.level}`]
+  const Comp = useMemo(() => {
+    const { level } = block
+    switch (level) {
+      case 1: {
+        return ComposerHeadingOne
+      }
+      case 2: {
+        return ComposerHeadingTwo
+      }
+      case 3: {
+        return ComposerHeadingThree
+      }
+      case 4: {
+        return ComposerHeadingFour
+      }
+      case 5: {
+        return ComposerHeadingFive
+      }
+      case 6: {
+        return ComposerHeadingSix
+      }
+      default: {
+        assertNever(level, { hint: 'react/primitives/ComposerHeadingBlock' })
+      }
+    }
+  }, [block])
 
   const placeholder = useMemo(
     () => heading.placeholder.replace('%level%', block.level.toString()),
@@ -501,7 +545,6 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
         data-disabled={!canEdit || undefined}
         data-focused={focused || undefined}
         {...{ [EDITABLE_ATTR_NAME]: '' }}
-        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={canEdit ? 0 : undefined}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >

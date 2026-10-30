@@ -1,3 +1,5 @@
+import type { HeadingBlock } from '../../internals/blocks'
+
 /** The name of the composer root component. */
 export const COMPOSER_ROOT_NAME = 'Composer.Root'
 
@@ -18,6 +20,10 @@ export const COMPOSER_DIVIDER_BLOCK_NAME = 'Composer.DividerBlock'
 
 /** The name of the composer heading block component. */
 export const COMPOSER_HEADING_BLOCK_NAME = 'Composer.HeadingBlock'
+
+/** The name of the composer heading component. */
+export const COMPOSER_HEADING_NAME = (level: HeadingBlock['level']) =>
+  `Composer.Heading${level}`
 
 /** The name of the composer text node component. */
 export const COMPOSER_TEXT_NODE_NAME = 'Composer.TextNode'
