@@ -496,16 +496,18 @@ export class TransactionPipeline {
           policy: { source: 'editor', ...policy },
         }),
     })
-    this.#operationsEngine = new OperationsEngine({
-      ...options.engine,
-      autolink: {
-        enabled: options.autolink.enabled,
-      },
-    })
-    this.#history = new HistoryStack(options.history)
+
+    this.#autolink = options.autolink
     this.#mentions = options.mentions
     this.#inlineCommandTrigger = options.inlineCommandTrigger
-    this.#autolink = options.autolink
+
+    this.#operationsEngine = new OperationsEngine({
+      ...options.engine,
+      autolink: this.#autolink,
+    })
+
+    this.#history = new HistoryStack(options.history)
+
     this.#eventSources = {
       context: new EventSource<EditorContext>(),
       history: new EventSource<HistoryEvent>(),
