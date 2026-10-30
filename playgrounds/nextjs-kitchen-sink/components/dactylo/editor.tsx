@@ -135,7 +135,7 @@ export function Toolbar() {
   const { canUndo, canRedo } = useHistoryTools()
   const { undo, redo } = useHistoryCommands()
 
-  const { insertParagraph, insertDivider } = useBlocksCommands()
+  const { insertParagraph, insertDivider, insertHeading } = useBlocksCommands()
   const { toggle } = useMarksCommands()
 
   useEditableListener(({ editable }) => {
@@ -294,27 +294,27 @@ export function Toolbar() {
                 <Pilcrow className='size-3.5' />
                 Paragraph
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => insertHeading(1)}>
                 <Heading1 className='size-3.5' />
                 Heading 1
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => insertHeading(2)}>
                 <Heading2 className='size-3.5' />
                 Heading 2
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => insertHeading(3)}>
                 <Heading3 className='size-3.5' />
                 Heading 3
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => insertHeading(4)}>
                 <Heading4 className='size-3.5' />
                 Heading 4
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => insertHeading(5)}>
                 <Heading5 className='size-3.5' />
                 Heading 5
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => insertHeading(6)}>
                 <Heading6 className='size-3.5' />
                 Heading 6
               </DropdownMenuItem>
@@ -410,7 +410,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         <Toolbar />
         <Composer.Editable
           autoFocus
-          // @note: for DX convenience add custom components
+          // @idea:💡 for DX convenience add custom components
           className={cn(
             // base
             'selection:text-accent-foreground relative flex w-full flex-col px-6 py-2 selection:bg-cyan-500',
@@ -428,6 +428,13 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:whitespace-break-spaces',
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:wrap-break-word',
             // heading block
+            '**:[[dactylo-heading-block]]:flex **:[[dactylo-heading-block]]:flex-col',
+            '**:[[dactylo-heading-block]]:px-1.5',
+            // heading block level 1
+            '**:data-[dactylo-heading-block-level=1]:pt-6 **:data-[dactylo-heading-block-level=1]:pb-1.5',
+            '**:data-[dactylo-heading-block-level=1]:text-5xl',
+            '**:data-[dactylo-heading-block-level=1]:font-semibold',
+            '**:data-[dactylo-heading-block-level=1]:tracking-tight',
             // divider block
             '**:[[dactylo-divider-block]]:flex **:[[dactylo-divider-block]]:w-full **:[[dactylo-divider-block]]:flex-col',
             '[&_[dactylo-divider-block]_[dactylo-block-content]]:flex [&_[dactylo-divider-block]_[dactylo-block-content]]:flex-col',
