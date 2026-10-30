@@ -98,7 +98,7 @@ export interface InsertTextOpsRangeSelectionSituation {
       }
 }
 
-/** Situation of a inserted text operations. */
+/** Situation of an inserted text operations. */
 export type InsertTextOpsSituation =
   | InsertTextOpsNoSelectionSituation
   | InsertTextOpsCursorSelectionSituation

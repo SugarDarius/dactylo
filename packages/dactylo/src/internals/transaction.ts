@@ -946,11 +946,15 @@ export class TransactionPipeline {
            *  → Autolink detection. User typed `space` at the end of a link.
            *  → Markdown shortcut detection. User typed `space` at the end of `##`, `**`, etc.
            */
-          if (text === INLINE_DETECTOR_TRIGGER_CHARACTER) {
-            if (this.#autolink.enabled) {
-              // @todo: detect autolink
-            }
-            // @todo: detect markdown shortcut
+          /**
+           * Applies ops built when {@link INLINE_DETECTOR_TRIGGER_CHARACTER} is typed for autolink detection.
+           *  → User typed `spaced` at the end of a recognized link.
+           */
+          if (
+            text === INLINE_DETECTOR_TRIGGER_CHARACTER &&
+            this.#autolink.enabled
+          ) {
+            // @todo: detect autolink
           }
           /** Applies inline composition ops built for mentions. */
           else if (this.#isMentioning(text)) {
@@ -959,6 +963,14 @@ export class TransactionPipeline {
           /** Applies inline composition ops built for inline command trigger. */
           else if (this.#isInlineCommandTriggering(text)) {
             // @todo: apply inline composition ops built for inline command trigger
+          }
+          /**
+           * Applies built ops when a markdown shortcut is detected.
+           *  → User typed `space` at the end of `##`, `-`, `>`, …
+           *  → User typed `*`, ```, `_`, …
+           */
+          else {
+            // @todo: detect markdown shortcut
           }
 
           return true
