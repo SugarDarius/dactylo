@@ -321,7 +321,7 @@ const ComposerHeadingBlock = forwardRef<
       {...props}
       ref={forwardedRef}
       {...{
-        [BLOCKS_ATTR_NAME]: '',
+        [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
         [HEADING_BLOCK_ATTR_NAME]: '',
         [HEADING_BLOCK_LEVEL_DATA_NAME]: block.level.toString(),

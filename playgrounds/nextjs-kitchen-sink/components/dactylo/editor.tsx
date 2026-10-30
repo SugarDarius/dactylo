@@ -427,6 +427,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:text-muted-foreground',
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:whitespace-break-spaces',
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:wrap-break-word',
+            // heading block
             // divider block
             '**:[[dactylo-divider-block]]:flex **:[[dactylo-divider-block]]:w-full **:[[dactylo-divider-block]]:flex-col',
             '[&_[dactylo-divider-block]_[dactylo-block-content]]:flex [&_[dactylo-divider-block]_[dactylo-block-content]]:flex-col',
