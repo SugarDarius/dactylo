@@ -326,11 +326,11 @@ export function Toolbar() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuLabel>Lists</DropdownMenuLabel>
-              <DropdownMenuItem>
+              <DropdownMenuItem disabled>
                 <List className='size-3.5' />
                 Bulleted List
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem disabled>
                 <ListOrdered className='size-3.5' />
                 Numbered List
               </DropdownMenuItem>
