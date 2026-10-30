@@ -16,7 +16,12 @@
  * | Small        | Prefer minimal fields for memory and efficiency      |
  */
 
-import type { Block, BlockId, BlockWithInlineContent } from './blocks'
+import type {
+  Block,
+  BlockId,
+  BlockWithInlineContent,
+  HeadingBlock,
+} from './blocks'
 import type { Marks } from './marks'
 import type { InlineNode, NodeId } from './nodes'
 import type { Selection } from './selection'
@@ -102,6 +107,32 @@ export interface MergeBlocksOp {
 
   /** Character offset within `splitAtNodeId` for undo split. */
   readonly splitAtOffset: number
+}
+
+/**
+ * Mutates a block type into another one (e.g from paragraph to heading).
+ * Applies only to blocks with inline content.
+ */
+export interface MutateBlockTypeOp {
+  readonly __type: 'mutate_block_type'
+
+  /** ID of the block to mutate. */
+  readonly blockId: BlockId
+
+  /** Snapshot of the block with inline content before the mutation. */
+  readonly snapshot: BlockWithInlineContent
+
+  /** Whether to drop metadata during type mutation. */
+  readonly dropMetadata?: true
+
+  /** Describes the mutation to apply. */
+  readonly spec:
+    | {
+        kind: 'to_heading'
+        /** Level of the heading. */
+        level: HeadingBlock['level']
+      }
+    | { kind: 'to_paragraph' }
 }
 
 /** Inserts a text into an existing text node at a character offset.  */
@@ -240,6 +271,7 @@ export type Operation = Relax<
   | DeleteBlockOp
   | SplitBlockOp
   | MergeBlocksOp
+  | MutateBlockTypeOp
   | InsertTextOp
   | DeleteTextOp
   | InsertInlineNodeOp

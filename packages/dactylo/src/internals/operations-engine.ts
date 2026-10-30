@@ -56,6 +56,7 @@ import type {
   InsertInlineNodeOp,
   InsertTextOp,
   MergeBlocksOp,
+  MutateBlockTypeOp,
   Operation,
   RemoveInlineNodeOp,
   SetActiveMarksOp,
@@ -207,7 +208,7 @@ export function validateTextCursor(
   validationError(`Cursor node ${cursor.nodeId} must be text, link`, op)
 }
 
-/** Validates an `insert_block` operation. */
+/** Validates an {@link InsertBlockOp} operation. */
 export function validateInsertBlockOp(
   context: EditorContext,
   op: InsertBlockOp,
@@ -221,7 +222,7 @@ export function validateInsertBlockOp(
   }
 }
 
-/** Validates a `delete_block` operation. */
+/** Validates a {@link DeleteBlockOp} operation. */
 export function validateDeleteBlockOp(
   context: EditorContext,
   op: DeleteBlockOp,
@@ -245,7 +246,7 @@ export function validateDeleteBlockOp(
   }
 }
 
-/** Validates a `merge_blocks` operation. */
+/** Validates a {@link MergeBlocksOp} operation. */
 export function validateMergeBlocksOp(
   context: EditorContext,
   op: MergeBlocksOp,
@@ -311,7 +312,7 @@ export function validateMergeBlocksOp(
   }
 }
 
-/** Validates a `split_block` operation. */
+/** Validates a {@link SplitBlockOp} operation. */
 export function validateSplitBlockOp(
   context: EditorContext,
   op: SplitBlockOp,
@@ -329,7 +330,21 @@ export function validateSplitBlockOp(
   }
 }
 
-/** Validates an `insert_text` operation. */
+/** Validates a {@link MutateBlockTypeOp} operation. */
+export function validateMutateBlockTypeOp(
+  context: EditorContext,
+  op: MutateBlockTypeOp,
+): void | never {
+  requireBlockWithInlineContent(context.state, op.blockId, op)
+  if (op.snapshot.id !== op.blockId) {
+    validationError(
+      `Snapshot block ID ${op.snapshot.id} does not match mutated block ID ${op.blockId}`,
+      op,
+    )
+  }
+}
+
+/** Validates an {@link InsertTextOp} operation. */
 export function validateInsertTextOp(
   context: EditorContext,
   op: InsertTextOp,
@@ -348,7 +363,7 @@ export function validateInsertTextOp(
   }
 }
 
-/** Validates a `delete_text` operation. */
+/** Validates a {@link DeleteTextOp} operation. */
 export function validateDeleteTextOp(
   context: EditorContext,
   op: DeleteTextOp,
@@ -361,7 +376,7 @@ export function validateDeleteTextOp(
   }
 }
 
-/** Validates a `set_marks` operation. */
+/** Validates a {@link SetMarksOp} operation. */
 export function validateSetMarksOp(
   context: EditorContext,
   op: SetMarksOp,
@@ -372,7 +387,7 @@ export function validateSetMarksOp(
   assertRangeInText(op.from, op.to, node.text.length, op)
 }
 
-/** Validates a `set_selection` operation. */
+/** Validates a {@link SetSelectionOp} operation. */
 export function validateSetSelectionOp(
   context: EditorContext,
   op: SetSelectionOp,
@@ -387,7 +402,7 @@ export function validateSetSelectionOp(
   }
 }
 
-/** Validates a `insert_inline_node` operation. */
+/** Validates a {@link InsertInlineNodeOp} operation. */
 export function validateInsertInlineNodeOp(
   context: EditorContext,
   op: InsertInlineNodeOp,
@@ -398,7 +413,7 @@ export function validateInsertInlineNodeOp(
   }
 }
 
-/** Validates a `remove_inline_node` operation. */
+/** Validates a {@link RemoveInlineNodeOp} operation. */
 export function validateRemoveInlineNodeOp(
   context: EditorContext,
   op: RemoveInlineNodeOp,
@@ -421,7 +436,7 @@ export function applyError(message: string, op: Operation): never {
   })
 }
 
-/** Applies an `insert_block` operation to {@link EditorContext}. */
+/** Applies an {@link InsertBlockOp} operation to {@link EditorContext}. */
 export function applyInsertBlockOp(
   context: EditorContext,
   op: InsertBlockOp,
@@ -432,7 +447,7 @@ export function applyInsertBlockOp(
   return withDocumentState(context, state)
 }
 
-/** Applies a `delete_block` operation to {@link EditorContext}. */
+/** Applies a {@link DeleteBlockOp} operation to {@link EditorContext}. */
 export function applyDeleteBlockOp(
   context: EditorContext,
   op: DeleteBlockOp,
@@ -442,7 +457,7 @@ export function applyDeleteBlockOp(
 }
 
 /**
- * Applies a `merge_blocks` operation to {@link EditorContext}.
+ * Applies a {@link MergeBlocksOp} operation to {@link EditorContext}.
  * It splices source content into target at `op.atIndex`,
  * then removes source blocks.
  */
@@ -473,7 +488,7 @@ export function applyMergeBlocksOp(
   return withDocumentState(context, state)
 }
 
-/** Applies a `split_block` operation to {@link EditorContext}. */
+/** Applies a {@link SplitBlockOp} operation to {@link EditorContext}. */
 export function applySplitBlockOp(
   context: EditorContext,
   op: SplitBlockOp,
@@ -525,7 +540,59 @@ export function applySplitBlockOp(
   }
 }
 
-/** Applies an `insert_text` operation to {@link EditorContext}. */
+/** Applies a {@link MutateBlockTypeOp} operation to {@link EditorContext}. */
+export function applyMutateBlockTypeOp(
+  context: EditorContext,
+  op: MutateBlockTypeOp,
+): EditorContext {
+  const prev = getBlockWithInlineContent(context.state, op.blockId)
+
+  const { kind } = op.spec
+  switch (kind) {
+    case 'to_heading': {
+      const next = createHeadingBlock({
+        content: [...prev.content],
+        level: op.spec.level,
+        metadata: op.dropMetadata ? undefined : prev.metadata,
+        parentId: prev.parentId,
+        posKey: prev.posKey,
+      })
+
+      return withDocumentState(
+        context,
+        replaceBlock(
+          context.state,
+          op.blockId,
+          touchBlock({ ...next, createdAt: prev.createdAt, id: prev.id }),
+        ),
+      )
+    }
+    case 'to_paragraph': {
+      const next = createParagraphBlock({
+        content: [...prev.content],
+        metadata: op.dropMetadata ? undefined : prev.metadata,
+        parentId: prev.parentId,
+        posKey: prev.posKey,
+      })
+
+      return withDocumentState(
+        context,
+        replaceBlock(
+          context.state,
+          op.blockId,
+          touchBlock({ ...next, createdAt: prev.createdAt, id: prev.id }),
+        ),
+      )
+    }
+    default: {
+      assertNever(kind, {
+        hint: 'OperationsEngine/applyMutateBlockTypeOp',
+      })
+    }
+  }
+}
+
+/** Applies an {@link InsertTextOp} operation to {@link EditorContext}. */
 export function applyInsertTextOp(
   context: EditorContext,
   op: InsertTextOp,
@@ -557,7 +624,7 @@ export function applyInsertTextOp(
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
-/** Applies a `delete_text` operation to {@link EditorContext}. */
+/** Applies a {@link DeleteTextOp} operation to {@link EditorContext}. */
 export function applyDeleteTextOp(
   context: EditorContext,
   op: DeleteTextOp,
@@ -593,7 +660,7 @@ export function applyDeleteTextOp(
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
-/** Applies a `set_active_marks` operation to {@link EditorContext}. */
+/** Applies a {@link SetActiveMarksOp} operation to {@link EditorContext}. */
 export function applySetActiveMarksOp(
   context: EditorContext,
   op: SetActiveMarksOp,
@@ -625,7 +692,7 @@ export function applySetActiveMarksOp(
   return updateBlockWithInlineContent(next, op.copyTo.blockId, content)
 }
 
-/** Applies a `set_marks` operation to {@link EditorContext}. */
+/** Applies a {@link SetMarksOp} operation to {@link EditorContext}. */
 export function applySetMarksOp(
   context: EditorContext,
   op: SetMarksOp,
@@ -678,7 +745,7 @@ export function applySetMarksOp(
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
-/** Applies a `insert_inline_node` operation to {@link EditorContext}. */
+/** Applies a {@link InsertInlineNodeOp} operation to {@link EditorContext}. */
 export function applyInsertInlineNodeOp(
   context: EditorContext,
   op: InsertInlineNodeOp,
@@ -691,7 +758,7 @@ export function applyInsertInlineNodeOp(
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
-/** Applies a `remove_inline_node` operation to {@link EditorContext}. */
+/** Applies a {@link RemoveInlineNodeOp} operation to {@link EditorContext}. */
 export function applyRemoveInlineNodeOp(
   context: EditorContext,
   op: RemoveInlineNodeOp,
@@ -861,6 +928,10 @@ export class OperationsEngine {
         validateMergeBlocksOp(context, op)
         break
       }
+      case 'mutate_block_type': {
+        validateMutateBlockTypeOp(context, op)
+        break
+      }
       case 'insert_text': {
         validateInsertTextOp(context, op)
         break
@@ -909,6 +980,9 @@ export class OperationsEngine {
       }
       case 'merge_blocks': {
         return applyMergeBlocksOp(context, op)
+      }
+      case 'mutate_block_type': {
+        return applyMutateBlockTypeOp(context, op)
       }
       case 'insert_text': {
         return applyInsertTextOp(context, op)
@@ -977,6 +1051,34 @@ export class OperationsEngine {
           blockId: op.targetBlockId,
           newBlock: op.sourceSnapshot,
           tailSnapshot: [...op.mergedTailSnapshot],
+        }
+      }
+      case 'mutate_block_type': {
+        const snapshotType = op.snapshot.__type
+        switch (snapshotType) {
+          case 'heading': {
+            return {
+              __type: 'mutate_block_type',
+              blockId: op.blockId,
+              dropMetadata: op.dropMetadata,
+              snapshot: op.snapshot,
+              spec: {
+                kind: 'to_heading',
+                level: op.snapshot.level,
+              },
+            }
+          }
+          default: {
+            return {
+              __type: 'mutate_block_type',
+              blockId: op.blockId,
+              dropMetadata: op.dropMetadata,
+              snapshot: op.snapshot,
+              spec: {
+                kind: 'to_paragraph',
+              },
+            }
+          }
         }
       }
       case 'insert_text': {
