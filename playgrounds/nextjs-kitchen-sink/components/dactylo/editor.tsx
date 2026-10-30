@@ -413,9 +413,11 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
           // @idea:💡 for DX convenience add custom components
           className={cn(
             // base
-            'selection:text-accent-foreground relative flex w-full flex-col px-6 py-2 selection:bg-cyan-500',
+            'selection:text-accent-foreground relative flex w-full flex-col px-6 py-2 whitespace-break-spaces selection:bg-cyan-500',
+
             // blocks
             '**:[[dactylo-blocks]]:flex **:[[dactylo-blocks]]:flex-col **:[[dactylo-blocks]]:gap-2',
+
             // blocks with editable content
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true]]:caret-cyan-500',
             `[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:[content:attr(dactylo-block-placeholder)/'']`,
@@ -427,14 +429,51 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:text-muted-foreground',
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:whitespace-break-spaces',
             '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:wrap-break-word',
+
+            // paragraph block
+            '**:[[dactylo-paragraph-block]]:flex **:[[dactylo-paragraph-block]]:flex-col',
+            '**:[[dactylo-paragraph-block]]:px-1.5',
+
             // heading block
             '**:[[dactylo-heading-block]]:flex **:[[dactylo-heading-block]]:flex-col',
             '**:[[dactylo-heading-block]]:px-1.5',
+
             // heading block level 1
-            '**:data-[dactylo-heading-block-level=1]:pt-6 **:data-[dactylo-heading-block-level=1]:pb-1.5',
+            '**:data-[dactylo-heading-block-level=1]:pt-7.5 **:data-[dactylo-heading-block-level=1]:pb-1.5',
             '**:data-[dactylo-heading-block-level=1]:text-5xl',
             '**:data-[dactylo-heading-block-level=1]:font-semibold',
             '**:data-[dactylo-heading-block-level=1]:tracking-tight',
+
+            // heading block level 2
+            '**:data-[dactylo-heading-block-level=2]:pt-6.5 **:data-[dactylo-heading-block-level=2]:pb-1.5',
+            '**:data-[dactylo-heading-block-level=2]:text-3xl',
+            '**:data-[dactylo-heading-block-level=2]:font-semibold',
+            '**:data-[dactylo-heading-block-level=2]:tracking-tight',
+
+            // heading block level 3
+            '**:data-[dactylo-heading-block-level=3]:pt-5.5 **:data-[dactylo-heading-block-level=3]:pb-1.5',
+            '**:data-[dactylo-heading-block-level=3]:text-2xl',
+            '**:data-[dactylo-heading-block-level=3]:font-semibold',
+            '**:data-[dactylo-heading-block-level=3]:tracking-tight',
+
+            // heading block level 4
+            '**:data-[dactylo-heading-block-level=4]:pt-4.5 **:data-[dactylo-heading-block-level=4]:pb-1.5',
+            '**:data-[dactylo-heading-block-level=4]:text-xl',
+            '**:data-[dactylo-heading-block-level=4]:font-semibold',
+            '**:data-[dactylo-heading-block-level=4]:tracking-tight',
+
+            // heading block level 5
+            '**:data-[dactylo-heading-block-level=5]:pt-4 **:data-[dactylo-heading-block-level=5]:pb-1.5',
+            '**:data-[dactylo-heading-block-level=5]:text-lg',
+            '**:data-[dactylo-heading-block-level=5]:font-semibold',
+            '**:data-[dactylo-heading-block-level=5]:tracking-tight',
+
+            // heading block level 6
+            '**:data-[dactylo-heading-block-level=6]:pt-4 **:data-[dactylo-heading-block-level=6]:pb-1.5',
+            '**:data-[dactylo-heading-block-level=6]:text-base',
+            '**:data-[dactylo-heading-block-level=6]:font-semibold',
+            '**:data-[dactylo-heading-block-level=6]:tracking-tight',
+
             // divider block
             '**:[[dactylo-divider-block]]:flex **:[[dactylo-divider-block]]:w-full **:[[dactylo-divider-block]]:flex-col',
             '[&_[dactylo-divider-block]_[dactylo-block-content]]:flex [&_[dactylo-divider-block]_[dactylo-block-content]]:flex-col',
@@ -444,6 +483,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '**:[[dactylo-divider-separator]]:shrink-0',
             '**:[[dactylo-divider-separator]]:h-px',
             '**:[[dactylo-divider-separator]]:w-full',
+
             // nodes
             '[&_[dactylo-node][dactylo-link-node]]:cursor-pointer',
             '[&_[dactylo-node][dactylo-link-node]]:text-cyan-500',
