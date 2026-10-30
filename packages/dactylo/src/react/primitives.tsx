@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  createElement,
   forwardRef,
   memo,
   useDebugValue,
@@ -290,9 +289,11 @@ const HeadingsPrimitive = Headings.reduce((primitives, heading) => {
   const Heading = forwardRef<
     HTMLHeadingElement,
     React.HTMLAttributes<HTMLHeadingElement>
-  >((props, forwardedRef) =>
-    createElement(heading, Object.assign(props, { ref: forwardedRef })),
-  )
+  >((props, forwardedRef) => {
+    const Comp = heading
+
+    return <Comp {...props} ref={forwardedRef} />
+  })
   Heading.displayName = `HeadingPrimitive.${heading}`
 
   return Object.assign(primitives, { [heading]: Heading })
