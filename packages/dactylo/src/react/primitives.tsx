@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  createElement,
   forwardRef,
   memo,
   useDebugValue,
@@ -28,6 +29,8 @@ import {
   LINK_NODE_ATTR_NAME,
   DIVIDER_BLOCK_ATTR_NAME,
   DIVIDER_SEPARATOR_ATTR_NAME,
+  HEADING_BLOCK_ATTR_NAME,
+  HEADING_BLOCK_LEVEL_DATA_NAME,
 } from '../internals/constants'
 import {
   ComposerProvider,
@@ -50,6 +53,7 @@ import {
   COMPOSER_LINK_NODE_NAME,
   COMPOSER_BLOCK_NAME,
   COMPOSER_DIVIDER_BLOCK_NAME,
+  COMPOSER_HEADING_BLOCK_NAME,
 } from './internals/constants'
 import {
   useIsMounted,
@@ -67,6 +71,7 @@ import type {
   ComposerLinkNodeProps,
   ComposerBlockProps,
   ComposerDividerBlockProps,
+  ComposerHeadingBlockProps,
 } from './types'
 
 /** Base style for the editable area of the composer. */
@@ -234,7 +239,7 @@ const ComposerParagraphBlock = forwardRef<
   ComposerParagraphBlockProps
 >(({ block, ...props }, forwardedRef) => {
   const { paragraph } = useEditorConfig()
-  const { canEdit, editableId, editableRef, withActiveSelection, isEmpty } =
+  const { canEdit, editableId, withActiveSelection, isEmpty } =
     useEditableBlock(block.id)
 
   const content = useMemo(() => [...block.content], [block.content])
@@ -253,7 +258,6 @@ const ComposerParagraphBlock = forwardRef<
       aria-roledescription='paragraph-block'
     >
       <div
-        ref={editableRef}
         id={editableId}
         role={canEdit ? 'textbox' : undefined}
         aria-roledescription='paragraph-block-editable'
@@ -275,6 +279,78 @@ const ComposerParagraphBlock = forwardRef<
   )
 })
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
+
+/** Adds a {@link HeadingBlock} to the composer. */
+const Headings = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const
+type HeadingsPrimitives = Record<
+  (typeof Headings)[number],
+  React.ComponentType<React.HTMLAttributes<HTMLHeadingElement>>
+>
+const HeadingsPrimitive = Headings.reduce((primitives, heading) => {
+  const Heading = forwardRef<
+    HTMLHeadingElement,
+    React.HTMLAttributes<HTMLHeadingElement>
+  >((props, forwardedRef) =>
+    createElement(heading, Object.assign(props, { ref: forwardedRef })),
+  )
+  Heading.displayName = `HeadingPrimitive.${heading}`
+
+  return Object.assign(primitives, { [heading]: Heading })
+}, {} as HeadingsPrimitives)
+
+const ComposerHeadingBlock = forwardRef<
+  HTMLDivElement,
+  ComposerHeadingBlockProps
+>(({ block, ...props }, forwardedRef) => {
+  const { heading } = useEditorConfig()
+  const { canEdit, editableId, withActiveSelection, isEmpty } =
+    useEditableBlock(block.id)
+
+  const Comp = HeadingsPrimitive[`h${block.level}`]
+
+  const placeholder = useMemo(
+    () => heading.placeholder.replace('%level%', block.level.toString()),
+    [block.level, heading.placeholder],
+  )
+  const content = useMemo(() => [...block.content], [block.content])
+
+  const isActive = canEdit && withActiveSelection
+
+  return (
+    <div
+      {...props}
+      ref={forwardedRef}
+      {...{
+        [BLOCKS_ATTR_NAME]: '',
+        [BLOCK_ID_DATA_NAME]: block.id,
+        [HEADING_BLOCK_ATTR_NAME]: '',
+        [HEADING_BLOCK_LEVEL_DATA_NAME]: block.level.toString(),
+      }}
+      data-active={isActive ?? undefined}
+      aria-roledescription='heading-block'
+    >
+      <Comp
+        id={editableId}
+        role={canEdit ? 'textbox' : undefined}
+        aria-roledescription='heading-block-editable'
+        aria-multiline={canEdit ? 'true' : undefined}
+        contentEditable={canEdit ? 'true' : undefined}
+        suppressContentEditableWarning
+        data-active={isActive ?? undefined}
+        data-empty={isEmpty ?? undefined}
+        {...{
+          [BLOCK_CONTENT_ATTR_NAME]: '',
+          [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
+          [BLOCK_PLACEHOLDER_ATTR_NAME]: placeholder,
+        }}
+        style={{ ...EDITABLE_OUTLINE_STYLE }}
+      >
+        <ComposerInlineContent content={content} />
+      </Comp>
+    </div>
+  )
+})
+ComposerHeadingBlock.displayName = COMPOSER_HEADING_BLOCK_NAME
 
 /** Adds a {@link DividerBlock} to the composer. */
 const ComposerDividerBlock = forwardRef<
@@ -323,6 +399,9 @@ const ComposerBlock = memo<ComposerBlockProps>(({ blockId, ...props }) => {
         return (
           <ComposerParagraphBlock key={block.id} {...props} block={block} />
         )
+      }
+      case 'heading': {
+        return <ComposerHeadingBlock key={block.id} {...props} block={block} />
       }
       case 'divider': {
         return <ComposerDividerBlock key={block.id} {...props} block={block} />
@@ -429,6 +508,7 @@ export {
   ComposerRoot as Root,
   ComposerEditable as Editable,
   ComposerParagraphBlock as ParagraphBlock,
+  ComposerHeadingBlock as HeadingBlock,
   ComposerDividerBlock as DividerBlock,
   ComposerTextNode as TextNode,
   ComposerLinkNode as LinkNode,

@@ -75,6 +75,11 @@ export const DIVIDER_BLOCK_ATTR_NAME = 'dactylo-divider-block'
 /** Divider separator attribute name. */
 export const DIVIDER_SEPARATOR_ATTR_NAME = 'dactylo-divider-separator'
 
+/** Heading block attribute name. */
+export const HEADING_BLOCK_ATTR_NAME = 'dactylo-heading-block'
+/** Heading block level data name. */
+export const HEADING_BLOCK_LEVEL_DATA_NAME = 'data-dactylo-heading-block-level'
+
 /** Node attribute name. */
 export const NODE_ATTR_NAME = 'dactylo-node'
 /** Node ID data name. */

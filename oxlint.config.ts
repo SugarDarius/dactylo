@@ -24,6 +24,7 @@ export default defineConfig({
     'typescript/consistent-type-definitions': 'off',
     'typescript/no-invalid-void-type': 'off',
     'unicorn/catch-error-name': 'off',
+    'unicorn/no-array-reduce': 'off',
     'unicorn/no-nested-ternary': 'off',
     'unicorn/prefer-at': 'off',
     'unicorn/prefer-code-point': 'off',

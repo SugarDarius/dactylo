@@ -16,6 +16,9 @@ export const COMPOSER_PARAGRAPH_BLOCK_NAME = 'Composer.ParagraphBlock'
 /** The name of the composer divider block component. */
 export const COMPOSER_DIVIDER_BLOCK_NAME = 'Composer.DividerBlock'
 
+/** The name of the composer heading block component. */
+export const COMPOSER_HEADING_BLOCK_NAME = 'Composer.HeadingBlock'
+
 /** The name of the composer text node component. */
 export const COMPOSER_TEXT_NODE_NAME = 'Composer.TextNode'
 

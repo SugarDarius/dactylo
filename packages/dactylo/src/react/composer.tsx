@@ -802,7 +802,6 @@ export function useEditable() {
  */
 export function useEditableBlock(blockId: BlockId) {
   const editableId = useId()
-  const editableRef = useRef<HTMLDivElement>(null)
 
   const canEdit = useCanEdit()
 
@@ -812,7 +811,6 @@ export function useEditableBlock(blockId: BlockId) {
   return {
     canEdit,
     editableId,
-    editableRef,
     isEmpty,
     withActiveSelection,
   } as const
