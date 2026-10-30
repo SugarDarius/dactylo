@@ -523,6 +523,19 @@ export class TransactionPipeline {
 
   // ─── Core pipeline ────────────────────────────────────────────────
 
+  /** Whether a mention is being typed. */
+  #isMentioning(text: string): boolean {
+    return this.#mentions.enabled && text === this.#mentions.character
+  }
+
+  /** Whether an inline command is being typed. */
+  #isInlineCommandTriggering(text: string): boolean {
+    return (
+      this.#inlineCommandTrigger.enabled &&
+      text === this.#inlineCommandTrigger.character
+    )
+  }
+
   /** Notifies the history stack changes. */
   #notifyHistory(): void {
     this.#eventSources.history.notify({
@@ -940,18 +953,12 @@ export class TransactionPipeline {
             // @todo: detect markdown shortcut
           }
           /** Applies inline composition ops built for mentions. */
-          else if (
-            this.#mentions.enabled &&
-            text === this.#mentions.character
-          ) {
-            // @todo: apply inline composition ops for mentions
+          else if (this.#isMentioning(text)) {
+            // @todo: apply inline composition ops built for mentions
           }
           /** Applies inline composition ops built for inline command trigger. */
-          else if (
-            this.#inlineCommandTrigger.enabled &&
-            text === this.#inlineCommandTrigger.character
-          ) {
-            // @todo: apply inline composition ops for inline command trigger
+          else if (this.#isInlineCommandTriggering(text)) {
+            // @todo: apply inline composition ops built for inline command trigger
           }
 
           return true
