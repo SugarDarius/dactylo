@@ -406,7 +406,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
       {...props}
     >
       <Composer.Root
-        placeholder='Welcome to Dactylo! Start writing something…'
+        placeholder='Start writing something…'
         clientOnly={true}
         debug={true}
         className='dark:shadow-accent relative flex w-full flex-col gap-2 rounded-md shadow-xs'

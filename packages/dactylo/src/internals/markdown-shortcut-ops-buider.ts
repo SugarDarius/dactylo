@@ -278,11 +278,6 @@ const rules: MarkdownShortcutOpsRule[] = [
         return false
       }
 
-      console.log(
-        'isMarkdownDividerShortcut',
-        isMarkdownDividerShortcut(node.text),
-      )
-
       return isMarkdownDividerShortcut(node.text)
     },
   },
