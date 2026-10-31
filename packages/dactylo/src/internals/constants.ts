@@ -135,6 +135,28 @@ export const PLAIN_TEXT_LINK_PATTERN =
  **/
 export const INLINE_DETECTOR_TRIGGER_CHARACTER = ' '
 
-/** ATX markdown heading with trigger space pattern. */
+/**
+ * ATX markdown heading with trigger space pattern.
+ * Matched after the user types {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
+ *
+ * @example
+ * ```txt
+ * User type: #<space>
+ * Node text: "# "
+ * ```
+ */
 export const ATX_MARKDOWN_HEADING_WITH_TRIGGER_SPACE_PATTERN =
   /^(?<level>#{1,6}) $/u
+
+/**
+ * Horizontal rule markdown shortcut with trigger pattern.
+ * Matched after the user types {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
+ *
+ * @example
+ * ```txt
+ * User type: ----<space>
+ * Node text: "---- "
+ * ```
+ */
+export const HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN =
+  /^(?<separator>-{3,}) $/u

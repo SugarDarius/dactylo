@@ -1,13 +1,27 @@
-import { findNodeInBlockWithInlineContent, isParagraphBlock } from './blocks'
+import {
+  createDividerBlock,
+  createParagraphBlockAfter,
+  findNodeInBlockWithInlineContent,
+  isParagraphBlock,
+} from './blocks'
 import type { BlockWithInlineContent, HeadingBlock } from './blocks'
 import { warn } from './console'
 import {
   ATX_MARKDOWN_HEADING_WITH_TRIGGER_SPACE_PATTERN,
+  HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN,
   INLINE_DETECTOR_TRIGGER_CHARACTER,
 } from './constants'
-import { getBlockWithInlineContent } from './document'
+import {
+  computeInsertBlockPosKey,
+  getBlockWithInlineContent,
+  resolveInsertAfterBlockId,
+} from './document'
 import type { EditorContext } from './editor-context'
-import { isInlineNodeWithEditableText, isTextNode } from './nodes'
+import {
+  createTextNode,
+  isInlineNodeWithEditableText,
+  isTextNode,
+} from './nodes'
 import type { InlineNodeWithEditableText } from './nodes'
 import type { Operation } from './operations'
 import { buildError, iterRules } from './operations-builder'
@@ -70,6 +84,11 @@ export function parseAtxHeadingShortcutLevel(
   }
 
   return atxMatch[1].length as HeadingBlock['level']
+}
+
+/** Whether the node text is a horizontal rule markdown shortcut. */
+export function isMarkdownDividerShortcut(nodeText: string): boolean {
+  return HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN.test(nodeText)
 }
 
 const rules: MarkdownShortcutOpsRule[] = [
@@ -148,6 +167,123 @@ const rules: MarkdownShortcutOpsRule[] = [
 
       const level = parseAtxHeadingShortcutLevel(node.text)
       return level !== null
+    },
+  },
+  {
+    /**
+     * 💡 Cursor selection is at a {@link ParagraphBlock}, first text node only,
+     *    content is `---`, and the typed character is
+     *    {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
+     * 🎯 Replace the paragraph with a {@link DividerBlock} at the same document
+     *    position and move the caret into a new empty {@link ParagraphBlock} below
+     *    (same UX as programmatic divider insert).
+     */
+    build: ({ context, situation, input }): Operation[] | null => {
+      if (
+        situation.kind !== 'cursor-selection' ||
+        input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
+      ) {
+        return null
+      }
+
+      const { state } = context
+      const { block } = situation
+
+      const posKey = computeInsertBlockPosKey(state, {
+        blockId: block.id,
+        type: 'before',
+      })
+      const afterBlockId = resolveInsertAfterBlockId(state, {
+        blockId: block.id,
+        type: 'before',
+      })
+
+      const divider = createDividerBlock({
+        parentId: block.parentId,
+        posKey,
+      })
+
+      /**
+       * Invariant UX:
+       * When inserting a divider block,
+       * a {@link ParagraphBlock} is inserted right after it and
+       * the selection is set inside it.
+       */
+      const insertedText = createTextNode({
+        marks: context.activeMarks,
+        text: '',
+      })
+      const paragraph = createParagraphBlockAfter(divider, [insertedText])
+
+      const idx = state.blockOrderById.indexOf(block.id)
+      /** Keeping `undo()` consistent. */
+      const afterBlockIdForDelete =
+        idx > 0 ? (state.blockOrderById[idx - 1] ?? null) : null
+
+      const ops: Operation[] = [
+        {
+          __type: 'insert_block',
+          afterBlockId,
+          block: divider,
+        },
+        {
+          __type: 'delete_block',
+          afterBlockId: afterBlockIdForDelete,
+          blockId: block.id,
+          snapshot: block,
+        },
+        {
+          __type: 'insert_block',
+          afterBlockId: divider.id,
+          block: paragraph,
+        },
+        {
+          __type: 'set_selection',
+          next: createCursor({
+            blockId: paragraph.id,
+            nodeId: insertedText.id,
+            offset: 0,
+          }),
+          prev: context.selection,
+        },
+      ]
+
+      return ops
+    },
+    name: 'cursor/horizontal-rule/inline-detector-trigger-character',
+    when: ({ situation, input }): boolean => {
+      if (
+        situation.kind !== 'cursor-selection' ||
+        input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
+      ) {
+        return false
+      }
+
+      const { block, node, at } = situation
+      if (at.offset !== node.text.length) {
+        return false
+      }
+
+      if (!isParagraphBlock(block)) {
+        return false
+      }
+
+      const [first] = block.content
+      if (
+        !first ||
+        !isTextNode(first) ||
+        first.id !== node.id ||
+        first.text.length !== node.text.length
+      ) {
+        return false
+      }
+
+      console.log(
+        'isMarkdownDividerShortcut',
+        isMarkdownDividerShortcut(node.text),
+      )
+
+      return isMarkdownDividerShortcut(node.text)
     },
   },
 ]
