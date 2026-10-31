@@ -19,6 +19,9 @@ export const DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER = '/'
 /** Default autolink detection enabled. */
 export const DEFAULT_AUTOLINK_ENABLED = true
 
+/** Default markdown shortcuts enabled. */
+export const DEFAULT_MARKDOWN_SHORTCUTS_ENABLED = true
+
 /** Default max size for a batch of operations. */
 export const DEFAULT_BATCH_MAX_SIZE = 512
 

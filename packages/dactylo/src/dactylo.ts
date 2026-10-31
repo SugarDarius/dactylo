@@ -9,6 +9,7 @@ import {
   DEFAULT_MENTIONS_ENABLED,
   DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
   DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
+  DEFAULT_MARKDOWN_SHORTCUTS_ENABLED,
 } from './internals/constants'
 import { isBlockWithInlineContentEmpty } from './internals/document'
 import { DOMManager } from './internals/dom-manager'
@@ -47,6 +48,15 @@ export interface DactyloAspectApi<T extends object, C extends object> {
 
 /** Static configuration for the editor. */
 export interface DactyloStaticConfig {
+  /** Configuration for markdown shortcuts. */
+  readonly markdown: {
+    /**
+     * Whether to enable markdown shortcuts.
+     * Defaults to `true`
+     */
+    readonly enabled: boolean
+  }
+
   /** Configuration for autolink detection. */
   readonly autolink: {
     /**
@@ -510,6 +520,15 @@ export type DactyloBlocksApi = DactyloAspectApi<
 export interface DactyloConfigOptions {
   /** Configuration for the editor */
   readonly editor?: {
+    /** Configuration for markdown shortcuts. */
+    readonly markdown?: {
+      /**
+       * Whether to enable markdown shortcuts.
+       * Defaults to `true`
+       */
+      readonly enabled?: boolean
+    }
+
     /** Configuration for mentions. */
     readonly mentions?: {
       /**
@@ -687,6 +706,11 @@ export class Dactylo {
           DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
       },
       locales,
+      markdown: {
+        enabled:
+          options.config?.editor?.markdown?.enabled ??
+          DEFAULT_MARKDOWN_SHORTCUTS_ENABLED,
+      },
       mentions: {
         character:
           options.config?.editor?.mentions?.character ??
@@ -714,6 +738,9 @@ export class Dactylo {
       inlineCommandTrigger: {
         character: this.#config.inlineCommandTrigger.character,
         enabled: this.#config.inlineCommandTrigger.enabled,
+      },
+      markdown: {
+        enabled: this.#config.markdown.enabled,
       },
       mentions: {
         character: this.#config.mentions.character,

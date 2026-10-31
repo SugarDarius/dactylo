@@ -368,6 +368,12 @@ export interface TransactionPipelineOptions {
     readonly enabled: boolean
   }
 
+  /** Configuration for markdown shortcuts. */
+  readonly markdown: {
+    /** Whether to enable markdown shortcuts. */
+    readonly enabled: boolean
+  }
+
   /** Configuration for the operations engine. */
   readonly engine: Omit<OperationsEngineOptions, 'autolink'>
 }
@@ -393,6 +399,12 @@ export interface TransactionPipelineInlineCommandTriggerConfig {
 /** Configuration for autolink detection. */
 export interface TransactionPipelineAutolinkConfig {
   /** Whether to enable autolink detection. */
+  readonly enabled: boolean
+}
+
+/** Configuration for markdown shortcuts. */
+export interface TransactionPipelineMarkdownConfig {
+  /** Whether to enable markdown shortcuts. */
   readonly enabled: boolean
 }
 
@@ -454,22 +466,25 @@ export class TransactionPipeline {
    */
   #isIMEComposing = false
 
-  /** The operations engine to use for the transaction pipeline. */
+  /** Operations engine instance. */
   readonly #operationsEngine: OperationsEngine
 
-  /** The history stack to use for the transaction pipeline */
+  /** History stack instance. */
   readonly #history: HistoryStack
 
-  /** The mentions configuration to use for the transaction pipeline. */
+  /** Mentions configuration. */
   readonly #mentions: TransactionPipelineMentionsConfig
 
-  /** The inline command trigger configuration to use for the transaction pipeline. */
+  /** Inline command trigger configuration. */
   readonly #inlineCommandTrigger: TransactionPipelineInlineCommandTriggerConfig
 
-  /** The autolink configuration to use for the transaction pipeline. */
+  /** Autolink configuration. */
   readonly #autolink: TransactionPipelineAutolinkConfig
 
-  /** Events emitted by the transaction pipeline */
+  /** Markdown shortcuts configuration. */
+  readonly #markdown: TransactionPipelineMarkdownConfig
+
+  /** Events emitted by the pipeline */
   readonly #eventSources: TransactionPipelineEventSources
 
   constructor(options: TransactionPipelineOptions) {
@@ -498,6 +513,7 @@ export class TransactionPipeline {
     })
 
     this.#autolink = options.autolink
+    this.#markdown = options.markdown
     this.#mentions = options.mentions
     this.#inlineCommandTrigger = options.inlineCommandTrigger
 
@@ -969,7 +985,7 @@ export class TransactionPipeline {
            *  → User typed `space` at the end of `##`, `-`, `>`, …
            *  → User typed `*`, ```, `_`, …
            */
-          else {
+          else if (this.#markdown.enabled) {
             const mdIntent = this.#operationsEngine.buildMarkdownShortcutOps(
               this.#context,
               text,
