@@ -137,4 +137,4 @@ export const INLINE_DETECTOR_TRIGGER_CHARACTER = ' '
 
 /** ATX markdown heading with trigger space pattern. */
 export const ATX_MARKDOWN_HEADING_WITH_TRIGGER_SPACE_PATTERN =
-  /^(?<level>#{1,6}) /u
+  /^(?<level>#{1,6}) $/u

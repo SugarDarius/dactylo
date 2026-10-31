@@ -127,7 +127,11 @@ const rules: MarkdownShortcutOpsRule[] = [
         return false
       }
 
-      const { block, node } = situation
+      const { block, node, at } = situation
+      if (at.offset !== node.text.length) {
+        return false
+      }
+
       if (!isParagraphBlock(block)) {
         return false
       }
