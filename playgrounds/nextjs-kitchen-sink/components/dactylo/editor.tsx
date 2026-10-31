@@ -56,6 +56,7 @@ import {
 } from '~/components/ui/dropdown-menu'
 import { Kbd } from '~/components/ui/kbd'
 import { Separator } from '~/components/ui/separator'
+import { ThemeSwitcher } from '~/components/ui/theme-switcher'
 import { toast } from '~/components/ui/toast'
 import { Toggle } from '~/components/ui/toggle'
 import {
@@ -191,206 +192,209 @@ export function Toolbar() {
   )
 
   return (
-    <div className='border-border flex w-full items-center gap-1.5 border-b px-1.5 py-2'>
-      <div className='flex items-center'>
-        <ActionButton
-          disabled={!canUndo}
-          onClick={undo}
-          tooltipContent={
-            <span>
-              Undo <Kbd>⌘+Z</Kbd>
-            </span>
-          }
-        >
-          <Undo2 className='size-3.5' />
-        </ActionButton>
-        <ActionButton
-          disabled={!canRedo}
-          onClick={redo}
-          tooltipContent={
-            <span>
-              Redo <Kbd>⌘+Y</Kbd>
-            </span>
-          }
-        >
-          <Redo2 className='size-3.5' />
-        </ActionButton>
-      </div>
-      <Separator orientation='vertical' />
-      <div className='flex items-center'>
-        <MarkToggleButton
-          mark='bold'
-          tooltipContent={
-            <span>
-              Bold <Kbd>⌘+B</Kbd>
-            </span>
-          }
-        >
-          <Bold className='size-3.5' />
-        </MarkToggleButton>
-        <MarkToggleButton
-          mark='italic'
-          tooltipContent={
-            <span>
-              Italic <Kbd>⌘+I</Kbd>
-            </span>
-          }
-        >
-          <Italic className='size-3.5' />
-        </MarkToggleButton>
-        <MarkToggleButton
-          mark='strikethrough'
-          tooltipContent={
-            <span>
-              Strikethrough <Kbd>⌘+S</Kbd>
-            </span>
-          }
-        >
-          <Strikethrough className='size-3.5' />
-        </MarkToggleButton>
-        <MarkToggleButton
-          mark='underline'
-          tooltipContent={
-            <span>
-              Underline <Kbd>⌘+U</Kbd>
-            </span>
-          }
-        >
-          <Underline className='size-3.5' />
-        </MarkToggleButton>
-        <MarkToggleButton
-          mark='code'
-          tooltipContent={
-            <span>
-              Code <Kbd>⌘+E</Kbd>
-            </span>
-          }
-        >
-          <CodeXml className='size-3.5' />
-        </MarkToggleButton>
-      </div>
-      <Separator orientation='vertical' />
-      <div className='flex items-center'>
-        <DropdownMenu>
+    <div className='border-border flex w-full items-center justify-between gap-2 border-b px-1.5 py-2'>
+      <div className='flex w-full items-center gap-1.5'>
+        <div className='flex items-center'>
+          <ActionButton
+            disabled={!canUndo}
+            onClick={undo}
+            tooltipContent={
+              <span>
+                Undo <Kbd>⌘+Z</Kbd>
+              </span>
+            }
+          >
+            <Undo2 className='size-3.5' />
+          </ActionButton>
+          <ActionButton
+            disabled={!canRedo}
+            onClick={redo}
+            tooltipContent={
+              <span>
+                Redo <Kbd>⌘+Y</Kbd>
+              </span>
+            }
+          >
+            <Redo2 className='size-3.5' />
+          </ActionButton>
+        </div>
+        <Separator orientation='vertical' />
+        <div className='flex items-center'>
+          <MarkToggleButton
+            mark='bold'
+            tooltipContent={
+              <span>
+                Bold <Kbd>⌘+B</Kbd>
+              </span>
+            }
+          >
+            <Bold className='size-3.5' />
+          </MarkToggleButton>
+          <MarkToggleButton
+            mark='italic'
+            tooltipContent={
+              <span>
+                Italic <Kbd>⌘+I</Kbd>
+              </span>
+            }
+          >
+            <Italic className='size-3.5' />
+          </MarkToggleButton>
+          <MarkToggleButton
+            mark='strikethrough'
+            tooltipContent={
+              <span>
+                Strikethrough <Kbd>⌘+S</Kbd>
+              </span>
+            }
+          >
+            <Strikethrough className='size-3.5' />
+          </MarkToggleButton>
+          <MarkToggleButton
+            mark='underline'
+            tooltipContent={
+              <span>
+                Underline <Kbd>⌘+U</Kbd>
+              </span>
+            }
+          >
+            <Underline className='size-3.5' />
+          </MarkToggleButton>
+          <MarkToggleButton
+            mark='code'
+            tooltipContent={
+              <span>
+                Code <Kbd>⌘+E</Kbd>
+              </span>
+            }
+          >
+            <CodeXml className='size-3.5' />
+          </MarkToggleButton>
+        </div>
+        <Separator orientation='vertical' />
+        <div className='flex items-center'>
+          <DropdownMenu>
+            <Tooltip>
+              <DropdownMenuTrigger
+                render={
+                  <TooltipTrigger
+                    render={
+                      <Button variant='ghost'>
+                        <Plus className='size-3.5' />
+                        <ChevronDown className='size-3.5' />
+                      </Button>
+                    }
+                  />
+                }
+              />
+              <TooltipContent>Insert</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent className='w-40' align='start'>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Basic Blocks</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => insertParagraph()}>
+                  <Pilcrow className='size-3.5' />
+                  Paragraph
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertHeading(1)}>
+                  <Heading1 className='size-3.5' />
+                  Heading 1
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertHeading(2)}>
+                  <Heading2 className='size-3.5' />
+                  Heading 2
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertHeading(3)}>
+                  <Heading3 className='size-3.5' />
+                  Heading 3
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertHeading(4)}>
+                  <Heading4 className='size-3.5' />
+                  Heading 4
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertHeading(5)}>
+                  <Heading5 className='size-3.5' />
+                  Heading 5
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertHeading(6)}>
+                  <Heading6 className='size-3.5' />
+                  Heading 6
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertDivider()}>
+                  <Minus className='size-3.5' />
+                  Divider
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Lists</DropdownMenuLabel>
+                <DropdownMenuItem disabled>
+                  <List className='size-3.5' />
+                  Bulleted List
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled>
+                  <ListOrdered className='size-3.5' />
+                  Numbered List
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <Separator orientation='vertical' />
+        <div className='flex items-center'>
+          <Button variant='ghost' size='icon' disabled>
+            <TextAlignStart className='size-3.5' />
+          </Button>
+          <Button variant='ghost' size='icon' disabled>
+            <TextAlignCenter className='size-3.5' />
+          </Button>
+          <Button variant='ghost' size='icon' disabled>
+            <TextAlignEnd className='size-3.5' />
+          </Button>
+          <Button variant='ghost' size='icon' disabled>
+            <TextAlignJustify className='size-3.5' />
+          </Button>
+        </div>
+        <Separator orientation='vertical' />
+        <div className='flex items-center'>
           <Tooltip>
-            <DropdownMenuTrigger
+            <TooltipTrigger
               render={
-                <TooltipTrigger
-                  render={
-                    <Button variant='ghost'>
-                      <Plus className='size-3.5' />
-                      <ChevronDown className='size-3.5' />
-                    </Button>
-                  }
-                />
+                <Toggle
+                  pressed={!canEdit}
+                  variant='outline'
+                  size='sm'
+                  onPressedChange={() => setEditable(!canEdit)}
+                  className='border-0'
+                >
+                  {canEdit ? (
+                    <LockOpen className='size-3.5' />
+                  ) : (
+                    <Lock className='size-3.5' />
+                  )}
+                </Toggle>
               }
             />
-            <TooltipContent>Insert</TooltipContent>
+            <TooltipContent>
+              {canEdit ? 'Disable editing' : 'Enable editing'}
+            </TooltipContent>
           </Tooltip>
-          <DropdownMenuContent className='w-40' align='start'>
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Basic Blocks</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => insertParagraph()}>
-                <Pilcrow className='size-3.5' />
-                Paragraph
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => insertHeading(1)}>
-                <Heading1 className='size-3.5' />
-                Heading 1
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => insertHeading(2)}>
-                <Heading2 className='size-3.5' />
-                Heading 2
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => insertHeading(3)}>
-                <Heading3 className='size-3.5' />
-                Heading 3
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => insertHeading(4)}>
-                <Heading4 className='size-3.5' />
-                Heading 4
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => insertHeading(5)}>
-                <Heading5 className='size-3.5' />
-                Heading 5
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => insertHeading(6)}>
-                <Heading6 className='size-3.5' />
-                Heading 6
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => insertDivider()}>
-                <Minus className='size-3.5' />
-                Divider
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Lists</DropdownMenuLabel>
-              <DropdownMenuItem disabled>
-                <List className='size-3.5' />
-                Bulleted List
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled>
-                <ListOrdered className='size-3.5' />
-                Numbered List
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <Badge variant={canEdit ? 'default' : 'secondary'}>
+            {canEdit ? (
+              <span className='inline-flex items-center gap-1'>
+                <BadgeCheck className='size-3.5' />
+                Editable
+              </span>
+            ) : (
+              <span className='inline-flex items-center gap-1'>
+                <PencilOff className='size-3.5' />
+                Read-only mode
+              </span>
+            )}
+          </Badge>
+        </div>
       </div>
-      <Separator orientation='vertical' />
-      <div className='flex items-center'>
-        <Button variant='ghost' size='icon' disabled>
-          <TextAlignStart className='size-3.5' />
-        </Button>
-        <Button variant='ghost' size='icon' disabled>
-          <TextAlignCenter className='size-3.5' />
-        </Button>
-        <Button variant='ghost' size='icon' disabled>
-          <TextAlignEnd className='size-3.5' />
-        </Button>
-        <Button variant='ghost' size='icon' disabled>
-          <TextAlignJustify className='size-3.5' />
-        </Button>
-      </div>
-      <Separator orientation='vertical' />
-      <div className='flex items-center'>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Toggle
-                pressed={!canEdit}
-                variant='outline'
-                size='sm'
-                onPressedChange={() => setEditable(!canEdit)}
-                className='border-0'
-              >
-                {canEdit ? (
-                  <LockOpen className='size-3.5' />
-                ) : (
-                  <Lock className='size-3.5' />
-                )}
-              </Toggle>
-            }
-          />
-          <TooltipContent>
-            {canEdit ? 'Disable editing' : 'Enable editing'}
-          </TooltipContent>
-        </Tooltip>
-        <Badge variant={canEdit ? 'default' : 'secondary'}>
-          {canEdit ? (
-            <span className='inline-flex items-center gap-1'>
-              <BadgeCheck className='size-3.5' />
-              Editable
-            </span>
-          ) : (
-            <span className='inline-flex items-center gap-1'>
-              <PencilOff className='size-3.5' />
-              Read-only mode
-            </span>
-          )}
-        </Badge>
-      </div>
+      <ThemeSwitcher />
     </div>
   )
 }
@@ -405,7 +409,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         placeholder='Welcome to Dactylo! Start writing something…'
         clientOnly={true}
         debug={true}
-        className='dark:shadow-accent-foreground relative flex w-full flex-col gap-2 rounded-md shadow-xs'
+        className='dark:shadow-accent relative flex w-full flex-col gap-2 rounded-md shadow-xs'
       >
         <Toolbar />
         <Composer.Editable

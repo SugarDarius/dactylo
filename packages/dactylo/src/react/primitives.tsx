@@ -126,6 +126,7 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
         ref={forwardedRef}
         {...{ [ROOT_ATTR_NAME]: '' }}
         aria-roledescription='root'
+        style={{ position: 'relative' }}
       >
         <ComposerProvider value={ctx}>{children}</ComposerProvider>
       </div>
