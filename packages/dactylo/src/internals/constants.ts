@@ -131,7 +131,6 @@ export const PLAIN_TEXT_LINK_PATTERN =
 /**
  * Character to use to trigger:
  *  - autolink detection
- *  - link finished
  *  - markdown shortcut detection
  **/
 export const INLINE_DETECTOR_TRIGGER_CHARACTER = ' '

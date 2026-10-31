@@ -990,16 +990,15 @@ export class TransactionPipeline {
               this.#context,
               text,
             )
-            if (mdIntent === null) {
-              return false
-            }
 
-            const { ops: mdOps, label: mdLabel } = mdIntent
-            this.#commit(mdOps, {
-              label: transactionPolicyLabel('input', 'digest-event', mdLabel),
-              pushToHistory: true,
-              source: 'user',
-            })
+            if (mdIntent !== null) {
+              const { ops: mdOps, label: mdLabel } = mdIntent
+              this.#commit(mdOps, {
+                label: transactionPolicyLabel('input', 'digest-event', mdLabel),
+                pushToHistory: true,
+                source: 'user',
+              })
+            }
           }
 
           return true

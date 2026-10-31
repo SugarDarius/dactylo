@@ -117,6 +117,11 @@ export function createParagraphBlock(opts: {
   }
 }
 
+/** Whether the block is a paragraph block. */
+export function isParagraphBlock(block: Block): block is ParagraphBlock {
+  return block.__type === 'paragraph'
+}
+
 /**
  * Creates a {@link ParagraphBlock} after a given existing block.
  * Computes `posKey` of the new block based on the `afterBlock` position.
@@ -156,6 +161,11 @@ export function createHeadingBlock(opts: {
   }
 }
 
+/** Whether the block is a heading block. */
+export function isHeadingBlock(block: Block): block is HeadingBlock {
+  return block.__type === 'heading'
+}
+
 /** Creates a {@link DividerBlock}. */
 export function createDividerBlock(opts: {
   metadata?: Metadata
@@ -173,6 +183,11 @@ export function createDividerBlock(opts: {
   }
 }
 
+/** Whether the block is a divider block. */
+export function isDividerBlock(block: Block): block is DividerBlock {
+  return block.__type === 'divider'
+}
+
 /** Returns a shallow copy of a block with a fresh `updatedAt` timestamp. */
 export function touchBlock(block: Block): Block {
   return { ...block, updatedAt: new Date() }
@@ -182,7 +197,7 @@ export function touchBlock(block: Block): Block {
 export function isBlockWithInlineContent(
   block: Block,
 ): block is BlockWithInlineContent {
-  return block.__type === 'heading' || block.__type === 'paragraph'
+  return isHeadingBlock(block) || isParagraphBlock(block)
 }
 
 /** Rebuilds block order from a blocks map (after posKey changes). */
