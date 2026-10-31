@@ -958,34 +958,11 @@ export class TransactionPipeline {
           })
 
           /**
-           * Applies ops built when {@link INLINE_DETECTOR_TRIGGER_CHARACTER} is typed for:
-           *  → Autolink detection. User typed `space` at the end of a link.
-           *  → Markdown shortcut detection. User typed `space` at the end of `##`, `**`, etc.
-           */
-          /**
-           * Applies ops built when {@link INLINE_DETECTOR_TRIGGER_CHARACTER} is typed for autolink detection.
-           *  → User typed `spaced` at the end of a recognized link.
-           */
-          if (
-            text === INLINE_DETECTOR_TRIGGER_CHARACTER &&
-            this.#autolink.enabled
-          ) {
-            // @todo: detect autolink
-          }
-          /** Applies inline composition ops built for mentions. */
-          else if (this.#isMentioning(text)) {
-            // @todo: apply inline composition ops built for mentions
-          }
-          /** Applies inline composition ops built for inline command trigger. */
-          else if (this.#isInlineCommandTriggering(text)) {
-            // @todo: apply inline composition ops built for inline command trigger
-          }
-          /**
            * Applies built ops when a markdown shortcut is detected.
            *  → User typed `space` at the end of `##`, `-`, `>`, …
            *  → User typed `*`, ```, `_`, …
            */
-          else if (this.#markdown.enabled) {
+          if (this.#markdown.enabled) {
             const mdIntent = this.#operationsEngine.buildMarkdownShortcutOps(
               this.#context,
               text,
@@ -999,6 +976,30 @@ export class TransactionPipeline {
                 source: 'user',
               })
             }
+          }
+
+          /**
+           * Applies ops built when {@link INLINE_DETECTOR_TRIGGER_CHARACTER} is typed for autolink detection.
+           *  → User typed `spaced` at the end of a recognized link.
+           */
+          if (
+            text === INLINE_DETECTOR_TRIGGER_CHARACTER &&
+            this.#autolink.enabled
+          ) {
+            // @todo: detect autolink
+            warn('autolink detection is not implemented yet.')
+          }
+
+          /** Applies inline composition ops built for mentions. */
+          if (this.#isMentioning(text)) {
+            // @todo: apply inline composition ops built for mentions
+            warn('mentions detection is not implemented yet.')
+          }
+
+          /** Applies inline composition ops built for inline command trigger. */
+          if (this.#isInlineCommandTriggering(text)) {
+            // @todo: apply inline composition ops built for inline command trigger
+            warn('inline command trigger detection is not implemented yet.')
           }
 
           return true
