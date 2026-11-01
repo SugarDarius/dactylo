@@ -560,12 +560,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         return false
       }
 
-      const { at, node } = situation
-
-      /** Shortcut is detected only when the trigger character was just appended at the tail. */
-      if (at.offset !== node.text.length) {
-        return false
-      }
+      const { node } = situation
 
       const spec = parseMarkdownMarkShortcut(node.text)
       if (
