@@ -118,6 +118,18 @@ export type InsertTextOpsRule = OperationRule<
 >
 
 /**
+ * Whether the caret sits on the outer edge of an inline text run (offset 0 or end).
+ * Structural mark-boundary inserts must only run here—not in the middle of a node
+ * (e.g. after ← from a sibling with `lastOffsetMinusOne`).
+ */
+export function isCaretAtInlineNodeEdge(
+  offset: number,
+  textLength: number,
+): boolean {
+  return offset === 0 || offset === textLength
+}
+
+/**
  * Builds operations to insert text when `activeMarks` ≠ target node marks.
  *
  * Produces `[before?][inserted_text][after?]` as separate inline nodes using:
@@ -246,6 +258,53 @@ export const cursorRules: InsertTextOpsRule[] = [
     },
   },
   {
+    /**
+     * Caret inside a text node whose marks differ from `activeMarks` (common after
+     * ←/→ across siblings). Extend that run with `insert_text`; do not split it.
+     */
+    build: ({ context, situation, input }): Operation[] | null => {
+      if (situation.kind !== 'cursor-selection') {
+        return null
+      }
+
+      const { at, block, node } = situation
+
+      return [
+        {
+          __type: 'insert_text',
+          blockId: block.id,
+          marks: node.marks,
+          nodeId: node.id,
+          offset: at.offset,
+          text: input.text,
+        },
+        {
+          __type: 'set_selection',
+          next: createCursor({
+            blockId: block.id,
+            nodeId: node.id,
+            offset: at.offset + input.text.length,
+          }),
+          prev: context.selection,
+        },
+      ]
+    },
+    name: 'cursor/interior-node/insert-text-with-node-marks',
+    when: ({ context, situation }): boolean => {
+      if (situation.kind !== 'cursor-selection') {
+        return false
+      }
+
+      const { at, node } = situation
+
+      if (isMarksEqual(node.marks, context.activeMarks)) {
+        return false
+      }
+
+      return !isCaretAtInlineNodeEdge(at.offset, node.text.length)
+    },
+  },
+  {
     build: ({ context, situation, input }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
@@ -269,9 +328,11 @@ export const cursorRules: InsertTextOpsRule[] = [
         return false
       }
 
-      const { node } = situation
-
-      return !isMarksEqual(node.marks, context.activeMarks)
+      const { at, node } = situation
+      return (
+        !isMarksEqual(node.marks, context.activeMarks) &&
+        isCaretAtInlineNodeEdge(at.offset, node.text.length)
+      )
     },
   },
 ]
@@ -314,6 +375,30 @@ export function buildInsertTextAndSelectionAtRangeOps(
         __type: 'insert_text',
         blockId: at.blockId,
         marks: context.activeMarks,
+        nodeId: at.nodeId,
+        offset: at.offset,
+        text,
+      },
+      {
+        __type: 'set_selection',
+        next: createCursor({
+          blockId: at.blockId,
+          nodeId: at.nodeId,
+          offset: at.offset + text.length,
+        }),
+        prev: range,
+      },
+    ]
+
+    return ops
+  }
+
+  if (!isCaretAtInlineNodeEdge(at.offset, node.text.length)) {
+    const ops: Operation[] = [
+      {
+        __type: 'insert_text',
+        blockId: at.blockId,
+        marks: node.marks,
         nodeId: at.nodeId,
         offset: at.offset,
         text,
