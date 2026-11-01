@@ -13,6 +13,7 @@ import {
   HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN,
   INLINE_DETECTOR_TRIGGER_CHARACTER,
   MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS,
+  MARKDOWN_MARK_SHORTCUT_REQUIRED_CHAR_BEFORE_OPEN_DELIMITER,
 } from './constants'
 import {
   computeInsertBlockPosKey,
@@ -109,9 +110,33 @@ export function isMarkdownDividerShortcut(nodeText: string): boolean {
 }
 
 /**
+ * Whether opening delimiters for an inline mark shortcut may start at
+ * `openDelimiterOffset` in `nodeText`.
+ *
+ * - At node start (`0`): always allowed (`**word**` alone).
+ * - Otherwise: the character immediately before `{@link openDelimiterOffset}` must
+ *   be whitespace so typed markdown like `Hello **there**` transforms, while
+ *   glued forms like `Hello**there**` do not..
+ */
+export function isMarkdownMarkShortcutOpenBoundary(
+  nodeText: string,
+  openDelimiterOffset: number,
+): boolean {
+  if (openDelimiterOffset === 0) {
+    return true
+  }
+  const charBefore = nodeText[openDelimiterOffset - 1]
+  if (charBefore === undefined) {
+    return false
+  }
+  return MARKDOWN_MARK_SHORTCUT_REQUIRED_CHAR_BEFORE_OPEN_DELIMITER.test(
+    charBefore,
+  )
+}
+
+/**
  * Parses a trailing `**word**` or `__word__` markdown bold shortcut
  * at the end of a node text.
- *
  * Returns spec about the location of the shortcut.
  */
 export function parseMarkdownMarkShortcut(
@@ -129,8 +154,7 @@ export function parseMarkdownMarkShortcut(
     const delimiterLength = 2
     const openDelimiterOffset = boldMatch.index
 
-    /** Rejects `prefix**hello**` or `prefix__hello__`. */
-    if (openDelimiterOffset !== 0) {
+    if (!isMarkdownMarkShortcutOpenBoundary(nodeText, openDelimiterOffset)) {
       return null
     }
 
@@ -455,11 +479,12 @@ const rules: MarkdownShortcutOpsRule[] = [
   },
   {
     /**
-     * 💡 Cursor is at the end of an inline text node whose content ends with
-     *    `**word**` or `__word__`, and the keystroke just typed is the final
-     *    closing delimiter (`*` or `_`).
-     * 🎯 Strip both delimiter pairs, apply {@link Marks} bold on `word`, and
-     *    collapse the selection at the end of that word (after formatting).
+     * 💡 Cursor is at the end of an inline text node whose content **ends with**
+     *    `**word**` or `__word__`, with opening delimiters at node start or after
+     *    whitespace (e.g. `Hello **world**`, not `Hello**world**`). The last typed
+     *    character is the final closing delimiter (`*` or `_`).
+     * 🎯 Remove both delimiter pairs, apply bold only on `word` (prefix such as
+     *    `Hello ` stays un-bold), caret after `word`.
      */
     build: ({ context, situation, input }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {

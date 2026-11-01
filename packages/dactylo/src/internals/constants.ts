@@ -169,12 +169,13 @@ export const HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN =
  * @example
  * ```txt
  * User types: * (second closing asterisk)
- * Node text: "**hello**"
- * Node text: "prefix**hello**"   ✗ (no match)
+ * Node text: "**hello**"           ✓ (whole node)
+ * Node text: "Hello **world**"    ✓ (space before opening delimiter)
+ * Node text: "Hello**world**"     ✗ (no boundary before `**`)
  * ```
  */
 export const BOLD_MARKDOWN_ASTERISK_SHORTCUT_PATTERN =
-  /^\*\*(?<word>[^*\s]+)\*\*$/u
+  /\*\*(?<word>[^*\s]+)\*\*$/u
 
 /**
  * Bold markdown shortcut with closing delimiter typed.
@@ -183,13 +184,20 @@ export const BOLD_MARKDOWN_ASTERISK_SHORTCUT_PATTERN =
  *
  * @example
  * ```txt
- * User types: _ (second closing underscore)
- * Node text: "__hello__"
- * Node text: "prefix__hello__"   ✗ (no match)
+ * Node text: "__hello__"           ✓
+ * Node text: "Hello __world__"     ✓
+ * Node text: "Hello__world__"      ✗
  * ```
  */
 export const BOLD_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN =
-  /^__(?<word>[^_\s]+)__$/u
+  /__(?<word>[^_\s]+)__$/u
+
+/**
+ * Character class for “safe” text before an opening mark delimiter when the
+ * shortcut is not at the start of the node. A single ASCII/Unicode whitespace
+ * satisfies CommonMark-style “left-flanking” typing UX (`Hello **there**`).
+ */
+export const MARKDOWN_MARK_SHORTCUT_REQUIRED_CHAR_BEFORE_OPEN_DELIMITER = /\s/u
 
 /** Allowed closing delimiters for bold markdown shortcut. */
 export const MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS = ['*', '_']
