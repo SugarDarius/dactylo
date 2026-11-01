@@ -661,31 +661,7 @@ export function applySetActiveMarksOp(
   context: EditorContext,
   op: SetActiveMarksOp,
 ): EditorContext {
-  const next = withActiveMarks(context, op.activeMarks)
-  if (op.copyTo === null) {
-    return next
-  }
-
-  const block = getBlockWithInlineContent(next.state, op.copyTo.blockId)
-  const found = findNodeInBlockWithInlineContent(block, op.copyTo.nodeId)
-  if (!found) {
-    applyError(`Node ${op.copyTo.nodeId} not found in block ${block.id}`, op)
-  }
-
-  const { index, node } = found
-
-  if (!isInlineNodeWithEditableText(node) || node.text.length > 0) {
-    return next
-  }
-
-  const content = [...block.content]
-  content[index] = {
-    ...node,
-    marks: op.activeMarks,
-    updatedAt: new Date(),
-  }
-
-  return updateBlockWithInlineContent(next, op.copyTo.blockId, content)
+  return withActiveMarks(context, op.activeMarks)
 }
 
 /** Applies a {@link SetMarksOp} operation to {@link EditorContext}. */
@@ -1068,7 +1044,6 @@ export class OperationsEngine {
         return {
           __type: 'set_active_marks',
           activeMarks: op.prevActiveMarks,
-          copyTo: op.copyTo,
           prevActiveMarks: op.activeMarks,
         }
       }

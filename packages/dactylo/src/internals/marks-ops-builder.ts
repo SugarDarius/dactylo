@@ -1,5 +1,5 @@
 import { findNodeInBlockWithInlineContent } from './blocks'
-import type { BlockId, BlockWithInlineContent } from './blocks'
+import type { BlockWithInlineContent } from './blocks'
 import { warn } from './console'
 import {
   collectTextSpansInRange,
@@ -12,7 +12,6 @@ import { DactyloError } from './errors'
 import { isMarkEnabled, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
 import { isInlineNodeWithEditableText } from './nodes'
-import type { NodeId } from './nodes'
 import type { Operation } from './operations'
 import {
   buildJoinMarkedRunOps,
@@ -95,22 +94,28 @@ export const cursorRules: MarksOpsRule[] = [
 
       const found = findNodeInBlockWithInlineContent(block, nodeId)
 
-      let copyTo: { blockId: BlockId; nodeId: NodeId } | null = null
-      if (found) {
-        const { node } = found
-        if (isInlineNodeWithEditableText(node) && node.text.length <= 0) {
-          copyTo = { blockId, nodeId }
-        }
-      }
-
       const ops: Operation[] = [
         {
           __type: 'set_active_marks',
           activeMarks: next,
-          copyTo,
           prevActiveMarks: prev,
         },
       ]
+
+      if (found) {
+        const { node } = found
+        if (isInlineNodeWithEditableText(node) && node.text.length <= 0) {
+          ops.push({
+            __type: 'set_marks',
+            blockId,
+            from: 0,
+            nextMarks: next,
+            nodeId,
+            prevMarks: prev,
+            to: node.text.length,
+          })
+        }
+      }
 
       return ops
     },
