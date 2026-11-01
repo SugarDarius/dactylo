@@ -38,7 +38,7 @@ import { HardBreakOpsBuilder } from './hard-break-ops-builder'
 import { InsertTextOpsBuilder } from './insert-text-ops-builder'
 import type { ArrowDirection } from './keyboard'
 import { MarkdownShortcutOpsBuilder } from './markdown-shortcut-ops-buider'
-import { applyNormalizedMarks, isMarksEqual } from './marks'
+import { normalizeMarks, isMarksEqual } from './marks'
 import type { MarkKey } from './marks'
 import { MarksOpsBuilder } from './marks-ops-builder'
 import { MoveSelectionOpsBuilder } from './move-selection-ops-builder'
@@ -358,7 +358,7 @@ export function validateInsertTextOp(
 
   assertOffsetInText(op.offset, node.text.length, op, 'Insert text offset')
 
-  const marks = applyNormalizedMarks(context.activeMarks, op.marks)
+  const marks = normalizeMarks(context.activeMarks, op.marks)
   if (!isMarksEqual(node.marks, marks)) {
     validationError('Insert text marks do not match node marks', op)
   }

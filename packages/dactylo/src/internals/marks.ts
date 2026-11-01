@@ -125,7 +125,7 @@ export function toggleMarkFlag(marks: Marks, mark: MarkKey): Marks {
  *
  * By design it's a cascade: Text|Link node marks > Active marks.
  */
-export function applyNormalizedMarks(
+export function normalizeMarks(
   /** Active marks in the editor context. */
   editor: Marks,
   /** Marks required for inserting a text */
