@@ -192,4 +192,4 @@ export const BOLD_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN =
   /^__(?<word>[^_\s]+)__$/u
 
 /** Allowed closing delimiters for bold markdown shortcut. */
-export const MARKDOWN_BOLD_MARK_SHORTCUT_CLOSING_DELIMITERS = ['*', '_']
+export const MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS = ['*', '_']

@@ -12,7 +12,7 @@ import {
   BOLD_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN,
   HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN,
   INLINE_DETECTOR_TRIGGER_CHARACTER,
-  MARKDOWN_BOLD_MARK_SHORTCUT_CLOSING_DELIMITERS,
+  MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS,
 } from './constants'
 import {
   computeInsertBlockPosKey,
@@ -20,7 +20,7 @@ import {
   resolveInsertAfterBlockId,
 } from './document'
 import type { EditorContext } from './editor-context'
-import type { Marks } from './marks'
+import type { MarkKey, Marks } from './marks'
 import {
   createTextNode,
   isInlineNodeWithEditableText,
@@ -148,6 +148,118 @@ export function parseMarkdownMarkShortcut(
   }
 
   return null
+}
+
+/** Builds operations for a markdown mark shortcut. */
+export function buildMarkdownMarkShortcutOps(
+  context: EditorContext,
+  block: BlockWithInlineContent,
+  node: InlineNodeWithEditableText,
+  wordEndOffset: number,
+  openDelimiterOffset: number,
+  delimiterLength: number,
+  word: string,
+  at: TextCursor,
+  mark: MarkKey,
+): Operation[] | null {
+  const prevMarks: Marks = { ...node.marks }
+  const nextMarks: Marks = { ...prevMarks, [mark]: true }
+
+  const closingDelimiterText = node.text.slice(
+    wordEndOffset,
+    wordEndOffset + delimiterLength,
+  )
+  const openingDelimiterText = node.text.slice(
+    openDelimiterOffset,
+    openDelimiterOffset + delimiterLength,
+  )
+
+  const ops: Operation[] = [
+    {
+      __type: 'delete_text',
+      blockId: block.id,
+      length: delimiterLength,
+      nodeId: node.id,
+      offset: wordEndOffset,
+      snapshot: { marks: prevMarks, text: closingDelimiterText },
+    },
+    {
+      __type: 'delete_text',
+      blockId: block.id,
+      length: delimiterLength,
+      nodeId: node.id,
+      offset: openDelimiterOffset,
+      snapshot: { marks: prevMarks, text: openingDelimiterText },
+    },
+  ]
+
+  const markFrom = openDelimiterOffset
+  const markTo = openDelimiterOffset + word.length
+
+  const previewContent = previewInlineContentAfterTrimOps(
+    block.content,
+    ops,
+    block.id,
+  )
+
+  const previewBlock = { ...block, content: previewContent }
+  const previewFound = findNodeInBlockWithInlineContent(previewBlock, node.id)
+
+  if (!previewFound || !isInlineNodeWithEditableText(previewFound.node)) {
+    return null
+  }
+
+  const previewNode = previewFound.node
+  const previewIndex = previewFound.index
+
+  const partialMarkOps = buildPartialMarkRangeOps(
+    block.id,
+    previewNode,
+    previewIndex,
+    markFrom,
+    markTo,
+    nextMarks,
+    prevMarks,
+  )
+
+  if (partialMarkOps === null) {
+    /** Whole-node mark applied (typical mark shortcut with no prefix text). */
+    ops.push({
+      __type: 'set_marks',
+      blockId: block.id,
+      from: markFrom,
+      nextMarks,
+      nodeId: previewNode.id,
+      prevMarks,
+      to: markTo,
+    })
+  } else {
+    ops.push(...partialMarkOps)
+  }
+
+  const linearAt = getLinearOffsetInBlock(block, at)
+  const targetLinear = linearAt - delimiterLength * 2
+
+  const previewAfterAll = previewInlineContentAfterTrimOps(
+    block.content,
+    ops,
+    block.id,
+  )
+
+  const nextAnchor = cursorAnchorFromLinearOffsetInBlock(
+    block.id,
+    { ...block, content: previewAfterAll },
+    targetLinear,
+    snapOffsetToTextLength,
+  )
+
+  ops.push({
+    __type: 'set_selection',
+    next: createCursor(nextAnchor),
+    prev: context.selection,
+  })
+
+  return ops
 }
 
 const rules: MarkdownShortcutOpsRule[] = [
@@ -360,114 +472,26 @@ const rules: MarkdownShortcutOpsRule[] = [
       if (
         spec === null ||
         spec.kind !== 'bold' ||
-        !MARKDOWN_BOLD_MARK_SHORTCUT_CLOSING_DELIMITERS.includes(input.text)
+        !MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS.includes(
+          input.text,
+        )
       ) {
         return null
       }
 
       const { delimiterLength, openDelimiterOffset, word, wordEndOffset } = spec
 
-      const prevMarks: Marks = { ...node.marks }
-      const nextMarks: Marks = { ...prevMarks, bold: true }
-
-      const closingDelimiterText = node.text.slice(
+      return buildMarkdownMarkShortcutOps(
+        context,
+        block,
+        node,
         wordEndOffset,
-        wordEndOffset + delimiterLength,
-      )
-      const openingDelimiterText = node.text.slice(
         openDelimiterOffset,
-        openDelimiterOffset + delimiterLength,
+        delimiterLength,
+        word,
+        at,
+        'bold',
       )
-
-      const ops: Operation[] = [
-        {
-          __type: 'delete_text',
-          blockId: block.id,
-          length: delimiterLength,
-          nodeId: node.id,
-          offset: wordEndOffset,
-          snapshot: { marks: prevMarks, text: closingDelimiterText },
-        },
-        {
-          __type: 'delete_text',
-          blockId: block.id,
-          length: delimiterLength,
-          nodeId: node.id,
-          offset: openDelimiterOffset,
-          snapshot: { marks: prevMarks, text: openingDelimiterText },
-        },
-      ]
-
-      const markFrom = openDelimiterOffset
-      const markTo = openDelimiterOffset + word.length
-
-      const previewContent = previewInlineContentAfterTrimOps(
-        block.content,
-        ops,
-        block.id,
-      )
-
-      const previewBlock = { ...block, content: previewContent }
-      const previewFound = findNodeInBlockWithInlineContent(
-        previewBlock,
-        node.id,
-      )
-
-      if (!previewFound || !isInlineNodeWithEditableText(previewFound.node)) {
-        return null
-      }
-
-      const previewNode = previewFound.node
-      const previewIndex = previewFound.index
-
-      const partialMarkOps = buildPartialMarkRangeOps(
-        block.id,
-        previewNode,
-        previewIndex,
-        markFrom,
-        markTo,
-        nextMarks,
-        prevMarks,
-      )
-
-      if (partialMarkOps === null) {
-        /** Whole-node mark applied (typical mark shortcut with no prefix text). */
-        ops.push({
-          __type: 'set_marks',
-          blockId: block.id,
-          from: markFrom,
-          nextMarks,
-          nodeId: previewNode.id,
-          prevMarks,
-          to: markTo,
-        })
-      } else {
-        ops.push(...partialMarkOps)
-      }
-
-      const linearAt = getLinearOffsetInBlock(block, at)
-      const targetLinear = linearAt - delimiterLength * 2
-
-      const previewAfterAll = previewInlineContentAfterTrimOps(
-        block.content,
-        ops,
-        block.id,
-      )
-
-      const nextAnchor = cursorAnchorFromLinearOffsetInBlock(
-        block.id,
-        { ...block, content: previewAfterAll },
-        targetLinear,
-        snapOffsetToTextLength,
-      )
-
-      ops.push({
-        __type: 'set_selection',
-        next: createCursor(nextAnchor),
-        prev: context.selection,
-      })
-
-      return ops
     },
     name: 'cursor/bold-mark/inline-closing-delimiter',
     when: ({ situation, input }): boolean => {
@@ -486,7 +510,9 @@ const rules: MarkdownShortcutOpsRule[] = [
       if (
         spec === null ||
         spec.kind !== 'bold' ||
-        !MARKDOWN_BOLD_MARK_SHORTCUT_CLOSING_DELIMITERS.includes(input.text)
+        !MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS.includes(
+          input.text,
+        )
       ) {
         return false
       }
