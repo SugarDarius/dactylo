@@ -11,7 +11,7 @@ import { isMarksEqual } from './marks'
 import type { Marks } from './marks'
 import {
   coalesceInlineNodes,
-  createTextNode,
+  createFromInlineWithEditableText,
   isInlineNodeWithEditableText,
 } from './nodes'
 import type { InlineNodeWithEditableText } from './nodes'
@@ -142,7 +142,7 @@ export function buildInsertTextWithMarkBoundaryOps(
   const before = node.text.slice(0, cursor.offset)
   const after = node.text.slice(cursor.offset)
 
-  const insertNode = createTextNode({
+  const insertNode = createFromInlineWithEditableText(node, {
     marks: activeMarks,
     metadata: node.metadata,
     text,
@@ -181,7 +181,7 @@ export function buildInsertTextWithMarkBoundaryOps(
       __type: 'insert_inline_node',
       blockId,
       index: insertIndex + 1,
-      node: createTextNode({
+      node: createFromInlineWithEditableText(node, {
         marks: node.marks,
         metadata: node.metadata,
         text: after,
