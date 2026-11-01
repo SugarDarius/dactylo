@@ -653,7 +653,7 @@ export function stepCursorLeft(
      *  3. We return the last offset - 1 of the node if it is an editable text node.
      */
     let prevNode = prevFound.node
-    const prevIndex = prevFound.index
+    let prevIndex = prevFound.index
 
     while (prevNode && isLineBreakNode(prevNode)) {
       const beforeFound = findPreviousNodeInBlockWithInlineContent(
@@ -664,6 +664,7 @@ export function stepCursorLeft(
         return null
       }
       prevNode = beforeFound.node
+      prevIndex = beforeFound.index
     }
 
     if (isMentionNode(prevNode)) {
@@ -723,14 +724,16 @@ export function stepCursorRight(
      *  3. We return the first offset of the node if it is an editable text node.
      */
     let nextNode = nextFound.node
-    const nextIndex = nextFound.index
+    let nextIndex = nextFound.index
 
     while (nextNode && isLineBreakNode(nextNode)) {
       const afterFound = findNextNodeInBlockWithInlineContent(block, nextIndex)
       if (!afterFound) {
         return null
       }
+
       nextNode = afterFound.node
+      nextIndex = afterFound.index
     }
 
     if (isMentionNode(nextNode)) {
