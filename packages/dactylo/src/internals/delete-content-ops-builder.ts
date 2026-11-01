@@ -329,7 +329,6 @@ export const cursorRules: DeleteContentOpsRule[] = [
           ops.push({
             __type: 'insert_text',
             blockId: block.id,
-            marks: node.marks,
             nodeId: before.id,
             offset: before.text.length,
             text: node.text,
@@ -414,7 +413,6 @@ export const cursorRules: DeleteContentOpsRule[] = [
         {
           __type: 'insert_text',
           blockId: block.id,
-          marks: node.marks,
           nodeId: prevNode.id,
           offset: mergeOffset,
           text: mergingText,
@@ -541,7 +539,6 @@ export const cursorRules: DeleteContentOpsRule[] = [
           nodeId: at.nodeId,
           offset: start,
           snapshot: {
-            marks: node.marks,
             text: node.text.slice(start, start + length),
           },
         },
@@ -625,7 +622,6 @@ export const cursorRules: DeleteContentOpsRule[] = [
           nodeId: at.nodeId,
           offset: start,
           snapshot: {
-            marks: node.marks,
             text: node.text.slice(start, start + length),
           },
         },

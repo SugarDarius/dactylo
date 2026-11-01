@@ -159,7 +159,6 @@ export function buildPastePlainTextSingleLineAtCaretOps(
       {
         __type: 'insert_text',
         blockId: block.id,
-        marks: node.marks,
         nodeId: node.id,
         offset: at.offset,
         text: line,
@@ -206,7 +205,7 @@ export function buildPastePlainTextSingleLineAtCaretOps(
       length: after.length,
       nodeId: node.id,
       offset: at.offset,
-      snapshot: { marks: node.marks, text: after },
+      snapshot: { text: after },
     })
   }
 
@@ -239,7 +238,6 @@ export function buildPastePlainTextSingleLineAtCaretOps(
       ops.push({
         __type: 'insert_text',
         blockId: block.id,
-        marks: node.marks,
         nodeId: node.id,
         offset: at.offset,
         text: firstSlice.text,
@@ -506,7 +504,6 @@ export const rangeRules: PastePlainTextOpsRule[] = [
         nodeId: node.id,
         offset: deleteOffset,
         snapshot: {
-          marks: node.marks,
           text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
         },
       }

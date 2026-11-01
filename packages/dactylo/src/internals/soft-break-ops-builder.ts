@@ -200,7 +200,6 @@ export const cursorRules: SoftBreakOpsRule[] = [
               nodeId: node.id,
               offset: at.offset,
               snapshot: {
-                marks: node.marks,
                 text: tailText,
               },
             },
@@ -246,7 +245,6 @@ export const cursorRules: SoftBreakOpsRule[] = [
               nodeId: node.id,
               offset: at.offset,
               snapshot: {
-                marks: node.marks,
                 text: tailText,
               },
             },
@@ -353,7 +351,7 @@ export function buildSoftBreakInlineOpsAtCaret(
           length: tailText.length,
           nodeId: node.id,
           offset: at.offset,
-          snapshot: { marks: node.marks, text: tailText },
+          snapshot: { text: tailText },
         },
         {
           __type: 'insert_inline_node',
@@ -393,7 +391,7 @@ export function buildSoftBreakInlineOpsAtCaret(
           length: tailText.length,
           nodeId: node.id,
           offset: at.offset,
-          snapshot: { marks: node.marks, text: tailText },
+          snapshot: { text: tailText },
         },
         {
           __type: 'insert_inline_node',
@@ -521,7 +519,6 @@ export const rangeRules: SoftBreakOpsRule[] = [
         nodeId: node.id,
         offset: deleteOffset,
         snapshot: {
-          marks: node.marks,
           text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
         },
       }

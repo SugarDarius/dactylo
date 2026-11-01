@@ -117,7 +117,7 @@ export function toggleMarkFlag(marks: Marks, mark: MarkKey): Marks {
 }
 
 /**
- * Normalizes marks between active marks and a text node marks.
+ * Normalizes marks between active marks and an operation marks.
  *
  * When a text is inserted not by typing a character, then it means the text node is
  * inserted by an external source (e.g: copy/paste, Ai agent). So in that case the intent
@@ -125,11 +125,18 @@ export function toggleMarkFlag(marks: Marks, mark: MarkKey): Marks {
  *
  * By design it's a cascade: Text|Link node marks > Active marks.
  */
-export function normalizeMarks(
+export function normalizeMarks(params: {
   /** Active marks in the editor context. */
-  editor: Marks,
+  node: Marks
   /** Marks required for inserting a text */
-  text: Marks,
-): Marks {
-  return { ...editor, ...text }
+  active: Marks
+}): Marks {
+  const { node, active } = params
+  return {
+    bold: node.bold || active.bold,
+    code: node.code || active.code,
+    italic: node.italic || active.italic,
+    strikethrough: node.strikethrough || active.strikethrough,
+    underline: node.underline || active.underline,
+  }
 }

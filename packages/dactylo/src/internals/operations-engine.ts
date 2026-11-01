@@ -38,7 +38,6 @@ import { HardBreakOpsBuilder } from './hard-break-ops-builder'
 import { InsertTextOpsBuilder } from './insert-text-ops-builder'
 import type { ArrowDirection } from './keyboard'
 import { MarkdownShortcutOpsBuilder } from './markdown-shortcut-ops-buider'
-import { normalizeMarks, isMarksEqual } from './marks'
 import type { MarkKey } from './marks'
 import { MarksOpsBuilder } from './marks-ops-builder'
 import { MoveSelectionOpsBuilder } from './move-selection-ops-builder'
@@ -357,11 +356,6 @@ export function validateInsertTextOp(
   const { node } = requireInlineNodeWithEditableText(block, op.nodeId, op)
 
   assertOffsetInText(op.offset, node.text.length, op, 'Insert text offset')
-
-  const marks = normalizeMarks(context.activeMarks, op.marks)
-  if (!isMarksEqual(node.marks, marks)) {
-    validationError('Insert text marks do not match node marks', op)
-  }
 }
 
 /** Validates a {@link DeleteTextOp} operation. */
@@ -1041,7 +1035,6 @@ export class OperationsEngine {
           nodeId: op.nodeId,
           offset: op.offset,
           snapshot: {
-            marks: op.marks,
             text: op.text,
           },
         }
@@ -1050,7 +1043,6 @@ export class OperationsEngine {
         return {
           __type: 'insert_text',
           blockId: op.blockId,
-          marks: op.snapshot.marks,
           nodeId: op.nodeId,
           offset: op.offset,
           text: op.snapshot.text,

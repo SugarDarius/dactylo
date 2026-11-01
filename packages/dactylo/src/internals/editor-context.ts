@@ -8,7 +8,11 @@ import {
   replaceBlock,
 } from './document'
 import type { DocumentState } from './document'
-import { createInitialActiveMarks, isMarkEnabled } from './marks'
+import {
+  createInitialActiveMarks,
+  isMarkEnabled,
+  normalizeMarks,
+} from './marks'
 import type { MarkKey, Marks } from './marks'
 import { coalesceInlineNodes, isInlineNodeWithEditableText } from './nodes'
 import type { InlineNode } from './nodes'
@@ -223,7 +227,12 @@ export function isMarkActiveInContext(
       return false
     }
 
-    return isMarkEnabled(found.node.marks, mark)
+    const normalized = normalizeMarks({
+      active: activeMarks,
+      node: found.node.marks,
+    })
+
+    return isMarkEnabled(normalized, mark)
   } else if (selection.__type === 'range') {
     const normalized = normalizeRange(context.state, selection)
     const spans = collectTextSpansInRange(context.state, normalized)

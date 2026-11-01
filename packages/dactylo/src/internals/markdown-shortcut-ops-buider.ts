@@ -205,7 +205,7 @@ export function buildMarkdownMarkShortcutOps(
       length: delimiterLength,
       nodeId: node.id,
       offset: wordEndOffset,
-      snapshot: { marks: prevMarks, text: closingDelimiterText },
+      snapshot: { text: closingDelimiterText },
     },
     {
       __type: 'delete_text',
@@ -213,7 +213,7 @@ export function buildMarkdownMarkShortcutOps(
       length: delimiterLength,
       nodeId: node.id,
       offset: openDelimiterOffset,
-      snapshot: { marks: prevMarks, text: openingDelimiterText },
+      snapshot: { text: openingDelimiterText },
     },
   ]
 
@@ -322,7 +322,7 @@ const rules: MarkdownShortcutOpsRule[] = [
           length: node.text.length,
           nodeId: node.id,
           offset: 0,
-          snapshot: { marks: node.marks, text: node.text },
+          snapshot: { text: node.text },
         },
         {
           __type: 'set_selection',

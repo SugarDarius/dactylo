@@ -7,7 +7,7 @@ import {
   normalizeRange,
 } from './document'
 import type { EditorContext } from './editor-context'
-import { isMarksEqual } from './marks'
+import { isMarksEqual, normalizeMarks } from './marks'
 import type { Marks } from './marks'
 import {
   coalesceInlineNodes,
@@ -128,7 +128,7 @@ export type InsertTextOpsRule = OperationRule<
  * Does not emit `insert_text` on the original node for the new character.
  */
 export function buildInsertTextWithMarkBoundaryOps(
-  activeMarks: Marks,
+  typingMarks: Marks,
   cursor: TextCursor,
   text: string,
   /** Target node at the caret (text or link). */
@@ -139,16 +139,16 @@ export function buildInsertTextWithMarkBoundaryOps(
   /** Previous selection for undo inversion. */
   prevSelection: Selection | null,
 ): Operation[] {
+  const ops: Operation[] = []
+
   const before = node.text.slice(0, cursor.offset)
   const after = node.text.slice(cursor.offset)
 
   const insertNode = createFromInlineWithEditableText(node, {
-    marks: activeMarks,
+    marks: typingMarks,
     metadata: node.metadata,
     text,
   })
-
-  const ops: Operation[] = []
 
   /** Trim tail so the surviving node is only `before`. */
   if (after.length > 0) {
@@ -158,7 +158,7 @@ export function buildInsertTextWithMarkBoundaryOps(
       length: after.length,
       nodeId: node.id,
       offset: cursor.offset,
-      snapshot: { marks: node.marks, text: after },
+      snapshot: { text: after },
     })
   }
 
@@ -202,6 +202,54 @@ export function buildInsertTextWithMarkBoundaryOps(
   return ops
 }
 
+/** Builds operations to insert text at a cursor selection. */
+export function buildCursorInsertTextOps(
+  context: EditorContext,
+  at: TextCursor,
+  block: BlockWithInlineContent,
+  node: InlineNodeWithEditableText,
+  index: number,
+  text: string,
+): Operation[] {
+  const typingMarks = normalizeMarks({
+    active: context.activeMarks,
+    node: node.marks,
+  })
+
+  if (isMarksEqual(typingMarks, node.marks)) {
+    const ops: Operation[] = [
+      {
+        __type: 'insert_text',
+        blockId: block.id,
+        nodeId: node.id,
+        offset: at.offset,
+        text,
+      },
+      {
+        __type: 'set_selection',
+        next: createCursor({
+          blockId: block.id,
+          nodeId: node.id,
+          offset: at.offset + text.length,
+        }),
+        prev: context.selection,
+      },
+    ]
+
+    return ops
+  }
+
+  return buildInsertTextWithMarkBoundaryOps(
+    typingMarks,
+    at,
+    text,
+    node,
+    index,
+    block.id,
+    context.selection,
+  )
+}
+
 /** Rules for cursor selection. */
 export const cursorRules: InsertTextOpsRule[] = [
   {
@@ -210,68 +258,19 @@ export const cursorRules: InsertTextOpsRule[] = [
         return null
       }
 
-      const { at, block, node } = situation
-
-      const ops: Operation[] = [
-        {
-          __type: 'insert_text',
-          blockId: block.id,
-          marks: context.activeMarks,
-          nodeId: node.id,
-          offset: at.offset,
-          text: input.text,
-        },
-        {
-          __type: 'set_selection',
-          next: createCursor({
-            blockId: block.id,
-            nodeId: node.id,
-            offset: at.offset + input.text.length,
-          }),
-          prev: context.selection,
-        },
-      ]
-
-      return ops
-    },
-    name: 'cursor/match-active-marks/insert-text',
-    when: ({ context, situation }): boolean => {
-      if (situation.kind !== 'cursor-selection') {
-        return false
-      }
-
-      const { node } = situation
-
-      return isMarksEqual(node.marks, context.activeMarks)
-    },
-  },
-  {
-    build: ({ context, situation, input }): Operation[] | null => {
-      if (situation.kind !== 'cursor-selection') {
-        return null
-      }
-
       const { at, block, node, index } = situation
 
-      return buildInsertTextWithMarkBoundaryOps(
-        context.activeMarks,
+      return buildCursorInsertTextOps(
+        context,
         at,
-        input.text,
+        block,
         node,
         index,
-        block.id,
-        context.selection,
+        input.text,
       )
     },
-    name: 'cursor/mark-boundary/structural-insert-text',
-    when: ({ context, situation }): boolean => {
-      if (situation.kind !== 'cursor-selection') {
-        return false
-      }
-
-      const { node } = situation
-      return !isMarksEqual(node.marks, context.activeMarks)
-    },
+    name: 'cursor/insert-text',
+    when: ({ situation }): boolean => situation.kind === 'cursor-selection',
   },
 ]
 
@@ -306,13 +305,16 @@ export function buildInsertTextAndSelectionAtRangeOps(
     blockSnapshot ?? getBlockWithInlineContent(context.state, at.blockId)
 
   const { node, index } = resolveTextInsertTarget(block, prefixOps, at)
+  const typingMarks = normalizeMarks({
+    active: context.activeMarks,
+    node: node.marks,
+  })
 
-  if (isMarksEqual(node.marks, context.activeMarks)) {
+  if (isMarksEqual(typingMarks, node.marks)) {
     const ops: Operation[] = [
       {
         __type: 'insert_text',
         blockId: at.blockId,
-        marks: context.activeMarks,
         nodeId: at.nodeId,
         offset: at.offset,
         text,
@@ -332,7 +334,7 @@ export function buildInsertTextAndSelectionAtRangeOps(
   }
 
   return buildInsertTextWithMarkBoundaryOps(
-    context.activeMarks,
+    typingMarks,
     at,
     text,
     node,
@@ -379,7 +381,6 @@ export const rangeRules: InsertTextOpsRule[] = [
         nodeId: node.id,
         offset: deleteOffset,
         snapshot: {
-          marks: node.marks,
           text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
         },
       }

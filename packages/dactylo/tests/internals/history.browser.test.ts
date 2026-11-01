@@ -23,7 +23,6 @@ const createInsertHistoryEntry = (opts: {
   const op: InsertTextOp = {
     __type: 'insert_text',
     blockId: opts.blockId,
-    marks: {},
     nodeId: opts.nodeId,
     offset: opts.offset,
     text: opts.char,
@@ -37,7 +36,7 @@ const createInsertHistoryEntry = (opts: {
         length: opts.char.length,
         nodeId: opts.nodeId,
         offset: opts.offset,
-        snapshot: { marks: {}, text: opts.char },
+        snapshot: { text: opts.char },
       },
     ],
     ops: [op],
@@ -111,7 +110,6 @@ const createTypingHistoryEntry = (opts: {
   const insert: InsertTextOp = {
     __type: 'insert_text',
     blockId: opts.blockId,
-    marks: {},
     nodeId: opts.nodeId,
     offset: opts.offset,
     text: opts.char,
@@ -172,7 +170,7 @@ describe('Order inverse ops', () => {
         length: 1,
         nodeId: 'nd_0001' as NodeId,
         offset: 0,
-        snapshot: { marks: {}, text: 'a' },
+        snapshot: { text: 'a' },
       },
     ])
 
@@ -346,7 +344,7 @@ describe('History', () => {
             length: 1,
             nodeId,
             offset: 0,
-            snapshot: { marks: {}, text: ' ' },
+            snapshot: { text: ' ' },
           },
           {
             __type: 'remove_inline_node',

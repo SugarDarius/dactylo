@@ -577,7 +577,6 @@ export function buildDeleteTextRunOps(
       nodeId: node.id,
       offset: from,
       snapshot: {
-        marks: node.marks,
         text: node.text.slice(from, to),
       },
     },
@@ -832,7 +831,6 @@ export function buildDeleteRangeWithinBlockOps(
       nodeId: fNode.id,
       offset: 0,
       snapshot: {
-        marks: fNode.marks,
         text: fNode.text.slice(0, focus.offset),
       },
     })
@@ -849,7 +847,6 @@ export function buildDeleteRangeWithinBlockOps(
         nodeId: aNode.id,
         offset: anchor.offset,
         snapshot: {
-          marks: aNode.marks,
           text: aNode.text.slice(anchor.offset),
         },
       })
@@ -892,7 +889,6 @@ export function buildDeleteRangeWithinBlockOps(
       ops.push({
         __type: 'insert_text',
         blockId: block.id,
-        marks: aNode.marks,
         nodeId: aNode.id,
         offset: anchor.offset,
         text: tailText,
@@ -976,7 +972,6 @@ export function buildForwardTrimBlockOps(
         nodeId: fromNode.id,
         offset: from.offset,
         snapshot: {
-          marks: fromNode.marks,
           text: fromNode.text.slice(from.offset),
         },
       })
@@ -1042,7 +1037,6 @@ export function buildBackwardTrimBlockOps(
       nodeId: toNode.id,
       offset: 0,
       snapshot: {
-        marks: toNode.marks,
         text: toNode.text.slice(0, to.offset),
       },
     })
@@ -1304,7 +1298,6 @@ export function buildJoinMarkedRunOps(
     ops.push({
       __type: 'insert_text',
       blockId,
-      marks: prefix.marks,
       nodeId: prefix.id,
       offset: prefix.text.length,
       text: joinText,
@@ -1362,7 +1355,6 @@ export function buildPartialMarkRangeOps(
         nodeId: node.id,
         offset: from,
         snapshot: {
-          marks: node.marks,
           text: tail,
         },
       },
@@ -1396,7 +1388,7 @@ export function buildPartialMarkRangeOps(
       length: afterText.length,
       nodeId: node.id,
       offset: to,
-      snapshot: { marks: node.marks, text: afterText },
+      snapshot: { text: afterText },
     })
   }
 

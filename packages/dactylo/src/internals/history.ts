@@ -239,7 +239,6 @@ export function buildCoalescedDeleteEntry(
       nodeId: prev.nodeId,
       offset: mergedOffset,
       snapshot: {
-        marks: next.snapshot.marks ?? prev.snapshot.marks ?? {},
         text: mergedText,
       },
     },
@@ -260,7 +259,6 @@ export function buildCoalescedDeleteEntry(
     {
       __type: 'insert_text',
       blockId: prev.blockId,
-      marks: next.snapshot.marks ?? prev.snapshot.marks,
       nodeId: prev.nodeId,
       offset: mergedOffset,
       text: mergedText,
@@ -297,7 +295,6 @@ export function buildCoalescedTypingEntry(
     {
       __type: 'insert_text',
       blockId: prev.blockId,
-      marks: next.marks,
       nodeId: prev.nodeId,
       offset: prev.offset,
       text: merged,
@@ -323,7 +320,6 @@ export function buildCoalescedTypingEntry(
       nodeId: prev.nodeId,
       offset: prev.offset,
       snapshot: {
-        marks: prev.marks ?? {},
         text: merged,
       },
     },

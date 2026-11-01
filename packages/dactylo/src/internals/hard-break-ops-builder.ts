@@ -390,7 +390,6 @@ export const rangeRules: HardBreakOpsRule[] = [
         nodeId: node.id,
         offset: deleteOffset,
         snapshot: {
-          marks: node.marks,
           text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
         },
       }
