@@ -419,12 +419,6 @@ export function cursorAtInlineNodeEnd(
   blockId: BlockId,
   node: InlineNode,
 ): TextCursor {
-  if (node.__type === 'line_break') {
-    return { blockId, nodeId: node.id, offset: 0 }
-  }
-  if (node.__type === 'text') {
-    return { blockId, nodeId: node.id, offset: node.text.length }
-  }
   return { blockId, nodeId: node.id, offset: getInlineNodeTextLength(node) }
 }
 
