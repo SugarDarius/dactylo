@@ -298,12 +298,14 @@ export function buildMarkdownMarkShortcutOps(
       metadata: cursorNode.metadata,
       text: '',
     })
+
     ops.push({
       __type: 'insert_inline_node',
       blockId: block.id,
       index: cursorIndex + 1,
       node: insertedNode,
     })
+
     nextAnchor = {
       blockId: block.id,
       nodeId: insertedNode.id,

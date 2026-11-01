@@ -683,6 +683,17 @@ export function applySetMarksOp(
     return context
   }
 
+  /**
+   * Partial-range marks are split in {@link MarksOpsBuilder} via structural ops.
+   * Engine only applies whole-node mark updates (range equals full node text).
+   */
+  if (op.from !== 0 || op.to !== node.text.length) {
+    applyError(
+      'Partial `set_marks` must be preceded by structural split ops from MarksOpsBuilder',
+      op,
+    )
+  }
+
   content[index] = {
     ...node,
     marks: op.nextMarks,

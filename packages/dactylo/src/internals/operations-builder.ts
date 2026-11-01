@@ -1382,26 +1382,14 @@ export function buildPartialMarkRangeOps(
   }
 
   if (afterText.length > 0) {
-    ops.push(
-      {
-        __type: 'delete_text',
-        blockId,
-        length: afterText.length,
-        nodeId: node.id,
-        offset: to,
-        snapshot: { text: afterText },
-      },
-
-      {
-        __type: 'insert_inline_node',
-        blockId,
-        index: nodeIndex + 1,
-        node: createFromInlineWithEditableText(node, {
-          marks: prevMarks,
-          text: afterText,
-        }),
-      },
-    )
+    ops.push({
+      __type: 'delete_text',
+      blockId,
+      length: afterText.length,
+      nodeId: node.id,
+      offset: to,
+      snapshot: { text: afterText },
+    })
   }
 
   ops.push({
@@ -1413,6 +1401,18 @@ export function buildPartialMarkRangeOps(
     prevMarks,
     to: middleLen,
   })
+
+  if (afterText.length > 0) {
+    ops.push({
+      __type: 'insert_inline_node',
+      blockId,
+      index: nodeIndex + 1,
+      node: createFromInlineWithEditableText(node, {
+        marks: prevMarks,
+        text: afterText,
+      }),
+    })
+  }
 
   return ops
 }

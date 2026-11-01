@@ -175,7 +175,7 @@ export const HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN =
  * ```
  */
 export const BOLD_MARKDOWN_ASTERISK_SHORTCUT_PATTERN =
-  /\*\*(?<word>[^*\s]+)\*\*$/u
+  /\*\*(?<word>\S(?:[^*]*\S)?)\*\*$/u
 
 /**
  * Bold markdown shortcut with closing delimiter typed.
@@ -190,7 +190,7 @@ export const BOLD_MARKDOWN_ASTERISK_SHORTCUT_PATTERN =
  * ```
  */
 export const BOLD_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN =
-  /__(?<word>[^_\s]+)__$/u
+  /__(?<word>\S(?:[^_]*\S)?)__$/u
 
 /**
  * Character class for “safe” text before an opening mark delimiter when the
