@@ -28,7 +28,7 @@ import {
   cursorAtBlockStart,
   cursorAtInlineNodeEnd,
   cursorAtInlineNodeStart,
-  cursorFromLinearOffsetInBlock,
+  cursorAnchorFromLinearOffsetInBlock,
   getBlockLinearLength,
   getVisualLineContext,
   getVisualLineStartLinears,
@@ -582,7 +582,7 @@ export function stepCursorVerticalWithinBlock(
     const prevLineLen = prevLineEnd - prevLineStart
     const targetLinear =
       prevLineStart + Math.min(ctx.column, Math.max(0, prevLineLen))
-    return cursorFromLinearOffsetInBlock(
+    return cursorAnchorFromLinearOffsetInBlock(
       block.id,
       block,
       targetLinear,
@@ -600,7 +600,7 @@ export function stepCursorVerticalWithinBlock(
   const nextLineLen = nextLineEnd - nextLineStart
   const targetLinear =
     nextLineStart + Math.min(ctx.column, Math.max(0, nextLineLen))
-  return cursorFromLinearOffsetInBlock(
+  return cursorAnchorFromLinearOffsetInBlock(
     block.id,
     block,
     targetLinear,
@@ -721,7 +721,7 @@ export function stepCursorUp(
   const targetLinear =
     lastLineStart + Math.min(ctx.column, Math.max(0, lastLineLen))
 
-  return cursorFromLinearOffsetInBlock(
+  return cursorAnchorFromLinearOffsetInBlock(
     prevBlock.id,
     prevBlock,
     targetLinear,
@@ -769,7 +769,7 @@ export function stepCursorDown(
   const targetLinear =
     firstLineStart + Math.min(ctx.column, Math.max(0, firstLineLen))
 
-  return cursorFromLinearOffsetInBlock(
+  return cursorAnchorFromLinearOffsetInBlock(
     nextBlock.id,
     nextBlock,
     targetLinear,

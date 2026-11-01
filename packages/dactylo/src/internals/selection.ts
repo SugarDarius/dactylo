@@ -429,7 +429,7 @@ export function cursorAtInlineNodeEnd(
 }
 
 /** Creates a cursor from a linear offset in a block. */
-export function cursorFromLinearOffsetInBlock(
+export function cursorAnchorFromLinearOffsetInBlock(
   blockId: BlockId,
   block: BlockWithInlineContent,
   linear: number,

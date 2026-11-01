@@ -25,7 +25,7 @@ import type { Operation } from './operations'
 import {
   createCursor,
   createRange,
-  cursorFromLinearOffsetInBlock,
+  cursorAnchorFromLinearOffsetInBlock,
   getLinearOffsetInBlock,
   snapOffsetToTextLength,
 } from './selection'
@@ -117,6 +117,32 @@ export type InsertBlockSpec = Relax<
     }
 >
 
+/**
+ * Describes spec location about a markdown shortcut mark.
+ * All offset are in the string before delimiter removal.
+ */
+export type MarkdownMarkShortcutSpec = {
+  /** Length of each delimiter run. */
+  readonly delimiterLength: number
+
+  /** Index where the opening delimiter starts (inclusive). */
+  readonly openDelimiterOffset: number
+
+  /** Index where the marked word starts (after opening delimiter). */
+  readonly wordStartOffset: number
+
+  /** Index where the marked word ends (exclusive, before closing delimiter). */
+  readonly wordEndOffset: number
+
+  /** The inner word without delimiters. */
+  readonly word: string
+} & Relax<
+  | {
+      readonly kind: 'bold'
+    }
+  | { readonly kind: 'italic' }
+>
+
 /** Configuration for autolink detection. */
 export interface OperationsBuilderAutolinkConfig {
   /** Whether to enable autolink detection. */
@@ -154,7 +180,7 @@ export interface OperationRule<S, I, R> {
 }
 
 /**
- * Iterates over the rules that should be applied to the given situation and input..
+ * Iterates over the rules that should be applied to the given situation and input.
  * @yields {(params: { context: EditorContext, situation: S, input: I}) => Operation[] | null} The build function for the rule.
  */
 export function* iterRules<S, I, R>(params: {
@@ -499,7 +525,7 @@ export function resolvesMarkToggleSelectionAfterDocOps(
   )
 
   const anchorLinear = getLinearOffsetInBlock(anchorBlock, range.anchor)
-  const nextAnchor = cursorFromLinearOffsetInBlock(
+  const nextAnchor = cursorAnchorFromLinearOffsetInBlock(
     anchorBlock.id,
     { ...anchorBlock, content: anchorPreview },
     anchorLinear,
@@ -514,7 +540,7 @@ export function resolvesMarkToggleSelectionAfterDocOps(
   )
 
   const focusLinear = getLinearOffsetInBlock(focusBlock, range.focus)
-  const nextFocus = cursorFromLinearOffsetInBlock(
+  const nextFocus = cursorAnchorFromLinearOffsetInBlock(
     focusBlock.id,
     { ...focusBlock, content: focusPreview },
     focusLinear,

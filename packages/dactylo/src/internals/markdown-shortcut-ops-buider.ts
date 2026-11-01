@@ -8,8 +8,11 @@ import type { BlockWithInlineContent, HeadingBlock } from './blocks'
 import { warn } from './console'
 import {
   ATX_MARKDOWN_HEADING_WITH_TRIGGER_SPACE_PATTERN,
+  BOLD_MARKDOWN_ASTERISK_SHORTCUT_PATTERN,
+  BOLD_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN,
   HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN,
   INLINE_DETECTOR_TRIGGER_CHARACTER,
+  MARKDOWN_BOLD_MARK_SHORTCUT_CLOSING_DELIMITERS,
 } from './constants'
 import {
   computeInsertBlockPosKey,
@@ -17,6 +20,7 @@ import {
   resolveInsertAfterBlockId,
 } from './document'
 import type { EditorContext } from './editor-context'
+import type { Marks } from './marks'
 import {
   createTextNode,
   isInlineNodeWithEditableText,
@@ -24,13 +28,26 @@ import {
 } from './nodes'
 import type { InlineNodeWithEditableText } from './nodes'
 import type { Operation } from './operations'
-import { buildError, iterRules } from './operations-builder'
+import {
+  buildError,
+  buildPartialMarkRangeOps,
+  iterRules,
+  previewInlineContentAfterTrimOps,
+} from './operations-builder'
 import type {
   BuilderOpsIntent,
+  MarkdownMarkShortcutSpec,
   OperationRule,
   OperationsBuilder,
 } from './operations-builder'
-import { createCursor, isRangeSelection, isSelectionActive } from './selection'
+import {
+  createCursor,
+  cursorAnchorFromLinearOffsetInBlock,
+  getLinearOffsetInBlock,
+  isRangeSelection,
+  isSelectionActive,
+  snapOffsetToTextLength,
+} from './selection'
 import type { TextCursor } from './selection'
 
 /** Situation with no selection. */
@@ -91,13 +108,56 @@ export function isMarkdownDividerShortcut(nodeText: string): boolean {
   return HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN.test(nodeText)
 }
 
+/**
+ * Parses a trailing `**word**` or `__word__` markdown bold shortcut
+ * at the end of a node text.
+ *
+ * Returns spec about the location of the shortcut.
+ */
+export function parseMarkdownMarkShortcut(
+  nodeText: string,
+): MarkdownMarkShortcutSpec | null {
+  /** Bold case. */
+  const boldMatch =
+    BOLD_MARKDOWN_ASTERISK_SHORTCUT_PATTERN.exec(nodeText) ??
+    BOLD_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN.exec(nodeText)
+
+  if (boldMatch?.groups?.word) {
+    const { word } = boldMatch.groups
+
+    /** CommonMark bold delimiter length is always `2`. */
+    const delimiterLength = 2
+    const openDelimiterOffset = boldMatch.index
+
+    /** Rejects `prefix**hello**` or `prefix__hello__`. */
+    if (openDelimiterOffset !== 0) {
+      return null
+    }
+
+    const wordStartOffset = openDelimiterOffset + delimiterLength
+    const wordEndOffset = wordStartOffset + word.length
+
+    return {
+      delimiterLength,
+      kind: 'bold',
+      openDelimiterOffset,
+      word,
+      wordEndOffset,
+      wordStartOffset,
+    }
+  }
+
+  return null
+}
+
 const rules: MarkdownShortcutOpsRule[] = [
   {
     /**
-     * 💡 Cursor selection is at a {@link ParagraphBlock} within a first text node
-     *    and the content inside is `(#{1,6})`, and the text currently typed is {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
-     * 🎯 Detect markdown shortcut and mutate current {@link ParagraphBlock} into
-     *   a {@link HeadingBlock} with the level matching and an empty text node.
+     * 💡 Cursor is at the end of an inline text node whose **entire** content is
+     *    `**word**` or `__word__` (not `prefix**word**`), and the keystroke just
+     *    typed is the final closing delimiter (`*` or `_`).
+     * 🎯 Strip both delimiter pairs, apply bold on `word`, and collapse the
+     *    selection at the end of that word.
      */
     build: ({ context, situation, input }): Operation[] | null => {
       if (
@@ -279,6 +339,158 @@ const rules: MarkdownShortcutOpsRule[] = [
       }
 
       return isMarkdownDividerShortcut(node.text)
+    },
+  },
+  {
+    /**
+     * 💡 Cursor is at the end of an inline text node whose content ends with
+     *    `**word**` or `__word__`, and the keystroke just typed is the final
+     *    closing delimiter (`*` or `_`).
+     * 🎯 Strip both delimiter pairs, apply {@link Marks} bold on `word`, and
+     *    collapse the selection at the end of that word (after formatting).
+     */
+    build: ({ context, situation, input }): Operation[] | null => {
+      if (situation.kind !== 'cursor-selection') {
+        return null
+      }
+
+      const { block, node, at } = situation
+
+      const spec = parseMarkdownMarkShortcut(node.text)
+      if (
+        spec === null ||
+        spec.kind !== 'bold' ||
+        !MARKDOWN_BOLD_MARK_SHORTCUT_CLOSING_DELIMITERS.includes(input.text)
+      ) {
+        return null
+      }
+
+      const { delimiterLength, openDelimiterOffset, word, wordEndOffset } = spec
+
+      const prevMarks: Marks = { ...node.marks }
+      const nextMarks: Marks = { ...prevMarks, bold: true }
+
+      const closingDelimiterText = node.text.slice(
+        wordEndOffset,
+        wordEndOffset + delimiterLength,
+      )
+      const openingDelimiterText = node.text.slice(
+        openDelimiterOffset,
+        openDelimiterOffset + delimiterLength,
+      )
+
+      const ops: Operation[] = [
+        {
+          __type: 'delete_text',
+          blockId: block.id,
+          length: delimiterLength,
+          nodeId: node.id,
+          offset: wordEndOffset,
+          snapshot: { marks: prevMarks, text: closingDelimiterText },
+        },
+        {
+          __type: 'delete_text',
+          blockId: block.id,
+          length: delimiterLength,
+          nodeId: node.id,
+          offset: openDelimiterOffset,
+          snapshot: { marks: prevMarks, text: openingDelimiterText },
+        },
+      ]
+
+      const markFrom = openDelimiterOffset
+      const markTo = openDelimiterOffset + word.length
+
+      const previewContent = previewInlineContentAfterTrimOps(
+        block.content,
+        ops,
+        block.id,
+      )
+
+      const previewBlock = { ...block, content: previewContent }
+      const previewFound = findNodeInBlockWithInlineContent(
+        previewBlock,
+        node.id,
+      )
+
+      if (!previewFound || !isInlineNodeWithEditableText(previewFound.node)) {
+        return null
+      }
+
+      const previewNode = previewFound.node
+      const previewIndex = previewFound.index
+
+      const partialMarkOps = buildPartialMarkRangeOps(
+        block.id,
+        previewNode,
+        previewIndex,
+        markFrom,
+        markTo,
+        nextMarks,
+        prevMarks,
+      )
+
+      if (partialMarkOps === null) {
+        /** Whole-node mark applied (typical mark shortcut with no prefix text). */
+        ops.push({
+          __type: 'set_marks',
+          blockId: block.id,
+          from: markFrom,
+          nextMarks,
+          nodeId: previewNode.id,
+          prevMarks,
+          to: markTo,
+        })
+      } else {
+        ops.push(...partialMarkOps)
+      }
+
+      const linearAt = getLinearOffsetInBlock(block, at)
+      const targetLinear = linearAt - delimiterLength * 2
+
+      const previewAfterAll = previewInlineContentAfterTrimOps(
+        block.content,
+        ops,
+        block.id,
+      )
+
+      const nextAnchor = cursorAnchorFromLinearOffsetInBlock(
+        block.id,
+        { ...block, content: previewAfterAll },
+        targetLinear,
+        snapOffsetToTextLength,
+      )
+
+      ops.push({
+        __type: 'set_selection',
+        next: createCursor(nextAnchor),
+        prev: context.selection,
+      })
+
+      return ops
+    },
+    name: 'cursor/bold-mark/inline-closing-delimiter',
+    when: ({ situation, input }): boolean => {
+      if (situation.kind !== 'cursor-selection') {
+        return false
+      }
+
+      const { at, node } = situation
+
+      /** Shortcut is detected only when the trigger character was just appended at the tail. */
+      if (at.offset !== node.text.length) {
+        return false
+      }
+
+      const spec = parseMarkdownMarkShortcut(node.text)
+      if (
+        spec === null ||
+        spec.kind !== 'bold' ||
+        !MARKDOWN_BOLD_MARK_SHORTCUT_CLOSING_DELIMITERS.includes(input.text)
+      ) {
+        return false
+      }
+      return true
     },
   },
 ]

@@ -160,3 +160,36 @@ export const ATX_MARKDOWN_HEADING_WITH_TRIGGER_SPACE_PATTERN =
  */
 export const HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN =
   /^(?<separator>-{3,}) $/u
+
+/**
+ * Bold markdown shortcut with closing delimiter typed.
+ * Matched when the caret is at the end of the text node after the user types
+ * the final `*` of `**word**`.
+ *
+ * @example
+ * ```txt
+ * User types: * (second closing asterisk)
+ * Node text: "**hello**"
+ * Node text: "prefix**hello**"   ✗ (no match)
+ * ```
+ */
+export const BOLD_MARKDOWN_ASTERISK_SHORTCUT_PATTERN =
+  /^\*\*(?<word>[^*\s]+)\*\*$/u
+
+/**
+ * Bold markdown shortcut with closing delimiter typed.
+ * Matched when the caret is at the end of the text node after the user types
+ * the final `_` of `__word__`.
+ *
+ * @example
+ * ```txt
+ * User types: _ (second closing underscore)
+ * Node text: "__hello__"
+ * Node text: "prefix__hello__"   ✗ (no match)
+ * ```
+ */
+export const BOLD_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN =
+  /^__(?<word>[^_\s]+)__$/u
+
+/** Allowed closing delimiters for bold markdown shortcut. */
+export const MARKDOWN_BOLD_MARK_SHORTCUT_CLOSING_DELIMITERS = ['*', '_']

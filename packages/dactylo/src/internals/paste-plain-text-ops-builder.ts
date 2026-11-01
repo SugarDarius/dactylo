@@ -46,7 +46,7 @@ import {
 } from './plain-text'
 import {
   createCursor,
-  cursorFromLinearOffsetInBlock,
+  cursorAnchorFromLinearOffsetInBlock,
   getLinearOffsetInBlock,
   getRangeSelectionTopology,
   isCursorSelection,
@@ -290,7 +290,7 @@ export function buildPastePlainTextSingleLineAtCaretOps(
     content: previewContent,
   }
 
-  const nextAnchor = cursorFromLinearOffsetInBlock(
+  const nextAnchor = cursorAnchorFromLinearOffsetInBlock(
     block.id,
     previewBlock,
     targetLinear,
