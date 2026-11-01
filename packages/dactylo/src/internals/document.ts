@@ -39,6 +39,9 @@ import {
   cursorAtInlineNodeLastOffsetMinusOne,
   cursorAtInlineNodeEnd,
   cursorAtInlineNodeFirstOffsetPlusOne,
+  cursorAtVisualLineColumn,
+  getVisualLineTextLength,
+  getVisualLineCount,
 } from './selection'
 import type {
   CursorSelection,
@@ -574,42 +577,43 @@ export function stepCursorVerticalWithinBlock(
   if (!ctx) {
     return null
   }
-  const lineStarts = getVisualLineStartLinears(block)
-  const blockEnd = getBlockLinearLength(block)
+
+  const lineCount = getVisualLineCount(block)
+
   if (direction === 'up') {
     if (ctx.lineIndex === 0) {
       return null
     }
-    const prevLineStart = lineStarts[ctx.lineIndex - 1] ?? 0
-    const prevLineEnd = lineStarts[ctx.lineIndex] ?? blockEnd
-    const prevLineLen = prevLineEnd - prevLineStart
-    const targetLinear =
-      prevLineStart + Math.min(ctx.column, Math.max(0, prevLineLen))
-    return cursorAnchorFromLinearOffsetInBlock(
+    const targetLineIndex = ctx.lineIndex - 1
+    const targetLineLen = getVisualLineTextLength(block, targetLineIndex)
+    const targetColumn = Math.min(ctx.column, targetLineLen)
+
+    return cursorAtVisualLineColumn(
       block.id,
       block,
-      targetLinear,
+      targetLineIndex,
+      targetColumn,
       snapOffsetToBoundary,
     )
   }
-  if (ctx.lineIndex >= lineStarts.length - 1) {
+
+  if (ctx.lineIndex >= lineCount - 1) {
     return null
   }
-  const nextLineStart = lineStarts[ctx.lineIndex + 1] ?? blockEnd
-  const nextLineEnd =
-    ctx.lineIndex + 2 < lineStarts.length
-      ? (lineStarts[ctx.lineIndex + 2] ?? blockEnd)
-      : blockEnd
-  const nextLineLen = nextLineEnd - nextLineStart
-  const targetLinear =
-    nextLineStart + Math.min(ctx.column, Math.max(0, nextLineLen))
-  return cursorAnchorFromLinearOffsetInBlock(
+
+  const targetLineIndex = ctx.lineIndex + 1
+  const targetLineLen = getVisualLineTextLength(block, targetLineIndex)
+  const targetColumn = Math.min(ctx.column, targetLineLen)
+
+  return cursorAtVisualLineColumn(
     block.id,
     block,
-    targetLinear,
+    targetLineIndex,
+    targetColumn,
     snapOffsetToBoundary,
   )
 }
+
 /** Returns the previous caret position at left, or `null` if already at the boundary. */
 export function stepCursorLeft(
   state: DocumentState,
