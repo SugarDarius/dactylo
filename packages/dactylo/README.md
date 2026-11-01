@@ -193,35 +193,35 @@ export function Editor() {
 
 ### Blocks (🚧 **In Progress**)
 
-| Feature              | Status             | Description                                                                                                     |
-| -------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Paragraph            | ✅ **Done**        | Paragraph block with inline content                                                                             |
-| Heading (levels 1–6) | 🚧 **In Progress** | Heading block with inline content                                                                               |
-| Divider              | 🚧 **In Progress** | Block for UI rendering - no inline content                                                                      |
-| Bullet list item     | 📆 **Planned**     | Bullet list item block with inline content                                                                      |
-| Numbered list item   | 📆 **Planned**     | Numbered list item block with inline content                                                                    |
-| Todo list item       | 📆 **Planned**     | Todo list item with block inline content                                                                        |
-| Toggle list item     | 📆 **Planned**     | Toggle list item block with inline content                                                                      |
-| Callout              | 📆 **Planned**     | Callout block with icon + sub blocks                                                                            |
-| Quote                | 📆 **Planned**     | Quote block with inline content only (maybe a sub-kind of ParagraphBlock?)                                      |
-| Table                | 📆 **Planned**     | Table block with inline content                                                                                 |
-| Code                 | 📆 **Planned**     | Safe code block rendering code with inline content                                                              |
-| Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
-| Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
-| Tabs                 | 📆 **Planned**     | Tabs block with sub blocks inside                                                                               |
-| 2 / 3 / 4 columns    | 📆 **Planned**     | Columns block with sub blocks inside                                                                            |
-| Slot                 | 📆 **Planned**     | Hosting custom content and data owned by developer with no inline content                                       |
+| Feature              | Status         | Description                                                                                                     |
+| -------------------- | -------------- | --------------------------------------------------------------------------------------------------------------- |
+| Paragraph            | ✅ **Done**    | Paragraph block with inline content                                                                             |
+| Heading (levels 1–6) | ✅ **Done**    | Heading block with inline content                                                                               |
+| Divider              | ✅ **Done**    | Block for UI rendering - no inline content                                                                      |
+| Bullet list item     | 📆 **Planned** | Bullet list item block with inline content                                                                      |
+| Numbered list item   | 📆 **Planned** | Numbered list item block with inline content                                                                    |
+| Todo list item       | 📆 **Planned** | Todo list item with block inline content                                                                        |
+| Toggle list item     | 📆 **Planned** | Toggle list item block with inline content                                                                      |
+| Callout              | 📆 **Planned** | Callout block with icon + sub blocks                                                                            |
+| Quote                | 📆 **Planned** | Quote block with inline content only (maybe a sub-kind of ParagraphBlock?)                                      |
+| Table                | 📆 **Planned** | Table block with inline content                                                                                 |
+| Code                 | 📆 **Planned** | Safe code block rendering code with inline content                                                              |
+| Media                | 📆 **Planned** | Media block with no inline content for rendering images, videos or audios                                       |
+| Web embed            | 📆 **Planned** | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
+| Tabs                 | 📆 **Planned** | Tabs block with sub blocks inside                                                                               |
+| 2 / 3 / 4 columns    | 📆 **Planned** | Columns block with sub blocks inside                                                                            |
+| Slot                 | 📆 **Planned** | Hosting custom content and data owned by developer with no inline content                                       |
 
 ### Inline Nodes (🚧 **In Progress**)
 
-| Feature       | Status             | Notes                                                                                    |
-| ------------- | ------------------ | ---------------------------------------------------------------------------------------- |
-| TextNode      | ✅ **Done**        | Inline text with marks                                                                   |
-| LineBreakNode | ✅ **Done**        | Soft break using `shift+enter` keys                                                      |
-| LinkNode      | ✅ **Done**        | Inline links with marks                                                                  |
-| MentionNode   | 🚧 **In Progress** | Inline mention containing artefact data                                                  |
-| HashtagNode   | 📆 **Planned**     | Inline hashtag containing artefact data                                                  |
-| Isolation     | 📆 **Planned**     | Apply isolation for specific use case like UI rendering (comments, background colors, …) |
+| Feature       | Status             | Notes                                                                                         |
+| ------------- | ------------------ | --------------------------------------------------------------------------------------------- |
+| TextNode      | ✅ **Done**        | Inline text with marks                                                                        |
+| LineBreakNode | ✅ **Done**        | Soft break using `shift+enter` keys                                                           |
+| LinkNode      | ✅ **Done**        | Inline links with marks                                                                       |
+| MentionNode   | 🚧 **In Progress** | Inline mention containing artefact data                                                       |
+| HashtagNode   | 📆 **Planned**     | Inline hashtag containing artefact data                                                       |
+| Isolation     | 📆 **Planned**     | Apply node isolation for specific use case like UI rendering (comments, background colors, …) |
 
 ### API (🚧 **In Progress**)
 
