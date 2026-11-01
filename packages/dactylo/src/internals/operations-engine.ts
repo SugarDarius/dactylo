@@ -36,11 +36,9 @@ import { DactyloError } from './errors'
 import { GraphemeOffsetCaret } from './grapheme'
 import { HardBreakOpsBuilder } from './hard-break-ops-builder'
 import { InsertTextOpsBuilder } from './insert-text-ops-builder'
-import type { ArrowDirection } from './keyboard'
 import { MarkdownShortcutOpsBuilder } from './markdown-shortcut-ops-builder'
 import type { MarkKey } from './marks'
 import { MarksOpsBuilder } from './marks-ops-builder'
-import { MoveSelectionOpsBuilder } from './move-selection-ops-builder'
 import {
   coalesceInlineNodes,
   createTextNode,
@@ -794,9 +792,6 @@ export class OperationsEngine {
   /** Hard break ops builder. */
   readonly #hardBreakOpsBuilder: HardBreakOpsBuilder
 
-  /** Move selection ops builder. */
-  readonly #moveSelectionOpsBuilder: MoveSelectionOpsBuilder
-
   constructor(options: OperationsEngineOptions) {
     this.#debug = options.debug ?? false
     const graphemeOffsetCaret = new GraphemeOffsetCaret({
@@ -815,9 +810,6 @@ export class OperationsEngine {
     })
     this.#softBreakOpsBuilder = new SoftBreakOpsBuilder()
     this.#hardBreakOpsBuilder = new HardBreakOpsBuilder()
-    this.#moveSelectionOpsBuilder = new MoveSelectionOpsBuilder({
-      graphemeOffsetCaret,
-    })
   }
 
   // --- Core engine ─────────────────────────────────────────---------
@@ -1154,18 +1146,6 @@ export class OperationsEngine {
     ]
 
     return { label: 'select-all', ops }
-  }
-
-  /**
-   * Builds operations to navigate selection with arrow keys.
-   * Extends existing selection when `extend` is set to `true`.
-   */
-  buildArrowNavigationOps(
-    context: EditorContext,
-    direction: ArrowDirection,
-    extend: boolean,
-  ): BuilderOpsIntent | null {
-    return this.#moveSelectionOpsBuilder.build(context, { direction, extend })
   }
 
   /** Builds operations to set selection to end of last block in document order. */

@@ -228,32 +228,6 @@ export function findNodeInBlockWithInlineContent(
   return { index, node }
 }
 
-/** Finds the previous node in a block's content array. */
-export function findPreviousNodeInBlockWithInlineContent(
-  block: BlockWithInlineContent,
-  index: number,
-): { node: InlineNode; index: number } | null {
-  const prev = block.content[index - 1]
-  if (prev === undefined) {
-    return null
-  }
-
-  return { index: index - 1, node: prev }
-}
-
-/** Finds the next node in a block's content array. */
-export function findNextNodeInBlockWithInlineContent(
-  block: BlockWithInlineContent,
-  index: number,
-): { node: InlineNode; index: number } | null {
-  const next = block.content[index + 1]
-  if (next === undefined) {
-    return null
-  }
-
-  return { index: index + 1, node: next }
-}
-
 /** Finds the first inline node in a block. */
 export function findFirstInlineNodeInBlock(
   block: BlockWithInlineContent,

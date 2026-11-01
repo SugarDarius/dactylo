@@ -12,7 +12,7 @@ import type { Observable } from './event-source'
 import { EventSource } from './event-source'
 import { HistoryStack, orderInverseOps } from './history'
 import type { HistoryEvent, HistoryStackOptions } from './history'
-import { detectArrowDirection, detectPlatformShortcut } from './keyboard'
+import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
 import type { Operation } from './operations'
 import type { InsertBlockPosition } from './operations-builder'
@@ -1125,33 +1125,6 @@ export class TransactionPipeline {
           return false
         }
       }
-    }
-
-    const arrowDirection = detectArrowDirection(event)
-    if (arrowDirection !== null) {
-      /** In any case we prevent native browser behavior as we want full control over arrow navigation. */
-      prevent()
-
-      const intent = this.#operationsEngine.buildArrowNavigationOps(
-        this.#context,
-        arrowDirection,
-        event.shiftKey,
-      )
-      if (intent === null) {
-        return false
-      }
-
-      const { ops, label } = intent
-      this.#commit(ops, {
-        label: transactionPolicyLabel(
-          'keydown',
-          'digest-event',
-          `arrow-navigation-${arrowDirection}`,
-          label,
-        ),
-        pushToHistory: false,
-        source: 'user',
-      })
     }
 
     return false
