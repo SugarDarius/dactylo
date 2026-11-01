@@ -300,7 +300,7 @@ export function isInlineContentWithoutVisibleText(
         break
       }
       case 'line_break': {
-        break
+        return false
       }
       default: {
         assertNever(node, {
