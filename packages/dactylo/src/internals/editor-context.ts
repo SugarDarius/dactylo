@@ -211,7 +211,19 @@ export function isMarkActiveInContext(
   }
 
   if (selection.__type === 'cursor') {
-    return isMarkEnabled(activeMarks, mark)
+    if (isMarkEnabled(activeMarks, mark)) {
+      return true
+    }
+
+    const { blockId, nodeId } = selection.anchor
+    const block = getBlockWithInlineContent(context.state, blockId)
+    const found = findNodeInBlockWithInlineContent(block, nodeId)
+
+    if (!found || !isInlineNodeWithEditableText(found.node)) {
+      return false
+    }
+
+    return isMarkEnabled(found.node.marks, mark)
   } else if (selection.__type === 'range') {
     const normalized = normalizeRange(context.state, selection)
     const spans = collectTextSpansInRange(context.state, normalized)
