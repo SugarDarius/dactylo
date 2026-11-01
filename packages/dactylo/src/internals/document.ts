@@ -648,14 +648,16 @@ export function stepCursorLeft(
 
     /**
      * Otherwise, we navigate to the previous node:
-     *  1. We walk over {@link LineBreakNode} nodes until we find a non-line break node.
+     *  1. We walk over {@link LineBreakNode} nodes to get the previous node with editable text.
      *  2. We return the start of the mention node if it is a {@link MentionNode}.
      *  3. We return the last offset - 1 of the node if it is an editable text node.
      */
     let prevNode = prevFound.node
     let prevIndex = prevFound.index
 
-    while (prevNode && isLineBreakNode(prevNode)) {
+    const isPrevLineBreakNode = isLineBreakNode(prevNode)
+
+    if (isPrevLineBreakNode) {
       const beforeFound = findPreviousNodeInBlockWithInlineContent(
         block,
         prevIndex,
@@ -672,7 +674,9 @@ export function stepCursorLeft(
     }
 
     if (isInlineNodeWithEditableText(prevNode)) {
-      return cursorAtInlineNodeLastOffsetMinusOne(block.id, prevNode)
+      return isPrevLineBreakNode
+        ? cursorAtInlineNodeEnd(block.id, prevNode)
+        : cursorAtInlineNodeLastOffsetMinusOne(block.id, prevNode)
     }
   }
 
@@ -719,19 +723,20 @@ export function stepCursorRight(
 
     /**
      * Otherwise, we navigate to the next node:
-     *  1. We walk over {@link LineBreakNode} nodes until we find a non-line break node.
+     *  1. We walk over {@link LineBreakNode} nodes to get the next node with editable text.
      *  2. We return the start of the mention node if it is a {@link MentionNode}.
      *  3. We return the first offset of the node if it is an editable text node.
      */
     let nextNode = nextFound.node
     let nextIndex = nextFound.index
 
-    while (nextNode && isLineBreakNode(nextNode)) {
+    const isNextLineBreakNode = isLineBreakNode(nextNode)
+
+    if (isNextLineBreakNode) {
       const afterFound = findNextNodeInBlockWithInlineContent(block, nextIndex)
       if (!afterFound) {
         return null
       }
-
       nextNode = afterFound.node
       nextIndex = afterFound.index
     }
@@ -741,7 +746,9 @@ export function stepCursorRight(
     }
 
     if (isInlineNodeWithEditableText(nextNode)) {
-      return cursorAtInlineNodeFirstOffsetPlusOne(block.id, nextNode)
+      return isNextLineBreakNode
+        ? cursorAtInlineNodeStart(block.id, nextNode)
+        : cursorAtInlineNodeFirstOffsetPlusOne(block.id, nextNode)
     }
   }
 
