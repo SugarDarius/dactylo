@@ -29,9 +29,6 @@ export interface MoveSelectionOpsNoSelectionSituation {
 export interface MoveSelectionOpsSelectionSituation {
   readonly kind: 'with-selection'
 
-  /** Caret position the step starts from. */
-  readonly origin: TextCursor
-
   /**
    * Anchor held fixed while extending (e.g `shift` + Arrow key).
    * `null` when moving a collapsed selection.
@@ -222,7 +219,6 @@ export class MoveSelectionOpsBuilder implements OperationsBuilder<
     return {
       kind: 'with-selection',
       nextFocus,
-      origin,
       rangeAnchor,
     }
   }

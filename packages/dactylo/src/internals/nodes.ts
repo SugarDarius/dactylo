@@ -188,6 +188,11 @@ export function isLinkNode(node: InlineNode): node is LinkNode {
   return node.__type === 'link'
 }
 
+/** Whether the node is a mention node. */
+export function isMentionNode(node: InlineNode): node is MentionNode {
+  return node.__type === 'mention'
+}
+
 /** Whether the node is an editable text node or a link node. */
 export function isInlineNodeWithEditableText(
   node: InlineNode,

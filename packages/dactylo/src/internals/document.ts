@@ -1,6 +1,8 @@
 import {
   createParagraphBlock,
+  findNextNodeInBlockWithInlineContent,
   findNodeInBlockWithInlineContent,
+  findPreviousNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
 } from './blocks'
 import type { Block, BlockId, BlockWithInlineContent } from './blocks'
@@ -9,8 +11,11 @@ import type { ArrowDirection } from './keyboard'
 import type { Marks } from './marks'
 import {
   createTextNode,
+  getInlineNodeTextLength,
   isInlineContentWithoutVisibleText,
   isInlineNodeWithEditableText,
+  isLineBreakNode,
+  isMentionNode,
 } from './nodes'
 import type { InsertBlockPosition } from './operations-builder'
 import {
@@ -26,12 +31,14 @@ import {
   createRange,
   cursorAtBlockEnd,
   cursorAtBlockStart,
-  cursorAtInlineNodeEnd,
   cursorAtInlineNodeStart,
   cursorAnchorFromLinearOffsetInBlock,
   getBlockLinearLength,
   getVisualLineContext,
   getVisualLineStartLinears,
+  cursorAtInlineNodeLastOffsetMinusOne,
+  cursorAtInlineNodeEnd,
+  cursorAtInlineNodeFirstOffsetPlusOne,
 } from './selection'
 import type {
   CursorSelection,
@@ -128,8 +135,6 @@ export function createInitialEmptyDocumentState(
     schemaVersion: 1,
   }
 }
-
-// --------Blocks--------
 
 /** Immutable update: add a block and refresh cached order. */
 export function insertBlock(state: DocumentState, block: Block): DocumentState {
@@ -365,8 +370,6 @@ export function resolvePrevInlineBlock(
   }
   return null
 }
-
-// --------Selection--------
 
 /**
  * Compares two text cursors in full document order.
@@ -607,7 +610,6 @@ export function stepCursorVerticalWithinBlock(
     snapOffsetToBoundary,
   )
 }
-
 /** Returns the previous caret position at left, or `null` if already at the boundary. */
 export function stepCursorLeft(
   state: DocumentState,
@@ -616,41 +618,63 @@ export function stepCursorLeft(
 ): TextCursor | null {
   const block = getBlockWithInlineContent(state, cursor.blockId)
   const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+
   if (!found) {
     return null
   }
+
   const { node, index } = found
+
+  /** 1️⃣ First case where the cursor is still inside the node. */
   if (isInlineNodeWithEditableText(node) && cursor.offset > 0) {
     return {
       ...cursor,
       offset: getPrevOffset(node.text, cursor.offset),
     }
   }
-  if (node.__type === 'line_break' && cursor.offset === 0) {
-    const prevNode = block.content[index - 1]
-    if (!prevNode) {
+
+  /** 2️⃣ Second case where the cursor is at boundary (start) of the node. */
+  if (cursor.offset === 0) {
+    const prevFound = findPreviousNodeInBlockWithInlineContent(block, index)
+    /** No previous node means we need to go to the previous block. */
+    if (!prevFound) {
       const prevBlock = resolvePrevInlineBlock(state, block.id)
       if (!prevBlock) {
         return null
       }
+
       return cursorAtBlockEnd(prevBlock.id, prevBlock).anchor
     }
-    return cursorAtInlineNodeEnd(block.id, prevNode)
-  }
-  if (cursor.offset === 0) {
-    const prevNode = block.content[index - 1]
-    if (prevNode) {
-      if (prevNode.__type === 'line_break') {
-        return cursorAtInlineNodeStart(block.id, prevNode)
+
+    /**
+     * Otherwise, we navigate to the previous node:
+     *  1. We walk over {@link LineBreakNode} nodes until we find a non-line break node.
+     *  2. We return the start of the mention node if it is a {@link MentionNode}.
+     *  3. We return the last offset - 1 of the node if it is an editable text node.
+     */
+    let prevNode = prevFound.node
+    const prevIndex = prevFound.index
+
+    while (prevNode && isLineBreakNode(prevNode)) {
+      const beforeFound = findPreviousNodeInBlockWithInlineContent(
+        block,
+        prevIndex,
+      )
+      if (!beforeFound) {
+        return null
       }
-      return cursorAtInlineNodeEnd(block.id, prevNode)
+      prevNode = beforeFound.node
     }
-    const prevBlock = resolvePrevInlineBlock(state, block.id)
-    if (!prevBlock) {
-      return null
+
+    if (isMentionNode(prevNode)) {
+      return cursorAtInlineNodeStart(block.id, prevNode)
     }
-    return cursorAtBlockEnd(prevBlock.id, prevBlock).anchor
+
+    if (isInlineNodeWithEditableText(prevNode)) {
+      return cursorAtInlineNodeLastOffsetMinusOne(block.id, prevNode)
+    }
   }
+
   return null
 }
 
@@ -662,26 +686,63 @@ export function stepCursorRight(
 ): TextCursor | null {
   const block = getBlockWithInlineContent(state, cursor.blockId)
   const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+
   if (!found) {
     return null
   }
+
   const { node, index } = found
+
+  /** 1️⃣ First case where the cursor is still inside the node. */
   if (isInlineNodeWithEditableText(node) && cursor.offset < node.text.length) {
     return {
       ...cursor,
       offset: getNextOffset(node.text, cursor.offset),
     }
   }
-  const nextNode = block.content[index + 1]
-  if (nextNode) {
-    return cursorAtInlineNodeStart(block.id, nextNode)
+
+  /** 2️⃣ Second case where the cursor is at boundary (end) of the node. */
+  const length = getInlineNodeTextLength(node)
+  if (cursor.offset === length) {
+    const nextFound = findNextNodeInBlockWithInlineContent(block, index)
+    /** No next node means we need to go to the next block. */
+    if (!nextFound) {
+      const nextBlock = resolveNextInlineBlock(state, block.id)
+      if (!nextBlock) {
+        return null
+      }
+
+      const atStart = cursorAtBlockStart(nextBlock.id, nextBlock)
+      return atStart?.anchor ?? null
+    }
+
+    /**
+     * Otherwise, we navigate to the next node:
+     *  1. We walk over {@link LineBreakNode} nodes until we find a non-line break node.
+     *  2. We return the start of the mention node if it is a {@link MentionNode}.
+     *  3. We return the first offset of the node if it is an editable text node.
+     */
+    let nextNode = nextFound.node
+    const nextIndex = nextFound.index
+
+    while (nextNode && isLineBreakNode(nextNode)) {
+      const afterFound = findNextNodeInBlockWithInlineContent(block, nextIndex)
+      if (!afterFound) {
+        return null
+      }
+      nextNode = afterFound.node
+    }
+
+    if (isMentionNode(nextNode)) {
+      return cursorAtInlineNodeEnd(block.id, nextNode)
+    }
+
+    if (isInlineNodeWithEditableText(nextNode)) {
+      return cursorAtInlineNodeFirstOffsetPlusOne(block.id, nextNode)
+    }
   }
-  const nextBlock = resolveNextInlineBlock(state, block.id)
-  if (!nextBlock) {
-    return null
-  }
-  const atStart = cursorAtBlockStart(nextBlock.id, nextBlock)
-  return atStart?.anchor ?? null
+
+  return null
 }
 
 /** Returns the previous caret position at up, or `null` if already at the boundary. */

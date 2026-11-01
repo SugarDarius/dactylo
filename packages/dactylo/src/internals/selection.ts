@@ -422,6 +422,24 @@ export function cursorAtInlineNodeEnd(
   return { blockId, nodeId: node.id, offset: getInlineNodeTextLength(node) }
 }
 
+/** Places a collapsed cursor at the last offset - 1 of an inline node. */
+export function cursorAtInlineNodeLastOffsetMinusOne(
+  blockId: BlockId,
+  node: InlineNode,
+): TextCursor {
+  const offset = getInlineNodeTextLength(node) - 1
+  return { blockId, nodeId: node.id, offset: Math.max(0, offset) }
+}
+
+/** Places a collapsed cursor at the first offset of an inline node. */
+export function cursorAtInlineNodeFirstOffsetPlusOne(
+  blockId: BlockId,
+  node: InlineNode,
+): TextCursor {
+  const length = getInlineNodeTextLength(node)
+  return { blockId, nodeId: node.id, offset: Math.min(1, length) }
+}
+
 /** Creates a cursor from a linear offset in a block. */
 export function cursorAnchorFromLinearOffsetInBlock(
   blockId: BlockId,
