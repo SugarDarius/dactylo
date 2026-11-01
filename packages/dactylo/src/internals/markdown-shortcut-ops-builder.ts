@@ -21,8 +21,10 @@ import {
   resolveInsertAfterBlockId,
 } from './document'
 import type { EditorContext } from './editor-context'
+import { isMarksEqual } from './marks'
 import type { MarkKey, Marks } from './marks'
 import {
+  createFromInlineWithEditableText,
   createTextNode,
   isInlineNodeWithEditableText,
   isTextNode,
@@ -269,13 +271,45 @@ export function buildMarkdownMarkShortcutOps(
     ops,
     block.id,
   )
+  const previewBlockAfterAll = { ...block, content: previewAfterAll }
 
-  const nextAnchor = cursorAnchorFromLinearOffsetInBlock(
+  let nextAnchor = cursorAnchorFromLinearOffsetInBlock(
     block.id,
     { ...block, content: previewAfterAll },
     targetLinear,
     snapOffsetToTextLength,
   )
+
+  const foundAtCursor = findNodeInBlockWithInlineContent(
+    previewBlockAfterAll,
+    nextAnchor.nodeId,
+  )
+
+  if (
+    foundAtCursor &&
+    isInlineNodeWithEditableText(foundAtCursor.node) &&
+    foundAtCursor.node.text.length > 0 &&
+    nextAnchor.offset === foundAtCursor.node.text.length &&
+    !isMarksEqual(foundAtCursor.node.marks, context.activeMarks)
+  ) {
+    const { node: cursorNode, index: cursorIndex } = foundAtCursor
+    const insertedNode = createFromInlineWithEditableText(cursorNode, {
+      marks: context.activeMarks,
+      metadata: cursorNode.metadata,
+      text: '',
+    })
+    ops.push({
+      __type: 'insert_inline_node',
+      blockId: block.id,
+      index: cursorIndex + 1,
+      node: insertedNode,
+    })
+    nextAnchor = {
+      blockId: block.id,
+      nodeId: insertedNode.id,
+      offset: 0,
+    }
+  }
 
   ops.push({
     __type: 'set_selection',
