@@ -215,10 +215,6 @@ export function isMarkActiveInContext(
   }
 
   if (selection.__type === 'cursor') {
-    if (isMarkEnabled(activeMarks, mark)) {
-      return true
-    }
-
     const { blockId, nodeId } = selection.anchor
     const block = getBlockWithInlineContent(context.state, blockId)
     const found = findNodeInBlockWithInlineContent(block, nodeId)

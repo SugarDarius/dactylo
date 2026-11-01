@@ -683,11 +683,6 @@ export function applySetMarksOp(
     return context
   }
 
-  /** We don't apply op on an empty range. */
-  if (op.from === op.to) {
-    return context
-  }
-
   /**
    * Partial-range marks are split in {@link MarksOpsBuilder} via structural ops.
    * Engine only applies whole-node mark updates (range equals full node text).
