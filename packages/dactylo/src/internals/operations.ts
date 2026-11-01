@@ -25,7 +25,6 @@ import type {
 import type { Marks } from './marks'
 import type { InlineNode, NodeId } from './nodes'
 import type { Selection } from './selection'
-import type { Relax } from './types'
 
 /** Inserts a block at the given position (fractional index). */
 export interface InsertBlockOp {
@@ -219,9 +218,7 @@ export interface SetActiveMarksOp {
   /** Active marks after the change. */
   readonly activeMarks: Marks
 
-  /**
-   * Copies the active marks to the given block and node.
-   */
+  /** Copies the active marks to the given block and node. */
   readonly copyTo: {
     /** Block to copy the active marks to. */
     readonly blockId: BlockId
@@ -266,7 +263,7 @@ export interface SetSelectionOp {
 }
 
 /** Discriminated union of all operations supported by Dactylo. */
-export type Operation = Relax<
+export type Operation =
   | InsertBlockOp
   | DeleteBlockOp
   | SplitBlockOp
@@ -279,4 +276,3 @@ export type Operation = Relax<
   | SetActiveMarksOp
   | SetMarksOp
   | SetSelectionOp
->

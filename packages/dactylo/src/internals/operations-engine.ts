@@ -47,7 +47,6 @@ import {
   createTextNode,
   getInlineNodeTextLength,
   isInlineNodeWithEditableText,
-  splitInlineNodeWithEditableTextAt,
 } from './nodes'
 import type { InlineNode, InlineNodeWithEditableText, NodeId } from './nodes'
 import type {
@@ -709,11 +708,9 @@ export function applySetMarksOp(
   }
 
   const { node, index } = found
+  /** We don't apply op on non-editable text nodes. */
   if (!isInlineNodeWithEditableText(node)) {
-    applyError(
-      '`set_marks` target must be an inline node with editable text',
-      op,
-    )
+    return context
   }
 
   /** We don't apply op on an empty range. */
@@ -721,28 +718,21 @@ export function applySetMarksOp(
     return context
   }
 
-  /** Whole-node mark toggle: update marks only (undo = invert mark swap on same node). */
-  if (op.from === 0 && op.to === node.text.length) {
-    content[index] = {
-      ...node,
-      marks: op.nextMarks,
-      updatedAt: new Date(),
-    }
-
-    return updateBlockWithInlineContent(context, op.blockId, content)
+  /**
+   * Partial-range marks are split in {@link MarksOpsBuilder} via structural ops.
+   * Engine only applies whole-node mark updates (range equals full node text).
+   */
+  if (op.from !== 0 || op.to !== node.text.length) {
+    applyError(
+      'Partial `set_marks` must be preceded by structural split ops from MarksOpsBuilder',
+      op,
+    )
   }
 
-  /** Partial range via `set_marks`: new toggles use structural ops from {@link buildSetMarksOps}. */
-  const replacement = splitInlineNodeWithEditableTextAt(
-    node,
-    op.from,
-    op.to,
-    op.nextMarks,
-  )
-  if (replacement.length === 0) {
-    content.splice(index, 1)
-  } else {
-    content.splice(index, 1, ...replacement)
+  content[index] = {
+    ...node,
+    marks: op.nextMarks,
+    updatedAt: new Date(),
   }
 
   return updateBlockWithInlineContent(context, op.blockId, content)

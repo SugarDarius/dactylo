@@ -14,7 +14,14 @@ import type { MarkKey, Marks } from './marks'
 import { isInlineNodeWithEditableText } from './nodes'
 import type { NodeId } from './nodes'
 import type { Operation } from './operations'
-import { iterRules, rangeCollapsedError } from './operations-builder'
+import {
+  buildJoinMarkedRunOps,
+  buildPartialMarkRangeOps,
+  iterRules,
+  previewInlineContentAfterTrimOps,
+  rangeCollapsedError,
+  resolvesMarkToggleSelectionAfterDocOps,
+} from './operations-builder'
 import type {
   BuilderOpsIntent,
   OperationRule,
@@ -159,23 +166,73 @@ export const rangeRules: MarksOpsRule[] = [
 
       for (const span of spans) {
         const block = getBlockWithInlineContent(state, span.blockId)
-        const found = findNodeInBlockWithInlineContent(block, span.nodeId)
 
+        const previewContent = previewInlineContentAfterTrimOps(
+          block.content,
+          ops,
+          span.blockId,
+        )
+        const previewBlock = { ...block, content: previewContent }
+
+        const found = findNodeInBlockWithInlineContent(
+          previewBlock,
+          span.nodeId,
+        )
         if (!found || !isInlineNodeWithEditableText(found.node)) {
           continue
         }
 
-        const { node } = found
-        const nextMarks: Marks = { ...node.marks, [input.mark]: enabling }
+        const { index, node } = found
+        const prevMarks: Marks = { ...node.marks }
+        const nextMarks: Marks = { ...prevMarks, [input.mark]: enabling }
 
-        ops.push({
-          __type: 'set_marks',
-          blockId: span.blockId,
-          from: span.from,
+        const partialOps = buildPartialMarkRangeOps(
+          span.blockId,
+          node,
+          index,
+          span.from,
+          span.to,
           nextMarks,
-          nodeId: span.nodeId,
-          prevMarks: { ...node.marks },
-          to: span.to,
+          prevMarks,
+        )
+        if (partialOps === null) {
+          const isWholeNode = span.from === 0 && span.to === node.text.length
+
+          const joinOps =
+            !enabling && isWholeNode
+              ? buildJoinMarkedRunOps(
+                  span.blockId,
+                  previewContent,
+                  index,
+                  node,
+                  nextMarks,
+                )
+              : null
+
+          if (joinOps === null) {
+            ops.push({
+              __type: 'set_marks',
+              blockId: span.blockId,
+              from: span.from,
+              nextMarks,
+              nodeId: span.nodeId,
+              prevMarks,
+              to: span.to,
+            })
+          } else {
+            ops.push(...joinOps)
+          }
+        } else {
+          ops.push(...partialOps)
+        }
+      }
+
+      if (ops.length > 0) {
+        const next = resolvesMarkToggleSelectionAfterDocOps(state, ops, range)
+        ops.push({
+          __type: 'set_selection',
+          next,
+          prev: range,
         })
       }
 

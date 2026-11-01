@@ -1,12 +1,14 @@
 import { findNodeInBlockWithInlineContent } from './blocks'
 import type { BlockId, BlockWithInlineContent, HeadingBlock } from './blocks'
-import { getBlock } from './document'
+import { getBlock, getBlockWithInlineContent } from './document'
+import type { DocumentState } from './document'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import { isMarksEqual } from './marks'
 import type { Marks } from './marks'
 import {
   coalesceInlineNodes,
+  createFromInlineWithEditableText,
   createLinkNode,
   createTextNode,
   isCanonicalEmptyInlineContent,
@@ -20,7 +22,13 @@ import type {
   TextNode,
 } from './nodes'
 import type { Operation } from './operations'
-import { createCursor } from './selection'
+import {
+  createCursor,
+  createRange,
+  cursorFromLinearOffsetInBlock,
+  getLinearOffsetInBlock,
+  snapOffsetToTextLength,
+} from './selection'
 import type { TextCursor, RangeSelection } from './selection'
 import type { Metadata, Relax } from './types'
 import { assertNever } from './utils'
@@ -221,11 +229,11 @@ export function previewInlineContentAfterTrimOps(
   let next = [...content]
 
   for (const op of ops) {
-    if (op.blockId !== blockId) {
-      continue
-    }
-
     if (op.__type === 'delete_text') {
+      if (op.blockId !== blockId) {
+        continue
+      }
+
       const idx = next.findIndex((n) => n.id === op.nodeId)
       if (idx === -1) {
         continue
@@ -245,6 +253,10 @@ export function previewInlineContentAfterTrimOps(
         updatedAt: new Date(),
       }
     } else if (op.__type === 'insert_text') {
+      if (op.blockId !== blockId) {
+        continue
+      }
+
       const idx = next.findIndex((n) => n.id === op.nodeId)
       if (idx === -1) {
         continue
@@ -267,6 +279,26 @@ export function previewInlineContentAfterTrimOps(
       next.splice(op.index, 1)
     } else if (op.__type === 'insert_inline_node') {
       next.splice(op.index, 0, op.node)
+    } else if (op.__type === 'set_marks') {
+      if (op.blockId !== blockId) {
+        continue
+      }
+
+      const idx = next.findIndex((n) => n.id === op.nodeId)
+      if (idx === -1) {
+        continue
+      }
+
+      const node = next[idx]
+      if (!node || !isInlineNodeWithEditableText(node)) {
+        continue
+      }
+
+      next[idx] = {
+        ...node,
+        marks: op.nextMarks,
+        updatedAt: new Date(),
+      }
     }
 
     next = coalesceInlineNodes(next)
@@ -445,6 +477,51 @@ export function resolveRangeInsertCaretAfterPrefixOps(
     `No insert caret in block ${block.id} after prefix ops`,
     'OperationBuilder/resolveRangeInsertCaretAfterPrefixOps',
   )
+}
+
+/**
+ * Resolves the post-transaction range selection for a mark toggle.
+ *
+ * Document ops may coalesce inline nodes (e.g. un-bold on a middle segment merges
+ * three text nodes into one). Node ids from the pre-toggle selection can vanish;
+ * block-linear offsets survive coalesce.
+ */
+export function resolvesMarkToggleSelectionAfterDocOps(
+  state: DocumentState,
+  docOps: Operation[],
+  range: RangeSelection,
+): RangeSelection {
+  const anchorBlock = getBlockWithInlineContent(state, range.anchor.blockId)
+  const anchorPreview = previewInlineContentAfterTrimOps(
+    anchorBlock.content,
+    docOps,
+    anchorBlock.id,
+  )
+
+  const anchorLinear = getLinearOffsetInBlock(anchorBlock, range.anchor)
+  const nextAnchor = cursorFromLinearOffsetInBlock(
+    anchorBlock.id,
+    { ...anchorBlock, content: anchorPreview },
+    anchorLinear,
+    snapOffsetToTextLength,
+  )
+
+  const focusBlock = getBlockWithInlineContent(state, range.focus.blockId)
+  const focusPreview = previewInlineContentAfterTrimOps(
+    focusBlock.content,
+    docOps,
+    focusBlock.id,
+  )
+
+  const focusLinear = getLinearOffsetInBlock(focusBlock, range.focus)
+  const nextFocus = cursorFromLinearOffsetInBlock(
+    focusBlock.id,
+    { ...focusBlock, content: focusPreview },
+    focusLinear,
+    snapOffsetToTextLength,
+  )
+
+  return createRange(nextAnchor, nextFocus)
 }
 
 /**
@@ -1103,4 +1180,209 @@ export function computeSplitTailSnapshot(
       })
     }
   }
+}
+
+/**
+ * Whether the mark range is a proper sub range of node's text.
+ * So applying a mark must split inline structure instead of toggling
+ * marks on the whole node in place.
+ */
+export function isPartialMarkRange(
+  textLen: number,
+  from: number,
+  to: number,
+): boolean {
+  return from !== to && !(from === 0 && to === textLen)
+}
+
+/**
+ * Whether when a whole-node {@link SetMarksOp} with `nextMarks` would coalesce
+ * the target node away (its id no longer appears in block content).
+ *
+ * Undo uses `invertOp(set_marks)` on the same `nodeId`; if coalesce removes that id,
+ * history replay breaks.
+ */
+export function willLoseNodeIdAfterWholeNodeSetMarks(
+  content: readonly InlineNode[],
+  nodeIndex: number,
+  node: InlineNodeWithEditableText,
+  nextMarks: Marks,
+): boolean {
+  const updated: InlineNode[] = content.map((inline, i) =>
+    i === nodeIndex
+      ? {
+          ...node,
+          marks: nextMarks,
+          updatedAt: new Date(),
+        }
+      : inline,
+  )
+  const coalesced = coalesceInlineNodes(updated)
+  return coalesced.every((inline) => inline.id !== node.id)
+}
+
+/**
+ * Joins a marked middle run into its prefix when un-marking would coalesce
+ * and destroy the middle node's id (e.g. `[prefix, bold "from", suffix]` → one node).
+ *
+ * Forward shape (document order):
+ *  1. Remove suffix sibling (if any), high index first
+ *  2. Remove marked run node (snapshot preserved for undo)
+ *  3. Append run text onto prefix via `insert_text`
+ *
+ * Undo replays standard inverses: `delete_text` + `insert_inline_node` ×2,
+ * matching the structural "toggle bold on" entry.
+ */
+export function buildJoinMarkedRunOps(
+  blockId: BlockId,
+  content: readonly InlineNode[],
+  nodeIndex: number,
+  node: InlineNodeWithEditableText,
+  nextMarks: Marks,
+): Operation[] | null {
+  if (
+    !willLoseNodeIdAfterWholeNodeSetMarks(content, nodeIndex, node, nextMarks)
+  ) {
+    return null
+  }
+
+  const prefix = content[nodeIndex - 1]
+  if (!prefix || !isInlineNodeWithEditableText(prefix)) {
+    return null
+  }
+
+  const suffix = content[nodeIndex + 1]
+  const suffixNode =
+    suffix && isInlineNodeWithEditableText(suffix) ? suffix : null
+
+  const ops: Operation[] = []
+
+  if (suffixNode) {
+    ops.push({
+      __type: 'remove_inline_node',
+      blockId,
+      index: nodeIndex + 1,
+      snapshot: suffixNode,
+    })
+  }
+
+  ops.push({
+    __type: 'remove_inline_node',
+    blockId,
+    index: nodeIndex,
+    snapshot: node,
+  })
+
+  const joinText = node.text + (suffixNode?.text ?? '')
+  if (joinText.length > 0) {
+    ops.push({
+      __type: 'insert_text',
+      blockId,
+      marks: prefix.marks,
+      nodeId: prefix.id,
+      offset: prefix.text.length,
+      text: joinText,
+    })
+  }
+
+  return ops
+}
+
+/**
+ * Builds structural ops for toggling marks on a partial range within one
+ * inline node with editable text.
+ *
+ * Two cases (same ID policy as split):
+ *  1. `from > 0`: trim tail with `delete_text`, insert middle (+optional suffix) with `insert_inline_node`
+ *     (middle node gets `nextMarks` at insert time)
+ *  2. `from === 0`: trim suffix with `delete_text`, then whole-node `set_marks` on
+ *     the surviving node (middle keeps the original id)
+ */
+export function buildPartialMarkRangeOps(
+  blockId: BlockId,
+  node: InlineNodeWithEditableText,
+  nodeIndex: number,
+  from: number,
+  to: number,
+  nextMarks: Marks,
+  prevMarks: Marks,
+): Operation[] | null {
+  const { text } = node
+
+  const middleText = text.slice(from, to)
+  const afterText = text.slice(to)
+
+  const middleLen = middleText.length
+
+  if (!isPartialMarkRange(text.length, from, to)) {
+    return null
+  }
+
+  const ops: Operation[] = []
+
+  if (from > 0) {
+    const tail = text.slice(from)
+
+    const middleNode = createFromInlineWithEditableText(node, {
+      marks: nextMarks,
+      text: middleText,
+    })
+
+    ops.push(
+      {
+        __type: 'delete_text',
+        blockId,
+        length: tail.length,
+        nodeId: node.id,
+        offset: from,
+        snapshot: {
+          marks: node.marks,
+          text: tail,
+        },
+      },
+      {
+        __type: 'insert_inline_node',
+        blockId,
+        index: nodeIndex + 1,
+        node: middleNode,
+      },
+    )
+
+    if (afterText.length > 0) {
+      ops.push({
+        __type: 'insert_inline_node',
+        blockId,
+        index: nodeIndex + 2,
+        node: createFromInlineWithEditableText(node, {
+          marks: prevMarks,
+          text: afterText,
+        }),
+      })
+    }
+
+    return ops
+  }
+
+  if (afterText.length > 0) {
+    ops.push({
+      __type: 'delete_text',
+      blockId,
+      length: afterText.length,
+      nodeId: node.id,
+      offset: to,
+      snapshot: { marks: node.marks, text: afterText },
+    })
+  }
+
+  ops.push({
+    __type: 'set_marks',
+    blockId,
+    from: 0,
+    nextMarks,
+    nodeId: node.id,
+    prevMarks,
+    to: middleLen,
+  })
+
+  return ops
 }

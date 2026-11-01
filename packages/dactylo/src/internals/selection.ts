@@ -2,7 +2,6 @@ import { findFirstInlineNodeInBlock, findLastInlineNodeInBlock } from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
 import { getInlineNodeTextLength, isInlineNodeWithEditableText } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
-import type { Relax } from './types'
 import { assertNever } from './utils'
 
 /**
@@ -113,7 +112,7 @@ export interface RangeSelection {
 }
 
 /** Discriminated union of all supported selection shapes in {@link Dactylo}. */
-export type Selection = Relax<CursorSelection | RangeSelection>
+export type Selection = CursorSelection | RangeSelection
 
 /** The topology of a range selection. */
 export type RangeSelectionTopology = 'same-node' | 'same-block' | 'cross-blocks'
@@ -188,10 +187,10 @@ export function isBlockWithActiveSelection(
 
 /** A contiguous `[from, to)` slice inside one text node, part of a larger range. */
 export interface TextSpanInRange {
-  /** Block containing the text node. */
+  /** Block containing the inline node with editable text. */
   readonly blockId: BlockId
 
-  /** Text node ID. */
+  /** Inline node with editable text ID. */
   readonly nodeId: NodeId
 
   /** Start offset (inclusive) within the text node. */
@@ -400,6 +399,11 @@ export function getVisualLineContext(
     linear += getInlineNodeTextLength(node)
   }
   return null
+}
+
+/** Clamps a linear offset to valid grapheme/code-unit bounds for preview mapping. */
+export function snapOffsetToTextLength(text: string, offset: number): number {
+  return Math.min(Math.max(0, offset), text.length)
 }
 
 /** Places a collapsed cursor at the start of an inline node. */

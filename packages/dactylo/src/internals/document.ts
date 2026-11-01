@@ -481,11 +481,9 @@ export function collectTextSpansInRange(
     return []
   }
 
-  let spans: TextSpanInRange[] = []
-
   if (startBi === endBi) {
-    spans = appendTextSpansInRangeFromBlock(
-      spans,
+    return appendTextSpansInRangeFromBlock(
+      [],
       anchor.blockId,
       startBlock.content,
       anchorNi,
@@ -495,8 +493,8 @@ export function collectTextSpansInRange(
     )
   }
 
-  spans = appendTextSpansInRangeFromBlock(
-    spans,
+  let spans: TextSpanInRange[] = appendTextSpansInRangeFromBlock(
+    [],
     anchor.blockId,
     startBlock.content,
     anchorNi,

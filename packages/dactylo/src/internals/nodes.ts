@@ -14,7 +14,7 @@ import { isMarksEqual } from './marks'
 import type { Marks } from './marks'
 import { sanitizeLinkHref } from './sanitize-link'
 import { sanitizeText } from './sanitize-text'
-import type { Brand, Relax, Metadata } from './types'
+import type { Brand, Metadata } from './types'
 import { assertNever } from './utils'
 
 /**
@@ -101,9 +101,7 @@ export interface LineBreakNode extends INode {
 }
 
 /** Discriminated union of inline nodes supported by {@link Dactylo} */
-export type InlineNode = Relax<
-  TextNode | LinkNode | MentionNode | LineBreakNode
->
+export type InlineNode = TextNode | LinkNode | MentionNode | LineBreakNode
 
 /** Allowed nodes with editable text.*/
 export type InlineNodeWithEditableText = TextNode | LinkNode
@@ -195,6 +193,40 @@ export function isInlineNodeWithEditableText(
   node: InlineNode,
 ): node is InlineNodeWithEditableText {
   return node.__type === 'text' || node.__type === 'link'
+}
+
+/** Creates a new inline node with editable text from an existing inline node. */
+export function createFromInlineWithEditableText(
+  node: InlineNodeWithEditableText,
+  opts: {
+    marks?: Marks
+    metadata?: Metadata
+    text?: string
+  },
+): InlineNodeWithEditableText {
+  const type = node.__type
+  switch (type) {
+    case 'text': {
+      return createTextNode({
+        marks: opts.marks ?? node.marks,
+        metadata: opts.metadata ?? node.metadata,
+        text: opts.text ?? node.text,
+      })
+    }
+    case 'link': {
+      return createLinkNode({
+        marks: opts.marks ?? node.marks,
+        metadata: opts.metadata ?? node.metadata,
+        text: opts.text ?? node.text,
+        url: node.url,
+      })
+    }
+    default: {
+      assertNever(node, {
+        hint: 'InlineNode/#createFromInlineWithEditableText',
+      })
+    }
+  }
 }
 
 /** Returns the text length of an inline node. */
@@ -352,65 +384,4 @@ export function coalesceInlineNodes(
   }
 
   return result
-}
-
-/**
- * Splits an inline node with editable text into up to three segments around `[from, to)`.
- * Empty segments are omitted.
- *
- * ID policy:
- * - Leading segment keeps the original node id.
- * - When there is no leading segment, the middle (marked) segment keeps the original id.
- * - All other segments receive new ids.
- */
-export function splitInlineNodeWithEditableTextAt(
-  /** Text node to split. */
-  node: InlineNodeWithEditableText,
-  /** Start offset (inclusive) within `node.text`. */
-  from: number,
-  /** End offset (exclusive) within `node.text`. */
-  to: number,
-  /** Marks applied to the middle segment when present. */
-  middleMarks: Marks,
-): InlineNode[] {
-  const replacement: InlineNode[] = []
-
-  const before = node.text.slice(0, from)
-  const middle = node.text.slice(from, to)
-  const after = node.text.slice(to)
-
-  if (before.length > 0) {
-    replacement.push({ ...node, text: before, updatedAt: new Date() })
-  }
-
-  if (middle.length > 0) {
-    if (before.length === 0) {
-      replacement.push({
-        ...node,
-        marks: middleMarks,
-        text: middle,
-        updatedAt: new Date(),
-      })
-    } else {
-      replacement.push(
-        createTextNode({
-          marks: middleMarks,
-          metadata: node.metadata,
-          text: middle,
-        }),
-      )
-    }
-  }
-
-  if (after.length > 0) {
-    replacement.push(
-      createTextNode({
-        marks: node.marks,
-        metadata: node.metadata,
-        text: after,
-      }),
-    )
-  }
-
-  return replacement
 }

@@ -15,7 +15,7 @@ import { DactyloError } from './errors'
 import type { InlineNode, NodeId } from './nodes'
 import { after } from './position'
 import type { PosKey } from './position'
-import type { Brand, Relax, Metadata } from './types'
+import type { Brand, Metadata } from './types'
 
 /**
  * Brand type for block unique IDs.
@@ -85,7 +85,7 @@ export interface DividerBlock extends IBlock {
 }
 
 /** Discriminated union of blocks supported by {@link Dactylo}, */
-export type Block = Relax<HeadingBlock | ParagraphBlock | DividerBlock>
+export type Block = HeadingBlock | ParagraphBlock | DividerBlock
 
 /** Allowed blocks to own inline content */
 export type BlockWithInlineContent = HeadingBlock | ParagraphBlock
