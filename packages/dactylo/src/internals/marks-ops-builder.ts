@@ -9,9 +9,12 @@ import {
 } from './document'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
-import { isMarkEnabled, toggleMarkFlag } from './marks'
+import { isMarkEnabled, isMarksEqual, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
-import { isInlineNodeWithEditableText } from './nodes'
+import {
+  createFromInlineWithEditableText,
+  isInlineNodeWithEditableText,
+} from './nodes'
 import type { Operation } from './operations'
 import {
   buildJoinMarkedRunOps,
@@ -26,7 +29,7 @@ import type {
   OperationRule,
   OperationsBuilder,
 } from './operations-builder'
-import { isCursorSelection, isSelectionActive } from './selection'
+import { createCursor, isCursorSelection, isSelectionActive } from './selection'
 import type { RangeSelection } from './selection'
 
 /** Situation with no selection. */
@@ -75,7 +78,9 @@ export const cursorRules: MarksOpsRule[] = [
     /**
      * 💡 Selection is a cursor selection.
      * 🎯 Enables the active mark for the given mark key
-     * on the whole document (e.g the mark is active on typing).
+     *   on the whole document (e.g the mark is active on typing) and:
+     *     - Either copy the active marks to the node if it's empty
+     *     - Or insert a new node with editable text if the marks are different
      */
     build: ({ context, situation, input }): Operation[] | null => {
       const { selection } = context
@@ -102,9 +107,10 @@ export const cursorRules: MarksOpsRule[] = [
         },
       ]
 
-      if (found) {
-        const { node } = found
-        if (isInlineNodeWithEditableText(node) && node.text.length <= 0) {
+      if (found && isInlineNodeWithEditableText(found.node)) {
+        const { node, index } = found
+
+        if (node.text.length <= 0) {
           ops.push({
             __type: 'set_marks',
             blockId,
@@ -114,6 +120,30 @@ export const cursorRules: MarksOpsRule[] = [
             prevMarks: prev,
             to: node.text.length,
           })
+        } else if (!isMarksEqual(node.marks, next)) {
+          const insertedNode = createFromInlineWithEditableText(node, {
+            marks: next,
+            metadata: node.metadata,
+            text: '',
+          })
+
+          ops.push(
+            {
+              __type: 'insert_inline_node',
+              blockId,
+              index: index + 1,
+              node: insertedNode,
+            },
+            {
+              __type: 'set_selection',
+              next: createCursor({
+                blockId,
+                nodeId: insertedNode.id,
+                offset: 0,
+              }),
+              prev: selection,
+            },
+          )
         }
       }
 
