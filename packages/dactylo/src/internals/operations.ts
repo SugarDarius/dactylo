@@ -54,6 +54,7 @@ export interface DeleteBlockOp {
 }
 
 /** Splits a block into two at a cursor position (Enter key). */
+// @todo: update to compute before applying the split.
 export interface SplitBlockOp {
   readonly __type: 'split_block'
 
@@ -83,6 +84,7 @@ export interface SplitBlockOp {
 }
 
 /** Merges a source block's content into a target block (Backspace at block start). */
+// @todo: update to compute before applying the merge.
 export interface MergeBlocksOp {
   readonly __type: 'merge_blocks'
 

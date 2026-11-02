@@ -597,11 +597,6 @@ export class TransactionPipeline {
       }
 
       next = this.#operationsEngine.applyOp(next, op)
-      /**
-       * Push the inverse operation to the beginning of the array
-       * so it can be applied in reverse order when undoing the transaction
-       * at the moment we call the `.#undo()` method.
-       */
       inverseOps.unshift(this.#operationsEngine.invertOp(op))
     }
 

@@ -14,7 +14,7 @@ import {
   normalizeMarks,
 } from './marks'
 import type { MarkKey, Marks } from './marks'
-import { coalesceInlineNodes, isInlineNodeWithEditableText } from './nodes'
+import { isInlineNodeWithEditableText } from './nodes'
 import type { InlineNode } from './nodes'
 import { isSelectionActive } from './selection'
 import type { Selection } from './selection'
@@ -191,7 +191,7 @@ export function updateBlockWithInlineContent(
   const block = getBlockWithInlineContent(context.state, blockId)
   const updated: BlockWithInlineContent = {
     ...block,
-    content: coalesceInlineNodes(content),
+    content,
   }
   const next = touchBlock(updated)
   return withDocumentState(context, replaceBlock(context.state, blockId, next))
