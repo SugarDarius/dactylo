@@ -1,6 +1,6 @@
 import type { BlockId, HeadingBlock } from './blocks'
 import { readTransferredData } from './clipboard'
-import { warn } from './console'
+import { warn, warnOnceIf } from './console'
 import {
   DEFAULT_BATCH_MAX_SIZE,
   INLINE_DETECTOR_TRIGGER_CHARACTER,
@@ -335,6 +335,12 @@ export interface TransactionPipelineEventSources {
 
 /** Options for constructing a {@link TransactionPipeline} instance. */
 export interface TransactionPipelineOptions {
+  /**
+   * Whether to enable debug mode.
+   * Defaults to `false`
+   */
+  readonly debug: boolean
+
   /** Configuration for the batch of the transaction pipeline */
   readonly batch?: {
     /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
@@ -375,7 +381,7 @@ export interface TransactionPipelineOptions {
   }
 
   /** Configuration for the operations engine. */
-  readonly engine: Omit<OperationsEngineOptions, 'autolink'>
+  readonly engine: Omit<OperationsEngineOptions, 'autolink' | 'debug'>
 }
 
 /** Configuration for mentions. */
@@ -454,6 +460,9 @@ export interface TransactionPipelineMarkdownConfig {
  * That answer is always an {@link EditorContext}.
  */
 export class TransactionPipeline {
+  /** Whether to enable debug mode. */
+  readonly #debug: boolean
+
   /** The batch to use for the transaction pipeline */
   readonly #batch: Batch
 
@@ -488,6 +497,7 @@ export class TransactionPipeline {
   readonly #eventSources: TransactionPipelineEventSources
 
   constructor(options: TransactionPipelineOptions) {
+    this.#debug = options.debug ?? false
     /**
      * Initialize the editor context
      * If no initial content is provided, it creates an empty document
@@ -520,6 +530,7 @@ export class TransactionPipeline {
     this.#operationsEngine = new OperationsEngine({
       ...options.engine,
       autolink: this.#autolink,
+      debug: this.#debug,
     })
 
     this.#history = new HistoryStack(options.history)
@@ -539,17 +550,34 @@ export class TransactionPipeline {
 
   // ─── Core pipeline ────────────────────────────────────────────────
 
+  /** Whether autolink detection is enabled. */
+  #autolinkEnabled(): boolean {
+    if (!this.#autolink.enabled) {
+      warnOnceIf(this.#debug, 'Autolink detection is not enabled.')
+      return false
+    }
+
+    return true
+  }
+
   /** Whether a mention is being typed. */
   #isMentioning(text: string): boolean {
-    return this.#mentions.enabled && text === this.#mentions.character
+    if (!this.#mentions.enabled) {
+      warnOnceIf(this.#debug, 'Mentions are not enabled.')
+      return false
+    }
+
+    return text === this.#mentions.character
   }
 
   /** Whether an inline command is being typed. */
   #isInlineCommandTriggering(text: string): boolean {
-    return (
-      this.#inlineCommandTrigger.enabled &&
-      text === this.#inlineCommandTrigger.character
-    )
+    if (!this.#inlineCommandTrigger.enabled) {
+      warnOnceIf(this.#debug, 'Inline command trigger is not enabled.')
+      return false
+    }
+
+    return text === this.#inlineCommandTrigger.character
   }
 
   /** Notifies the history stack changes. */
@@ -979,7 +1007,7 @@ export class TransactionPipeline {
            */
           if (
             text === INLINE_DETECTOR_TRIGGER_CHARACTER &&
-            this.#autolink.enabled
+            this.#autolinkEnabled()
           ) {
             // @todo: detect autolink
             warn('autolink detection is not implemented yet.')

@@ -730,8 +730,8 @@ export class Dactylo {
         enabled: this.#config.autolink.enabled,
       },
       batch: options.config?.pipeline?.batch,
+      debug: this.#debug,
       engine: {
-        debug: this.#debug,
         locales,
       },
       history: options.config?.pipeline?.history,
