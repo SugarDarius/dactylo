@@ -163,34 +163,68 @@ export const HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN =
 
 /**
  * Bold markdown shortcut with closing delimiter typed.
- * Matched when the caret is at the end of the text node after the user types
- * the final `*` of `**word**`.
+ * Trailing CommonMark delimiter run of exactly `**` (not part of `***`).
+ * Interior cannot include `*` or start/end with whitespace.
  *
  * @example
  * ```txt
  * User types: * (second closing asterisk)
  * Node text: "**hello**"           ✓ (whole node)
- * Node text: "Hello **world**"    ✓ (space before opening delimiter)
- * Node text: "Hello**world**"     ✗ (no boundary before `**`)
+ * Node text: "Hello **world**"     ✓ (space before opening delimiter)
+ * Node text: "Hello**world**"      ✗ (no boundary before `**`)
+ * Node text: "***hello**"          ✗ (opening run is longer than `**`)
  * ```
  */
 export const BOLD_MARKDOWN_ASTERISK_SHORTCUT_PATTERN =
-  /\*\*(?<word>\S(?:[^*]*\S)?)\*\*/u
+  /(?<![*])\*\*(?<word>[^*\s](?:[^*]*[^*\s])?)\*\*$/u
 
 /**
  * Bold markdown shortcut with closing delimiter typed.
- * Matched when the caret is at the end of the text node after the user types
- * the final `_` of `__word__`.
+ * Trailing CommonMark delimiter run of exactly `__` (not part of `___`).
  *
  * @example
  * ```txt
  * Node text: "__hello__"           ✓
  * Node text: "Hello __world__"     ✓
  * Node text: "Hello__world__"      ✗
+ * Node text: "___hello__"          ✗
  * ```
  */
 export const BOLD_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN =
-  /__(?<word>\S(?:[^_]*\S)?)__/u
+  /(?<![_])__(?<word>[^_\s](?:[^_]*[^_\s])?)__$/u
+
+/**
+ * Italic markdown shortcut with closing delimiter typed.
+ * Trailing CommonMark delimiter run of a single `*` — a leftover `*` from a
+ * longer opening run (`**word*`) must stay literal, not become italic.
+ *
+ * @example
+ * ```txt
+ * Node text: "*hello*"             ✓
+ * Node text: "Hello *world*"       ✓
+ * Node text: "Hello*world*"        ✗ (no boundary before `*`)
+ * Node text: "**hello*"            ✗ (opening run is `**`, not italic)
+ * Node text: "*hello**"            ✗ (closing run is `**`, not italic)
+ * ```
+ */
+export const ITALIC_MARKDOWN_ASTERISK_SHORTCUT_PATTERN =
+  /(?<![*])\*(?<word>[^*\s](?:[^*]*[^*\s])?)\*$/u
+
+/**
+ * Italic markdown shortcut with closing delimiter typed.
+ * Trailing CommonMark delimiter run of a single `_` — `__word_` stays literal.
+ *
+ * @example
+ * ```txt
+ * Node text: "_hello_"             ✓
+ * Node text: "Hello _world_"       ✓
+ * Node text: "Hello_world_"        ✗
+ * Node text: "__hello_"            ✗
+ * Node text: "_hello__"            ✗
+ * ```
+ */
+export const ITALIC_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN =
+  /(?<![_])_(?<word>[^_\s](?:[^_]*[^_\s])?)_$/u
 
 /**
  * Character class for “safe” text before an opening mark delimiter when the

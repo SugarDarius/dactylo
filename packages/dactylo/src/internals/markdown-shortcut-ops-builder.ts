@@ -12,6 +12,8 @@ import {
   BOLD_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN,
   HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN,
   INLINE_DETECTOR_TRIGGER_CHARACTER,
+  ITALIC_MARKDOWN_ASTERISK_SHORTCUT_PATTERN,
+  ITALIC_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN,
   MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS,
   MARKDOWN_MARK_SHORTCUT_REQUIRED_CHAR_BEFORE_OPEN_DELIMITER,
 } from './constants'
@@ -130,8 +132,7 @@ export function isMarkdownMarkShortcutOpenBoundary(
 }
 
 /**
- * Parses a trailing `**word**` or `__word__` markdown bold shortcut
- * at the end of a node text.
+ * Parses a trailing markdown mark shortcut delimiter pair at the end of a node text.
  * Returns spec about the location of the shortcut.
  */
 export function parseMarkdownMarkShortcut(
@@ -159,6 +160,35 @@ export function parseMarkdownMarkShortcut(
     return {
       delimiterLength,
       kind: 'bold',
+      openDelimiterOffset,
+      word,
+      wordEndOffset,
+      wordStartOffset,
+    }
+  }
+
+  /** Italic case. */
+  const italicMatch =
+    ITALIC_MARKDOWN_ASTERISK_SHORTCUT_PATTERN.exec(nodeText) ??
+    ITALIC_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN.exec(nodeText)
+
+  if (italicMatch?.groups?.word) {
+    const { word } = italicMatch.groups
+
+    /** CommonMark bold delimiter length is always `2`. */
+    const delimiterLength = 1
+    const openDelimiterOffset = italicMatch.index
+
+    if (!isMarkdownMarkShortcutOpenBoundary(nodeText, openDelimiterOffset)) {
+      return null
+    }
+
+    const wordStartOffset = openDelimiterOffset + delimiterLength
+    const wordEndOffset = wordStartOffset + word.length
+
+    return {
+      delimiterLength,
+      kind: 'italic',
       openDelimiterOffset,
       word,
       wordEndOffset,
@@ -471,7 +501,7 @@ const rules: MarkdownShortcutOpsRule[] = [
   },
   {
     /**
-     * 💡 Cursor is at the end of an inline text node whose content **ends with**
+     * 💡 Cursor is at the end of an inline text node whose content nds with
      *    `**word**` or `__word__`, with opening delimiters at node start or after
      *    whitespace (e.g. `Hello **world**`, not `Hello**world**`). The last typed
      *    character is the final closing delimiter (`*` or `_`).
@@ -521,6 +551,67 @@ const rules: MarkdownShortcutOpsRule[] = [
       if (
         spec === null ||
         spec.kind !== 'bold' ||
+        !MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS.includes(
+          input.text,
+        )
+      ) {
+        return false
+      }
+      return true
+    },
+  },
+  {
+    /**
+     * 💡 Cursor is at the end of an inline text node whose content ends with
+     *    `*word*` or `__word__`, with opening delimiters at node start or after
+     *    whitespace (e.g. `Hello *world*`, not `Hello*world*`). The last typed
+     *    character is the final closing delimiter (`*` or `_`).
+     * 🎯 Remove both delimiter pairs, apply italic only on `word` (prefix such as
+     *    `Hello ` stays un-italic), caret after `word`.
+     */
+    build: ({ context, situation, input }): Operation[] | null => {
+      if (situation.kind !== 'cursor-selection') {
+        return null
+      }
+
+      const { block, node } = situation
+
+      const spec = parseMarkdownMarkShortcut(node.text)
+      if (
+        spec === null ||
+        spec.kind !== 'italic' ||
+        !MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS.includes(
+          input.text,
+        )
+      ) {
+        return null
+      }
+
+      const { delimiterLength, openDelimiterOffset, word, wordEndOffset } = spec
+
+      return buildMarkdownMarkShortcutOps(
+        context,
+        block,
+        node,
+        wordEndOffset,
+        openDelimiterOffset,
+        delimiterLength,
+        word,
+        'italic',
+      )
+    },
+    name: 'cursor/italic-mark/inline-closing-delimiter',
+    when: ({ situation, input }): boolean => {
+      if (situation.kind !== 'cursor-selection') {
+        return false
+      }
+
+      const { node } = situation
+
+      const spec = parseMarkdownMarkShortcut(node.text)
+      if (
+        spec === null ||
+        spec.kind !== 'italic' ||
         !MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS.includes(
           input.text,
         )

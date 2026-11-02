@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
+import { parseMarkdownMarkShortcut } from '../../src/internals/markdown-shortcut-ops-builder'
 import { isMarkEnabled } from '../../src/internals/marks'
 import { isInlineNodeWithEditableText } from '../../src/internals/nodes'
 import type { TransactionPipeline } from '../../src/internals/transaction'
@@ -644,6 +645,17 @@ describe('TransactionPipeline markdown shortcuts', () => {
     const pipeline = makePipeline({ markdown: true })
     focus(pipeline)
     typeText(pipeline, '**hi*')
+
+    expect(blockTexts(pipeline.context)).toEqual(['**hi*'])
+    expect(
+      firstInlineBlock(pipeline.context).content.every(
+        (node) =>
+          !isInlineNodeWithEditableText(node) ||
+          (!isMarkEnabled(node.marks, 'bold') &&
+            !isMarkEnabled(node.marks, 'italic')),
+      ),
+    ).toBe(true)
+
     typeText(pipeline, '*')
 
     expect(
@@ -667,6 +679,88 @@ describe('TransactionPipeline markdown shortcuts', () => {
     ).toBe(true)
     pipeline.redo()
     expect(snapshot(pipeline.context)).toEqual(converted)
+  })
+
+  test('*word* closing delimiter italicizes the word; undo restores markdown text; redo italicizes again', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '*hi')
+    typeText(pipeline, '*')
+
+    expect(
+      firstInlineBlock(pipeline.context).content.some(
+        (node) =>
+          isInlineNodeWithEditableText(node) &&
+          isMarkEnabled(node.marks, 'italic') &&
+          node.text === 'hi',
+      ),
+    ).toBe(true)
+
+    const converted = snapshot(pipeline.context)
+    pipeline.undo()
+    expect(blockTexts(pipeline.context)).toEqual(['*hi*'])
+    expect(
+      firstInlineBlock(pipeline.context).content.every(
+        (node) =>
+          !isInlineNodeWithEditableText(node) ||
+          !isMarkEnabled(node.marks, 'italic'),
+      ),
+    ).toBe(true)
+    pipeline.redo()
+    expect(snapshot(pipeline.context)).toEqual(converted)
+  })
+
+  test('**word* does not italicize; CommonMark leaves mismatched delimiter runs literal', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '**word')
+    typeText(pipeline, '*')
+
+    expect(blockTexts(pipeline.context)).toEqual(['**word*'])
+    expect(
+      firstInlineBlock(pipeline.context).content.every(
+        (node) =>
+          !isInlineNodeWithEditableText(node) ||
+          (!isMarkEnabled(node.marks, 'bold') &&
+            !isMarkEnabled(node.marks, 'italic')),
+      ),
+    ).toBe(true)
+  })
+})
+
+describe('parseMarkdownMarkShortcut', () => {
+  test('pairs CommonMark/GFM delimiter runs and ignores mismatched closers', () => {
+    expect(parseMarkdownMarkShortcut('*hello*')).toMatchObject({
+      kind: 'italic',
+      word: 'hello',
+    })
+    expect(parseMarkdownMarkShortcut('_hello_')).toMatchObject({
+      kind: 'italic',
+      word: 'hello',
+    })
+    expect(parseMarkdownMarkShortcut('**hello**')).toMatchObject({
+      kind: 'bold',
+      word: 'hello',
+    })
+    expect(parseMarkdownMarkShortcut('__hello__')).toMatchObject({
+      kind: 'bold',
+      word: 'hello',
+    })
+    expect(parseMarkdownMarkShortcut('Hello *world*')).toMatchObject({
+      kind: 'italic',
+      openDelimiterOffset: 6,
+      word: 'world',
+    })
+    expect(parseMarkdownMarkShortcut('*foo* bar *baz*')).toMatchObject({
+      kind: 'italic',
+      word: 'baz',
+    })
+    expect(parseMarkdownMarkShortcut('**hello*')).toBeNull()
+    expect(parseMarkdownMarkShortcut('*hello**')).toBeNull()
+    expect(parseMarkdownMarkShortcut('__hello_')).toBeNull()
+    expect(parseMarkdownMarkShortcut('_hello__')).toBeNull()
+    expect(parseMarkdownMarkShortcut('Hello*world*')).toBeNull()
+    expect(parseMarkdownMarkShortcut('Hello_world_')).toBeNull()
   })
 })
 
