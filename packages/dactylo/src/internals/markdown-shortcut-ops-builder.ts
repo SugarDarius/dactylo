@@ -132,16 +132,20 @@ export function isMarkdownMarkShortcutOpenBoundary(
 }
 
 /**
- * Parses a trailing markdown mark shortcut delimiter pair at the end of a node text.
- * Returns spec about the location of the shortcut.
+ * Parses a trailing markdown mark shortcut delimiter pair immediately before
+ * `cursorOffset` (defaults to the end of `nodeText`).
+ * Returns spec about the location of the shortcut in `nodeText`.
  */
 export function parseMarkdownMarkShortcut(
   nodeText: string,
+  cursorOffset: number,
 ): MarkdownMarkShortcutSpec | null {
+  const textBeforeCursor = nodeText.slice(0, cursorOffset)
+
   /** Bold case. */
   const boldMatch =
-    BOLD_MARKDOWN_ASTERISK_SHORTCUT_PATTERN.exec(nodeText) ??
-    BOLD_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN.exec(nodeText)
+    BOLD_MARKDOWN_ASTERISK_SHORTCUT_PATTERN.exec(textBeforeCursor) ??
+    BOLD_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN.exec(textBeforeCursor)
 
   if (boldMatch?.groups?.word) {
     const { word } = boldMatch.groups
@@ -150,7 +154,9 @@ export function parseMarkdownMarkShortcut(
     const delimiterLength = 2
     const openDelimiterOffset = boldMatch.index
 
-    if (!isMarkdownMarkShortcutOpenBoundary(nodeText, openDelimiterOffset)) {
+    if (
+      !isMarkdownMarkShortcutOpenBoundary(textBeforeCursor, openDelimiterOffset)
+    ) {
       return null
     }
 
@@ -169,8 +175,8 @@ export function parseMarkdownMarkShortcut(
 
   /** Italic case. */
   const italicMatch =
-    ITALIC_MARKDOWN_ASTERISK_SHORTCUT_PATTERN.exec(nodeText) ??
-    ITALIC_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN.exec(nodeText)
+    ITALIC_MARKDOWN_ASTERISK_SHORTCUT_PATTERN.exec(textBeforeCursor) ??
+    ITALIC_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN.exec(textBeforeCursor)
 
   if (italicMatch?.groups?.word) {
     const { word } = italicMatch.groups
@@ -179,7 +185,9 @@ export function parseMarkdownMarkShortcut(
     const delimiterLength = 1
     const openDelimiterOffset = italicMatch.index
 
-    if (!isMarkdownMarkShortcutOpenBoundary(nodeText, openDelimiterOffset)) {
+    if (
+      !isMarkdownMarkShortcutOpenBoundary(textBeforeCursor, openDelimiterOffset)
+    ) {
       return null
     }
 
@@ -501,21 +509,21 @@ const rules: MarkdownShortcutOpsRule[] = [
   },
   {
     /**
-     * 💡 Cursor is at the end of an inline text node whose content nds with
-     *    `**word**` or `__word__`, with opening delimiters at node start or after
-     *    whitespace (e.g. `Hello **world**`, not `Hello**world**`). The last typed
-     *    character is the final closing delimiter (`*` or `_`).
+     * 💡 Cursor is immediately after `**word**` or `__word__` in an inline text
+     *    node (end of node or mid-paragraph), with opening delimiters at node start
+     *    or after whitespace (e.g. `Hello **world** there`, not `Hello**world**`).
+     *    The last typed character is the final closing delimiter (`*` or `_`).
      * 🎯 Remove both delimiter pairs, apply bold only on `word` (prefix such as
-     *    `Hello ` stays un-bold), caret after `word`.
+     *    `Hello ` and suffix such as ` there` stay un-bold), caret after `word`.
      */
     build: ({ context, situation, input }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
 
-      const { block, node } = situation
+      const { at, block, node } = situation
 
-      const spec = parseMarkdownMarkShortcut(node.text)
+      const spec = parseMarkdownMarkShortcut(node.text, at.offset)
       if (
         spec === null ||
         spec.kind !== 'bold' ||
@@ -545,9 +553,9 @@ const rules: MarkdownShortcutOpsRule[] = [
         return false
       }
 
-      const { node } = situation
+      const { at, node } = situation
 
-      const spec = parseMarkdownMarkShortcut(node.text)
+      const spec = parseMarkdownMarkShortcut(node.text, at.offset)
       if (
         spec === null ||
         spec.kind !== 'bold' ||
@@ -562,21 +570,21 @@ const rules: MarkdownShortcutOpsRule[] = [
   },
   {
     /**
-     * 💡 Cursor is at the end of an inline text node whose content ends with
-     *    `*word*` or `__word__`, with opening delimiters at node start or after
-     *    whitespace (e.g. `Hello *world*`, not `Hello*world*`). The last typed
-     *    character is the final closing delimiter (`*` or `_`).
+     * 💡 Cursor is immediately after `*word*` or `_word_` in an inline text node
+     *    (end of node or mid-paragraph), with opening delimiters at node start or
+     *    after whitespace (e.g. `Hello *world* there`, not `Hello*world*`). The
+     *    last typed character is the final closing delimiter (`*` or `_`).
      * 🎯 Remove both delimiter pairs, apply italic only on `word` (prefix such as
-     *    `Hello ` stays un-italic), caret after `word`.
+     *    `Hello ` and suffix such as ` there` stay un-italic), caret after `word`.
      */
     build: ({ context, situation, input }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
 
-      const { block, node } = situation
+      const { at, block, node } = situation
 
-      const spec = parseMarkdownMarkShortcut(node.text)
+      const spec = parseMarkdownMarkShortcut(node.text, at.offset)
       if (
         spec === null ||
         spec.kind !== 'italic' ||
@@ -606,9 +614,9 @@ const rules: MarkdownShortcutOpsRule[] = [
         return false
       }
 
-      const { node } = situation
+      const { at, node } = situation
 
-      const spec = parseMarkdownMarkShortcut(node.text)
+      const spec = parseMarkdownMarkShortcut(node.text, at.offset)
       if (
         spec === null ||
         spec.kind !== 'italic' ||

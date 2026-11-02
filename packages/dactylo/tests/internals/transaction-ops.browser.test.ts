@@ -601,6 +601,9 @@ describe('TransactionPipeline marks', () => {
 })
 
 describe('TransactionPipeline markdown shortcuts', () => {
+  const longParagraph =
+    'Minim minim sit dolore laboris aliqua minim. Est aliqua cupidatat ut occaecat quis reprehenderit sunt do Lorem veniam qui eiusmod exercitation cupidatat aliquip. Proident voluptate minim eiusmod. Duis cillum eu cupidatat enim nisi cupidatat reprehenderit duis occaecat exercitation duis ipsum velit. Reprehenderit in dolore Lorem tempor anim in culpa voluptate id incididunt esse reprehenderit ex excepteur eiusmod. Dolore culpa sit aute minim voluptate culpa.'
+
   test('ATX heading on space converts the paragraph; undo restores the trigger; redo converts again', () => {
     const pipeline = makePipeline({ markdown: true })
     focus(pipeline)
@@ -750,6 +753,86 @@ describe('TransactionPipeline markdown shortcuts', () => {
       ),
     ).toBe(true)
   })
+
+  test('**word** closing delimiter bolds mid-paragraph after a long prefix; suffix stays unmarked', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, longParagraph)
+
+    const laborisEnd = longParagraph.indexOf('laboris') + 'laboris'.length
+    const cursor = requireCursor(pipeline.context)
+    setCursor(pipeline, { ...cursor, offset: laborisEnd })
+    typeText(pipeline, ' **test*')
+    typeText(pipeline, '*')
+
+    expect(blockTexts(pipeline.context)).toEqual([
+      `${longParagraph.slice(0, laborisEnd)} test${longParagraph.slice(laborisEnd)}`,
+    ])
+    expect(
+      firstInlineBlock(pipeline.context).content.some(
+        (node) =>
+          isInlineNodeWithEditableText(node) &&
+          isMarkEnabled(node.marks, 'bold') &&
+          node.text === 'test',
+      ),
+    ).toBe(true)
+    expect(
+      firstInlineBlock(pipeline.context).content.some(
+        (node) =>
+          isInlineNodeWithEditableText(node) &&
+          !isMarkEnabled(node.marks, 'bold') &&
+          node.text.startsWith('Minim minim sit dolore laboris'),
+      ),
+    ).toBe(true)
+    expect(
+      firstInlineBlock(pipeline.context).content.some(
+        (node) =>
+          isInlineNodeWithEditableText(node) &&
+          !isMarkEnabled(node.marks, 'bold') &&
+          node.text.includes('aliqua minim'),
+      ),
+    ).toBe(true)
+  })
+
+  test('*word* closing delimiter italicizes mid-paragraph after a long prefix; suffix stays unmarked', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, longParagraph)
+
+    const laborisEnd = longParagraph.indexOf('laboris') + 'laboris'.length
+    const cursor = requireCursor(pipeline.context)
+    setCursor(pipeline, { ...cursor, offset: laborisEnd })
+    typeText(pipeline, ' *test')
+    typeText(pipeline, '*')
+
+    expect(blockTexts(pipeline.context)).toEqual([
+      `${longParagraph.slice(0, laborisEnd)} test${longParagraph.slice(laborisEnd)}`,
+    ])
+    expect(
+      firstInlineBlock(pipeline.context).content.some(
+        (node) =>
+          isInlineNodeWithEditableText(node) &&
+          isMarkEnabled(node.marks, 'italic') &&
+          node.text === 'test',
+      ),
+    ).toBe(true)
+    expect(
+      firstInlineBlock(pipeline.context).content.some(
+        (node) =>
+          isInlineNodeWithEditableText(node) &&
+          !isMarkEnabled(node.marks, 'italic') &&
+          node.text.startsWith('Minim minim sit dolore laboris'),
+      ),
+    ).toBe(true)
+    expect(
+      firstInlineBlock(pipeline.context).content.some(
+        (node) =>
+          isInlineNodeWithEditableText(node) &&
+          !isMarkEnabled(node.marks, 'italic') &&
+          node.text.includes('aliqua minim'),
+      ),
+    ).toBe(true)
+  })
 })
 
 describe('parseMarkdownMarkShortcut', () => {
@@ -779,6 +862,25 @@ describe('parseMarkdownMarkShortcut', () => {
       kind: 'italic',
       word: 'baz',
     })
+    expect(
+      parseMarkdownMarkShortcut(
+        'Hello **world** there',
+        'Hello **world**'.length,
+      ),
+    ).toMatchObject({
+      kind: 'bold',
+      openDelimiterOffset: 6,
+      word: 'world',
+    })
+    expect(
+      parseMarkdownMarkShortcut('Hello *world* there', 'Hello *world*'.length),
+    ).toMatchObject({
+      kind: 'italic',
+      openDelimiterOffset: 6,
+      word: 'world',
+    })
+    expect(parseMarkdownMarkShortcut('Hello **world** there')).toBeNull()
+    expect(parseMarkdownMarkShortcut('Hello *world* there')).toBeNull()
     expect(parseMarkdownMarkShortcut('**hello*')).toBeNull()
     expect(parseMarkdownMarkShortcut('*hello**')).toBeNull()
     expect(parseMarkdownMarkShortcut('__hello_')).toBeNull()
