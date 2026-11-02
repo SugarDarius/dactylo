@@ -445,14 +445,17 @@ export const cursorRules: DeleteContentOpsRule[] = [
   {
     /**
      * 💡 Situation:
-     * - Cursor is at the start on a empty structural text node.
-     * - The previous node is not a line break or mention.
-     * - The current node contains some text.
+     * - Cursor is at the start of an empty structural text node
+     *   (e.g. the unmarked continuation node inserted after a mark shortcut).
+     * - The previous node is editable text (not a line break or mention).
      *
      * 🎯 Operations:
-     * - Removes the current node and lands the caret at the end of the previous sibling.
+     * - Deletes the grapheme before the caret (last grapheme of the previous
+     *   sibling) — the empty node is not visible, so absorbing it must not
+     *   consume a Backspace.
+     * - Removes the empty node and lands the caret in the previous sibling.
      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ context, situation, resources }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -467,14 +470,73 @@ export const cursorRules: DeleteContentOpsRule[] = [
         )
       }
 
-      const ops: Operation[] = buildAbsorbEmptyTextNodeIntoPrevOps(
-        block,
-        node,
-        prevNode,
-        context.selection,
+      const { start, length } = resources.graphemeOffsetCaret.getDeleteRange(
+        prevNode.text,
+        prevNode.text.length,
       )
 
-      return ops
+      if (length <= 0) {
+        return buildAbsorbEmptyTextNodeIntoPrevOps(
+          block,
+          node,
+          prevNode,
+          context.selection,
+        )
+      }
+
+      const deleteOp: DeleteTextOp = {
+        __type: 'delete_text',
+        blockId: block.id,
+        length,
+        nodeId: prevNode.id,
+        offset: start,
+        snapshot: { text: prevNode.text.slice(start, start + length) },
+      }
+
+      const removeEmpty: Operation = {
+        __type: 'remove_inline_node',
+        blockId: block.id,
+        nodeId: node.id,
+        snapshot: node,
+      }
+
+      const remainingText =
+        prevNode.text.slice(0, start) + prevNode.text.slice(start + length)
+      const remaining = block.content
+        .filter((inline) => inline.id !== node.id)
+        .map((inline) =>
+          inline.id === prevNode.id
+            ? { ...prevNode, text: remainingText }
+            : inline,
+        )
+
+      const collapsed = buildCollapseEmptyBlockToActiveMarksOps(
+        block,
+        remaining,
+        context.activeMarks,
+      )
+
+      if (collapsed) {
+        return withTrailingSelectionOp(
+          [deleteOp, removeEmpty, ...collapsed.ops],
+          createCursor({
+            blockId: block.id,
+            nodeId: collapsed.placeholder.id,
+            offset: 0,
+          }),
+          context.selection,
+        )
+      }
+
+      return withTrailingSelectionOp(
+        [deleteOp, removeEmpty],
+        createCursor({
+          blockId: block.id,
+          nodeId: prevNode.id,
+          offset: start,
+        }),
+        context.selection,
+      )
     },
     name: 'cursor/delete-content/at-node-start/absorb-empty-into-prev',
     when: ({ situation }): boolean => {
@@ -488,7 +550,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
       return (
         at.offset === 0 &&
         nodeIndex > 0 &&
-        node.text.length > 0 &&
+        node.text.length === 0 &&
         prevNode !== undefined &&
         isInlineNodeWithEditableText(prevNode)
       )

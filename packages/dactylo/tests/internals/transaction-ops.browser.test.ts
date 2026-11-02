@@ -679,6 +679,18 @@ describe('TransactionPipeline markdown shortcuts', () => {
     ).toBe(true)
     pipeline.redo()
     expect(snapshot(pipeline.context)).toEqual(converted)
+
+    deleteBackward(pipeline)
+    expect(blockTexts(pipeline.context)).toEqual(['h'])
+    expect(requireCursor(pipeline.context).offset).toBe(1)
+    expect(
+      firstInlineBlock(pipeline.context).content.some(
+        (node) =>
+          isInlineNodeWithEditableText(node) &&
+          isMarkEnabled(node.marks, 'bold') &&
+          node.text === 'h',
+      ),
+    ).toBe(true)
   })
 
   test('*word* closing delimiter italicizes the word; undo restores markdown text; redo italicizes again', () => {
@@ -708,6 +720,18 @@ describe('TransactionPipeline markdown shortcuts', () => {
     ).toBe(true)
     pipeline.redo()
     expect(snapshot(pipeline.context)).toEqual(converted)
+
+    deleteBackward(pipeline)
+    expect(blockTexts(pipeline.context)).toEqual(['h'])
+    expect(requireCursor(pipeline.context).offset).toBe(1)
+    expect(
+      firstInlineBlock(pipeline.context).content.some(
+        (node) =>
+          isInlineNodeWithEditableText(node) &&
+          isMarkEnabled(node.marks, 'italic') &&
+          node.text === 'h',
+      ),
+    ).toBe(true)
   })
 
   test('**word* does not italicize; CommonMark leaves mismatched delimiter runs literal', () => {
