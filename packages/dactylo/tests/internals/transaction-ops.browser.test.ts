@@ -901,6 +901,36 @@ describe('parseMarkdownMarkShortcut', () => {
     expect(
       parseMarkdownMarkShortcut('Hello_world_', 'Hello_world_'.length),
     ).toBeNull()
+    expect(
+      parseMarkdownMarkShortcut('~~hello~~', '~~hello~~'.length),
+    ).toMatchObject({
+      kind: 'strikethrough',
+      word: 'hello',
+    })
+    expect(
+      parseMarkdownMarkShortcut(
+        'Hello ~~world~~ there',
+        'Hello ~~world~~'.length,
+      ),
+    ).toMatchObject({
+      kind: 'strikethrough',
+      openDelimiterOffset: 6,
+      word: 'world',
+    })
+    expect(parseMarkdownMarkShortcut('~~hello~', '~~hello~'.length)).toBeNull()
+    expect(parseMarkdownMarkShortcut('~hello~~', '~hello~~'.length)).toBeNull()
+    expect(
+      parseMarkdownMarkShortcut(
+        'Hello ~~world~~ there',
+        'Hello ~~world~~'.length,
+      ),
+    ).toMatchObject({
+      kind: 'strikethrough',
+      word: 'world',
+    })
+    expect(
+      parseMarkdownMarkShortcut('Hello ~world~ there', 'Hello ~world~'.length),
+    ).toBeNull()
   })
 })
 
