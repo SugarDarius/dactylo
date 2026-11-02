@@ -163,7 +163,12 @@ export type MarkdownMarkShortcutSpec = {
   | {
       readonly kind: 'bold'
     }
-  | { readonly kind: 'italic' }
+  | {
+      readonly kind: 'italic'
+    }
+  | {
+      readonly kind: 'strikethrough'
+    }
 >
 
 /** Configuration for autolink detection. */

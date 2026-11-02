@@ -16,6 +16,8 @@ import {
   ITALIC_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN,
   MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS,
   MARKDOWN_MARK_SHORTCUT_REQUIRED_CHAR_BEFORE_OPEN_DELIMITER,
+  MARKDOWN_STRIKETHROUGH_MARK_SHORTCUT_CLOSING_DELIMITERS,
+  STRIKETHROUGH_MARKDOWN_TILDE_SHORTCUT_PATTERN,
 } from './constants'
 import {
   computeInsertBlockPosKey,
@@ -197,6 +199,35 @@ export function parseMarkdownMarkShortcut(
     return {
       delimiterLength,
       kind: 'italic',
+      openDelimiterOffset,
+      word,
+      wordEndOffset,
+      wordStartOffset,
+    }
+  }
+
+  /** Strikethrough case. */
+  const strikethroughMatch =
+    STRIKETHROUGH_MARKDOWN_TILDE_SHORTCUT_PATTERN.exec(textBeforeCursor)
+  if (strikethroughMatch?.groups?.word) {
+    const { word } = strikethroughMatch.groups
+
+    /** CommonMark bold delimiter length is always `2`. */
+    const delimiterLength = 2
+    const openDelimiterOffset = strikethroughMatch.index
+
+    if (
+      !isMarkdownMarkShortcutOpenBoundary(textBeforeCursor, openDelimiterOffset)
+    ) {
+      return null
+    }
+
+    const wordStartOffset = openDelimiterOffset + delimiterLength
+    const wordEndOffset = wordStartOffset + word.length
+
+    return {
+      delimiterLength,
+      kind: 'strikethrough',
       openDelimiterOffset,
       word,
       wordEndOffset,
@@ -584,6 +615,7 @@ const rules: MarkdownShortcutOpsRule[] = [
       ) {
         return false
       }
+
       return true
     },
   },
@@ -645,6 +677,69 @@ const rules: MarkdownShortcutOpsRule[] = [
       ) {
         return false
       }
+
+      return true
+    },
+  },
+  {
+    /**
+     * 💡 Cursor is immediately after `~~*word~~` in an inline text
+     *    node (end of node or mid-paragraph), with opening delimiters at node start
+     *    or after whitespace (e.g. `Hello ~~world~~ there`, not `Hello~~world~~`).
+     *    The last typed character is the final closing delimiter (`~`).
+     * 🎯 Remove both delimiter pairs, apply strikethrough only on `word` (prefix such as
+     *    `Hello ` and suffix such as ` there` stay un-strikethrough), caret after `word`.
+     */
+    build: ({ context, situation, input }): Operation[] | null => {
+      if (situation.kind !== 'cursor-selection') {
+        return null
+      }
+
+      const { at, block, node } = situation
+
+      const spec = parseMarkdownMarkShortcut(node.text, at.offset)
+      if (
+        spec === null ||
+        spec.kind !== 'strikethrough' ||
+        !MARKDOWN_STRIKETHROUGH_MARK_SHORTCUT_CLOSING_DELIMITERS.includes(
+          input.text,
+        )
+      ) {
+        return null
+      }
+
+      const { delimiterLength, openDelimiterOffset, word, wordEndOffset } = spec
+
+      return buildMarkdownMarkShortcutOps(
+        context,
+        block,
+        node,
+        wordEndOffset,
+        openDelimiterOffset,
+        delimiterLength,
+        word,
+        'strikethrough',
+      )
+    },
+    name: 'cursor/strikethrough-mark/inline-closing-delimiter',
+    when: ({ situation, input }): boolean => {
+      if (situation.kind !== 'cursor-selection') {
+        return false
+      }
+
+      const { at, node } = situation
+
+      const spec = parseMarkdownMarkShortcut(node.text, at.offset)
+      if (
+        spec === null ||
+        spec.kind !== 'strikethrough' ||
+        !MARKDOWN_STRIKETHROUGH_MARK_SHORTCUT_CLOSING_DELIMITERS.includes(
+          input.text,
+        )
+      ) {
+        return false
+      }
+
       return true
     },
   },

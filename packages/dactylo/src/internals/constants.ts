@@ -227,6 +227,22 @@ export const ITALIC_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN =
   /(?<![_])_(?<word>[^_\s](?:[^_]*[^_\s])?)_$/u
 
 /**
+ * Strikethrough markdown shortcut with closing delimiter typed.
+ * Trailing CommonMark delimiter run of a single `~` — `~~word~` stays literal.
+ *
+ * @example
+ * ```txt
+ * Node text: "~~hello~~"           ✓
+ * Node text: "Hello ~~world~~"     ✓
+ * Node text: "Hello~world~"        ✗
+ * Node text: "~~hello~"            ✗
+ * Node text: "~hello~~"            ✗
+ * ```
+ */
+export const STRIKETHROUGH_MARKDOWN_TILDE_SHORTCUT_PATTERN =
+  /(?<![_])~~(?<word>[^_\s](?:[^_]*[^_\s])?)~~$/u
+
+/**
  * Character class for “safe” text before an opening mark delimiter when the
  * shortcut is not at the start of the node. A single ASCII/Unicode whitespace
  * satisfies CommonMark-style “left-flanking” typing UX (`Hello **there**`).
@@ -235,3 +251,6 @@ export const MARKDOWN_MARK_SHORTCUT_REQUIRED_CHAR_BEFORE_OPEN_DELIMITER = /\s/u
 
 /** Allowed closing delimiters for bold markdown shortcut. */
 export const MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS = ['*', '_']
+
+/** Allowed closing delimiters for strikethrough markdown shortcut. */
+export const MARKDOWN_STRIKETHROUGH_MARK_SHORTCUT_CLOSING_DELIMITERS = ['~']
