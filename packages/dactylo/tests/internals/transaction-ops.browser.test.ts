@@ -825,28 +825,40 @@ describe('TransactionPipeline markdown shortcuts', () => {
 
 describe('parseMarkdownMarkShortcut', () => {
   test('pairs CommonMark/GFM delimiter runs and ignores mismatched closers', () => {
-    expect(parseMarkdownMarkShortcut('*hello*')).toMatchObject({
+    expect(
+      parseMarkdownMarkShortcut('*hello*', '*hello*'.length),
+    ).toMatchObject({
       kind: 'italic',
       word: 'hello',
     })
-    expect(parseMarkdownMarkShortcut('_hello_')).toMatchObject({
+    expect(
+      parseMarkdownMarkShortcut('_hello_', '_hello_'.length),
+    ).toMatchObject({
       kind: 'italic',
       word: 'hello',
     })
-    expect(parseMarkdownMarkShortcut('**hello**')).toMatchObject({
+    expect(
+      parseMarkdownMarkShortcut('**hello**', '**hello**'.length),
+    ).toMatchObject({
       kind: 'bold',
       word: 'hello',
     })
-    expect(parseMarkdownMarkShortcut('__hello__')).toMatchObject({
+    expect(
+      parseMarkdownMarkShortcut('__hello__', '__hello__'.length),
+    ).toMatchObject({
       kind: 'bold',
       word: 'hello',
     })
-    expect(parseMarkdownMarkShortcut('Hello *world*')).toMatchObject({
+    expect(
+      parseMarkdownMarkShortcut('Hello *world*', 'Hello *world*'.length),
+    ).toMatchObject({
       kind: 'italic',
       openDelimiterOffset: 6,
       word: 'world',
     })
-    expect(parseMarkdownMarkShortcut('*foo* bar *baz*')).toMatchObject({
+    expect(
+      parseMarkdownMarkShortcut('*foo* bar *baz*', '*foo* bar *baz*'.length),
+    ).toMatchObject({
       kind: 'italic',
       word: 'baz',
     })
@@ -867,14 +879,28 @@ describe('parseMarkdownMarkShortcut', () => {
       openDelimiterOffset: 6,
       word: 'world',
     })
-    expect(parseMarkdownMarkShortcut('Hello **world** there')).toBeNull()
-    expect(parseMarkdownMarkShortcut('Hello *world* there')).toBeNull()
-    expect(parseMarkdownMarkShortcut('**hello*')).toBeNull()
-    expect(parseMarkdownMarkShortcut('*hello**')).toBeNull()
-    expect(parseMarkdownMarkShortcut('__hello_')).toBeNull()
-    expect(parseMarkdownMarkShortcut('_hello__')).toBeNull()
-    expect(parseMarkdownMarkShortcut('Hello*world*')).toBeNull()
-    expect(parseMarkdownMarkShortcut('Hello_world_')).toBeNull()
+    expect(
+      parseMarkdownMarkShortcut(
+        'Hello **world** there',
+        'Hello **world** there'.length,
+      ),
+    ).toBeNull()
+    expect(
+      parseMarkdownMarkShortcut(
+        'Hello *world* there',
+        'Hello *world* there'.length,
+      ),
+    ).toBeNull()
+    expect(parseMarkdownMarkShortcut('**hello*', '**hello*'.length)).toBeNull()
+    expect(parseMarkdownMarkShortcut('*hello**', '*hello**'.length)).toBeNull()
+    expect(parseMarkdownMarkShortcut('__hello_', '__hello_'.length)).toBeNull()
+    expect(parseMarkdownMarkShortcut('_hello__', '_hello__'.length)).toBeNull()
+    expect(
+      parseMarkdownMarkShortcut('Hello*world*', 'Hello*world*'.length),
+    ).toBeNull()
+    expect(
+      parseMarkdownMarkShortcut('Hello_world_', 'Hello_world_'.length),
+    ).toBeNull()
   })
 })
 
