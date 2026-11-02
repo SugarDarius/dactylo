@@ -590,14 +590,14 @@ export class TransactionPipeline {
 
     for (const op of ops) {
       try {
-        this.#operationsEngine.validateOp(next, op)
+        this.#operationsEngine.runtime.validateOp(next, op)
       } catch (err) {
         this.#eventSources.transactionDidReject.notify(transaction)
         throw DactyloError.wrap(err)
       }
 
-      next = this.#operationsEngine.applyOp(next, op)
-      inverseOps.unshift(this.#operationsEngine.invertOp(op))
+      next = this.#operationsEngine.runtime.applyOp(next, op)
+      inverseOps.unshift(this.#operationsEngine.runtime.invertOp(op))
     }
 
     this.#context = next

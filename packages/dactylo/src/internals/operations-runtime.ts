@@ -794,6 +794,17 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
 }
 
 // --- Invert -───────────────────────────────────────---------------
+
+/** Throws a validation {@link DactyloError} for a failed op inversion. */
+export function invertError(message: string, op: Operation): never {
+  throw DactyloError.from({
+    code: 'INVERT_TRANSACTION_OPERATIONS',
+    hint: 'OperationsRuntime/invertOp',
+    message,
+    payload: { op },
+  })
+}
+
 export function invertOp(op: Operation): Operation {
   const type = op.__type
   switch (type) {
