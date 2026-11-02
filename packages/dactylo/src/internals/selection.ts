@@ -1,6 +1,11 @@
 import { findFirstInlineNodeInBlock, findLastInlineNodeInBlock } from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
-import { getInlineNodeTextLength, isInlineNodeWithEditableText } from './nodes'
+import {
+  getInlineNodeTextLength,
+  isInlineNodeWithEditableText,
+  isLineBreakNode,
+  isMentionNode,
+} from './nodes'
 import type { InlineNode, NodeId } from './nodes'
 import { assertNever } from './utils'
 
@@ -314,11 +319,7 @@ export function getLinearOffsetInBlock(
   let linear = 0
   for (const node of block.content) {
     if (node.id === cursor.nodeId) {
-      if (
-        node.__type === 'text' ||
-        node.__type === 'link' ||
-        node.__type === 'mention'
-      ) {
+      if (isInlineNodeWithEditableText(node) || isMentionNode(node)) {
         return linear + cursor.offset
       }
       return linear
@@ -370,7 +371,7 @@ export function cursorAnchorFromLinearOffsetInBlock(
       remaining -= node.text.length
       continue
     }
-    if (node.__type === 'line_break') {
+    if (isLineBreakNode(node)) {
       if (remaining === 0) {
         return cursorAtInlineNodeStart(blockId, node)
       }

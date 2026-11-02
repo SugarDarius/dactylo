@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import type { BlockId } from '../../src/internals/blocks'
-import { HistoryStack, orderInverseOps } from '../../src/internals/history'
+import { HistoryStack } from '../../src/internals/history'
 import type { HistoryEntry } from '../../src/internals/history'
 import type { NodeId } from '../../src/internals/nodes'
 import type {
@@ -78,23 +78,22 @@ const createDeleteHistoryEntry = (opts: {
       },
     },
   }
-  const rawInverseOps = [
-    {
-      __type: 'insert_text' as const,
-      blockId: opts.blockId,
-      marks: {},
-      nodeId: opts.nodeId,
-      offset: opts.offset,
-      text: opts.char,
-    },
-    {
-      __type: 'set_selection' as const,
-      next: selection.prev,
-      prev: selection.next,
-    },
-  ]
+
   return {
-    inverseOps: orderInverseOps(rawInverseOps),
+    inverseOps: [
+      {
+        __type: 'insert_text',
+        blockId: opts.blockId,
+        nodeId: opts.nodeId,
+        offset: opts.offset,
+        text: opts.char,
+      },
+      {
+        __type: 'set_selection',
+        next: selection.prev,
+        prev: selection.next,
+      },
+    ],
     ops: [del, selection],
   }
 }
@@ -134,50 +133,25 @@ const createTypingHistoryEntry = (opts: {
     },
   }
 
-  const rawInverseOps = [
-    {
-      __type: 'delete_text' as const,
-      blockId: opts.blockId,
-      length: 1,
-      nodeId: opts.nodeId,
-      offset: opts.offset,
-      snapshot: { marks: {}, text: opts.char },
-    },
-    {
-      __type: 'set_selection' as const,
-      next: selection.prev,
-      prev: selection.next,
-    },
-  ]
-
   return {
-    inverseOps: orderInverseOps(rawInverseOps),
+    inverseOps: [
+      {
+        __type: 'delete_text',
+        blockId: opts.blockId,
+        length: 1,
+        nodeId: opts.nodeId,
+        offset: opts.offset,
+        snapshot: { text: opts.char },
+      },
+      {
+        __type: 'set_selection' as const,
+        next: selection.prev,
+        prev: selection.next,
+      },
+    ],
     ops: [insert, selection],
   }
 }
-
-describe('Order inverse ops', () => {
-  test('applies document inverses before selection inverses', () => {
-    const ordered = orderInverseOps([
-      {
-        __type: 'set_selection',
-        next: null,
-        prev: null,
-      },
-      {
-        __type: 'delete_text',
-        blockId: 'bl_0001' as BlockId,
-        length: 1,
-        nodeId: 'nd_0001' as NodeId,
-        offset: 0,
-        snapshot: { text: 'a' },
-      },
-    ])
-
-    expect(ordered[0]?.__type).toBe('delete_text')
-    expect(ordered[1]?.__type).toBe('set_selection')
-  })
-})
 
 describe('History', () => {
   test('coalesces adjacent single-char inserts with set_selection', () => {
@@ -349,7 +323,7 @@ describe('History', () => {
           {
             __type: 'remove_inline_node',
             blockId,
-            index: 2,
+            nodeId,
             snapshot: {
               __type: 'text',
               createdAt: new Date(),

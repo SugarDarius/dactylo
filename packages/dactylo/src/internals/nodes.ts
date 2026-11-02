@@ -157,7 +157,7 @@ export function isLineBreakNode(node: InlineNode): node is LineBreakNode {
 }
 
 /** Creates a {@link LinkNode}.
- * By default, it sanitizes the text, and title at creation time.
+ * By default, it sanitizes the text, href, and title at creation time.
  */
 export function createLinkNode(opts: {
   url: {
@@ -197,7 +197,7 @@ export function isMentionNode(node: InlineNode): node is MentionNode {
 export function isInlineNodeWithEditableText(
   node: InlineNode,
 ): node is InlineNodeWithEditableText {
-  return node.__type === 'text' || node.__type === 'link'
+  return isTextNode(node) || isLinkNode(node)
 }
 
 /** Creates a new inline node with editable text from an existing inline node. */
@@ -232,6 +232,11 @@ export function createFromInlineWithEditableText(
       })
     }
   }
+}
+
+/** Returns a shallow copy of an inline node with a fresh `updatedAt` timestamp. */
+export function touchInlineNode(node: InlineNode): InlineNode {
+  return { ...node, updatedAt: new Date() }
 }
 
 /** Returns the text length of an inline node. */
@@ -334,6 +339,66 @@ export function isCanonicalEmptyInlineContent(
   }
 
   return first.text.length === 0 && isMarksEqual(first.marks, activeMarks)
+}
+
+/**
+ * Whether two adjacent inline nodes at a merge/split seam should become one node.
+ * Used so `merge_blocks` undoes a mid-node `split_block` back to a single node.
+ */
+export function canJoinAtMergeSeam(
+  left: InlineNode,
+  right: InlineNode,
+): boolean {
+  if (
+    !isInlineNodeWithEditableText(left) ||
+    !isInlineNodeWithEditableText(right)
+  ) {
+    return false
+  }
+
+  if (left.__type !== right.__type) {
+    return false
+  }
+
+  if (!isMarksEqual(left.marks, right.marks)) {
+    return false
+  }
+
+  if (isLinkNode(left) && isLinkNode(right)) {
+    return (
+      left.url.href === right.url.href && left.url.title === right.url.title
+    )
+  }
+
+  return true
+}
+
+/**
+ * Concatenates `tail` onto `head`, joining the seam into one node when
+ * {@link canJoinAtMergeSeam} is true. Preserves the head node's id.
+ */
+export function joinInlineContentAtMergeSeam(
+  head: readonly InlineNode[],
+  tail: readonly InlineNode[],
+): InlineNode[] {
+  const last = head[head.length - 1]
+  const [first, ...rest] = tail
+
+  if (
+    last &&
+    first &&
+    canJoinAtMergeSeam(last, first) &&
+    isInlineNodeWithEditableText(last) &&
+    isInlineNodeWithEditableText(first)
+  ) {
+    return [
+      ...head.slice(0, -1),
+      touchInlineNode({ ...last, text: last.text + first.text }),
+      ...rest,
+    ]
+  }
+
+  return [...head, ...tail]
 }
 
 /**

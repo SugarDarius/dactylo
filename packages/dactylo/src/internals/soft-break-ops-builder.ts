@@ -8,32 +8,27 @@ import {
 } from './document'
 import type { EditorContext } from './editor-context'
 import {
-  coalesceInlineNodes,
+  createFromInlineWithEditableText,
   createLineBreakNode,
-  createLinkNode,
   createTextNode,
   isInlineNodeWithEditableText,
 } from './nodes'
 import type { InlineNodeWithEditableText } from './nodes'
-import type { DeleteTextOp, MergeBlocksOp, Operation } from './operations'
+import type { Operation } from './operations'
 import type {
   BuilderOpsIntent,
   OperationRule,
   OperationsBuilder,
 } from './operations-builder'
 import {
-  buildBackwardTrimBlockOps,
-  buildCollapseEmptyBlockToActiveMarksOps,
-  buildDeleteBlocksBetweenOps,
-  buildDeleteRangeWithinBlockOps,
+  buildDeleteRangeCrossBlockIntent,
+  buildDeleteRangeWithinBlockIntent,
+  buildDeleteTextRunIntent,
   buildError,
-  buildForwardTrimBlockOps,
   iterRules,
-  previewInlineContentAfterTrimOps,
   rangeCollapsedError,
-  resolveRangeInsertCaretAfterPrefixOps,
-  resolvesMergeBlocksUndoFields,
-  resolveTextInsertTarget,
+  resolvesCaretNode,
+  withTrailingSelectionOp,
 } from './operations-builder'
 import {
   createCursor,
@@ -43,7 +38,6 @@ import {
   isSelectionActive,
 } from './selection'
 import type { CursorSelection, RangeSelection, TextCursor } from './selection'
-import { assertNever } from './utils'
 
 /** Situation with no selection. */
 export interface SoftBreakOpsNoSelectionSituation {
@@ -84,6 +78,9 @@ export interface SoftBreakOpsRangeSelectionSituation {
 
         /** Inline node with editable text subject to the operation. */
         readonly node: InlineNodeWithEditableText
+
+        /** Index of the inline node with editable text in the block. */
+        readonly index: number
       }
     | {
         readonly kind: 'same-block'
@@ -115,6 +112,84 @@ export type SoftBreakOpsRule = OperationRule<
   unknown
 >
 
+/** Builds inline soft-break operations at a caret inside a text or link node. */
+export function buildSoftBreakInlineOpsAtCaret(
+  context: EditorContext,
+  block: BlockWithInlineContent,
+  at: TextCursor,
+  node: InlineNodeWithEditableText,
+  _nodeIndex: number,
+): { ops: Operation[]; next: CursorSelection } {
+  const lineBreak = createLineBreakNode()
+
+  if (isCursorAtBlockEnd(at, block)) {
+    const insertedText = createTextNode({
+      marks: context.activeMarks,
+      text: '',
+    })
+    return {
+      next: createCursor({
+        blockId: block.id,
+        nodeId: insertedText.id,
+        offset: 0,
+      }),
+      ops: [
+        {
+          __type: 'insert_inline_node',
+          afterNodeId: node.id,
+          blockId: block.id,
+          node: lineBreak,
+        },
+        {
+          __type: 'insert_inline_node',
+          afterNodeId: lineBreak.id,
+          blockId: block.id,
+          node: insertedText,
+        },
+      ],
+    }
+  }
+
+  const tailText = node.text.slice(at.offset)
+  const inserted = createFromInlineWithEditableText(node, { text: tailText })
+  const ops: Operation[] = []
+
+  if (tailText.length > 0) {
+    ops.push({
+      __type: 'delete_text',
+      blockId: block.id,
+      length: tailText.length,
+      nodeId: node.id,
+      offset: at.offset,
+      snapshot: { text: tailText },
+    })
+  }
+
+  ops.push(
+    {
+      __type: 'insert_inline_node',
+      afterNodeId: node.id,
+      blockId: block.id,
+      node: lineBreak,
+    },
+    {
+      __type: 'insert_inline_node',
+      afterNodeId: lineBreak.id,
+      blockId: block.id,
+      node: inserted,
+    },
+  )
+
+  return {
+    next: createCursor({
+      blockId: block.id,
+      nodeId: inserted.id,
+      offset: 0,
+    }),
+    ops,
+  }
+}
+
 /** Rules for cursor selection. */
 export const cursorRules: SoftBreakOpsRule[] = [
   {
@@ -127,38 +202,16 @@ export const cursorRules: SoftBreakOpsRule[] = [
         return null
       }
 
-      const { at, block, index } = situation
+      const { at, block, node, index } = situation
+      const { ops, next } = buildSoftBreakInlineOpsAtCaret(
+        context,
+        block,
+        at,
+        node,
+        index,
+      )
 
-      const insertedText = createTextNode({
-        marks: context.activeMarks,
-        text: '',
-      })
-
-      const ops: Operation[] = [
-        {
-          __type: 'insert_inline_node',
-          blockId: block.id,
-          index: index + 1,
-          node: createLineBreakNode(),
-        },
-        {
-          __type: 'insert_inline_node',
-          blockId: block.id,
-          index: index + 2,
-          node: insertedText,
-        },
-        {
-          __type: 'set_selection',
-          next: createCursor({
-            blockId: at.blockId,
-            nodeId: insertedText.id,
-            offset: 0,
-          }),
-          prev: context.selection,
-        },
-      ]
-
-      return ops
+      return withTrailingSelectionOp(ops, next, context.selection)
     },
     name: 'cursor/soft-break/at-block-end',
     when: ({ situation }): boolean => {
@@ -181,102 +234,15 @@ export const cursorRules: SoftBreakOpsRule[] = [
       }
 
       const { at, block, node, index } = situation
+      const { ops, next } = buildSoftBreakInlineOpsAtCaret(
+        context,
+        block,
+        at,
+        node,
+        index,
+      )
 
-      const type = node.__type
-      switch (type) {
-        case 'text': {
-          const tailText = node.text.slice(at.offset)
-          const insertedText = createTextNode({
-            marks: node.marks,
-            metadata: node.metadata,
-            text: tailText,
-          })
-
-          const ops: Operation[] = [
-            {
-              __type: 'delete_text',
-              blockId: block.id,
-              length: tailText.length,
-              nodeId: node.id,
-              offset: at.offset,
-              snapshot: {
-                text: tailText,
-              },
-            },
-            {
-              __type: 'insert_inline_node',
-              blockId: block.id,
-              index: index + 1,
-              node: createLineBreakNode(),
-            },
-            {
-              __type: 'insert_inline_node',
-              blockId: block.id,
-              index: index + 2,
-              node: insertedText,
-            },
-            {
-              __type: 'set_selection',
-              next: createCursor({
-                blockId: block.id,
-                nodeId: insertedText.id,
-                offset: 0,
-              }),
-              prev: context.selection,
-            },
-          ]
-
-          return ops
-        }
-        case 'link': {
-          const tailText = node.text.slice(at.offset)
-          const insertedLink = createLinkNode({
-            marks: node.marks,
-            metadata: node.metadata,
-            text: tailText,
-            url: node.url,
-          })
-
-          const ops: Operation[] = [
-            {
-              __type: 'delete_text',
-              blockId: block.id,
-              length: tailText.length,
-              nodeId: node.id,
-              offset: at.offset,
-              snapshot: {
-                text: tailText,
-              },
-            },
-            {
-              __type: 'insert_inline_node',
-              blockId: block.id,
-              index: index + 1,
-              node: createLineBreakNode(),
-            },
-            {
-              __type: 'insert_inline_node',
-              blockId: block.id,
-              index: index + 2,
-              node: insertedLink,
-            },
-            {
-              __type: 'set_selection',
-              next: createCursor({
-                blockId: block.id,
-                nodeId: insertedLink.id,
-                offset: 0,
-              }),
-              prev: context.selection,
-            },
-          ]
-
-          return ops
-        }
-        default: {
-          assertNever(type, { hint: 'SoftBreakOpsBuilder/#build' })
-        }
-      }
+      return withTrailingSelectionOp(ops, next, context.selection)
     },
     name: 'cursor/soft-break/split-node-at',
     when: ({ situation }): boolean => {
@@ -289,198 +255,6 @@ export const cursorRules: SoftBreakOpsRule[] = [
     },
   },
 ]
-
-/**
- * Builds inline soft-break operations at a caret inside a text or link node.
- *
- * Mirrors cursor rules:
- * - At block end → `line_break` + empty text (active marks), caret on new text @ 0.
- * - Otherwise → split node: trim tail, `line_break`, tail node, caret on tail @ 0.
- */
-export function buildSoftBreakInlineOpsAtCaret(
-  context: EditorContext,
-  block: BlockWithInlineContent,
-  at: TextCursor,
-  node: InlineNodeWithEditableText,
-  index: number,
-): { ops: Operation[]; next: CursorSelection } {
-  if (isCursorAtBlockEnd(at, block)) {
-    const insertedText = createTextNode({
-      marks: context.activeMarks,
-      text: '',
-    })
-
-    const ops: Operation[] = [
-      {
-        __type: 'insert_inline_node',
-        blockId: block.id,
-        index: index + 1,
-        node: createLineBreakNode(),
-      },
-      {
-        __type: 'insert_inline_node',
-        blockId: block.id,
-        index: index + 2,
-        node: insertedText,
-      },
-    ]
-
-    const next = createCursor({
-      blockId: block.id,
-      nodeId: insertedText.id,
-      offset: 0,
-    })
-
-    return { next, ops }
-  }
-
-  const type = node.__type
-  switch (type) {
-    case 'text': {
-      const tailText = node.text.slice(at.offset)
-      const insertedText = createTextNode({
-        marks: node.marks,
-        metadata: node.metadata,
-        text: tailText,
-      })
-
-      const ops: Operation[] = [
-        {
-          __type: 'delete_text',
-          blockId: block.id,
-          length: tailText.length,
-          nodeId: node.id,
-          offset: at.offset,
-          snapshot: { text: tailText },
-        },
-        {
-          __type: 'insert_inline_node',
-          blockId: block.id,
-          index: index + 1,
-          node: createLineBreakNode(),
-        },
-        {
-          __type: 'insert_inline_node',
-          blockId: block.id,
-          index: index + 2,
-          node: insertedText,
-        },
-      ]
-
-      const next = createCursor({
-        blockId: block.id,
-        nodeId: insertedText.id,
-        offset: 0,
-      })
-
-      return { next, ops }
-    }
-    case 'link': {
-      const tailText = node.text.slice(at.offset)
-      const insertedLink = createLinkNode({
-        marks: node.marks,
-        metadata: node.metadata,
-        text: tailText,
-        url: node.url,
-      })
-
-      const ops: Operation[] = [
-        {
-          __type: 'delete_text',
-          blockId: block.id,
-          length: tailText.length,
-          nodeId: node.id,
-          offset: at.offset,
-          snapshot: { text: tailText },
-        },
-        {
-          __type: 'insert_inline_node',
-          blockId: block.id,
-          index: index + 1,
-          node: createLineBreakNode(),
-        },
-        {
-          __type: 'insert_inline_node',
-          blockId: block.id,
-          index: index + 2,
-          node: insertedLink,
-        },
-      ]
-
-      const next = createCursor({
-        blockId: block.id,
-        nodeId: insertedLink.id,
-        offset: 0,
-      })
-
-      return { next, ops }
-    }
-    default: {
-      assertNever(type, {
-        hint: 'SoftBreakOpsBuilder/buildSoftBreakInlineOpsAtCaret',
-      })
-    }
-  }
-}
-
-/**
- * Builds soft-break and selection ops after a range delete in the same op batch.
- *
- * Resolves the editable target at `at` by replaying prefix ops on block snapshot.
- * Mirrors contract from {@link buildInsertTextAndSelectionAtRangeOps}
- */
-export function buildSoftBreakAndSelectionAtRangeOps(
-  context: EditorContext,
-  range: RangeSelection,
-  at: TextCursor,
-  opts: {
-    /** Ops already queued for this block before insert (e.g. range `delete_text`). */
-    prefixOps?: Operation[]
-    /**
-     * When document does not yet contain the target tree
-     * (e.g. cross-block merge preview), resolve the node from this block
-     * instead of `state`.
-     */
-    blockSnapshot?: BlockWithInlineContent
-  } = {},
-): Operation[] {
-  const { prefixOps = [], blockSnapshot } = opts
-  const block =
-    blockSnapshot ?? getBlockWithInlineContent(context.state, at.blockId)
-
-  const insertAt = resolveRangeInsertCaretAfterPrefixOps(block, at, prefixOps)
-
-  const previewContent = previewInlineContentAfterTrimOps(
-    block.content,
-    [...prefixOps],
-    block.id,
-  )
-
-  const previewBlock: BlockWithInlineContent = {
-    ...block,
-    content: previewContent,
-  }
-
-  const { node, index } = resolveTextInsertTarget(block, prefixOps, insertAt)
-  const inline = buildSoftBreakInlineOpsAtCaret(
-    context,
-    previewBlock,
-    insertAt,
-    node,
-    index,
-  )
-
-  const ops: Operation[] = [
-    ...inline.ops,
-    {
-      __type: 'set_selection',
-      next: inline.next,
-      prev: range,
-    },
-  ]
-
-  return ops
-}
 
 /** Rules for range selection. */
 export const rangeRules: SoftBreakOpsRule[] = [
@@ -499,41 +273,34 @@ export const rangeRules: SoftBreakOpsRule[] = [
 
       const { range, topology } = situation
       const { anchor, focus } = range
-      const { block, node } = topology
+      const { block, node, index } = topology
 
-      const deleteOffset = anchor.offset
-      const deleteLength = focus.offset - anchor.offset
-
-      if (deleteLength <= 0) {
-        rangeCollapsedError(
-          'Range selection is collapsed; expected non-empty text range.',
-          'SoftBreakOpsBuilder/#build',
-        )
-      }
-
-      const ops: Operation[] = []
-      const deleteTextOp: DeleteTextOp = {
-        __type: 'delete_text',
-        blockId: block.id,
-        length: deleteLength,
-        nodeId: node.id,
-        offset: deleteOffset,
-        snapshot: {
-          text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
-        },
-      }
-
-      ops.push(deleteTextOp)
-
-      const rangeOps = buildSoftBreakAndSelectionAtRangeOps(
-        context,
-        range,
-        anchor,
-        { prefixOps: [deleteTextOp] },
+      const deleteIntent = buildDeleteTextRunIntent(
+        block.id,
+        node,
+        anchor.offset,
+        focus.offset,
       )
-      ops.push(...rangeOps)
 
-      return ops
+      const nodeAfter: InlineNodeWithEditableText = {
+        ...node,
+        text: node.text.slice(0, anchor.offset) + node.text.slice(focus.offset),
+      }
+      const content = [...block.content]
+      const newBlock: BlockWithInlineContent = {
+        ...block,
+        content: content.splice(index, 1, nodeAfter),
+      }
+
+      const { ops, next } = buildSoftBreakInlineOpsAtCaret(
+        context,
+        newBlock,
+        deleteIntent.caret,
+        nodeAfter,
+        index,
+      )
+
+      return withTrailingSelectionOp(ops, next, range)
     },
 
     /** Same node → `delete_text` + inline soft break + `set_selection` at anchor. */
@@ -559,26 +326,32 @@ export const rangeRules: SoftBreakOpsRule[] = [
       const { anchor, focus } = range
       const { block } = topology
 
-      const deleteOps = buildDeleteRangeWithinBlockOps(
+      const deleteIntent = buildDeleteRangeWithinBlockIntent(
         context,
         block,
         anchor,
         focus,
-        range,
-        { joinSurvivors: false, setSelection: false },
+        { joinSurvivors: false },
       )
+      const caretNode = resolvesCaretNode(block, deleteIntent)
 
-      const ops: Operation[] = [...deleteOps]
+      const content = [...block.content]
+      const caretIndex = content.findIndex((n) => n.id === caretNode.id)
 
-      const rangeOps = buildSoftBreakAndSelectionAtRangeOps(
+      const newBlock: BlockWithInlineContent = {
+        ...block,
+        content: caretIndex === -1 ? [caretNode] : content,
+      }
+
+      const { ops, next } = buildSoftBreakInlineOpsAtCaret(
         context,
-        range,
-        anchor,
-        { prefixOps: deleteOps },
+        newBlock,
+        deleteIntent.caret,
+        caretNode,
+        caretIndex,
       )
-      ops.push(...rangeOps)
 
-      return ops
+      return withTrailingSelectionOp(ops, next, range)
     },
     /** Same block, multiple nodes → range delete (no join) + soft break at anchor. */
     name: 'range/same-block/delete-then-soft-break',
@@ -600,99 +373,29 @@ export const rangeRules: SoftBreakOpsRule[] = [
       }
 
       const { range, topology } = situation
-      const { anchor, focus } = range
       const { startBlock, endBlock } = topology
 
-      const ops: Operation[] = []
-
-      const forward = buildForwardTrimBlockOps(startBlock, anchor)
-      ops.push(...forward)
-
-      let targetHead = previewInlineContentAfterTrimOps(
-        startBlock.content,
-        forward,
-        startBlock.id,
-      )
-
-      const collapsedHead = buildCollapseEmptyBlockToActiveMarksOps(
-        startBlock.id,
-        targetHead,
-        context.activeMarks,
-      )
-      if (collapsedHead) {
-        ops.push(...collapsedHead.ops)
-        targetHead = [collapsedHead.placeholder]
-      }
-
-      const deleted = buildDeleteBlocksBetweenOps(
-        context,
-        startBlock.id,
-        endBlock.id,
-      )
-      ops.push(...deleted)
-
-      const backward = buildBackwardTrimBlockOps(endBlock, focus)
-      ops.push(...backward)
-
-      const tailContent = previewInlineContentAfterTrimOps(
-        endBlock.content,
-        backward,
-        endBlock.id,
-      )
-
-      const trimmedSourceSnapshot: BlockWithInlineContent = {
-        ...endBlock,
-        content: tailContent,
-      }
-
-      const mergeTargetSnapshot: BlockWithInlineContent = {
-        ...startBlock,
-        content: targetHead,
-      }
-
-      const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
-        trimmedSourceSnapshot,
-        mergeTargetSnapshot,
-        context.activeMarks,
-      )
-
-      const mergedContentPreview = coalesceInlineNodes([
-        ...targetHead,
-        ...tailContent,
-      ])
-
-      const mergedBlockSnapshot: BlockWithInlineContent = {
-        ...startBlock,
-        content: mergedContentPreview,
-      }
-
-      const mergeBlockOp: MergeBlocksOp = {
-        __type: 'merge_blocks',
-        atIndex: targetHead.length,
-        mergedTailSnapshot: [...tailContent],
-        sourceBlockId: endBlock.id,
-        sourceSnapshot: trimmedSourceSnapshot,
-        splitAtNodeId,
-        splitAtOffset,
-        targetBlockId: startBlock.id,
-      }
-
-      const softBreakOps = buildSoftBreakAndSelectionAtRangeOps(
+      const deleteIntent = buildDeleteRangeCrossBlockIntent(
         context,
         range,
-        {
-          blockId: startBlock.id,
-          nodeId: splitAtNodeId,
-          offset: splitAtOffset,
-        },
-        {
-          blockSnapshot: mergedBlockSnapshot,
-          prefixOps: [mergeBlockOp],
-        },
+        startBlock,
+        endBlock,
       )
-      ops.push(mergeBlockOp, ...softBreakOps)
+      const caretBlock = deleteIntent.caretBlock ?? startBlock
+      const caretNode = resolvesCaretNode(caretBlock, deleteIntent)
+      const caretIndex = caretBlock.content.findIndex(
+        (node) => node.id === caretNode.id,
+      )
 
-      return ops
+      const { ops, next } = buildSoftBreakInlineOpsAtCaret(
+        context,
+        caretBlock,
+        deleteIntent.caret,
+        caretNode,
+        caretIndex,
+      )
+
+      return withTrailingSelectionOp([...deleteIntent.ops, ...ops], next, range)
     },
     /** Cross-blocks → trim/delete/merge surgery, then soft break at split caret. */
     name: 'range/cross-block/surgery-then-soft-break',
@@ -784,7 +487,12 @@ export class SoftBreakOpsBuilder implements OperationsBuilder<
       return {
         kind: 'range-selection',
         range: normalized,
-        topology: { block, kind: 'same-node', node: found.node },
+        topology: {
+          block,
+          index: found.index,
+          kind: 'same-node',
+          node: found.node,
+        },
       }
     }
 

@@ -1,5 +1,5 @@
 import { findNodeInBlockWithInlineContent } from './blocks'
-import type { BlockId, BlockWithInlineContent } from './blocks'
+import type { BlockWithInlineContent } from './blocks'
 import { warn } from './console'
 import {
   compareTextCursors,
@@ -12,24 +12,23 @@ import {
 import type { EditorContext } from './editor-context'
 import type { GraphemeOffsetCaret } from './grapheme'
 import {
-  coalesceInlineNodes,
   getInlineNodeTextLength,
   isInlineNodeWithEditableText,
+  isLineBreakNode,
+  isMentionNode,
 } from './nodes'
 import type { InlineNodeWithEditableText } from './nodes'
-import type { Operation } from './operations'
+import type { DeleteTextOp, Operation } from './operations'
 import {
-  buildBackwardTrimBlockOps,
   buildCollapseEmptyBlockToActiveMarksOps,
   buildDeleteBlocksBetweenOps,
-  buildDeleteRangeWithinBlockOps,
+  buildDeleteRangeCrossBlockIntent,
+  buildDeleteRangeWithinBlockIntent,
   buildError,
-  buildForwardTrimBlockOps,
-  buildMergeCollapseEmptyBlockIntoOps,
   iterRules,
-  previewInlineContentAfterTrimOps,
   rangeCollapsedError,
   resolvesMergeBlocksUndoFields,
+  withTrailingSelectionOp,
 } from './operations-builder'
 import type {
   BuilderOpsIntent,
@@ -43,7 +42,7 @@ import {
   isCursorSelection,
   isSelectionActive,
 } from './selection'
-import type { RangeSelection, TextCursor } from './selection'
+import type { Selection, RangeSelection, TextCursor } from './selection'
 
 /** Situation with no selection. */
 export interface DeleteContentOpsNoSelectionSituation {
@@ -126,33 +125,32 @@ export type DeleteContentOpsRule = OperationRule<
  * Caller must ensure `node.text.length === 0` and `prevNode` is editable text.
  */
 export function buildAbsorbEmptyTextNodeIntoPrevOps(
-  context: EditorContext,
-  blockId: BlockId,
-  /** Content index of the empty text node to remove. */
-  index: number,
+  block: BlockWithInlineContent,
   /** Empty text node snapshot (undo). */
   node: InlineNodeWithEditableText,
   /** Previous sibling to receive the caret (text or link). */
   prevNode: InlineNodeWithEditableText,
+  prevSelection: Selection | null,
 ): Operation[] {
   const endOffset = getInlineNodeTextLength(prevNode)
-  return [
-    {
-      __type: 'remove_inline_node',
-      blockId,
-      index,
-      snapshot: node,
-    },
-    {
-      __type: 'set_selection',
-      next: createCursor({
-        blockId,
-        nodeId: prevNode.id,
-        offset: endOffset,
-      }),
-      prev: context.selection,
-    },
-  ]
+
+  return withTrailingSelectionOp(
+    [
+      {
+        __type: 'remove_inline_node',
+        blockId: block.id,
+        nodeId: node.id,
+        snapshot: node,
+      },
+    ],
+
+    createCursor({
+      blockId: block.id,
+      nodeId: prevNode.id,
+      offset: endOffset,
+    }),
+    prevSelection,
+  )
 }
 
 /** Rules for cursor selection. */
@@ -184,46 +182,42 @@ export const cursorRules: DeleteContentOpsRule[] = [
 
       const ops: Operation[] = []
 
-      const betweenOps = buildDeleteBlocksBetweenOps(
+      const between = buildDeleteBlocksBetweenOps(
         context,
-        targetBlock.id,
         block.id,
+        targetBlock.id,
       )
-      ops.push(...betweenOps)
+      ops.push(...between)
 
-      const hadStructuralBetween = betweenOps.length > 0
+      const hadStructuralBetween = ops.length > 0
       const isEmpty = isBlockWithInlineContentEmpty(state, block.id)
 
       if (isEmpty && hadStructuralBetween) {
-        const order = state.blockOrderById
-        const currentIdx = order.indexOf(block.id)
+        const currentIdx = state.blockOrderById.indexOf(block.id)
         const afterBlockId =
-          currentIdx > 0 ? (order[currentIdx - 1] ?? null) : null
+          currentIdx > 9 ? (state.blockOrderById[currentIdx - 1] ?? null) : null
 
-        ops.push(
-          {
-            __type: 'delete_block',
-            afterBlockId,
-            blockId: block.id,
-            snapshot: block,
-          },
-          {
-            __type: 'set_selection',
-            next: cursorAtBlockEnd(targetBlock.id, targetBlock),
-            prev: context.selection,
-          },
+        return withTrailingSelectionOp(
+          [
+            ...ops,
+            {
+              __type: 'delete_block',
+              afterBlockId,
+              blockId: block.id,
+              snapshot: block,
+            },
+          ],
+          cursorAtBlockEnd(targetBlock.id, targetBlock),
+          context.selection,
         )
-
-        return ops
       }
 
       let targetHead = [...targetBlock.content]
       const collapsedHead = buildCollapseEmptyBlockToActiveMarksOps(
-        targetBlock.id,
+        targetBlock,
         targetHead,
         context.activeMarks,
       )
-
       if (collapsedHead) {
         ops.push(...collapsedHead.ops)
         targetHead = [collapsedHead.placeholder]
@@ -235,29 +229,26 @@ export const cursorRules: DeleteContentOpsRule[] = [
         context.activeMarks,
       )
 
-      ops.push(
-        {
-          __type: 'merge_blocks',
-          atIndex: targetHead.length,
-          mergedTailSnapshot: [...block.content],
-          sourceBlockId: block.id,
-          sourceSnapshot: block,
-          splitAtNodeId,
-          splitAtOffset,
-          targetBlockId: targetBlock.id,
-        },
-        {
-          __type: 'set_selection',
-          next: createCursor({
-            blockId: targetBlock.id,
-            nodeId: splitAtNodeId,
-            offset: splitAtOffset,
-          }),
-          prev: context.selection,
-        },
+      return withTrailingSelectionOp(
+        [
+          ...ops,
+          {
+            __type: 'merge_blocks',
+            mergedTailSnapshot: [...block.content],
+            sourceBlockId: block.id,
+            sourceSnapshot: block,
+            splitAtNodeId,
+            splitAtOffset,
+            targetBlockId: targetBlock.id,
+          },
+        ],
+        createCursor({
+          blockId: targetBlock.id,
+          nodeId: splitAtNodeId,
+          offset: splitAtOffset,
+        }),
+        context.selection,
       )
-
-      return ops
     },
     name: 'cursor/delete-content/at-block-start/merge-blocks',
     when: ({ context, situation }): boolean => {
@@ -276,11 +267,13 @@ export const cursorRules: DeleteContentOpsRule[] = [
   {
     /**
      * 💡 Situation:
-     * - Cursor is at the start of the block.
+     * - Cursor is at the start of a node.
      * - The previous node is a line break or mention.
      *
      * 🎯 Operations:
-     * - Remove the previous node and joins text when possible
+     * - Remove the line break / mention.
+     * - If the node before that is editable, join this node's text into it
+     *   (and drop an empty structural text node).
      */
     build: ({ context, situation }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
@@ -300,64 +293,69 @@ export const cursorRules: DeleteContentOpsRule[] = [
         )
       }
 
-      const ni = nodeIndex - 1
+      const before = block.content[nodeIndex - 2]
+      if (!before || !isInlineNodeWithEditableText(before)) {
+        return withTrailingSelectionOp(
+          [
+            {
+              __type: 'remove_inline_node',
+              blockId: block.id,
+              nodeId: prevNode.id,
+              snapshot: prevNode,
+            },
+          ],
+          createCursor({
+            blockId: block.id,
+            nodeId: node.id,
+            offset: 0,
+          }),
+          context.selection,
+        )
+      }
+
       const ops: Operation[] = [
         {
           __type: 'remove_inline_node',
           blockId: block.id,
-          index: nodeIndex,
-          snapshot: node,
-        },
-        {
-          __type: 'remove_inline_node',
-          blockId: block.id,
-          index: ni,
+          nodeId: prevNode.id,
           snapshot: prevNode,
         },
       ]
 
-      const before = block.content[ni - 1]
-      if (!before) {
-        buildError(
-          `Before node not found for block ${block.id} at index ${ni - 1}`,
-          'DeleteContentOpsBuilder/#build',
-        )
-      }
-
-      if (isInlineNodeWithEditableText(before)) {
-        if (node.text.length > 0) {
-          ops.push({
+      if (node.text.length > 0) {
+        ops.push(
+          {
+            __type: 'remove_inline_node',
+            blockId: block.id,
+            nodeId: node.id,
+            snapshot: node,
+          },
+          {
             __type: 'insert_text',
             blockId: block.id,
             nodeId: before.id,
             offset: before.text.length,
             text: node.text,
-          })
-        }
-
-        ops.push({
-          __type: 'set_selection',
-          next: createCursor({
-            blockId: block.id,
-            nodeId: before.id,
-            offset: before.text.length,
-          }),
-          prev: context.selection,
-        })
+          },
+        )
       } else {
-        const offset = getInlineNodeTextLength(before)
         ops.push({
-          __type: 'set_selection',
-          next: createCursor({
-            blockId: block.id,
-            nodeId: before.id,
-            offset,
-          }),
-          prev: context.selection,
+          __type: 'remove_inline_node',
+          blockId: block.id,
+          nodeId: node.id,
+          snapshot: node,
         })
       }
 
-      return ops
+      return withTrailingSelectionOp(
+        ops,
+        createCursor({
+          blockId: block.id,
+          nodeId: before.id,
+          offset: before.text.length,
+        }),
+        context.selection,
+      )
     },
     name: 'cursor/delete-content/at-node-start/after-line-break-or-mention',
     when: ({ situation }): boolean => {
@@ -369,7 +367,8 @@ export const cursorRules: DeleteContentOpsRule[] = [
       const prevNode = block.content[nodeIndex - 1]
 
       return (
-        (prevNode?.__type === 'line_break' || prevNode?.__type === 'mention') &&
+        prevNode !== undefined &&
+        (isLineBreakNode(prevNode) || isMentionNode(prevNode)) &&
         at.offset === 0 &&
         nodeIndex > 0
       )
@@ -401,34 +400,29 @@ export const cursorRules: DeleteContentOpsRule[] = [
       }
 
       const mergeOffset = getInlineNodeTextLength(prevNode)
-      const mergingText = node.text
-
-      const ops: Operation[] = [
-        {
-          __type: 'remove_inline_node',
-          blockId: block.id,
-          index: nodeIndex,
-          snapshot: node,
-        },
-        {
-          __type: 'insert_text',
-          blockId: block.id,
-          nodeId: prevNode.id,
-          offset: mergeOffset,
-          text: mergingText,
-        },
-        {
-          __type: 'set_selection',
-          next: createCursor({
+      return withTrailingSelectionOp(
+        [
+          {
+            __type: 'remove_inline_node',
+            blockId: block.id,
+            nodeId: node.id,
+            snapshot: node,
+          },
+          {
+            __type: 'insert_text',
             blockId: block.id,
             nodeId: prevNode.id,
-            offset: mergeOffset + mergingText.length,
-          }),
-          prev: context.selection,
-        },
-      ]
-
-      return ops
+            offset: mergeOffset,
+            text: node.text,
+          },
+        ],
+        createCursor({
+          blockId: block.id,
+          nodeId: prevNode.id,
+          offset: mergeOffset + node.text.length,
+        }),
+        context.selection,
+      )
     },
     name: 'cursor/delete-content/at-node-start/merge-none-empty-into-prev',
     when: ({ situation }): boolean => {
@@ -443,8 +437,8 @@ export const cursorRules: DeleteContentOpsRule[] = [
         at.offset === 0 &&
         nodeIndex > 0 &&
         node.text.length > 0 &&
-        prevNode?.__type !== 'line_break' &&
-        prevNode?.__type !== 'mention'
+        prevNode !== undefined &&
+        isInlineNodeWithEditableText(prevNode)
       )
     },
   },
@@ -474,11 +468,10 @@ export const cursorRules: DeleteContentOpsRule[] = [
       }
 
       const ops: Operation[] = buildAbsorbEmptyTextNodeIntoPrevOps(
-        context,
-        block.id,
-        nodeIndex,
+        block,
         node,
         prevNode,
+        context.selection,
       )
 
       return ops
@@ -496,8 +489,8 @@ export const cursorRules: DeleteContentOpsRule[] = [
         at.offset === 0 &&
         nodeIndex > 0 &&
         node.text.length > 0 &&
-        prevNode?.__type !== 'line_break' &&
-        prevNode?.__type !== 'mention'
+        prevNode !== undefined &&
+        isInlineNodeWithEditableText(prevNode)
       )
     },
   },
@@ -531,36 +524,43 @@ export const cursorRules: DeleteContentOpsRule[] = [
         at.offset,
       )
 
-      const ops: Operation[] = [
-        {
-          __type: 'delete_text',
-          blockId: at.blockId,
-          length,
-          nodeId: at.nodeId,
-          offset: start,
-          snapshot: {
-            text: node.text.slice(start, start + length),
-          },
-        },
+      const deleteOp: DeleteTextOp = {
+        __type: 'delete_text',
+        blockId: at.blockId,
+        length,
+        nodeId: at.nodeId,
+        offset: start,
+        snapshot: { text: node.text.slice(start, start + length) },
+      }
+
+      const remaining = block.content.filter((inline) => inline.id !== node.id)
+      const collapsed = buildCollapseEmptyBlockToActiveMarksOps(
+        block,
+        remaining,
+        context.activeMarks,
+      )
+
+      if (collapsed) {
+        return withTrailingSelectionOp(
+          [deleteOp, ...collapsed.ops],
+          createCursor({
+            blockId: block.id,
+            nodeId: collapsed.placeholder.id,
+            offset: 0,
+          }),
+          context.selection,
+        )
+      }
+
+      return [
+        deleteOp,
+        ...buildAbsorbEmptyTextNodeIntoPrevOps(
+          block,
+          node,
+          prevNode,
+          context.selection,
+        ),
       ]
-
-      const absorbOps = buildAbsorbEmptyTextNodeIntoPrevOps(
-        context,
-        block.id,
-        nodeIndex,
-        node,
-        prevNode,
-      )
-      ops.push(...absorbOps)
-
-      const merged = buildMergeCollapseEmptyBlockIntoOps(
-        context,
-        block.id,
-        block.content,
-        ops,
-      )
-
-      return merged
     },
     name: 'cursor/delete-content/inside-node/delete-and-absorb-empty-into-prev',
     when: ({ situation, resources }): boolean => {
@@ -614,36 +614,48 @@ export const cursorRules: DeleteContentOpsRule[] = [
         at.offset,
       )
 
-      const ops: Operation[] = [
-        {
-          __type: 'delete_text',
-          blockId: at.blockId,
-          length,
-          nodeId: at.nodeId,
-          offset: start,
-          snapshot: {
-            text: node.text.slice(start, start + length),
-          },
-        },
-        {
-          __type: 'set_selection',
-          next: createCursor({
-            blockId: at.blockId,
-            nodeId: at.nodeId,
-            offset: start,
-          }),
-          prev: context.selection,
-        },
-      ]
+      const deleteOp: DeleteTextOp = {
+        __type: 'delete_text',
+        blockId: at.blockId,
+        length,
+        nodeId: at.nodeId,
+        offset: start,
+        snapshot: { text: node.text.slice(start, start + length) },
+      }
 
-      const merged = buildMergeCollapseEmptyBlockIntoOps(
-        context,
-        block.id,
-        block.content,
-        ops,
+      const remainingText =
+        node.text.slice(0, start) + node.text.slice(start + length)
+      const remaining = block.content.map((inline) =>
+        inline.id === node.id ? { ...node, text: remainingText } : inline,
       )
 
-      return merged
+      const collapsed = buildCollapseEmptyBlockToActiveMarksOps(
+        block,
+        remaining,
+        context.activeMarks,
+      )
+
+      if (collapsed) {
+        return withTrailingSelectionOp(
+          [deleteOp, ...collapsed.ops],
+          createCursor({
+            blockId: block.id,
+            nodeId: collapsed.placeholder.id,
+            offset: 0,
+          }),
+          context.selection,
+        )
+      }
+
+      return withTrailingSelectionOp(
+        [deleteOp],
+        createCursor({
+          blockId: at.blockId,
+          nodeId: at.nodeId,
+          offset: start,
+        }),
+        context.selection,
+      )
     },
     name: 'cursor/delete-content/inside-node/delete-previous-grapheme',
     when: ({ situation, resources }): boolean => {
@@ -679,110 +691,6 @@ export const cursorRules: DeleteContentOpsRule[] = [
   },
 ]
 
-/** Deletes content on a range that spans multiple blocks. */
-export function buildDeleteContentCrossBlocksOps(
-  context: EditorContext,
-  range: RangeSelection,
-  startBlock: BlockWithInlineContent,
-  endBlock: BlockWithInlineContent,
-): Operation[] {
-  const { anchor, focus } = range
-  const ops: Operation[] = []
-
-  const forwards = buildForwardTrimBlockOps(startBlock, anchor)
-  ops.push(...forwards)
-
-  let targetHead = previewInlineContentAfterTrimOps(
-    startBlock.content,
-    forwards,
-    startBlock.id,
-  )
-
-  const collapsedHead = buildCollapseEmptyBlockToActiveMarksOps(
-    startBlock.id,
-    targetHead,
-    context.activeMarks,
-  )
-
-  if (collapsedHead) {
-    ops.push(...collapsedHead.ops)
-    targetHead = [collapsedHead.placeholder]
-  }
-
-  const between = buildDeleteBlocksBetweenOps(
-    context,
-    startBlock.id,
-    endBlock.id,
-  )
-  ops.push(...between)
-
-  const backwards = buildBackwardTrimBlockOps(endBlock, focus)
-  ops.push(...backwards)
-
-  const tailContent = previewInlineContentAfterTrimOps(
-    endBlock.content,
-    backwards,
-    endBlock.id,
-  )
-
-  const trimmedSourceSnapshot: BlockWithInlineContent = {
-    ...endBlock,
-    content: tailContent,
-  }
-  const mergeTargetSnapshot: BlockWithInlineContent = {
-    ...startBlock,
-    content: targetHead,
-  }
-
-  const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
-    trimmedSourceSnapshot,
-    mergeTargetSnapshot,
-    context.activeMarks,
-  )
-
-  const mergedPreview = coalesceInlineNodes([...targetHead, ...tailContent])
-  const collapsedMerged = buildCollapseEmptyBlockToActiveMarksOps(
-    startBlock.id,
-    mergedPreview,
-    context.activeMarks,
-  )
-
-  ops.push({
-    __type: 'merge_blocks',
-    atIndex: targetHead.length,
-    mergedTailSnapshot: [...tailContent],
-    sourceBlockId: endBlock.id,
-    sourceSnapshot: trimmedSourceSnapshot,
-    splitAtNodeId,
-    splitAtOffset,
-    targetBlockId: startBlock.id,
-  })
-
-  if (collapsedMerged) {
-    ops.push(...collapsedMerged.ops)
-  }
-
-  const nextSelection = collapsedMerged
-    ? createCursor({
-        blockId: startBlock.id,
-        nodeId: collapsedMerged.placeholder.id,
-        offset: 0,
-      })
-    : createCursor({
-        blockId: startBlock.id,
-        nodeId: splitAtNodeId,
-        offset: splitAtOffset,
-      })
-
-  ops.push({
-    __type: 'set_selection',
-    next: nextSelection,
-    prev: range,
-  })
-
-  return ops
-}
-
 /** Rules for range selection. */
 export const rangeRules: DeleteContentOpsRule[] = [
   {
@@ -805,15 +713,18 @@ export const rangeRules: DeleteContentOpsRule[] = [
       const { anchor, focus } = range
       const { block } = topology
 
-      const ops: Operation[] = buildDeleteRangeWithinBlockOps(
+      const deleteIntent = buildDeleteRangeWithinBlockIntent(
         context,
         block,
         anchor,
         focus,
-        range,
       )
 
-      return ops
+      return withTrailingSelectionOp(
+        deleteIntent.ops,
+        createCursor(deleteIntent.caret),
+        context.selection,
+      )
     },
     name: 'range/delete-content/within-same-block',
     when: ({ situation }): boolean => {
@@ -839,14 +750,18 @@ export const rangeRules: DeleteContentOpsRule[] = [
       const { range, topology } = situation
       const { startBlock, endBlock } = topology
 
-      const ops: Operation[] = buildDeleteContentCrossBlocksOps(
+      const deleteIntent = buildDeleteRangeCrossBlockIntent(
         context,
         range,
         startBlock,
         endBlock,
       )
 
-      return ops
+      return withTrailingSelectionOp(
+        deleteIntent.ops,
+        createCursor(deleteIntent.caret),
+        context.selection,
+      )
     },
     name: 'range/delete-content/cross-blocks',
     when: ({ situation }): boolean => {

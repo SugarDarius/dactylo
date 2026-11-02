@@ -17,20 +17,23 @@ import {
 } from './nodes'
 import type { Operation } from './operations'
 import {
-  buildJoinMarkedRunOps,
   buildPartialMarkRangeOps,
   iterRules,
-  previewInlineContentAfterTrimOps,
   rangeCollapsedError,
-  resolvesMarkToggleSelectionAfterDocOps,
+  withTrailingSelectionOp,
 } from './operations-builder'
 import type {
   BuilderOpsIntent,
   OperationRule,
   OperationsBuilder,
 } from './operations-builder'
-import { createCursor, isCursorSelection, isSelectionActive } from './selection'
-import type { RangeSelection } from './selection'
+import {
+  createCursor,
+  createRange,
+  isCursorSelection,
+  isSelectionActive,
+} from './selection'
+import type { RangeSelection, TextCursor } from './selection'
 
 /** Situation with no selection. */
 export interface MarksOpsNoSelectionSituation {
@@ -108,7 +111,7 @@ export const cursorRules: MarksOpsRule[] = [
       ]
 
       if (found && isInlineNodeWithEditableText(found.node)) {
-        const { node, index } = found
+        const { node } = found
 
         if (node.text.length <= 0) {
           ops.push({
@@ -130,8 +133,8 @@ export const cursorRules: MarksOpsRule[] = [
           ops.push(
             {
               __type: 'insert_inline_node',
+              afterNodeId: node.id,
               blockId,
-              index: index + 1,
               node: insertedNode,
             },
             {
@@ -198,80 +201,78 @@ export const rangeRules: MarksOpsRule[] = [
       })
 
       const ops: Operation[] = []
+      let nextAnchor: TextCursor = range.anchor
+      let nextFocus: TextCursor = range.focus
 
       for (const span of spans) {
         const block = getBlockWithInlineContent(state, span.blockId)
+        const found = findNodeInBlockWithInlineContent(block, span.nodeId)
 
-        const previewContent = previewInlineContentAfterTrimOps(
-          block.content,
-          ops,
-          span.blockId,
-        )
-        const previewBlock = { ...block, content: previewContent }
-
-        const found = findNodeInBlockWithInlineContent(
-          previewBlock,
-          span.nodeId,
-        )
         if (!found || !isInlineNodeWithEditableText(found.node)) {
           continue
         }
 
-        const { index, node } = found
+        const { node } = found
+
         const prevMarks: Marks = { ...node.marks }
         const nextMarks: Marks = { ...prevMarks, [input.mark]: enabling }
 
-        const partialOps = buildPartialMarkRangeOps(
+        const partial = buildPartialMarkRangeOps(
           span.blockId,
           node,
-          index,
           span.from,
           span.to,
           nextMarks,
           prevMarks,
         )
-        if (partialOps === null) {
-          const isWholeNode = span.from === 0 && span.to === node.text.length
 
-          const joinOps =
-            !enabling && isWholeNode
-              ? buildJoinMarkedRunOps(
-                  span.blockId,
-                  previewContent,
-                  index,
-                  node,
-                  nextMarks,
-                )
-              : null
+        if (partial === null) {
+          ops.push({
+            __type: 'set_marks',
+            blockId: span.blockId,
+            from: span.from,
+            nextMarks,
+            nodeId: span.nodeId,
+            prevMarks,
+            to: span.to,
+          })
+          continue
+        }
 
-          if (joinOps === null) {
-            ops.push({
-              __type: 'set_marks',
-              blockId: span.blockId,
-              from: span.from,
-              nextMarks,
-              nodeId: span.nodeId,
-              prevMarks,
-              to: span.to,
-            })
-          } else {
-            ops.push(...joinOps)
+        ops.push(...partial.ops)
+
+        if (
+          span.blockId === range.anchor.blockId &&
+          span.nodeId === range.anchor.nodeId
+        ) {
+          nextAnchor = {
+            blockId: span.blockId,
+            nodeId: partial.marked.nodeId,
+            offset: partial.marked.from,
           }
-        } else {
-          ops.push(...partialOps)
+        }
+
+        if (
+          span.blockId === range.focus.blockId &&
+          span.nodeId === range.focus.nodeId
+        ) {
+          nextFocus = {
+            blockId: span.blockId,
+            nodeId: partial.marked.nodeId,
+            offset: partial.marked.to,
+          }
         }
       }
 
-      if (ops.length > 0) {
-        const next = resolvesMarkToggleSelectionAfterDocOps(state, ops, range)
-        ops.push({
-          __type: 'set_selection',
-          next,
-          prev: range,
-        })
+      if (ops.length === 0) {
+        return null
       }
 
-      return ops
+      return withTrailingSelectionOp(
+        ops,
+        createRange(nextAnchor, nextFocus),
+        context.selection,
+      )
     },
     /** Toggle a mark on or off on a range of nodes with editable text. */
     name: 'range/toggle-mark/on-selection',

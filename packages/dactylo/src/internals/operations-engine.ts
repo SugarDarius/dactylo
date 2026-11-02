@@ -107,19 +107,16 @@ export class OperationsEngine {
     this.#debug = options.debug ?? false
     this.#opsRuntime = makeOperationsRuntime()
 
-    const graphemeOffsetCaret = new GraphemeOffsetCaret({
-      locales: options.locales,
-    })
-
     this.#marksOpsBuilder = new MarksOpsBuilder()
     this.#markdownShortcutOpsBuilder = new MarkdownShortcutOpsBuilder()
     this.#insertTextOpsBuilder = new InsertTextOpsBuilder()
     this.#deleteContentOpsBuilder = new DeleteContentOpsBuilder({
-      graphemeOffsetCaret,
+      graphemeOffsetCaret: new GraphemeOffsetCaret({
+        locales: options.locales,
+      }),
     })
     this.#pastePlainTextOpsBuilder = new PastePlainTextOpsBuilder({
       autolink: options.autolink,
-      graphemeOffsetCaret,
     })
     this.#softBreakOpsBuilder = new SoftBreakOpsBuilder()
     this.#hardBreakOpsBuilder = new HardBreakOpsBuilder()

@@ -74,13 +74,7 @@ export interface SplitBlockOp {
    * Inline nodes moved to `newBlock` (tail content after split).
    * Stored for undo inversion.
    */
-  readonly tailSnapshot: readonly InlineNode[]
-
-  /**
-   * Index in the head block's content where the tail originally started.
-   * Used by undo to merge blocks back correctly.
-   */
-  readonly atIndex: number
+  readonly tailSnapshot: InlineNode[]
 }
 
 /** Merges a source block's content into a target block (Backspace at block start). */
@@ -97,11 +91,8 @@ export interface MergeBlocksOp {
   /** Full source block snapshot before merge (for undo). */
   readonly sourceSnapshot: BlockWithInlineContent
 
-  /** Insertion index in target content where source was spliced. */
-  readonly atIndex: number
-
   /** Copy of source inline content before deletion (for undo). */
-  readonly mergedTailSnapshot: readonly InlineNode[]
+  readonly mergedTailSnapshot: InlineNode[]
 
   /** Inline node ID with editable text in target where undo split must occur. */
   readonly splitAtNodeId: NodeId
@@ -183,8 +174,12 @@ export interface InsertInlineNodeOp {
   /** Block containing the target inline node. */
   readonly blockId: BlockId
 
-  /** Index where the inline node is inserted. */
-  readonly index: number
+  /**
+   * Position where the inline node is inserted.
+   * If set to `null`, then the inline node is inserted
+   * directly at the end of the block.
+   */
+  readonly afterNodeId: NodeId | null
 
   /** Inline node to insert. */
   readonly node: InlineNode
@@ -197,8 +192,8 @@ export interface RemoveInlineNodeOp {
   /** Block containing the node to remove. */
   readonly blockId: BlockId
 
-  /** Index in `block.content` of the node to remove. */
-  readonly index: number
+  /** Node to remove. */
+  readonly nodeId: NodeId
 
   /** Removed node snapshot for undo. */
   readonly snapshot: InlineNode

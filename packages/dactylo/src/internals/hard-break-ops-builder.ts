@@ -10,28 +10,19 @@ import {
   normalizeRange,
 } from './document'
 import type { EditorContext } from './editor-context'
-import {
-  coalesceInlineNodes,
-  createTextNode,
-  isInlineNodeWithEditableText,
-} from './nodes'
+import { createTextNode, isInlineNodeWithEditableText } from './nodes'
 import type { InlineNodeWithEditableText } from './nodes'
-import type { DeleteTextOp, MergeBlocksOp, Operation } from './operations'
+import type { Operation } from './operations'
 import {
-  buildBackwardTrimBlockOps,
-  buildCollapseEmptyBlockToActiveMarksOps,
-  buildDeleteBlocksBetweenOps,
-  buildDeleteRangeWithinBlockOps,
+  buildDeleteRangeCrossBlockIntent,
+  buildDeleteRangeWithinBlockIntent,
+  buildDeleteTextRunIntent,
   buildError,
-  buildForwardTrimBlockOps,
-  computeSplitMergeAtIndex,
   computeSplitTailSnapshot,
   iterRules,
-  previewInlineContentAfterTrimOps,
   rangeCollapsedError,
-  resolveRangeInsertCaretAfterPrefixOps,
-  resolvesMergeBlocksUndoFields,
-  resolveTextInsertTarget,
+  resolvesCaretNode,
+  withTrailingSelectionOp,
 } from './operations-builder'
 import type {
   BuilderOpsIntent,
@@ -86,6 +77,9 @@ export interface HardBreakOpsRangeSelectionSituation {
 
         /** Inline node with editable text subject to the operation. */
         readonly node: InlineNodeWithEditableText
+
+        /** Index of the inline node with editable text in the block. */
+        readonly index: number
       }
     | {
         readonly kind: 'same-block'
@@ -116,6 +110,83 @@ export type HardBreakOpsRule = OperationRule<
   unknown,
   unknown
 >
+
+/**
+ * Builds block-level hard-break operations at a caret inside one block.
+ *
+ * Mirrors cursor situation rules:
+ * - At block end → `insert_block` with an empty paragraph (active marks), caret at new block start.
+ * - Otherwise → `split_block` at the caret, caret at the tail block start.
+ */
+export function buildHardBreakBlockOpsAtCaret(
+  context: EditorContext,
+  block: BlockWithInlineContent,
+  at: TextCursor,
+  node: InlineNodeWithEditableText,
+): { ops: Operation[]; next: CursorSelection } {
+  if (isCursorAtBlockEnd(at, block)) {
+    const insertedBlock = createParagraphBlockAfter(block, [
+      createTextNode({ marks: context.activeMarks, text: '' }),
+    ])
+    const next = cursorAtBlockStart(insertedBlock.id, insertedBlock)
+    if (!next) {
+      buildError(
+        'New paragraph has no editable inline node for caret',
+        'HardBreakOpsBuilder/buildHardBreakBlockOpsAtCaret',
+      )
+    }
+    return {
+      next,
+      ops: [
+        {
+          __type: 'insert_block',
+          afterBlockId: block.id,
+          block: insertedBlock,
+        },
+      ],
+    }
+  }
+
+  const found = findNodeInBlockWithInlineContent(block, at.nodeId)
+  if (!found) {
+    buildError(
+      `Node ${at.nodeId} not found in block ${block.id}`,
+      'HardBreakOpsBuilder/buildHardBreakBlockOpsAtCaret',
+    )
+  }
+
+  const tailSnapshot = computeSplitTailSnapshot(
+    block,
+    { index: found.index, node },
+    at.offset,
+  )
+  const insertedBlock = createParagraphBlockAfter(
+    block,
+    tailSnapshot,
+    block.metadata,
+  )
+  const next = cursorAtBlockStart(insertedBlock.id, insertedBlock)
+  if (!next) {
+    buildError(
+      'Split tail block has no editable inline node for caret',
+      'HardBreakOpsBuilder/buildHardBreakBlockOpsAtCaret',
+    )
+  }
+
+  return {
+    next,
+    ops: [
+      {
+        __type: 'split_block',
+        atNodeId: at.nodeId,
+        atOffset: at.offset,
+        blockId: block.id,
+        newBlock: insertedBlock,
+        tailSnapshot,
+      },
+    ],
+  }
+}
 
 /** Rules for cursor selection. */
 export const cursorRules: HardBreakOpsRule[] = [
@@ -169,44 +240,14 @@ export const cursorRules: HardBreakOpsRule[] = [
         return null
       }
 
-      const { block, node, index, at } = situation
-
-      const atIndex = computeSplitMergeAtIndex(
+      const { block, node, at } = situation
+      const { ops, next } = buildHardBreakBlockOpsAtCaret(
+        context,
         block,
-        { index, node },
-        at.offset,
+        at,
+        node,
       )
-
-      const tailSnapshot = computeSplitTailSnapshot(
-        block,
-        { index, node },
-        at.offset,
-      )
-
-      const insertedBlock = createParagraphBlockAfter(
-        block,
-        tailSnapshot,
-        block.metadata,
-      )
-
-      const ops: Operation[] = [
-        {
-          __type: 'split_block',
-          atIndex,
-          atNodeId: at.nodeId,
-          atOffset: at.offset,
-          blockId: block.id,
-          newBlock: insertedBlock,
-          tailSnapshot,
-        },
-        {
-          __type: 'set_selection',
-          next: cursorAtBlockStart(insertedBlock.id, insertedBlock),
-          prev: context.selection,
-        },
-      ]
-
-      return ops
+      return withTrailingSelectionOp(ops, next, context.selection)
     },
     name: 'cursor/hard-break/split-block-at',
     when: ({ situation }) => {
@@ -219,139 +260,6 @@ export const cursorRules: HardBreakOpsRule[] = [
     },
   },
 ]
-
-/**
- * Builds block-level hard-break operations at a caret inside one block.
- *
- * Mirrors cursor situation rules:
- * - At block end → `insert_block` with an empty paragraph (active marks), caret at new block start.
- * - Otherwise → `split_block` at the caret, caret at the tail block start.
- */
-export function buildHardBreakBlockOpsAtCaret(
-  context: EditorContext,
-  block: BlockWithInlineContent,
-  at: TextCursor,
-  node: InlineNodeWithEditableText,
-  index: number,
-): { ops: Operation[]; next: CursorSelection } {
-  if (isCursorAtBlockEnd(at, block)) {
-    const insertedBlock = createParagraphBlockAfter(block, [
-      createTextNode({ marks: context.activeMarks, text: '' }),
-    ])
-
-    const ops: Operation[] = [
-      {
-        __type: 'insert_block',
-        afterBlockId: block.id,
-        block: insertedBlock,
-      },
-    ]
-
-    const next = cursorAtBlockStart(insertedBlock.id, insertedBlock)
-    if (!next) {
-      buildError(
-        'New paragraph has no editable inline node for caret',
-        'HardBreakOpsBuilder/buildHardBreakBlockOpsAtCaret',
-      )
-    }
-
-    return { next, ops }
-  }
-
-  const atIndex = computeSplitMergeAtIndex(block, { index, node }, at.offset)
-
-  const tailSnapshot = computeSplitTailSnapshot(
-    block,
-    { index, node },
-    at.offset,
-  )
-
-  const insertedBlock = createParagraphBlockAfter(
-    block,
-    tailSnapshot,
-    block.metadata,
-  )
-
-  const ops: Operation[] = [
-    {
-      __type: 'split_block',
-      atIndex,
-      atNodeId: at.nodeId,
-      atOffset: at.offset,
-      blockId: block.id,
-      newBlock: insertedBlock,
-      tailSnapshot,
-    },
-  ]
-
-  const next = cursorAtBlockStart(insertedBlock.id, insertedBlock)
-  if (!next) {
-    buildError(
-      'Split tail block has no editable inline node for caret',
-      'HardBreakOpsBuilder/buildHardBreakBlockOpsAtCaret',
-    )
-  }
-
-  return { next, ops }
-}
-
-/**
- * Builds hard-break and selection ops after a range delete in the same op batch.
- *
- * Resolves the caret at `at` by replaying `prefixOps` on the block snapshot.
- * Mirrors contract {@link buildSoftBreakAndSelectionAtRangeOps} and
- * {@link buildInsertTextAndSelectionAtRangeOps}.
- */
-export function buildHardBreakAndSelectionAtRangeOps(
-  context: EditorContext,
-  range: RangeSelection,
-  at: TextCursor,
-  opts: {
-    /** Ops already queued for this block before the break (e.g. `delete_text`, `merge_blocks`). */
-    prefixOps?: Operation[]
-    /**
-     * When the live document does not yet contain the target tree
-     * (e.g. cross-block merge preview), resolve against this block instead of `state`.
-     */
-    blockSnapshot?: BlockWithInlineContent
-  } = {},
-): Operation[] {
-  const { prefixOps = [], blockSnapshot } = opts
-  const block =
-    blockSnapshot ?? getBlockWithInlineContent(context.state, at.blockId)
-
-  const insertAt = resolveRangeInsertCaretAfterPrefixOps(block, at, prefixOps)
-
-  const previewContent = previewInlineContentAfterTrimOps(
-    block.content,
-    [...prefixOps],
-    block.id,
-  )
-
-  const previewBlock: BlockWithInlineContent = {
-    ...block,
-    content: previewContent,
-  }
-
-  const { node, index } = resolveTextInsertTarget(block, prefixOps, insertAt)
-
-  const blockOps = buildHardBreakBlockOpsAtCaret(
-    context,
-    previewBlock,
-    insertAt,
-    node,
-    index,
-  )
-
-  return [
-    ...blockOps.ops,
-    {
-      __type: 'set_selection',
-      next: blockOps.next,
-      prev: range,
-    },
-  ]
-}
 
 /** Rules for range selection. */
 export const rangeRules: HardBreakOpsRule[] = [
@@ -370,43 +278,34 @@ export const rangeRules: HardBreakOpsRule[] = [
 
       const { range, topology } = situation
       const { anchor, focus } = range
-      const { block, node } = topology
+      const { block, node, index } = topology
 
-      const deleteOffset = anchor.offset
-      const deleteLength = focus.offset - anchor.offset
-
-      if (deleteLength <= 0) {
-        rangeCollapsedError(
-          'Range selection is collapsed; expected non-empty text range.',
-          'HardBreakOpsBuilder/#build',
-        )
-      }
-
-      const ops: Operation[] = []
-      const deleteTextOp: DeleteTextOp = {
-        __type: 'delete_text',
-        blockId: block.id,
-        length: deleteLength,
-        nodeId: node.id,
-        offset: deleteOffset,
-        snapshot: {
-          text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
-        },
-      }
-
-      ops.push(deleteTextOp)
-
-      const rangeOps = buildHardBreakAndSelectionAtRangeOps(
-        context,
-        range,
-        anchor,
-        {
-          prefixOps: [deleteTextOp],
-        },
+      const deleteIntent = buildDeleteTextRunIntent(
+        block.id,
+        node,
+        anchor.offset,
+        focus.offset,
       )
-      ops.push(...rangeOps)
 
-      return ops
+      const nodeAfter: InlineNodeWithEditableText = {
+        ...node,
+        text: node.text.slice(0, anchor.offset) + node.text.slice(focus.offset),
+      }
+
+      const content = [...block.content]
+      const blockAfter: BlockWithInlineContent = {
+        ...block,
+        content: content.splice(index, 1, nodeAfter),
+      }
+
+      const { ops, next } = buildHardBreakBlockOpsAtCaret(
+        context,
+        blockAfter,
+        deleteIntent.caret,
+        nodeAfter,
+      )
+
+      return withTrailingSelectionOp([...deleteIntent.ops, ...ops], next, range)
     },
     /** Same node → `delete_text` + block split or new paragraph + `set_selection`. */
     name: 'range/same-node/delete-then-hard-break',
@@ -417,7 +316,7 @@ export const rangeRules: HardBreakOpsRule[] = [
   {
     /**
      * 💡 Range spans multiple inline nodes in one block.
-     * 🎯 Delete the range without joining survivors, then soft-break at anchor.
+     * 🎯 Delete the range without joining survivors, then hard-break at anchor.
      */
     build: ({ context, situation }): Operation[] | null => {
       if (
@@ -431,30 +330,34 @@ export const rangeRules: HardBreakOpsRule[] = [
       const { anchor, focus } = range
       const { block } = topology
 
-      const deleteOps = buildDeleteRangeWithinBlockOps(
+      const deleteIntent = buildDeleteRangeWithinBlockIntent(
         context,
         block,
         anchor,
         focus,
-        range,
-        { joinSurvivors: false, setSelection: false },
+        { joinSurvivors: false },
       )
+      const caretNode = resolvesCaretNode(block, deleteIntent)
 
-      const ops: Operation[] = [...deleteOps]
-      const rangeOps = buildHardBreakAndSelectionAtRangeOps(
+      const content = [...block.content]
+      const caretIndex = content.findIndex((n) => n.id === caretNode.id)
+
+      const newBlock: BlockWithInlineContent = {
+        ...block,
+        content: caretIndex === -1 ? [caretNode] : content,
+      }
+
+      const { ops, next } = buildHardBreakBlockOpsAtCaret(
         context,
-        range,
-        anchor,
-        {
-          prefixOps: deleteOps,
-        },
+        newBlock,
+        deleteIntent.caret,
+        caretNode,
       )
-      ops.push(...rangeOps)
 
-      return ops
+      return withTrailingSelectionOp([...deleteIntent.ops, ...ops], next, range)
     },
-    /** Same block, multiple nodes → range delete (no join) + soft break at anchor. */
-    name: 'range/same-block/delete-then-soft-break',
+    /** Same block, multiple nodes → range delete (no join) + hard break at anchor. */
+    name: 'range/same-block/delete-then-hard-break',
     when: ({ situation }): boolean =>
       situation.kind === 'range-selection' &&
       situation.topology.kind === 'same-block',
@@ -473,102 +376,28 @@ export const rangeRules: HardBreakOpsRule[] = [
       }
 
       const { range, topology } = situation
-      const { anchor, focus } = range
       const { startBlock, endBlock } = topology
 
-      const ops: Operation[] = []
-
-      const forward = buildForwardTrimBlockOps(startBlock, anchor)
-      ops.push(...forward)
-
-      let targetHead = previewInlineContentAfterTrimOps(
-        startBlock.content,
-        forward,
-        startBlock.id,
-      )
-
-      const collapsedHead = buildCollapseEmptyBlockToActiveMarksOps(
-        startBlock.id,
-        targetHead,
-        context.activeMarks,
-      )
-      if (collapsedHead) {
-        ops.push(...collapsedHead.ops)
-        targetHead = [collapsedHead.placeholder]
-      }
-
-      const deleted = buildDeleteBlocksBetweenOps(
-        context,
-        startBlock.id,
-        endBlock.id,
-      )
-      ops.push(...deleted)
-
-      const backward = buildBackwardTrimBlockOps(endBlock, focus)
-      ops.push(...backward)
-
-      const tailContent = previewInlineContentAfterTrimOps(
-        endBlock.content,
-        backward,
-        endBlock.id,
-      )
-
-      const trimmedSourceSnapshot: BlockWithInlineContent = {
-        ...endBlock,
-        content: tailContent,
-      }
-
-      const mergeTargetSnapshot: BlockWithInlineContent = {
-        ...startBlock,
-        content: targetHead,
-      }
-
-      const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
-        trimmedSourceSnapshot,
-        mergeTargetSnapshot,
-        context.activeMarks,
-      )
-
-      const mergedContentPreview = coalesceInlineNodes([
-        ...targetHead,
-        ...tailContent,
-      ])
-
-      const mergedBlockSnapshot: BlockWithInlineContent = {
-        ...startBlock,
-        content: mergedContentPreview,
-      }
-
-      const mergeBlockOp: MergeBlocksOp = {
-        __type: 'merge_blocks',
-        atIndex: targetHead.length,
-        mergedTailSnapshot: [...tailContent],
-        sourceBlockId: endBlock.id,
-        sourceSnapshot: trimmedSourceSnapshot,
-        splitAtNodeId,
-        splitAtOffset,
-        targetBlockId: startBlock.id,
-      }
-
-      const hardBreakOps = buildHardBreakAndSelectionAtRangeOps(
+      const deleteIntent = buildDeleteRangeCrossBlockIntent(
         context,
         range,
-        {
-          blockId: startBlock.id,
-          nodeId: splitAtNodeId,
-          offset: splitAtOffset,
-        },
-        {
-          blockSnapshot: mergedBlockSnapshot,
-          prefixOps: [mergeBlockOp],
-        },
+        startBlock,
+        endBlock,
       )
-      ops.push(mergeBlockOp, ...hardBreakOps)
+      const caretBlock = deleteIntent.caretBlock ?? startBlock
+      const caretNode = resolvesCaretNode(caretBlock, deleteIntent)
 
-      return ops
+      const { ops, next } = buildHardBreakBlockOpsAtCaret(
+        context,
+        caretBlock,
+        deleteIntent.caret,
+        caretNode,
+      )
+
+      return withTrailingSelectionOp([...deleteIntent.ops, ...ops], next, range)
     },
-    /** Cross-blocks → trim/delete/merge surgery, then soft break at split caret. */
-    name: 'range/cross-block/surgery-then-soft-break',
+    /** Cross-blocks → trim/delete/merge surgery, then hard break at split caret. */
+    name: 'range/cross-block/surgery-then-hard-break',
     when: ({ situation }): boolean =>
       situation.kind === 'range-selection' &&
       situation.topology.kind === 'cross-block',
@@ -643,21 +472,26 @@ export class HardBreakOpsBuilder implements OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'SoftBreakOpsBuilder/#describe',
+          'HardBreakOpsBuilder/#describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'SoftBreakOpsBuilder/#describe',
+          'HardBreakOpsBuilder/#describe',
         )
       }
 
       return {
         kind: 'range-selection',
         range: normalized,
-        topology: { block, kind: 'same-node', node: found.node },
+        topology: {
+          block,
+          index: found.index,
+          kind: 'same-node',
+          node: found.node,
+        },
       }
     }
 

@@ -503,7 +503,15 @@ export function collectTextSpansInRange(
     )
   }
 
-  return spans
+  return appendTextSpansInRangeFromBlock(
+    spans,
+    focus.blockId,
+    endBlock.content,
+    0,
+    focusNi,
+    0,
+    focus.offset,
+  )
 }
 
 /**

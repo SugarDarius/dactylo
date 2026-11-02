@@ -35,7 +35,7 @@ import {
   buildError,
   buildPartialMarkRangeOps,
   iterRules,
-  previewInlineContentAfterTrimOps,
+  withTrailingSelectionOp,
 } from './operations-builder'
 import type {
   BuilderOpsIntent,
@@ -43,14 +43,7 @@ import type {
   OperationRule,
   OperationsBuilder,
 } from './operations-builder'
-import {
-  createCursor,
-  cursorAnchorFromLinearOffsetInBlock,
-  getLinearOffsetInBlock,
-  isRangeSelection,
-  isSelectionActive,
-  snapOffsetToTextLength,
-} from './selection'
+import { createCursor, isRangeSelection, isSelectionActive } from './selection'
 import type { TextCursor } from './selection'
 
 /** Situation with no selection. */
@@ -185,20 +178,10 @@ export function buildMarkdownMarkShortcutOps(
   openDelimiterOffset: number,
   delimiterLength: number,
   word: string,
-  at: TextCursor,
   mark: MarkKey,
 ): Operation[] | null {
   const prevMarks: Marks = { ...node.marks }
   const nextMarks: Marks = { ...prevMarks, [mark]: true }
-
-  const closingDelimiterText = node.text.slice(
-    wordEndOffset,
-    wordEndOffset + delimiterLength,
-  )
-  const openingDelimiterText = node.text.slice(
-    openDelimiterOffset,
-    openDelimiterOffset + delimiterLength,
-  )
 
   const ops: Operation[] = [
     {
@@ -207,7 +190,9 @@ export function buildMarkdownMarkShortcutOps(
       length: delimiterLength,
       nodeId: node.id,
       offset: wordEndOffset,
-      snapshot: { text: closingDelimiterText },
+      snapshot: {
+        text: node.text.slice(wordEndOffset, wordEndOffset + delimiterLength),
+      },
     },
     {
       __type: 'delete_text',
@@ -215,111 +200,82 @@ export function buildMarkdownMarkShortcutOps(
       length: delimiterLength,
       nodeId: node.id,
       offset: openDelimiterOffset,
-      snapshot: { text: openingDelimiterText },
+      snapshot: {
+        text: node.text.slice(
+          openDelimiterOffset,
+          openDelimiterOffset + delimiterLength,
+        ),
+      },
     },
   ]
 
   const markFrom = openDelimiterOffset
   const markTo = openDelimiterOffset + word.length
-
-  const previewContent = previewInlineContentAfterTrimOps(
-    block.content,
-    ops,
-    block.id,
-  )
-
-  const previewBlock = { ...block, content: previewContent }
-  const previewFound = findNodeInBlockWithInlineContent(previewBlock, node.id)
-
-  if (!previewFound || !isInlineNodeWithEditableText(previewFound.node)) {
-    return null
+  const nodeAfterDelimiters: InlineNodeWithEditableText = {
+    ...node,
+    text:
+      node.text.slice(0, openDelimiterOffset) +
+      word +
+      node.text.slice(wordEndOffset + delimiterLength),
   }
 
-  const previewNode = previewFound.node
-  const previewIndex = previewFound.index
-
-  const partialMarkOps = buildPartialMarkRangeOps(
+  const partial = buildPartialMarkRangeOps(
     block.id,
-    previewNode,
-    previewIndex,
+    nodeAfterDelimiters,
     markFrom,
     markTo,
     nextMarks,
     prevMarks,
   )
 
-  if (partialMarkOps === null) {
-    /** Whole-node mark applied (typical mark shortcut with no prefix text). */
+  let caretNodeId = node.id
+  let caretOffset = markTo
+
+  if (partial === null) {
     ops.push({
       __type: 'set_marks',
       blockId: block.id,
       from: markFrom,
       nextMarks,
-      nodeId: previewNode.id,
+      nodeId: node.id,
       prevMarks,
       to: markTo,
     })
   } else {
-    ops.push(...partialMarkOps)
+    ops.push(...partial.ops)
+    caretNodeId = partial.marked.nodeId
+    caretOffset = partial.marked.to
   }
 
-  const linearAt = getLinearOffsetInBlock(block, at)
-  const targetLinear = linearAt - delimiterLength * 2
-
-  const previewAfterAll = previewInlineContentAfterTrimOps(
-    block.content,
-    ops,
-    block.id,
-  )
-  const previewBlockAfterAll = { ...block, content: previewAfterAll }
-
-  let nextAnchor = cursorAnchorFromLinearOffsetInBlock(
-    block.id,
-    { ...block, content: previewAfterAll },
-    targetLinear,
-    snapOffsetToTextLength,
-  )
-
-  const foundAtCursor = findNodeInBlockWithInlineContent(
-    previewBlockAfterAll,
-    nextAnchor.nodeId,
-  )
-
-  if (
-    foundAtCursor &&
-    isInlineNodeWithEditableText(foundAtCursor.node) &&
-    foundAtCursor.node.text.length > 0 &&
-    nextAnchor.offset === foundAtCursor.node.text.length &&
-    !isMarksEqual(foundAtCursor.node.marks, context.activeMarks)
-  ) {
-    const { node: cursorNode, index: cursorIndex } = foundAtCursor
-    const insertedNode = createFromInlineWithEditableText(cursorNode, {
+  if (!isMarksEqual(nextMarks, context.activeMarks)) {
+    const inserted = createFromInlineWithEditableText(node, {
       marks: context.activeMarks,
-      metadata: cursorNode.metadata,
       text: '',
     })
 
     ops.push({
       __type: 'insert_inline_node',
+      afterNodeId: caretNodeId,
       blockId: block.id,
-      index: cursorIndex + 1,
-      node: insertedNode,
+      node: inserted,
     })
 
-    nextAnchor = {
-      blockId: block.id,
-      nodeId: insertedNode.id,
-      offset: 0,
-    }
+    return withTrailingSelectionOp(
+      ops,
+      createCursor({ blockId: block.id, nodeId: inserted.id, offset: 0 }),
+      context.selection,
+    )
   }
 
-  ops.push({
-    __type: 'set_selection',
-    next: createCursor(nextAnchor),
-    prev: context.selection,
-  })
-
-  return ops
+  return withTrailingSelectionOp(
+    ops,
+    createCursor({
+      blockId: block.id,
+      nodeId: caretNodeId,
+      offset: caretOffset,
+    }),
+    context.selection,
+  )
 }
 
 const rules: MarkdownShortcutOpsRule[] = [
@@ -527,7 +483,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         return null
       }
 
-      const { block, node, at } = situation
+      const { block, node } = situation
 
       const spec = parseMarkdownMarkShortcut(node.text)
       if (
@@ -550,7 +506,6 @@ const rules: MarkdownShortcutOpsRule[] = [
         openDelimiterOffset,
         delimiterLength,
         word,
-        at,
         'bold',
       )
     },

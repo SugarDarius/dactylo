@@ -23,7 +23,13 @@ import {
 } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
-import { getInlineNodeTextLength, isInlineNodeWithEditableText } from './nodes'
+import {
+  getInlineNodeTextLength,
+  isInlineNodeWithEditableText,
+  isLineBreakNode,
+  isMentionNode,
+  joinInlineContentAtMergeSeam,
+} from './nodes'
 import type { InlineNode, InlineNodeWithEditableText, NodeId } from './nodes'
 import type {
   DeleteBlockOp,
@@ -144,7 +150,7 @@ export function validateTextCursor(
     return
   }
 
-  if (found.node.__type === 'line_break') {
+  if (isLineBreakNode(found.node)) {
     if (cursor.offset !== 0) {
       validationError(
         `Cursor offset ${cursor.offset} invalid for line_break`,
@@ -154,7 +160,7 @@ export function validateTextCursor(
     return
   }
 
-  if (found.node.__type === 'mention') {
+  if (isMentionNode(found.node)) {
     const length = getInlineNodeTextLength(found.node)
     if (cursor.offset !== 0 && cursor.offset !== length) {
       validationError(
@@ -168,17 +174,18 @@ export function validateTextCursor(
   validationError(`Cursor node ${cursor.nodeId} must be text, link`, op)
 }
 
-/** Validates an {@link InsertBlockOp} operation. */
+/**
+ * Validates an {@link InsertBlockOp} operation.
+ * Order is given by position key at apply time.
+ * `afterBlockId` may target a block not yet re-rendered during undo.
+ */
 export function validateInsertBlockOp(
   context: EditorContext,
   op: InsertBlockOp,
 ): void | never {
-  if (context.state.blocks.has(op.block.id)) {
+  const { state } = context
+  if (state.blocks.has(op.block.id)) {
     validationError(`Block ${op.block.id} already exists in document`, op)
-  }
-
-  if (op.afterBlockId !== null && !context.state.blocks.has(op.afterBlockId)) {
-    validationError(`Unknown block: ${op.afterBlockId}`, op)
   }
 }
 
@@ -224,7 +231,11 @@ export function validateSplitBlockOp(
   }
 }
 
-/** Validates a {@link MergeBlocksOp} operation. */
+/**
+ * Validates a {@link MergeBlocksOp} operation.
+ * Both blocks exists where snapshot match the live source,
+ * Join caret exist on the live target.
+ */
 export function validateMergeBlocksOp(
   context: EditorContext,
   op: MergeBlocksOp,
@@ -248,9 +259,7 @@ export function validateMergeBlocksOp(
   if (op.sourceSnapshot.id !== op.sourceBlockId) {
     validationError(`Snapshot id mismatch for ${op.sourceBlockId}`, op)
   }
-  if (op.atIndex < 0 || op.atIndex > target.content.length) {
-    validationError(`Merge atIndex out of bounds`, op)
-  }
+
   if (op.mergedTailSnapshot.length !== source.content.length) {
     validationError(
       `mergedTailSnapshot length does not match source block content`,
@@ -337,8 +346,13 @@ export function validateInsertInlineNodeOp(
   op: InsertInlineNodeOp,
 ): void | never {
   const block = requireBlockWithInlineContent(context.state, op.blockId, op)
-  if (op.index < 0 || op.index > block.content.length) {
-    validationError(`Insert index ${op.index} out of bounds`, op)
+  if (op.afterNodeId === null) {
+    return
+  }
+
+  const found = findNodeInBlockWithInlineContent(block, op.afterNodeId)
+  if (!found) {
+    validationError(`Node ${op.afterNodeId} not found in block ${block.id}`, op)
   }
 }
 
@@ -348,8 +362,17 @@ export function validateRemoveInlineNodeOp(
   op: RemoveInlineNodeOp,
 ): void | never {
   const block = requireBlockWithInlineContent(context.state, op.blockId, op)
-  if (op.index < 0 || op.index >= block.content.length) {
-    validationError(`Remove index ${op.index} out of bounds`, op)
+
+  const found = findNodeInBlockWithInlineContent(block, op.nodeId)
+  if (!found) {
+    validationError(`Node ${op.nodeId} not found in block ${block.id}`, op)
+  }
+
+  if (op.snapshot.id !== op.nodeId) {
+    validationError(
+      `Snapshot node ID ${op.snapshot.id} does not match removed node ID ${op.nodeId}`,
+      op,
+    )
   }
 }
 
@@ -504,6 +527,7 @@ export function applySplitBlockOp(
 
       let doc = replaceBlock(context.state, op.blockId, updatedOriginal)
       doc = insertBlock(doc, op.newBlock)
+      doc = { ...doc, blockOrderById: sortBlockOrder(doc.blocks) }
 
       return withDocumentState(context, doc)
     }
@@ -521,7 +545,8 @@ export function applySplitBlockOp(
 
 /**
  * Applies a {@link MergeBlocksOp} operation to {@link EditorContext}.
- * It splices source content into target at `op.atIndex`, then removes source blocks.
+ * Appends source content onto the target, joining adjacent matching text
+ * at the seam, then deletes the source block.
  */
 export function applyMergeBlocksOp(
   context: EditorContext,
@@ -530,11 +555,10 @@ export function applyMergeBlocksOp(
   const target = getBlockWithInlineContent(context.state, op.targetBlockId)
   const source = getBlockWithInlineContent(context.state, op.sourceBlockId)
 
-  const mergedContent = [
-    ...target.content.slice(0, op.atIndex),
-    ...source.content,
-    ...target.content.slice(op.atIndex),
-  ]
+  const mergedContent = joinInlineContentAtMergeSeam(
+    target.content,
+    source.content,
+  )
 
   // @todo: add a policy config to merge blocks metadata
   const mergedMetadata = { ...target.metadata, ...source.metadata }
@@ -677,9 +701,19 @@ export function applyInsertInlineNodeOp(
   op: InsertInlineNodeOp,
 ): EditorContext {
   const block = getBlockWithInlineContent(context.state, op.blockId)
+  let index = 0
+
+  if (op.afterNodeId !== null) {
+    const found = findNodeInBlockWithInlineContent(block, op.afterNodeId)
+    if (!found) {
+      applyError(`Node ${op.afterNodeId} not found in block ${block.id}`, op)
+    }
+
+    index = found.index + 1
+  }
 
   const content = [...block.content]
-  content.splice(op.index, 0, op.node)
+  content.splice(index, 0, op.node)
 
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
@@ -691,8 +725,15 @@ export function applyRemoveInlineNodeOp(
 ): EditorContext {
   const block = getBlockWithInlineContent(context.state, op.blockId)
 
+  const found = findNodeInBlockWithInlineContent(block, op.nodeId)
+  if (!found) {
+    applyError(`Node ${op.nodeId} not found in block ${op.blockId}`, op)
+  }
+
+  const { index } = found
+
   const content = [...block.content]
-  content.splice(op.index, 1)
+  content.splice(index, 1)
 
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
@@ -805,7 +846,7 @@ export function invertError(message: string, op: Operation): never {
   })
 }
 
-export function invertOp(op: Operation): Operation {
+export function invertOp(context: EditorContext, op: Operation): Operation {
   const type = op.__type
   switch (type) {
     case 'insert_block': {
@@ -826,7 +867,6 @@ export function invertOp(op: Operation): Operation {
     case 'split_block': {
       return {
         __type: 'merge_blocks',
-        atIndex: op.atIndex,
         mergedTailSnapshot: [...op.tailSnapshot],
         sourceBlockId: op.newBlock.id,
         sourceSnapshot: op.newBlock,
@@ -838,7 +878,6 @@ export function invertOp(op: Operation): Operation {
     case 'merge_blocks': {
       return {
         __type: 'split_block',
-        atIndex: op.atIndex,
         atNodeId: op.splitAtNodeId,
         atOffset: op.splitAtOffset,
         blockId: op.targetBlockId,
@@ -899,15 +938,24 @@ export function invertOp(op: Operation): Operation {
       return {
         __type: 'remove_inline_node',
         blockId: op.blockId,
-        index: op.index,
+        nodeId: op.node.id,
         snapshot: op.node,
       }
     }
     case 'remove_inline_node': {
+      const block = getBlockWithInlineContent(context.state, op.blockId)
+      const found = findNodeInBlockWithInlineContent(block, op.nodeId)
+      if (!found) {
+        invertError(`Node ${op.nodeId} not found in block ${op.blockId}`, op)
+      }
+
+      const { index } = found
+      const prevNode = block.content[index - 1]
+
       return {
         __type: 'insert_inline_node',
+        afterNodeId: prevNode ? prevNode.id : null,
         blockId: op.blockId,
-        index: op.index,
         node: op.snapshot,
       }
     }
@@ -962,7 +1010,7 @@ export interface OperationsRuntime {
   readonly applyOp: (context: EditorContext, op: Operation) => EditorContext
 
   /** Inverts an operation to produce the inverse operation. */
-  readonly invertOp: (op: Operation) => Operation
+  readonly invertOp: (context: EditorContext, op: Operation) => Operation
 }
 
 /** Makes a {@link OperationsRuntime} to use in an {@link OperationsEngine}. */

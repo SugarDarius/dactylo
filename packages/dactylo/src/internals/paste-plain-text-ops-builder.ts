@@ -8,17 +8,16 @@ import {
   normalizeRange,
 } from './document'
 import type { EditorContext } from './editor-context'
-import type { GraphemeOffsetCaret } from './grapheme'
 import { isMarksEqual } from './marks'
 import {
-  coalesceInlineNodes,
   createTextNode,
   getInlineNodeTextLength,
   isInlineNodeWithEditableText,
   isLinkNode,
+  isTextNode,
 } from './nodes'
-import type { InlineNodeWithEditableText } from './nodes'
-import type { DeleteTextOp, MergeBlocksOp, Operation } from './operations'
+import type { InlineNodeWithEditableText, NodeId } from './nodes'
+import type { Operation } from './operations'
 import type {
   BuilderOpsIntent,
   OperationsBuilderAutolinkConfig,
@@ -26,18 +25,14 @@ import type {
   OperationsBuilder,
 } from './operations-builder'
 import {
-  buildBackwardTrimBlockOps,
-  buildCollapseEmptyBlockToActiveMarksOps,
-  buildDeleteBlocksBetweenOps,
-  buildDeleteRangeWithinBlockOps,
+  buildDeleteRangeCrossBlockIntent,
+  buildDeleteRangeWithinBlockIntent,
+  buildDeleteTextRunIntent,
   buildError,
-  buildForwardTrimBlockOps,
   iterRules,
-  previewInlineContentAfterTrimOps,
   rangeCollapsedError,
-  resolvesMergeBlocksUndoFields,
-  resolveRangeInsertCaretAfterPrefixOps,
-  resolveTextInsertTarget,
+  resolvesCaretNode,
+  withTrailingSelectionOp,
 } from './operations-builder'
 import {
   plainTextHasLinks,
@@ -46,8 +41,6 @@ import {
 } from './plain-text'
 import {
   createCursor,
-  cursorAnchorFromLinearOffsetInBlock,
-  getLinearOffsetInBlock,
   getRangeSelectionTopology,
   isCursorSelection,
   isSelectionActive,
@@ -93,6 +86,9 @@ export interface PastePlainTextOpsRangeSelectionSituation {
 
         /** Inline node with editable text subject to ops. */
         readonly node: InlineNodeWithEditableText
+
+        /** Index of the inline node with editable text in the block. */
+        readonly index: number
       }
     | {
         readonly kind: 'same-block'
@@ -127,9 +123,6 @@ export interface PastePlainTextOpsInput {
 export interface PastePlainTextOpsResources {
   /** Whether autolink detection is enabled. */
   readonly autolinkEnabled: boolean
-
-  /** Grapheme offset caret instance. */
-  readonly graphemeOffsetCaret: GraphemeOffsetCaret
 }
 
 /** Paste plain text operations rule. */
@@ -144,35 +137,32 @@ export function buildPastePlainTextSingleLineAtCaretOps(
   line: string,
   block: BlockWithInlineContent,
   node: InlineNodeWithEditableText,
-  index: number,
+  nodeIndex: number,
   at: TextCursor,
   opts: {
     autolinkEnabled: boolean
-    graphemeOffsetCaret: GraphemeOffsetCaret
     prevSelection: Selection | null
   },
 ): Operation[] | null {
   const hasLinks = opts.autolinkEnabled && plainTextHasLinks(line)
-
   if (!hasLinks) {
-    return [
-      {
-        __type: 'insert_text',
-        blockId: block.id,
-        nodeId: node.id,
-        offset: at.offset,
-        text: line,
-      },
-      {
-        __type: 'set_selection',
-        next: createCursor({
+    return withTrailingSelectionOp(
+      [
+        {
+          __type: 'insert_text',
           blockId: block.id,
           nodeId: node.id,
-          offset: at.offset + line.length,
-        }),
-        prev: opts.prevSelection,
-      },
-    ]
+          offset: at.offset,
+          text: line,
+        },
+      ],
+      createCursor({
+        blockId: block.id,
+        nodeId: node.id,
+        offset: at.offset + line.length,
+      }),
+      opts.prevSelection,
+    )
   }
 
   const before = node.text.slice(0, at.offset)
@@ -184,16 +174,16 @@ export function buildPastePlainTextSingleLineAtCaretOps(
   }
 
   const lastSlice = sliced[sliced.length - 1]
-  const shouldAddTrailing = lastSlice && isLinkNode(lastSlice)
-  if (shouldAddTrailing) {
+  if (lastSlice && isLinkNode(lastSlice)) {
     sliced.push(createTextNode({ marks: node.marks, text: ' ' }))
   }
 
   const [firstSlice] = sliced
-  const mergeLeadingTextIntoCaretNode =
+
+  const mergeLeading =
     firstSlice !== undefined &&
-    firstSlice.__type === 'text' &&
-    node.__type === 'text' &&
+    isTextNode(firstSlice) &&
+    isTextNode(node) &&
     isMarksEqual(firstSlice.marks, node.marks)
 
   const ops: Operation[] = []
@@ -209,32 +199,29 @@ export function buildPastePlainTextSingleLineAtCaretOps(
     })
   }
 
-  /**
-   * Inserting link (or other inline) nodes before an empty caret text node leaves
-   * a trailing empty sibling; apply-time coalesce drops its id without an op.
-   * Undo `set_selection.prev` still points at that node → validateOp fails.
-   */
-  if (
-    node.__type === 'text' &&
-    before.length === 0 &&
-    !mergeLeadingTextIntoCaretNode
-  ) {
+  if (isTextNode(node) && before.length === 0 && !mergeLeading) {
     ops.push({
       __type: 'remove_inline_node',
       blockId: block.id,
-      index,
+      nodeId: node.id,
       snapshot: node,
     })
   }
+  const prevNode = block.content[nodeIndex - 1]
 
-  let nextInsertIndex = before.length > 0 ? index + 1 : index
+  let afterNodeId: NodeId | null =
+    before.length > 0 ? node.id : (prevNode?.id ?? null)
+
+  let caretNodeId = node.id
+  let caretOffset = at.offset
+
   for (let i = 0; i < sliced.length; i += 1) {
     const sliceNode = sliced[i]
     if (!sliceNode) {
       continue
     }
 
-    if (i === 0 && mergeLeadingTextIntoCaretNode) {
+    if (i === 0 && mergeLeading && isInlineNodeWithEditableText(firstSlice)) {
       ops.push({
         __type: 'insert_text',
         blockId: block.id,
@@ -242,25 +229,31 @@ export function buildPastePlainTextSingleLineAtCaretOps(
         offset: at.offset,
         text: firstSlice.text,
       })
-      nextInsertIndex = index + 1
+
+      caretNodeId = node.id
+      caretOffset = at.offset + firstSlice.text.length
+      afterNodeId = node.id
+
       continue
     }
 
     ops.push({
       __type: 'insert_inline_node',
+      afterNodeId,
       blockId: block.id,
-      index: nextInsertIndex,
       node: sliceNode,
     })
 
-    nextInsertIndex += 1
+    afterNodeId = sliceNode.id
+    caretNodeId = sliceNode.id
+    caretOffset = getInlineNodeTextLength(sliceNode)
   }
 
   if (after.length > 0) {
     ops.push({
       __type: 'insert_inline_node',
+      afterNodeId,
       blockId: block.id,
-      index: nextInsertIndex,
       node: createTextNode({
         marks: node.marks,
         metadata: node.metadata,
@@ -269,98 +262,14 @@ export function buildPastePlainTextSingleLineAtCaretOps(
     })
   }
 
-  const pastedLength = sliced.reduce(
-    (sum, n) => sum + getInlineNodeTextLength(n),
-    0,
-  )
-
-  const startLinear = getLinearOffsetInBlock(block, at)
-  const targetLinear = startLinear + pastedLength
-
-  const previewContent = previewInlineContentAfterTrimOps(
-    block.content,
+  return withTrailingSelectionOp(
     ops,
-    block.id,
-  )
-
-  const previewBlock: BlockWithInlineContent = {
-    ...block,
-    content: previewContent,
-  }
-
-  const nextAnchor = cursorAnchorFromLinearOffsetInBlock(
-    block.id,
-    previewBlock,
-    targetLinear,
-    (text, offset) =>
-      opts.graphemeOffsetCaret.snapOffsetToBoundary(text, offset),
-  )
-
-  ops.push({
-    __type: 'set_selection',
-    next: createCursor(nextAnchor),
-    prev: opts.prevSelection,
-  })
-
-  return ops
-}
-
-/**
- * Builds paste + selection ops after a range was (or will be) deleted in the same batch.
- *
- * Mirrors contract from {@link buildInsertTextAndSelectionAtRangeOps}.
- */
-export function buildPastePlainTextAndSelectionAtRangeOps(
-  context: EditorContext,
-  range: RangeSelection,
-  data: TextPlainData,
-  at: TextCursor,
-  resources: PastePlainTextOpsResources,
-  opts: {
-    /** Ops already queued before paste (e.g. range `delete_text`). */
-    prefixOps?: Operation[]
-    /**
-     * When the live document does not yet contain the target tree
-     * (e.g. cross-block merge preview), resolve against this block instead of `state`.
-     */
-    blockSnapshot?: BlockWithInlineContent
-  } = {},
-): Operation[] | null {
-  const lines = splitPlainText(data.text)
-  if (lines.length !== 1) {
-    return null
-  }
-
-  const [line] = lines as [string]
-  const { prefixOps = [], blockSnapshot } = opts
-
-  const block =
-    blockSnapshot ?? getBlockWithInlineContent(context.state, at.blockId)
-
-  const insertAt = resolveRangeInsertCaretAfterPrefixOps(block, at, prefixOps)
-  const { node, index } = resolveTextInsertTarget(block, prefixOps, insertAt)
-
-  const previewContent = previewInlineContentAfterTrimOps(
-    block.content,
-    prefixOps,
-    block.id,
-  )
-  const previewBlock: BlockWithInlineContent = {
-    ...block,
-    content: previewContent,
-  }
-
-  return buildPastePlainTextSingleLineAtCaretOps(
-    line,
-    previewBlock,
-    node,
-    index,
-    insertAt,
-    {
-      autolinkEnabled: resources.autolinkEnabled,
-      graphemeOffsetCaret: resources.graphemeOffsetCaret,
-      prevSelection: range,
-    },
+    createCursor({
+      blockId: block.id,
+      nodeId: caretNodeId,
+      offset: caretOffset,
+    }),
+    opts.prevSelection,
   )
 }
 
@@ -392,7 +301,6 @@ export const cursorRules: PastePlainTextOpsRule[] = [
         at,
         {
           autolinkEnabled: resources.autolinkEnabled,
-          graphemeOffsetCaret: resources.graphemeOffsetCaret,
           prevSelection: context.selection,
         },
       )
@@ -440,7 +348,6 @@ export const cursorRules: PastePlainTextOpsRule[] = [
         at,
         {
           autolinkEnabled: resources.autolinkEnabled,
-          graphemeOffsetCaret: resources.graphemeOffsetCaret,
           prevSelection: context.selection,
         },
       )
@@ -485,47 +392,44 @@ export const rangeRules: PastePlainTextOpsRule[] = [
 
       const { topology, range } = situation
       const { anchor, focus } = range
-      const { block, node } = topology
+      const { block, node, index } = topology
 
-      const deleteOffset = anchor.offset
-      const deleteLength = focus.offset - anchor.offset
+      const deleteIntent = buildDeleteTextRunIntent(
+        block.id,
+        node,
+        anchor.offset,
+        focus.offset,
+      )
 
-      if (deleteLength <= 0) {
-        rangeCollapsedError(
-          'Range selection is collapsed; expected non-empty text range.',
-          'PastePlainTextOpsBuilder/#build',
-        )
+      const nodeAfter: InlineNodeWithEditableText = {
+        ...node,
+        text: node.text.slice(0, anchor.offset) + node.text.slice(focus.offset),
       }
 
-      const deleteTextOp: DeleteTextOp = {
-        __type: 'delete_text',
-        blockId: block.id,
-        length: deleteLength,
-        nodeId: node.id,
-        offset: deleteOffset,
-        snapshot: {
-          text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
-        },
+      const lines = splitPlainText(input.data.text)
+      if (lines.length !== 1) {
+        return null
       }
 
-      const pasteOps = buildPastePlainTextAndSelectionAtRangeOps(
-        context,
-        range,
-        input.data,
+      const [line] = lines as [string]
+
+      const pasteOps = buildPastePlainTextSingleLineAtCaretOps(
+        line,
+        block,
+        nodeAfter,
+        index,
+        deleteIntent.caret,
         {
-          blockId: block.id,
-          nodeId: node.id,
-          offset: deleteOffset,
+          autolinkEnabled: resources.autolinkEnabled,
+          prevSelection: context.selection,
         },
-        resources,
-        { prefixOps: [deleteTextOp] },
       )
 
       if (pasteOps === null) {
         return null
       }
 
-      return [deleteTextOp, ...pasteOps]
+      return [...deleteIntent.ops, ...pasteOps]
     },
     /** Same node → `delete_text` + single-line paste + `set_selection`. */
     name: 'range/same-node/delete-then-paste-plain-text',
@@ -551,29 +455,46 @@ export const rangeRules: PastePlainTextOpsRule[] = [
       const { anchor, focus } = range
       const { block } = topology
 
-      const deleteOps = buildDeleteRangeWithinBlockOps(
+      const deleteIntent = buildDeleteRangeWithinBlockIntent(
         context,
         block,
         anchor,
         focus,
-        range,
-        { joinSurvivors: false, setSelection: false },
+        { joinSurvivors: false },
       )
+      const caretNode = resolvesCaretNode(block, deleteIntent)
 
-      const pasteOps = buildPastePlainTextAndSelectionAtRangeOps(
-        context,
-        range,
-        input.data,
-        anchor,
-        resources,
-        { prefixOps: deleteOps },
+      const lines = splitPlainText(input.data.text)
+      if (lines.length !== 1) {
+        return null
+      }
+      const [line] = lines as [string]
+
+      const content = [...block.content]
+      const caretIndex = content.findIndex((n) => n.id === caretNode.id)
+
+      const newBlock: BlockWithInlineContent = {
+        ...block,
+        content: caretIndex === -1 ? [caretNode] : content,
+      }
+
+      const pasteOps = buildPastePlainTextSingleLineAtCaretOps(
+        line,
+        newBlock,
+        caretNode,
+        caretIndex,
+        deleteIntent.caret,
+        {
+          autolinkEnabled: resources.autolinkEnabled,
+          prevSelection: context.selection,
+        },
       )
 
       if (pasteOps === null) {
         return null
       }
 
-      return [...deleteOps, ...pasteOps]
+      return [...deleteIntent.ops, ...pasteOps]
     },
     /** Same block, multiple nodes → range delete (no join) + single-line paste at anchor. */
     name: 'range/same-block/delete-then-paste-plain-text',
@@ -596,97 +517,36 @@ export const rangeRules: PastePlainTextOpsRule[] = [
       }
 
       const { range, topology } = situation
-      const { anchor, focus } = range
       const { startBlock, endBlock } = topology
 
-      const ops: Operation[] = []
-
-      const forward = buildForwardTrimBlockOps(startBlock, anchor)
-      ops.push(...forward)
-
-      let targetHead = previewInlineContentAfterTrimOps(
-        startBlock.content,
-        forward,
-        startBlock.id,
-      )
-
-      const collapsedHead = buildCollapseEmptyBlockToActiveMarksOps(
-        startBlock.id,
-        targetHead,
-        context.activeMarks,
-      )
-
-      if (collapsedHead) {
-        ops.push(...collapsedHead.ops)
-        targetHead = [collapsedHead.placeholder]
-      }
-
-      const deleted = buildDeleteBlocksBetweenOps(
-        context,
-        startBlock.id,
-        endBlock.id,
-      )
-      ops.push(...deleted)
-
-      const backward = buildBackwardTrimBlockOps(endBlock, focus)
-      ops.push(...backward)
-
-      const tailContent = previewInlineContentAfterTrimOps(
-        endBlock.content,
-        backward,
-        endBlock.id,
-      )
-
-      const trimmedSourceSnapshot: BlockWithInlineContent = {
-        ...endBlock,
-        content: tailContent,
-      }
-
-      const mergeTargetSnapshot: BlockWithInlineContent = {
-        ...startBlock,
-        content: targetHead,
-      }
-
-      const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
-        trimmedSourceSnapshot,
-        mergeTargetSnapshot,
-        context.activeMarks,
-      )
-
-      const mergedContentPreview = coalesceInlineNodes([
-        ...targetHead,
-        ...tailContent,
-      ])
-
-      const mergedBlockSnapshot: BlockWithInlineContent = {
-        ...startBlock,
-        content: mergedContentPreview,
-      }
-
-      const mergeBlockOp: MergeBlocksOp = {
-        __type: 'merge_blocks',
-        atIndex: targetHead.length,
-        mergedTailSnapshot: [...tailContent],
-        sourceBlockId: endBlock.id,
-        sourceSnapshot: trimmedSourceSnapshot,
-        splitAtNodeId,
-        splitAtOffset,
-        targetBlockId: startBlock.id,
-      }
-
-      const pasteOps = buildPastePlainTextAndSelectionAtRangeOps(
+      const deleteIntent = buildDeleteRangeCrossBlockIntent(
         context,
         range,
-        input.data,
+        startBlock,
+        endBlock,
+      )
+      const caretBlock = deleteIntent.caretBlock ?? startBlock
+      const caretNode = resolvesCaretNode(caretBlock, deleteIntent)
+
+      const lines = splitPlainText(input.data.text)
+      if (lines.length !== 1) {
+        return null
+      }
+      const [line] = lines as [string]
+
+      const caretIndex = caretBlock.content.findIndex(
+        (node) => node.id === caretNode.id,
+      )
+
+      const pasteOps = buildPastePlainTextSingleLineAtCaretOps(
+        line,
+        caretBlock,
+        caretNode,
+        caretIndex,
+        deleteIntent.caret,
         {
-          blockId: startBlock.id,
-          nodeId: splitAtNodeId,
-          offset: splitAtOffset,
-        },
-        resources,
-        {
-          blockSnapshot: mergedBlockSnapshot,
-          prefixOps: [mergeBlockOp],
+          autolinkEnabled: resources.autolinkEnabled,
+          prevSelection: context.selection,
         },
       )
 
@@ -694,9 +554,7 @@ export const rangeRules: PastePlainTextOpsRule[] = [
         return null
       }
 
-      ops.push(mergeBlockOp, ...pasteOps)
-
-      return ops
+      return [...deleteIntent.ops, ...pasteOps]
     },
     /** Cross-blocks → trim/delete/merge surgery, then single-line paste at split. */
     name: 'range/cross-block/surgery-then-paste-plain-text',
@@ -714,9 +572,6 @@ export interface PastePlainTextOpsBuilderOptions {
     /** Whether to enable autolink detection. */
     readonly enabled: boolean
   }
-
-  /** Grapheme offset caret instance. */
-  readonly graphemeOffsetCaret: GraphemeOffsetCaret
 }
 
 export class PastePlainTextOpsBuilder implements OperationsBuilder<
@@ -726,12 +581,8 @@ export class PastePlainTextOpsBuilder implements OperationsBuilder<
   /** Configuration for autolink detection. */
   readonly #autolinkConfig: OperationsBuilderAutolinkConfig
 
-  /** Grapheme offset caret instance. */
-  readonly #graphemeOffsetCaret: GraphemeOffsetCaret
-
   constructor(options: PastePlainTextOpsBuilderOptions) {
     this.#autolinkConfig = options.autolink
-    this.#graphemeOffsetCaret = options.graphemeOffsetCaret
   }
 
   /** Describes the {@link PastePlainTextOpsSituation}. */
@@ -811,7 +662,12 @@ export class PastePlainTextOpsBuilder implements OperationsBuilder<
       return {
         kind: 'range-selection',
         range: normalized,
-        topology: { block, kind: 'same-node', node: found.node },
+        topology: {
+          block,
+          index: found.index,
+          kind: 'same-node',
+          node: found.node,
+        },
       }
     }
 
@@ -856,7 +712,6 @@ export class PastePlainTextOpsBuilder implements OperationsBuilder<
       input,
       resources: {
         autolinkEnabled: this.#autolinkConfig.enabled,
-        graphemeOffsetCaret: this.#graphemeOffsetCaret,
       },
       rules,
       situation,
@@ -875,7 +730,6 @@ export class PastePlainTextOpsBuilder implements OperationsBuilder<
       input,
       resources: {
         autolinkEnabled: this.#autolinkConfig.enabled,
-        graphemeOffsetCaret: this.#graphemeOffsetCaret,
       },
       situation,
     })

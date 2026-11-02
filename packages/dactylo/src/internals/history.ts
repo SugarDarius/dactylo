@@ -8,78 +8,6 @@ import type {
 import type { TypingBurstOptions } from './typing'
 import { TypingBurstController } from './typing'
 
-/**
- * Ordering inverse `insert_block` operations by `posKey` to ensure predecessors exist before validation
- * when replaying a history entry.
- *
- * Undo replays `delete_block` inverses as `insert_block` in reverse deletion order.
- * Each insert still points at the original predecessor id, which may not exist yet.
- * Sort consecutive `insert_block` runs by posKey so predecessors exist before validation.
- */
-export function orderInverseDocumentOps(
-  inverseDocumentOps: readonly Operation[],
-): Operation[] {
-  const ops: Operation[] = []
-  let index = 0
-
-  while (index < inverseDocumentOps.length) {
-    const op = inverseDocumentOps[index]
-
-    if (op && op.__type !== 'insert_block') {
-      ops.push(op)
-      index += 1
-      continue
-    }
-
-    const runStart = index
-    while (
-      index < inverseDocumentOps.length &&
-      inverseDocumentOps[index]?.__type === 'insert_block'
-    ) {
-      index += 1
-    }
-
-    const run = inverseDocumentOps.slice(runStart, index)
-    const sorted = run.toSorted((a, b) => {
-      if (a.__type === 'insert_block' && b.__type === 'insert_block') {
-        // @todo: use shared comparator function
-        return a.block.posKey < b.block.posKey
-          ? -1
-          : a.block.posKey > b.block.posKey
-            ? 1
-            : 0
-      }
-
-      return 0
-    })
-    ops.push(...sorted)
-  }
-
-  return ops
-}
-
-/**
- * Ordering inverse ops for replaying a history entry
- * when document changes must happen before selection changes.
- *
- * Keeps relative order within each group (matches reverse forward order).
- */
-export function orderInverseOps(inverseOps: readonly Operation[]): Operation[] {
-  const documentOps: Operation[] = []
-  const selectionOps: Operation[] = []
-
-  for (const op of inverseOps) {
-    if (op.__type === 'set_selection') {
-      selectionOps.push(op)
-    } else {
-      documentOps.push(op)
-    }
-  }
-
-  const orderedDocumentOps = orderInverseDocumentOps(documentOps)
-  return [...orderedDocumentOps, ...selectionOps]
-}
-
 /** Last `set_selection` in forward op order (if any). */
 export function getTrailingSetSelectionOp(
   ops: readonly Operation[],
@@ -274,7 +202,7 @@ export function buildCoalescedDeleteEntry(
   }
 
   return {
-    inverseOps: orderInverseOps(inverseOps),
+    inverseOps,
     ops: forwardOps,
   }
 }
@@ -333,10 +261,8 @@ export function buildCoalescedTypingEntry(
     })
   }
 
-  const ordered = orderInverseOps(inverseOps)
-
   return {
-    inverseOps: ordered,
+    inverseOps,
     ops: forwardOps,
   }
 }

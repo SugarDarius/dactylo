@@ -10,29 +10,25 @@ import type { EditorContext } from './editor-context'
 import { isMarksEqual, normalizeMarks } from './marks'
 import type { Marks } from './marks'
 import {
-  coalesceInlineNodes,
   createFromInlineWithEditableText,
   isInlineNodeWithEditableText,
 } from './nodes'
-import type { InlineNodeWithEditableText } from './nodes'
-import type { DeleteTextOp, MergeBlocksOp, Operation } from './operations'
+import type { InlineNodeWithEditableText, NodeId } from './nodes'
+import type { Operation } from './operations'
 import type {
   BuilderOpsIntent,
   OperationRule,
   OperationsBuilder,
 } from './operations-builder'
 import {
-  buildBackwardTrimBlockOps,
-  buildCollapseEmptyBlockToActiveMarksOps,
-  buildDeleteBlocksBetweenOps,
-  buildDeleteRangeWithinBlockOps,
+  buildDeleteRangeCrossBlockIntent,
+  buildDeleteRangeWithinBlockIntent,
+  buildDeleteTextRunIntent,
   buildError,
-  buildForwardTrimBlockOps,
   iterRules,
-  previewInlineContentAfterTrimOps,
   rangeCollapsedError,
-  resolvesMergeBlocksUndoFields,
-  resolveTextInsertTarget,
+  resolvesCaretNode,
+  withTrailingSelectionOp,
 } from './operations-builder'
 import {
   createCursor,
@@ -80,6 +76,9 @@ export interface InsertTextOpsRangeSelectionSituation {
 
         /** Inline node with editable text subject to the operation. */
         readonly node: InlineNodeWithEditableText
+
+        /** Index of the inline node with editable text in the block. */
+        readonly index: number
       }
     | {
         readonly kind: 'same-block'
@@ -133,8 +132,8 @@ export function buildInsertTextWithMarkBoundaryOps(
   text: string,
   /** Target node at the caret (text or link). */
   node: InlineNodeWithEditableText,
-  /** Index of `node` in `block.content`. */
-  nodeIndex: number,
+  /** Node before `node`, or `null` if first. */
+  prevNodeId: NodeId | null,
   blockId: BlockId,
   /** Previous selection for undo inversion. */
   prevSelection: Selection | null,
@@ -162,25 +161,18 @@ export function buildInsertTextWithMarkBoundaryOps(
     })
   }
 
-  /**
-   * Insert position for the inserted text node:
-   * - caret in the middle/end of a non-empty prefix → after the trimmed node
-   * - caret at start (empty prefix) → before the original node
-   */
-  const insertIndex = before.length > 0 ? nodeIndex + 1 : nodeIndex
-
   ops.push({
     __type: 'insert_inline_node',
+    afterNodeId: before.length > 0 ? node.id : prevNodeId,
     blockId,
-    index: insertIndex,
     node: insertNode,
   })
 
   if (after.length > 0) {
     ops.push({
       __type: 'insert_inline_node',
+      afterNodeId: insertNode.id,
       blockId,
-      index: insertIndex + 1,
       node: createFromInlineWithEditableText(node, {
         marks: node.marks,
         metadata: node.metadata,
@@ -189,17 +181,15 @@ export function buildInsertTextWithMarkBoundaryOps(
     })
   }
 
-  ops.push({
-    __type: 'set_selection',
-    next: createCursor({
+  return withTrailingSelectionOp(
+    ops,
+    createCursor({
       blockId,
       nodeId: insertNode.id,
       offset: text.length,
     }),
-    prev: prevSelection,
-  })
-
-  return ops
+    prevSelection,
+  )
 }
 
 /** Builds operations to insert text at a cursor selection. */
@@ -208,7 +198,10 @@ export function buildCursorInsertTextOps(
   at: TextCursor,
   block: BlockWithInlineContent,
   node: InlineNodeWithEditableText,
-  index: number,
+  /** Node before `node`, or `null` if first. */
+  prevNodeId: NodeId | null,
+  /** Previous selection for undo inversion. */
+  prevSelection: Selection | null,
   text: string,
 ): Operation[] {
   const typingMarks = normalizeMarks({
@@ -217,26 +210,23 @@ export function buildCursorInsertTextOps(
   })
 
   if (isMarksEqual(typingMarks, node.marks)) {
-    const ops: Operation[] = [
-      {
-        __type: 'insert_text',
-        blockId: block.id,
-        nodeId: node.id,
-        offset: at.offset,
-        text,
-      },
-      {
-        __type: 'set_selection',
-        next: createCursor({
-          blockId: block.id,
-          nodeId: node.id,
-          offset: at.offset + text.length,
-        }),
-        prev: context.selection,
-      },
-    ]
-
-    return ops
+    return withTrailingSelectionOp(
+      [
+        {
+          __type: 'insert_text',
+          blockId: at.blockId,
+          nodeId: at.nodeId,
+          offset: at.offset,
+          text,
+        },
+      ],
+      createCursor({
+        blockId: at.blockId,
+        nodeId: at.nodeId,
+        offset: at.offset + text.length,
+      }),
+      prevSelection,
+    )
   }
 
   return buildInsertTextWithMarkBoundaryOps(
@@ -244,7 +234,7 @@ export function buildCursorInsertTextOps(
     at,
     text,
     node,
-    index,
+    prevNodeId,
     block.id,
     context.selection,
   )
@@ -260,12 +250,16 @@ export const cursorRules: InsertTextOpsRule[] = [
 
       const { at, block, node, index } = situation
 
+      const prevNode = block.content[index - 1]
+      const prevNodeId = prevNode ? prevNode.id : null
+
       return buildCursorInsertTextOps(
         context,
         at,
         block,
         node,
-        index,
+        prevNodeId,
+        context.selection,
         input.text,
       )
     },
@@ -273,76 +267,6 @@ export const cursorRules: InsertTextOpsRule[] = [
     when: ({ situation }): boolean => situation.kind === 'cursor-selection',
   },
 ]
-
-/**
- * Builds insert + selection ops after a range was (or will be) deleted in the same batch.
- *
- * Same marks as `context.activeMarks`: `insert_text` + collapsed `set_selection`.
- * Different marks:
- *  Structural boundary ops via  {@link #buildInsertTextWithMarkBoundaryOps} (no split in `applyInsertTextOp`).
- */
-export function buildInsertTextAndSelectionAtRangeOps(
-  context: EditorContext,
-  range: RangeSelection,
-  text: string,
-  at: TextCursor,
-  opts: {
-    /**
-     * Ops already queued for this block before insert (e.g. range `delete_text`).
-     * Required so the target node's text/index match validate/apply order.
-     */
-    prefixOps?: Operation[]
-    /**
-     * When the live document does not yet contain the target tree
-     * (e.g. cross-block merge preview), resolve the node from this block
-     * instead of `state`.
-     */
-    blockSnapshot?: BlockWithInlineContent
-  } = {},
-): Operation[] {
-  const { prefixOps = [], blockSnapshot } = opts
-  const block =
-    blockSnapshot ?? getBlockWithInlineContent(context.state, at.blockId)
-
-  const { node, index } = resolveTextInsertTarget(block, prefixOps, at)
-  const typingMarks = normalizeMarks({
-    active: context.activeMarks,
-    node: node.marks,
-  })
-
-  if (isMarksEqual(typingMarks, node.marks)) {
-    const ops: Operation[] = [
-      {
-        __type: 'insert_text',
-        blockId: at.blockId,
-        nodeId: at.nodeId,
-        offset: at.offset,
-        text,
-      },
-      {
-        __type: 'set_selection',
-        next: createCursor({
-          blockId: at.blockId,
-          nodeId: at.nodeId,
-          offset: at.offset + text.length,
-        }),
-        prev: range,
-      },
-    ]
-
-    return ops
-  }
-
-  return buildInsertTextWithMarkBoundaryOps(
-    typingMarks,
-    at,
-    text,
-    node,
-    index,
-    block.id,
-    range,
-  )
-}
 
 /** Rules for range selection. */
 export const rangeRules: InsertTextOpsRule[] = [
@@ -362,47 +286,35 @@ export const rangeRules: InsertTextOpsRule[] = [
 
       const { topology, range } = situation
       const { anchor, focus } = range
-      const { block, node } = topology
+      const { block, node, index } = topology
 
-      const deleteOffset = anchor.offset
-      const deleteLength = focus.offset - anchor.offset
+      const prevNode = block.content[index - 1]
+      const prevNodeId = prevNode ? prevNode.id : null
 
-      if (deleteLength <= 0) {
-        rangeCollapsedError(
-          'Range selection is collapsed; expected non-empty text range.',
-          'InsertTextOpsBuilder/#build',
-        )
+      const deleteIntent = buildDeleteTextRunIntent(
+        block.id,
+        node,
+        anchor.offset,
+        focus.offset,
+      )
+
+      const nodeAfterDelete: InlineNodeWithEditableText = {
+        ...node,
+        text: node.text.slice(0, anchor.offset) + node.text.slice(focus.offset),
       }
 
-      const deleteTextOp: DeleteTextOp = {
-        __type: 'delete_text',
-        blockId: block.id,
-        length: deleteLength,
-        nodeId: node.id,
-        offset: deleteOffset,
-        snapshot: {
-          text: node.text.slice(deleteOffset, deleteOffset + deleteLength),
-        },
-      }
-
-      const ops: Operation[] = [
-        deleteTextOp,
-        ...buildInsertTextAndSelectionAtRangeOps(
+      return [
+        ...deleteIntent.ops,
+        ...buildCursorInsertTextOps(
           context,
-          range,
+          deleteIntent.caret,
+          block,
+          nodeAfterDelete,
+          prevNodeId,
+          context.selection,
           input.text,
-          {
-            blockId: block.id,
-            nodeId: node.id,
-            offset: deleteOffset,
-          },
-          {
-            prefixOps: [deleteTextOp],
-          },
         ),
       ]
-
-      return ops
     },
     /** Same node text/link → `delete_text` + `insert_text` + `set_selection` */
     name: 'range/same-node/delete-then-insert-char',
@@ -428,29 +340,31 @@ export const rangeRules: InsertTextOpsRule[] = [
       const { anchor, focus } = range
       const { block } = topology
 
-      const deleteOps = buildDeleteRangeWithinBlockOps(
+      const deleteIntent = buildDeleteRangeWithinBlockIntent(
         context,
         block,
         anchor,
         focus,
-        range,
-        { joinSurvivors: false, setSelection: false },
+        { joinSurvivors: false },
       )
+      const caretNode = resolvesCaretNode(block, deleteIntent)
+      const caretIndex = block.content.findIndex((n) => n.id === caretNode.id)
 
-      const ops: Operation[] = [
-        ...deleteOps,
-        ...buildInsertTextAndSelectionAtRangeOps(
+      const prevNode = block.content[caretIndex - 1]
+      const prevNodeId = prevNode ? prevNode.id : null
+
+      return [
+        ...deleteIntent.ops,
+        ...buildCursorInsertTextOps(
           context,
+          deleteIntent.caret,
+          block,
+          caretNode,
+          prevNodeId,
           range,
           input.text,
-          anchor,
-          {
-            prefixOps: deleteOps,
-          },
         ),
       ]
-
-      return ops
     },
     /** Same block, multiple nodes → range delete (no head/tail) + `insert_text` at anchor. */
     name: 'range/same-block/delete-then-insert-char',
@@ -472,104 +386,30 @@ export const rangeRules: InsertTextOpsRule[] = [
       }
 
       const { range, topology } = situation
-
-      const { anchor, focus } = range
       const { startBlock, endBlock } = topology
 
-      const ops: Operation[] = []
-
-      const forward = buildForwardTrimBlockOps(startBlock, anchor)
-      ops.push(...forward)
-
-      let targetHead = previewInlineContentAfterTrimOps(
-        startBlock.content,
-        forward,
-        startBlock.id,
-      )
-
-      const collapsedHead = buildCollapseEmptyBlockToActiveMarksOps(
-        startBlock.id,
-        targetHead,
-        context.activeMarks,
-      )
-
-      if (collapsedHead) {
-        ops.push(...collapsedHead.ops)
-        targetHead = [collapsedHead.placeholder]
-      }
-
-      const deleted = buildDeleteBlocksBetweenOps(
+      const deleteIntent = buildDeleteRangeCrossBlockIntent(
         context,
-        startBlock.id,
-        endBlock.id,
-      )
-      ops.push(...deleted)
-
-      const backward = buildBackwardTrimBlockOps(endBlock, focus)
-      ops.push(...backward)
-
-      const tailContent = previewInlineContentAfterTrimOps(
-        endBlock.content,
-        backward,
-        endBlock.id,
+        range,
+        startBlock,
+        endBlock,
       )
 
-      const trimmedSourceSnapshot: BlockWithInlineContent = {
-        ...endBlock,
-        content: tailContent,
-      }
+      const caretBlock = deleteIntent.caretBlock ?? startBlock
+      const caretNode = resolvesCaretNode(caretBlock, deleteIntent)
 
-      const mergeTargetSnapshot: BlockWithInlineContent = {
-        ...startBlock,
-        content: targetHead,
-      }
-
-      const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
-        trimmedSourceSnapshot,
-        mergeTargetSnapshot,
-        context.activeMarks,
-      )
-
-      const mergedContentPreview = coalesceInlineNodes([
-        ...targetHead,
-        ...tailContent,
-      ])
-
-      const mergedBlockSnapshot: BlockWithInlineContent = {
-        ...startBlock,
-        content: mergedContentPreview,
-      }
-
-      const mergeBlockOp: MergeBlocksOp = {
-        __type: 'merge_blocks',
-        atIndex: targetHead.length,
-        mergedTailSnapshot: [...tailContent],
-        sourceBlockId: endBlock.id,
-        sourceSnapshot: trimmedSourceSnapshot,
-        splitAtNodeId,
-        splitAtOffset,
-        targetBlockId: startBlock.id,
-      }
-
-      ops.push(
-        mergeBlockOp,
-        ...buildInsertTextAndSelectionAtRangeOps(
+      return [
+        ...deleteIntent.ops,
+        ...buildCursorInsertTextOps(
           context,
+          deleteIntent.caret,
+          caretBlock,
+          caretNode,
+          null,
           range,
           input.text,
-          {
-            blockId: startBlock.id,
-            nodeId: splitAtNodeId,
-            offset: splitAtOffset,
-          },
-          {
-            blockSnapshot: mergedBlockSnapshot,
-            prefixOps: [mergeBlockOp],
-          },
         ),
-      )
-
-      return ops
+      ]
     },
     /** Cross-blocks → forward trim → delete middle → backward trim → merge → insert at split */
     name: 'range/cross-block/surgery-then-insert-char',
@@ -664,7 +504,12 @@ export class InsertTextOpsBuilder implements OperationsBuilder<
       return {
         kind: 'range-selection',
         range: normalized,
-        topology: { block, kind: 'same-node', node: found.node },
+        topology: {
+          block,
+          index: found.index,
+          kind: 'same-node',
+          node: found.node,
+        },
       }
     }
 

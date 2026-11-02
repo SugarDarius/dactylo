@@ -10,7 +10,7 @@ import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import type { Observable } from './event-source'
 import { EventSource } from './event-source'
-import { HistoryStack, orderInverseOps } from './history'
+import { HistoryStack } from './history'
 import type { HistoryEvent, HistoryStackOptions } from './history'
 import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
@@ -614,7 +614,9 @@ export class TransactionPipeline {
     }
 
     let next = { ...this.#context }
-    const inverseOps: Operation[] = []
+
+    const inverseDocumentOps: Operation[] = []
+    const inverseSelectionOps: Operation[] = []
 
     for (const op of ops) {
       try {
@@ -624,8 +626,21 @@ export class TransactionPipeline {
         throw DactyloError.wrap(err)
       }
 
+      /**
+       * Invert against the pre-apply tree. `remove_inline_node` needs the
+       * previous sibling while the node still exists. `set_selection` invert
+       * swaps prev/next — storing the forward op would restore the post-edit caret.
+       *
+       * ⚠️ Order matter: inverse always comes before apply. ⚠️
+       */
+      const inverse = this.#operationsEngine.runtime.invertOp(next, op)
       next = this.#operationsEngine.runtime.applyOp(next, op)
-      inverseOps.unshift(this.#operationsEngine.runtime.invertOp(op))
+
+      if (op.__type === 'set_selection') {
+        inverseSelectionOps.push(inverse)
+      } else {
+        inverseDocumentOps.unshift(inverse)
+      }
     }
 
     this.#context = next
@@ -636,7 +651,13 @@ export class TransactionPipeline {
         transaction.policy?.coalesce === true &&
         transaction.policy?.source === 'user'
 
-      this.#history.push({ inverseOps, ops: [...ops] }, coalesce)
+      this.#history.push(
+        {
+          inverseOps: [...inverseDocumentOps, ...inverseSelectionOps],
+          ops: [...ops],
+        },
+        coalesce,
+      )
     }
 
     this.#eventSources.context.notify(next)
@@ -709,8 +730,7 @@ export class TransactionPipeline {
       return
     }
 
-    const ordered = orderInverseOps(entry.inverseOps)
-    this.#commit(ordered, {
+    this.#commit([...entry.inverseOps], {
       label: transactionPolicyLabel('history', 'undo'),
       pushToHistory: false,
       source: 'undo',
