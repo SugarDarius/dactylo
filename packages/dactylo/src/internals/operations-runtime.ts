@@ -19,10 +19,11 @@ import {
   updateBlockWithInlineContent,
   withActiveMarks,
   withDocumentState,
+  withSelection,
 } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
-import { isInlineNodeWithEditableText } from './nodes'
+import { getInlineNodeTextLength, isInlineNodeWithEditableText } from './nodes'
 import type { InlineNode, InlineNodeWithEditableText, NodeId } from './nodes'
 import type {
   DeleteBlockOp,
@@ -36,9 +37,11 @@ import type {
   RemoveInlineNodeOp,
   SetActiveMarksOp,
   SetMarksOp,
+  SetSelectionOp,
   SplitBlockOp,
 } from './operations'
 import { sanitizeText } from './sanitize-text'
+import type { TextCursor } from './selection'
 import { assertNever } from './utils'
 
 // --- Validate ─────────────────────────────────────────------------
@@ -116,6 +119,53 @@ export function assertRangeInText(
       op,
     )
   }
+}
+
+/** Validates a text cursor by checking its type and offset. */
+export function validateTextCursor(
+  state: DocumentState,
+  cursor: TextCursor,
+  op: Operation,
+): void {
+  const block = requireBlockWithInlineContent(state, cursor.blockId, op)
+  const found = findNodeInBlockWithInlineContent(block, cursor.nodeId)
+
+  if (!found) {
+    validationError(`Node ${cursor.nodeId} no found in block ${block.id}`, op)
+  }
+
+  if (isInlineNodeWithEditableText(found.node)) {
+    assertOffsetInText(
+      cursor.offset,
+      found.node.text.length,
+      op,
+      'Cursor offset',
+    )
+    return
+  }
+
+  if (found.node.__type === 'line_break') {
+    if (cursor.offset !== 0) {
+      validationError(
+        `Cursor offset ${cursor.offset} invalid for line_break`,
+        op,
+      )
+    }
+    return
+  }
+
+  if (found.node.__type === 'mention') {
+    const length = getInlineNodeTextLength(found.node)
+    if (cursor.offset !== 0 && cursor.offset !== length) {
+      validationError(
+        `Cursor offset ${cursor.offset} invalid for mention. Must be 0 or ${length}`,
+        op,
+      )
+    }
+    return
+  }
+
+  validationError(`Cursor node ${cursor.nodeId} must be text, link`, op)
 }
 
 /** Validates an {@link InsertBlockOp} operation. */
@@ -314,6 +364,21 @@ export function validateSetMarksOp(
   assertRangeInText(op.from, op.to, node.text.length, op)
 }
 
+/** Validates a {@link SetSelectionOp} operation. */
+export function validateSetSelectionOp(
+  context: EditorContext,
+  op: SetSelectionOp,
+): void | never {
+  if (op.next !== null) {
+    if (op.next.__type === 'cursor') {
+      validateTextCursor(context.state, op.next.anchor, op)
+    } else if (op.next.__type === 'range') {
+      validateTextCursor(context.state, op.next.anchor, op)
+      validateTextCursor(context.state, op.next.focus, op)
+    }
+  }
+}
+
 /**
  * Validates an operation against {@link EditorContext} and invariant rules.
  * Throws a {@link DactyloError} on failure.
@@ -361,8 +426,10 @@ export function validateOp(context: EditorContext, op: Operation): void {
       validateSetMarksOp(context, op)
       break
     }
-    // @todo: remove `set_selection`
-    case 'set_selection':
+    case 'set_selection': {
+      validateSetSelectionOp(context, op)
+      break
+    }
     case 'set_active_marks': {
       break
     }
@@ -717,9 +784,8 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
     case 'set_marks': {
       return applySetMarksOp(context, op)
     }
-    // @todo: remove `set_selection`
     case 'set_selection': {
-      return context
+      return withSelection(context, op.next)
     }
     default: {
       assertNever(type, { hint: 'OperationsRuntime/validateOp' })
@@ -852,9 +918,12 @@ export function invertOp(op: Operation): Operation {
         to: op.to,
       }
     }
-    // @todo: remove `set_selection`
     case 'set_selection': {
-      return op
+      return {
+        __type: 'set_selection',
+        next: op.prev,
+        prev: op.next,
+      }
     }
     default: {
       assertNever(type, { hint: 'OperationsRuntime/invertOp' })
