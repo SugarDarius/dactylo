@@ -57,6 +57,14 @@ export interface PartialMarkRangeIntent {
     readonly nodeId: NodeId
     readonly to: number
   }
+
+  /**
+   * Trailing run after the marked range, when the range was not at the node
+   * end. Same marks as the original node (`prevMarks`).
+   */
+  readonly after?: {
+    readonly nodeId: NodeId
+  }
 }
 
 /**
@@ -1210,15 +1218,23 @@ export function buildPartialMarkRangeOps(
     )
 
     if (afterText.length > 0) {
+      const afterNode = createFromInlineWithEditableText(node, {
+        marks: prevMarks,
+        text: afterText,
+      })
+
       ops.push({
         __type: 'insert_inline_node',
         afterNodeId: middleNode.id,
         blockId,
-        node: createFromInlineWithEditableText(node, {
-          marks: prevMarks,
-          text: afterText,
-        }),
+        node: afterNode,
       })
+
+      return {
+        after: { nodeId: afterNode.id },
+        marked: { from: 0, nodeId: middleNode.id, to: middleLen },
+        ops,
+      }
     }
 
     return {
@@ -1249,15 +1265,23 @@ export function buildPartialMarkRangeOps(
   })
 
   if (afterText.length > 0) {
+    const afterNode = createFromInlineWithEditableText(node, {
+      marks: prevMarks,
+      text: afterText,
+    })
+
     ops.push({
       __type: 'insert_inline_node',
       afterNodeId: node.id,
       blockId,
-      node: createFromInlineWithEditableText(node, {
-        marks: prevMarks,
-        text: afterText,
-      }),
+      node: afterNode,
     })
+
+    return {
+      after: { nodeId: afterNode.id },
+      marked: { from: 0, nodeId: node.id, to: middleLen },
+      ops,
+    }
   }
 
   return {

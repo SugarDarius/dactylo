@@ -285,6 +285,25 @@ export function buildMarkdownMarkShortcutOps(
     caretOffset = partial.marked.to
   }
 
+  /**
+   * Keep typing with `activeMarks`, not the mark just applied.
+   * A suffix split already has the original marks — park the caret there
+   * instead of inserting an empty node (which paints as a ZWSP sibling).
+   * Only insert an empty continuation when the shortcut is at the node end,
+   * matching cursor mark-toggle on a non-empty node.
+   */
+  if (partial?.after) {
+    return withTrailingSelectionOp(
+      ops,
+      createCursor({
+        blockId: block.id,
+        nodeId: partial.after.nodeId,
+        offset: 0,
+      }),
+      context.selection,
+    )
+  }
+
   if (!isMarksEqual(nextMarks, context.activeMarks)) {
     const inserted = createFromInlineWithEditableText(node, {
       marks: context.activeMarks,

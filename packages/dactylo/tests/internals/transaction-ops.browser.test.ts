@@ -754,7 +754,7 @@ describe('TransactionPipeline markdown shortcuts', () => {
     ).toBe(true)
   })
 
-  test('**word** closing delimiter bolds mid-paragraph after a long prefix; suffix stays unmarked', () => {
+  test('**word** closing delimiter bolds mid-paragraph without an empty continuation node', () => {
     const pipeline = makePipeline({ markdown: true })
     focus(pipeline)
     typeText(pipeline, longParagraph)
@@ -765,36 +765,30 @@ describe('TransactionPipeline markdown shortcuts', () => {
     typeText(pipeline, ' **test*')
     typeText(pipeline, '*')
 
-    expect(blockTexts(pipeline.context)).toEqual([
-      `${longParagraph.slice(0, laborisEnd)} test${longParagraph.slice(laborisEnd)}`,
+    const prefix = `${longParagraph.slice(0, laborisEnd)} `
+    const suffix = longParagraph.slice(laborisEnd)
+    const nodes = firstInlineBlock(pipeline.context).content.filter(
+      isInlineNodeWithEditableText,
+    )
+
+    expect(blockTexts(pipeline.context)).toEqual([`${prefix}test${suffix}`])
+    expect(
+      nodes.map((node) => ({
+        bold: isMarkEnabled(node.marks, 'bold'),
+        text: node.text,
+      })),
+    ).toEqual([
+      { bold: false, text: prefix },
+      { bold: true, text: 'test' },
+      { bold: false, text: suffix },
     ])
-    expect(
-      firstInlineBlock(pipeline.context).content.some(
-        (node) =>
-          isInlineNodeWithEditableText(node) &&
-          isMarkEnabled(node.marks, 'bold') &&
-          node.text === 'test',
-      ),
-    ).toBe(true)
-    expect(
-      firstInlineBlock(pipeline.context).content.some(
-        (node) =>
-          isInlineNodeWithEditableText(node) &&
-          !isMarkEnabled(node.marks, 'bold') &&
-          node.text.startsWith('Minim minim sit dolore laboris'),
-      ),
-    ).toBe(true)
-    expect(
-      firstInlineBlock(pipeline.context).content.some(
-        (node) =>
-          isInlineNodeWithEditableText(node) &&
-          !isMarkEnabled(node.marks, 'bold') &&
-          node.text.includes('aliqua minim'),
-      ),
-    ).toBe(true)
+    expect(requireCursor(pipeline.context)).toMatchObject({
+      nodeId: nodes[2]?.id,
+      offset: 0,
+    })
   })
 
-  test('*word* closing delimiter italicizes mid-paragraph after a long prefix; suffix stays unmarked', () => {
+  test('*word* closing delimiter italicizes mid-paragraph without an empty continuation node', () => {
     const pipeline = makePipeline({ markdown: true })
     focus(pipeline)
     typeText(pipeline, longParagraph)
@@ -805,33 +799,27 @@ describe('TransactionPipeline markdown shortcuts', () => {
     typeText(pipeline, ' *test')
     typeText(pipeline, '*')
 
-    expect(blockTexts(pipeline.context)).toEqual([
-      `${longParagraph.slice(0, laborisEnd)} test${longParagraph.slice(laborisEnd)}`,
+    const prefix = `${longParagraph.slice(0, laborisEnd)} `
+    const suffix = longParagraph.slice(laborisEnd)
+    const nodes = firstInlineBlock(pipeline.context).content.filter(
+      isInlineNodeWithEditableText,
+    )
+
+    expect(blockTexts(pipeline.context)).toEqual([`${prefix}test${suffix}`])
+    expect(
+      nodes.map((node) => ({
+        italic: isMarkEnabled(node.marks, 'italic'),
+        text: node.text,
+      })),
+    ).toEqual([
+      { italic: false, text: prefix },
+      { italic: true, text: 'test' },
+      { italic: false, text: suffix },
     ])
-    expect(
-      firstInlineBlock(pipeline.context).content.some(
-        (node) =>
-          isInlineNodeWithEditableText(node) &&
-          isMarkEnabled(node.marks, 'italic') &&
-          node.text === 'test',
-      ),
-    ).toBe(true)
-    expect(
-      firstInlineBlock(pipeline.context).content.some(
-        (node) =>
-          isInlineNodeWithEditableText(node) &&
-          !isMarkEnabled(node.marks, 'italic') &&
-          node.text.startsWith('Minim minim sit dolore laboris'),
-      ),
-    ).toBe(true)
-    expect(
-      firstInlineBlock(pipeline.context).content.some(
-        (node) =>
-          isInlineNodeWithEditableText(node) &&
-          !isMarkEnabled(node.marks, 'italic') &&
-          node.text.includes('aliqua minim'),
-      ),
-    ).toBe(true)
+    expect(requireCursor(pipeline.context)).toMatchObject({
+      nodeId: nodes[2]?.id,
+      offset: 0,
+    })
   })
 })
 
