@@ -242,6 +242,47 @@ export function buildCursorInsertTextOps(
 export const cursorRules: InsertTextOpsRule[] = [
   {
     /**
+     * 💡 Cursor is at the beginning of a link.
+     * 🎯 Insert a new text node before the link instead of continuing the link.
+     */
+    build: ({ context, situation, input }): Operation[] | null => {
+      if (situation.kind !== 'cursor-selection') {
+        return null
+      }
+
+      const { block, index } = situation
+      const prevNode = block.content[index - 1]
+      const insertedText = createTextNode({
+        marks: context.activeMarks,
+        text: input.text,
+      })
+
+      return withTrailingSelectionOp(
+        [
+          {
+            __type: 'insert_inline_node',
+            afterNodeId: prevNode ? prevNode.id : null,
+            blockId: block.id,
+            node: insertedText,
+          },
+        ],
+        createCursor({
+          blockId: block.id,
+          nodeId: insertedText.id,
+          offset: input.text.length,
+        }),
+        context.selection,
+      )
+    },
+    name: 'cursor/at-link-start/insert-new-text',
+    when: ({ situation }): boolean =>
+      situation.kind === 'cursor-selection' &&
+      isLinkNode(situation.node) &&
+      situation.at.offset === 0 &&
+      situation.node.text.length > 0,
+  },
+  {
+    /**
      * 💡 Cursor is at the end of a link.
      * 🎯 Insert a new text node after the link instead of continuing the link.
      */

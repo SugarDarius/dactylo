@@ -177,6 +177,114 @@ describe('TransactionPipeline insertText', () => {
     })
   })
 
+  test('typing at the beginning of a link inserts a new text node; undo/redo round-trip', () => {
+    const pipeline = makePipeline({ autolink: true, markdown: false })
+    focus(pipeline)
+    pastePlainText(pipeline, 'https://liveblocks.io/')
+
+    const link = firstInlineBlock(pipeline.context).content.find(isLinkNode)
+    if (!link) {
+      throw new Error('Expected a link node')
+    }
+
+    setCursor(pipeline, {
+      blockId: firstInlineBlock(pipeline.context).id,
+      nodeId: link.id,
+      offset: 0,
+    })
+    const before = snapshot(pipeline.context)
+
+    typeText(pipeline, 'x')
+
+    const nodes = firstInlineBlock(pipeline.context).content
+    const typed = nodes.find(
+      (node): node is TextNode => isTextNode(node) && node.text.includes('x'),
+    )
+
+    expect(blockTexts(pipeline.context)).toEqual([`x${link.text} `])
+    expect(
+      nodes.some((node) => isLinkNode(node) && node.text === link.text),
+    ).toBe(true)
+    expect(typed).toBeDefined()
+    expect(requireCursor(pipeline.context)).toMatchObject({
+      nodeId: typed?.id,
+      offset: typed?.text.length,
+    })
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('typing a space at the beginning of a markdown link inserts a new text node', () => {
+    const pipeline = makePipeline({ autolink: true, markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '[Liveblocks](https://liveblocks.io')
+    typeText(pipeline, ')')
+
+    const link = firstInlineBlock(pipeline.context).content.find(isLinkNode)
+    if (!link) {
+      throw new Error('Expected a link node')
+    }
+
+    setCursor(pipeline, {
+      blockId: firstInlineBlock(pipeline.context).id,
+      nodeId: link.id,
+      offset: 0,
+    })
+
+    typeText(pipeline, ' ')
+
+    const nodes = firstInlineBlock(pipeline.context).content.filter(
+      isInlineNodeWithEditableText,
+    )
+
+    expect(blockTexts(pipeline.context)).toEqual([' Liveblocks'])
+    expect(
+      nodes.some((node) => isLinkNode(node) && node.text === 'Liveblocks'),
+    ).toBe(true)
+    expect(
+      nodes.some((node) => isTextNode(node) && node.text.includes(' ')),
+    ).toBe(true)
+  })
+
+  test('typing at the beginning of a link with preceding text still inserts a new text node', () => {
+    const pipeline = makePipeline({ autolink: true, markdown: true })
+    focus(pipeline)
+    typeText(pipeline, 'Hello World')
+    setCursor(pipeline, {
+      ...requireCursor(pipeline.context),
+      offset: 'Hello'.length,
+    })
+    typeText(pipeline, ' [Liveblocks](https://liveblocks.io')
+    typeText(pipeline, ')')
+
+    const link = firstInlineBlock(pipeline.context).content.find(isLinkNode)
+    if (!link) {
+      throw new Error('Expected a link node')
+    }
+
+    setCursor(pipeline, {
+      blockId: firstInlineBlock(pipeline.context).id,
+      nodeId: link.id,
+      offset: 0,
+    })
+
+    typeText(pipeline, 'X')
+
+    const nodes = firstInlineBlock(pipeline.context).content.filter(
+      isInlineNodeWithEditableText,
+    )
+    const typed = nodes.find((node) => isTextNode(node) && node.text === 'X')
+
+    expect(blockTexts(pipeline.context)).toEqual(['Hello XLiveblocks World'])
+    expect(
+      nodes.some((node) => isLinkNode(node) && node.text === 'Liveblocks'),
+    ).toBe(true)
+    expect(typed).toBeDefined()
+    expect(requireCursor(pipeline.context)).toMatchObject({
+      nodeId: typed?.id,
+      offset: 1,
+    })
+  })
+
   test('typing in the middle of a link still extends the link', () => {
     const pipeline = makePipeline({ autolink: true, markdown: false })
     focus(pipeline)
