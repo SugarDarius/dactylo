@@ -238,6 +238,133 @@ export function buildCursorInsertTextOps(
   )
 }
 
+/**
+ * Replaces a selected run inside a link with a text node.
+ * Unselected prefix/suffix stay as link nodes.
+ */
+export function buildReplaceLinkRangeWithTextOps(
+  context: EditorContext,
+  block: BlockWithInlineContent,
+  node: InlineNodeWithEditableText,
+  /** Index of `node` in the block. */
+  index: number,
+  from: number,
+  to: number,
+  text: string,
+  prevSelection: Selection | null,
+): Operation[] {
+  const before = node.text.slice(0, from)
+  const after = node.text.slice(to)
+
+  const insertedText = createTextNode({
+    marks: context.activeMarks,
+    text,
+  })
+
+  const prevNode = block.content[index - 1]
+  const prevNodeId = prevNode ? prevNode.id : null
+
+  const ops: Operation[] = []
+
+  if (before.length === 0) {
+    if (after.length === 0) {
+      ops.push({
+        __type: 'remove_inline_node',
+        blockId: block.id,
+        nodeId: node.id,
+        snapshot: node,
+      })
+    } else {
+      ops.push(...buildDeleteTextRunIntent(block.id, node, from, to).ops)
+    }
+
+    ops.push({
+      __type: 'insert_inline_node',
+      afterNodeId: prevNodeId,
+      blockId: block.id,
+      node: insertedText,
+    })
+  } else {
+    ops.push(
+      {
+        __type: 'delete_text',
+        blockId: block.id,
+        length: node.text.length - from,
+        nodeId: node.id,
+        offset: from,
+        snapshot: { text: node.text.slice(from) },
+      },
+      {
+        __type: 'insert_inline_node',
+        afterNodeId: node.id,
+        blockId: block.id,
+        node: insertedText,
+      },
+    )
+
+    if (after.length > 0) {
+      ops.push({
+        __type: 'insert_inline_node',
+        afterNodeId: insertedText.id,
+        blockId: block.id,
+        node: createFromInlineWithEditableText(node, {
+          marks: node.marks,
+          metadata: node.metadata,
+          text: after,
+        }),
+      })
+    }
+  }
+
+  return withTrailingSelectionOp(
+    ops,
+    createCursor({
+      blockId: block.id,
+      nodeId: insertedText.id,
+      offset: text.length,
+    }),
+    prevSelection,
+  )
+}
+
+/**
+ * Inserts typed text next to a remaining link instead of continuing it.
+ * After a range delete that started in a link, the caret is at the remaining end
+ * (`offset > 0`) or at an emptied link (`offset === 0`).
+ */
+export function buildInsertTextExitingLinkAtCaretOps(
+  context: EditorContext,
+  block: BlockWithInlineContent,
+  caretNode: InlineNodeWithEditableText,
+  caret: TextCursor,
+  text: string,
+  prevSelection: Selection | null,
+): Operation[] {
+  const insertedText = createTextNode({
+    marks: context.activeMarks,
+    text,
+  })
+  const caretIndex = block.content.findIndex((node) => node.id === caretNode.id)
+  const prevNode = block.content[caretIndex - 1]
+
+  return withTrailingSelectionOp(
+    [
+      {
+        __type: 'insert_inline_node',
+        afterNodeId: caret.offset === 0 ? (prevNode?.id ?? null) : caretNode.id,
+        blockId: block.id,
+        node: insertedText,
+      },
+    ],
+    createCursor({
+      blockId: block.id,
+      nodeId: insertedText.id,
+      offset: text.length,
+    }),
+    prevSelection,
+  )
+}
+
 /** Rules for cursor selection. */
 export const cursorRules: InsertTextOpsRule[] = [
   {
@@ -350,6 +477,41 @@ export const cursorRules: InsertTextOpsRule[] = [
 export const rangeRules: InsertTextOpsRule[] = [
   {
     /**
+     * 💡 Range selection lies inside a link (partial or full).
+     * 🎯 Replace the selected link run with a text node.
+     *    Unselected prefix/suffix stay as link nodes.
+     */
+    build: ({ context, situation, input }): Operation[] | null => {
+      if (
+        situation.kind !== 'range-selection' ||
+        situation.topology.kind !== 'same-node' ||
+        !isLinkNode(situation.topology.node)
+      ) {
+        return null
+      }
+
+      const { topology, range } = situation
+      const { block, node, index } = topology
+
+      return buildReplaceLinkRangeWithTextOps(
+        context,
+        block,
+        node,
+        index,
+        range.anchor.offset,
+        range.focus.offset,
+        input.text,
+        context.selection,
+      )
+    },
+    name: 'range/same-node/link/replace-with-text',
+    when: ({ situation }): boolean =>
+      situation.kind === 'range-selection' &&
+      situation.topology.kind === 'same-node' &&
+      isLinkNode(situation.topology.node),
+  },
+  {
+    /**
      * 💡 Range selection is within the same node.
      * 🎯 Deleting the selection in-node, and insert replacement char
      * at current anchor position (no survivor join).
@@ -399,6 +561,61 @@ export const rangeRules: InsertTextOpsRule[] = [
     when: ({ situation }): boolean =>
       situation.kind === 'range-selection' &&
       situation.topology.kind === 'same-node',
+  },
+  {
+    /**
+     * 💡 Range starts inside a link and extends into later nodes in the block.
+     *    Live selections of a link suffix often include the following text node.
+     * 🎯 Delete the range, then insert a text node instead of continuing the link.
+     */
+    build: ({ context, situation, input }): Operation[] | null => {
+      if (
+        situation.kind !== 'range-selection' ||
+        situation.topology.kind !== 'same-block'
+      ) {
+        return null
+      }
+
+      const { topology, range } = situation
+      const { anchor, focus } = range
+      const { block } = topology
+
+      const deleteIntent = buildDeleteRangeWithinBlockIntent(
+        context,
+        block,
+        anchor,
+        focus,
+        { joinSurvivors: false },
+      )
+      const caretNode = resolvesCaretNode(block, deleteIntent)
+
+      return [
+        ...deleteIntent.ops,
+        ...buildInsertTextExitingLinkAtCaretOps(
+          context,
+          block,
+          caretNode,
+          deleteIntent.caret,
+          input.text,
+          range,
+        ),
+      ]
+    },
+    name: 'range/same-block/link/replace-with-text',
+    when: ({ situation }): boolean => {
+      if (
+        situation.kind !== 'range-selection' ||
+        situation.topology.kind !== 'same-block'
+      ) {
+        return false
+      }
+
+      const found = findNodeInBlockWithInlineContent(
+        situation.topology.block,
+        situation.range.anchor.nodeId,
+      )
+      return found !== null && isLinkNode(found.node)
+    },
   },
   {
     /**
