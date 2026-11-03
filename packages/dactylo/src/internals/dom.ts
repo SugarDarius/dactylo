@@ -44,8 +44,8 @@ export function toDatasetProperty(attr: string): string {
 /**
  * Counts model characters represented by painted DOM text.
  *
- * {@link paintTextForDOM} inserts ZWSP (and sometimes NBSP) that are not
- * stored on `TextNode.text`. DOM→model mapping must use this helper.
+ * {@link paintTextForDOM} inserts ZWSP for empty hosts (and sometimes NBSP)
+ * that are not stored on `TextNode.text`. DOM→model mapping must use this helper.
  */
 export function modelLengthFromPaintedDOMText(painted: string): number {
   let model = 0
@@ -378,7 +378,12 @@ export function getDOMPointFromTextCursor(
   return null
 }
 
-/** Paints model text into DOM characters.*/
+/**
+ * Paints model text into DOM characters.
+ *
+ * Empty text becomes a ZWSP so an empty host still has a caret target.
+ * Leading, trailing, and consecutive spaces become NBSP so they do not collapse.
+ */
 export function paintTextForDOM(text: string): string {
   let rendered = ''
 
@@ -398,13 +403,6 @@ export function paintTextForDOM(text: string): string {
         text[i - 1] === ' ' ||
         text[i + 1] === ' ')
     rendered += isSpace ? DOM_SPACE_UNICODE_CODEPOINT : char
-  }
-
-  if (
-    rendered.endsWith(DOM_SPACE_UNICODE_CODEPOINT) ||
-    rendered.endsWith(' ')
-  ) {
-    rendered += DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT
   }
 
   return rendered

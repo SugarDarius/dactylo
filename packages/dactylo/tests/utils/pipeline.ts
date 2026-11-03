@@ -52,12 +52,12 @@ type SerializedInline = {
   readonly type: InlineNode['__type']
 }
 
-/** Builds a pipeline with markdown on, mentions/autolink off (stable typing). */
+/** Builds a pipeline with markdown on, mentions off, autolink off by default (stable typing). */
 export function makePipeline(
-  opts: { markdown?: boolean } = {},
+  opts: { markdown?: boolean; autolink?: boolean } = {},
 ): TransactionPipeline {
   return new TransactionPipeline({
-    autolink: { enabled: false },
+    autolink: { enabled: opts.autolink ?? false },
     debug: false,
     engine: { locales: 'en-US' },
     inlineCommandTrigger: { character: '/', enabled: false },

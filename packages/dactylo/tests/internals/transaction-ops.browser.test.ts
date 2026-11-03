@@ -1,8 +1,15 @@
 import { describe, expect, test } from 'vitest'
 
+import { DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT } from '../../src/internals/constants'
+import { paintTextForDOM } from '../../src/internals/dom'
+import type { EditorContext } from '../../src/internals/editor-context'
 import { parseMarkdownMarkShortcut } from '../../src/internals/markdown-shortcut-ops-builder'
 import { isMarkEnabled } from '../../src/internals/marks'
-import { isInlineNodeWithEditableText } from '../../src/internals/nodes'
+import type { MarkKey } from '../../src/internals/marks'
+import {
+  isInlineNodeWithEditableText,
+  isLinkNode,
+} from '../../src/internals/nodes'
 import type { TransactionPipeline } from '../../src/internals/transaction'
 import {
   blockTexts,
@@ -27,6 +34,14 @@ import {
 } from '../utils/pipeline'
 import type { DocumentSnapshot } from '../utils/pipeline'
 
+const MARK_KEYS: MarkKey[] = [
+  'bold',
+  'italic',
+  'underline',
+  'strikethrough',
+  'code',
+]
+
 /** Undo must restore `before`; redo must restore the post-edit snapshot. */
 function assertUndoRedo(
   pipeline: TransactionPipeline,
@@ -39,6 +54,25 @@ function assertUndoRedo(
   expect(pipeline.canRedo()).toBe(true)
   pipeline.redo()
   expect(snapshot(pipeline.context)).toEqual(after)
+}
+
+/** Non-empty inlines must not store or paint a ZWSP after a mark/link split. */
+function assertNonEmptyInlinesPaintWithoutZwsp(context: EditorContext): void {
+  const block = firstInlineBlock(context)
+  for (const node of block.content) {
+    if (!isInlineNodeWithEditableText(node)) {
+      continue
+    }
+
+    expect(node.text).not.toContain(DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT)
+    if (node.text.length === 0) {
+      continue
+    }
+
+    expect(paintTextForDOM(node.text)).not.toContain(
+      DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT,
+    )
+  }
 }
 
 describe('TransactionPipeline insertText', () => {
@@ -412,6 +446,25 @@ describe('TransactionPipeline paste', () => {
     expect(blockTexts(pipeline.context)).toEqual(['HelXrld'])
     assertUndoRedo(pipeline, before)
   })
+
+  test('pasting a URL after a trailing space does not paint ZWSP on the prefix', () => {
+    const pipeline = makePipeline({ autolink: true, markdown: false })
+    focus(pipeline)
+    typeText(pipeline, "Hello code what's up? ")
+    pastePlainText(pipeline, 'https://localhost:3008/')
+
+    const block = firstInlineBlock(pipeline.context)
+    const [prefix] = block.content
+    const link = block.content.find((node) => isLinkNode(node))
+
+    if (!prefix || !isInlineNodeWithEditableText(prefix) || !link) {
+      throw new Error('Expected a text prefix and a link node')
+    }
+
+    expect(prefix.text.endsWith(' ')).toBe(true)
+    expect(isLinkNode(link)).toBe(true)
+    assertNonEmptyInlinesPaintWithoutZwsp(pipeline.context)
+  })
 })
 
 describe('TransactionPipeline marks', () => {
@@ -597,6 +650,43 @@ describe('TransactionPipeline marks', () => {
       ).toBe(true)
     }
     assertUndoRedo(pipeline, before)
+  })
+
+  test('toggling a mark on a mid-paragraph word does not paint ZWSP on neighboring nodes', () => {
+    const text = "Hello code what's up?"
+    const from = text.indexOf('code')
+    const to = from + 'code'.length
+
+    for (const mark of MARK_KEYS) {
+      const pipeline = makePipeline({ markdown: false })
+      focus(pipeline)
+      typeText(pipeline, text)
+      selectOffsetsInCurrentNode(pipeline, from, to)
+
+      pipeline.toggleMark(mark, 'user')
+
+      const block = firstInlineBlock(pipeline.context)
+      expect(block.content).toHaveLength(3)
+
+      const [prefix, marked, suffix] = block.content
+      if (
+        !prefix ||
+        !marked ||
+        !suffix ||
+        !isInlineNodeWithEditableText(prefix) ||
+        !isInlineNodeWithEditableText(marked) ||
+        !isInlineNodeWithEditableText(suffix)
+      ) {
+        throw new Error(`Expected a three-way split after toggling ${mark}`)
+      }
+
+      expect(prefix.text).toBe('Hello ')
+      expect(marked.text).toBe('code')
+      expect(isMarkEnabled(marked.marks, mark)).toBe(true)
+      expect(suffix.text).toBe(" what's up?")
+
+      assertNonEmptyInlinesPaintWithoutZwsp(pipeline.context)
+    }
   })
 })
 
