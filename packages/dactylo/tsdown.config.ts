@@ -3,9 +3,7 @@ import { defineConfig } from 'tsdown'
 export default defineConfig({
   attw: true,
   clean: true,
-  dts: {
-    sourcemap: true,
-  },
+  dts: true,
   entry: [
     /** Main package entry point. */
     'src/index.ts',
