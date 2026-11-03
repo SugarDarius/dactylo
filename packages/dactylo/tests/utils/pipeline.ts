@@ -201,6 +201,24 @@ function inputEvent(
   } as InputEvent
 }
 
+/** Dispatches a keydown with no modifiers. Returns whether it was handled. */
+export function pressKey(pipeline: TransactionPipeline, key: string): boolean {
+  return pipeline.digestKeydownEvent({
+    altKey: false,
+    code: key,
+    ctrlKey: false,
+    key,
+    metaKey: false,
+    preventDefault: () => {
+      /* KeyboardEvent stub */
+    },
+    shiftKey: false,
+    stopPropagation: () => {
+      /* KeyboardEvent stub */
+    },
+  } as KeyboardEvent)
+}
+
 /** Types `text` as a single `insertText` transaction. */
 export function typeText(pipeline: TransactionPipeline, text: string): void {
   const handled = pipeline.digestInputEvent(inputEvent('insertText', text))

@@ -1164,6 +1164,30 @@ export class TransactionPipeline {
           warn('`copy` shortcut is not implemented yet.')
           return false
         }
+        case 'exit-right': {
+          if (this.#isIMEComposing) {
+            return false
+          }
+
+          const intent = this.#operationsEngine.buildExitCodeMarkOps(
+            this.#context,
+          )
+          if (intent === null) {
+            return false
+          }
+
+          /** Only prevent when we have an intent to apply. */
+          prevent()
+
+          const { ops, label } = intent
+          /** We don't push to history as it's a caret-only session change. */
+          this.#commit(ops, {
+            label: transactionPolicyLabel('keydown', 'digest-event', label),
+            source: 'user',
+          })
+
+          return true
+        }
         default: {
           return false
         }

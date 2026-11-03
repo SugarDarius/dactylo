@@ -12,21 +12,23 @@ export type PlatformShortcut =
   | 'cut'
   | 'select-all'
   | 'escape'
+  | 'exit-right'
 
 /**
  * Detects a platform shortcut from a key event.
  * Using under-the-hood the physical key to ensure we always are layout-independent
  * to correctly detect those shortcuts.
  *
- * | Shortcut   | Chord    | `PlatformKeyboardShortcut`   |
- * | ---------- | -------- | ---------------------------- |
- * | Undo       | `Mod+Z`  | `undo`                       |
- * | Redo       | `Mod+Y`  | `redo`                       |
- * | Copy       | `Mod+C`  | `copy`                       |
- * | Paste      | `Mod+V`  | `paste`                      |
- * | Cut        | `Mod+X`  | `cut`                        |
- * | Select all | `Mode+A` | `select-all`                 |
- * | Escape     | `Escape` | `escape`                     |
+ * | Shortcut   | Chord         | `PlatformKeyboardShortcut`   |
+ * | ---------- | ------------- | ---------------------------- |
+ * | Undo       | `Mod+Z`       | `undo`                       |
+ * | Redo       | `Mod+Y`       | `redo`                       |
+ * | Copy       | `Mod+C`       | `copy`                       |
+ * | Paste      | `Mod+V`       | `paste`                      |
+ * | Cut        | `Mod+X`       | `cut`                        |
+ * | Select all | `Mode+A`      | `select-all`                 |
+ * | Escape     | `Escape`      | `escape`                     |
+ * | Exit right | `ArrowRight`   | `exit-right`                |
  *
  * Mod = `metaKey || ctrlKey`.
  * Letter chords use `event.code`(`KeyZ`, `KeyC`, …) so shortcuts stay on physical keys across layouts;
@@ -69,6 +71,8 @@ export function detectPlatformShortcut(
     }
   } else if (event.key === 'Escape') {
     return 'escape'
+  } else if (event.code === 'ArrowRight' && !event.shiftKey && !event.altKey) {
+    return 'exit-right'
   }
 
   return null

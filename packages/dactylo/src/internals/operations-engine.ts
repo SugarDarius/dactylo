@@ -18,6 +18,7 @@ import {
   resolveInsertAfterBlockId,
 } from './document'
 import type { EditorContext } from './editor-context'
+import { ExitCodeMarkOpsBuilder } from './exit-code-mark-ops-builder'
 import { GraphemeOffsetCaret } from './grapheme'
 import { HardBreakOpsBuilder } from './hard-break-ops-builder'
 import { InsertTextOpsBuilder } from './insert-text-ops-builder'
@@ -103,6 +104,9 @@ export class OperationsEngine {
   /** Hard break ops builder. */
   readonly #hardBreakOpsBuilder: HardBreakOpsBuilder
 
+  /** Exit-code-mark ops builder. */
+  readonly #exitCodeMarkOpsBuilder: ExitCodeMarkOpsBuilder
+
   constructor(options: OperationsEngineOptions) {
     this.#debug = options.debug ?? false
     this.#opsRuntime = makeOperationsRuntime()
@@ -122,6 +126,7 @@ export class OperationsEngine {
     })
     this.#softBreakOpsBuilder = new SoftBreakOpsBuilder()
     this.#hardBreakOpsBuilder = new HardBreakOpsBuilder()
+    this.#exitCodeMarkOpsBuilder = new ExitCodeMarkOpsBuilder()
   }
 
   // --- Runtime ----─────────────────────────────────────────---------
@@ -184,6 +189,11 @@ export class OperationsEngine {
     data: TextPlainData,
   ): BuilderOpsIntent | null {
     return this.#pastePlainTextOpsBuilder.build(context, { data })
+  }
+
+  /** Builds ops to exit an inline code run by inserting a trailing space. */
+  buildExitCodeMarkOps(context: EditorContext): BuilderOpsIntent | null {
+    return this.#exitCodeMarkOpsBuilder.build(context)
   }
 
   // --- Selection operations ─────────────────────────────────────────
