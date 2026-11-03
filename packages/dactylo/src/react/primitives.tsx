@@ -166,6 +166,8 @@ const ComposerLinkNode = forwardRef<HTMLAnchorElement, ComposerLinkNodeProps>(
     const { renderedText, nodeAttributes } = useEditableNode(node)
     return (
       <a
+        target='_blank'
+        rel='noopener noreferrer'
         {...props}
         ref={forwardedRef}
         {...{

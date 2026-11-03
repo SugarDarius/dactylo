@@ -13,8 +13,7 @@ export function findLinkAnchorFromEventTarget(
   return el instanceof HTMLAnchorElement ? el : null
 }
 
-/** Opens a link and adds security attributes if target is `_blank`. */
-// @todo: strengthen later
+/** Opens a link from an `[contenteditable=true]` element.. */
 export function openLink(anchor: HTMLAnchorElement): void {
   const { href } = anchor
   if (!href) {
@@ -23,11 +22,5 @@ export function openLink(anchor: HTMLAnchorElement): void {
   }
 
   const { target, rel } = anchor
-
-  let safeRel = undefined
-  if (target === '_blank') {
-    safeRel = rel.length <= 0 ? 'noopener,noreferrer' : rel
-  }
-
-  window.open(href, target || undefined, safeRel)
+  window.open(href, target, rel)
 }
