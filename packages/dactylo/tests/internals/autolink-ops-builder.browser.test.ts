@@ -204,20 +204,20 @@ describe('TransactionPipeline autolink', () => {
     expect(blockTexts(pipeline.context)).toEqual(['https://liveblocks.io '])
   })
 
-  test('leftover [text](url) converts on space when markdown is off', () => {
+  test('leftover [text](url) does not convert on space', () => {
     const pipeline = makePipeline({ autolink: true, markdown: false })
     focus(pipeline)
     typeText(pipeline, '[Liveblocks](https://liveblocks.io)')
     typeText(pipeline, ' ')
 
-    const link = firstInlineBlock(pipeline.context).content.find(isLinkNode)
-    if (!link || !isLinkNode(link)) {
-      throw new Error('Expected a link node')
-    }
-
-    expect(link.text).toBe('Liveblocks')
-    expect(link.url.href).toBe('https://liveblocks.io/')
-    expect(blockTexts(pipeline.context)).toEqual(['Liveblocks '])
+    expect(blockTexts(pipeline.context)).toEqual([
+      '[Liveblocks](https://liveblocks.io) ',
+    ])
+    expect(
+      firstInlineBlock(pipeline.context).content.every(
+        (node) => !isLinkNode(node),
+      ),
+    ).toBe(true)
   })
 
   test('https localhost URL converts when sanitize yields a href', () => {
@@ -390,7 +390,7 @@ describe('TransactionPipeline autolink', () => {
 })
 
 describe('parsePlainTextAutolink', () => {
-  test('accepts a trailing URL or leftover markdown link immediately before the space', () => {
+  test('accepts a trailing URL immediately before the space', () => {
     expect(
       parsePlainTextAutolink(
         'https://liveblocks.io ',
@@ -421,26 +421,6 @@ describe('parsePlainTextAutolink', () => {
       start: 0,
       text: 'https://liveblocks.io',
     })
-    expect(
-      parsePlainTextAutolink(
-        '[Liveblocks](https://liveblocks.io) ',
-        '[Liveblocks](https://liveblocks.io) '.length,
-      ),
-    ).toMatchObject({
-      href: 'https://liveblocks.io/',
-      start: 0,
-      text: 'Liveblocks',
-    })
-    expect(
-      parsePlainTextAutolink(
-        'Hello [Liveblocks](https://liveblocks.io) ',
-        'Hello [Liveblocks](https://liveblocks.io) '.length,
-      ),
-    ).toMatchObject({
-      href: 'https://liveblocks.io/',
-      start: 6,
-      text: 'Liveblocks',
-    })
   })
 
   test('ignores missing trigger space, empty href, and glued forms', () => {
@@ -465,6 +445,18 @@ describe('parsePlainTextAutolink', () => {
     ).toBeNull()
     expect(
       parsePlainTextAutolink('www.example.com ', 'www.example.com '.length),
+    ).toBeNull()
+    expect(
+      parsePlainTextAutolink(
+        '[Liveblocks](https://liveblocks.io) ',
+        '[Liveblocks](https://liveblocks.io) '.length,
+      ),
+    ).toBeNull()
+    expect(
+      parsePlainTextAutolink(
+        'Hello [Liveblocks](https://liveblocks.io) ',
+        'Hello [Liveblocks](https://liveblocks.io) '.length,
+      ),
     ).toBeNull()
     expect(
       parsePlainTextAutolink(

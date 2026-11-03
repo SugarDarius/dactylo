@@ -71,36 +71,41 @@ export interface PlainTextLinkMatch {
 }
 
 /** Collects all non-overlapping link spans in a plain text line in document order. */
-export function collectPlainTextLinks(line: string): PlainTextLinkMatch[] {
+export function collectPlainTextLinks(
+  line: string,
+  includeMarkdown = true,
+): PlainTextLinkMatch[] {
   const matches: PlainTextLinkMatch[] = []
 
   /** Markdown link matches. */
-  for (const match of line.matchAll(
-    new RegExp(MARKDOWN_LINK_PATTERN.source, 'gui'),
-  )) {
-    const start = match.index
-    const [full] = match
+  if (includeMarkdown) {
+    for (const match of line.matchAll(
+      new RegExp(MARKDOWN_LINK_PATTERN.source, 'gui'),
+    )) {
+      const start = match.index
+      const [full] = match
 
-    const text = match.groups?.text ?? full
-    const url = match.groups?.url ?? ''
-    const title = match.groups?.title ?? full
+      const text = match.groups?.text ?? full
+      const url = match.groups?.url ?? ''
+      const title = match.groups?.title ?? full
 
-    /** We don't want to collect matches without a URL. */
-    if (!url) {
-      continue
+      /** We don't want to collect matches without a URL. */
+      if (!url) {
+        continue
+      }
+
+      const normalized = normalizeUrl(url)
+      matches.push({
+        end: start + full.length,
+        segment: {
+          href: normalized,
+          kind: 'link',
+          text,
+          title,
+        },
+        start,
+      })
     }
-
-    const normalized = normalizeUrl(url)
-    matches.push({
-      end: start + full.length,
-      segment: {
-        href: normalized,
-        kind: 'link',
-        text,
-        title,
-      },
-      start,
-    })
   }
 
   /** Plain text link matches. */
