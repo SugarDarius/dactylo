@@ -40,14 +40,13 @@ import type { Operation } from './operations'
 import {
   buildError,
   buildPartialMarkRangeOps,
-  iterRules,
+  OperationsBuilder,
   withTrailingSelectionOp,
 } from './operations-builder'
 import type {
   BuilderOpsIntent,
   MarkdownMarkShortcutSpec,
   OperationRule,
-  OperationsBuilder,
 } from './operations-builder'
 import { createCursor, isRangeSelection, isSelectionActive } from './selection'
 import type { TextCursor } from './selection'
@@ -833,10 +832,15 @@ const rules: MarkdownShortcutOpsRule[] = [
 // --- Builder ───────────────────────────────────────---------------
 
 /** Markdown ops builder. */
-export class MarkdownShortcutOpsBuilder implements OperationsBuilder<
+export class MarkdownShortcutOpsBuilder extends OperationsBuilder<
   MarkdownShortcutOpsSituation,
-  MarkdownShortcutOpsInput
+  MarkdownShortcutOpsInput,
+  unknown
 > {
+  constructor() {
+    super({ name: 'markdown-shortcut-ops-builder' })
+  }
+
   /** Describes the {@link MarkdownShortcutOpsSituation}. */
   describe(context: EditorContext): MarkdownShortcutOpsSituation {
     const { selection, state } = context
@@ -887,7 +891,7 @@ export class MarkdownShortcutOpsBuilder implements OperationsBuilder<
     }
 
     /** For markdown shortcut operations, by design we can only match one rule. */
-    const match = iterRules({
+    const match = this.iterRules({
       context,
       input,
       resources: null,

@@ -19,16 +19,12 @@ import {
   buildDeleteTextRunIntent,
   buildError,
   computeSplitTailSnapshot,
-  iterRules,
   rangeCollapsedError,
   resolvesCaretNode,
+  OperationsBuilder,
   withTrailingSelectionOp,
 } from './operations-builder'
-import type {
-  BuilderOpsIntent,
-  OperationRule,
-  OperationsBuilder,
-} from './operations-builder'
+import type { BuilderOpsIntent, OperationRule } from './operations-builder'
 import {
   cursorAtBlockStart,
   getRangeSelectionTopology,
@@ -405,10 +401,15 @@ export const rangeRules: HardBreakOpsRule[] = [
 ]
 
 /** Hard break ops builder. */
-export class HardBreakOpsBuilder implements OperationsBuilder<
+export class HardBreakOpsBuilder extends OperationsBuilder<
   HardBreakOpsSituation,
-  HardBreakOpsRule
+  unknown,
+  unknown
 > {
+  constructor() {
+    super({ name: 'hard-break-ops-builder' })
+  }
+
   /** Describes the {@link HardBreakOpsSituation}. */
   describe(context: EditorContext): HardBreakOpsSituation {
     const { selection, state } = context
@@ -528,7 +529,7 @@ export class HardBreakOpsBuilder implements OperationsBuilder<
     const rules = isCursorKind ? cursorRules : rangeRules
 
     /** For hard break operations, by design we can only match one rule. */
-    const match = iterRules({
+    const match = this.iterRules({
       context,
       input: null,
       resources: null,

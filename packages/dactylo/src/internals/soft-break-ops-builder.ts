@@ -15,19 +15,15 @@ import {
 } from './nodes'
 import type { InlineNodeWithEditableText } from './nodes'
 import type { Operation } from './operations'
-import type {
-  BuilderOpsIntent,
-  OperationRule,
-  OperationsBuilder,
-} from './operations-builder'
+import type { BuilderOpsIntent, OperationRule } from './operations-builder'
 import {
   buildDeleteRangeCrossBlockIntent,
   buildDeleteRangeWithinBlockIntent,
   buildDeleteTextRunIntent,
   buildError,
-  iterRules,
   rangeCollapsedError,
   resolvesCaretNode,
+  OperationsBuilder,
   withTrailingSelectionOp,
 } from './operations-builder'
 import {
@@ -406,10 +402,15 @@ export const rangeRules: SoftBreakOpsRule[] = [
 ]
 
 /** Soft break operations builder. */
-export class SoftBreakOpsBuilder implements OperationsBuilder<
+export class SoftBreakOpsBuilder extends OperationsBuilder<
   SoftBreakOpsSituation,
-  SoftBreakOpsRule
+  unknown,
+  unknown
 > {
+  constructor() {
+    super({ name: 'soft-break-ops-builder' })
+  }
+
   /** Describes the {@link SoftBreakOpsSituation}. */
   describe(context: EditorContext): SoftBreakOpsSituation {
     const { selection, state } = context
@@ -529,7 +530,7 @@ export class SoftBreakOpsBuilder implements OperationsBuilder<
     const rules = isCursorKind ? cursorRules : rangeRules
 
     /** For soft break operations, by design we can only match one rule. */
-    const match = iterRules({
+    const match = this.iterRules({
       context,
       input: null,
       resources: null,

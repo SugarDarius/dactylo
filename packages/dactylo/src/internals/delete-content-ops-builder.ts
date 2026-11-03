@@ -25,16 +25,12 @@ import {
   buildDeleteRangeCrossBlockIntent,
   buildDeleteRangeWithinBlockIntent,
   buildError,
-  iterRules,
+  OperationsBuilder,
   rangeCollapsedError,
   resolvesMergeBlocksUndoFields,
   withTrailingSelectionOp,
 } from './operations-builder'
-import type {
-  BuilderOpsIntent,
-  OperationRule,
-  OperationsBuilder,
-} from './operations-builder'
+import type { BuilderOpsIntent, OperationRule } from './operations-builder'
 import {
   createCursor,
   cursorAtBlockEnd,
@@ -846,14 +842,16 @@ export interface DeleteContentOpsBuilderOptions {
 }
 
 /** Delete content operations builder. */
-export class DeleteContentOpsBuilder implements OperationsBuilder<
+export class DeleteContentOpsBuilder extends OperationsBuilder<
   DeleteContentOpsSituation,
-  DeleteContentOpsRule
+  unknown,
+  DeleteContentOpsResources
 > {
   /** Grapheme offset caret instance. */
   readonly #graphemeOffsetCaret: GraphemeOffsetCaret
 
   constructor(options: DeleteContentOpsBuilderOptions) {
+    super({ name: 'delete-content-ops-builder' })
     this.#graphemeOffsetCaret = options.graphemeOffsetCaret
   }
 
@@ -960,7 +958,7 @@ export class DeleteContentOpsBuilder implements OperationsBuilder<
     const rules = isCursorKind ? cursorRules : rangeRules
 
     /** For delete content operations, by design we can only match one rule. */
-    const match = iterRules({
+    const match = this.iterRules({
       context,
       input: null,
       resources: { graphemeOffsetCaret: this.#graphemeOffsetCaret },

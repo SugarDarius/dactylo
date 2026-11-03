@@ -15,17 +15,13 @@ import {
 } from './nodes'
 import type { InlineNodeWithEditableText, NodeId } from './nodes'
 import type { Operation } from './operations'
-import type {
-  BuilderOpsIntent,
-  OperationRule,
-  OperationsBuilder,
-} from './operations-builder'
+import type { BuilderOpsIntent, OperationRule } from './operations-builder'
 import {
   buildDeleteRangeCrossBlockIntent,
   buildDeleteRangeWithinBlockIntent,
   buildDeleteTextRunIntent,
   buildError,
-  iterRules,
+  OperationsBuilder,
   rangeCollapsedError,
   resolvesCaretNode,
   withTrailingSelectionOp,
@@ -421,11 +417,16 @@ export const rangeRules: InsertTextOpsRule[] = [
 
 // --- Builder ───────────────────────────────────────---------------
 
-/** inserted text operations builder. */
-export class InsertTextOpsBuilder implements OperationsBuilder<
+/** Insert text operations builder. */
+export class InsertTextOpsBuilder extends OperationsBuilder<
   InsertTextOpsSituation,
-  InsertTextOpsInput
+  InsertTextOpsInput,
+  unknown
 > {
+  constructor() {
+    super({ name: 'insert-text-ops-builder' })
+  }
+
   /** Describes the {@link InsertTextOpsSituation}. */
   describe(context: EditorContext): InsertTextOpsSituation {
     const { selection, state } = context
@@ -552,7 +553,7 @@ export class InsertTextOpsBuilder implements OperationsBuilder<
     const rules = isCursorKind ? cursorRules : rangeRules
 
     /** For inserted text operations, by design we can only match one rule. */
-    const match = iterRules({
+    const match = this.iterRules({
       context,
       input,
       resources: null,

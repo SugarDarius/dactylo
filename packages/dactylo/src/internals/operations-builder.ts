@@ -210,45 +210,61 @@ export interface OperationRule<S, I, R> {
   }) => Operation[] | null
 }
 
+/** Options for constructing an operation builder. */
+export interface OperationsBuilderOptions {
+  /** The name of the operation builder. */
+  readonly name: string
+}
+
 /**
- * Iterates over the rules that should be applied to the given situation and input.
- * @yields {(params: { context: EditorContext, situation: S, input: I}) => Operation[] | null} The build function for the rule.
+ * Shared class for ops builders.
+ * Forcing to implement `describe` and `build` methods.
  */
-export function* iterRules<S, I, R>(params: {
-  rules: OperationRule<S, I, R>[]
-  context: EditorContext
-  situation: S
-  input: I
-  resources: R
-}): Generator<
-  (params: {
+export abstract class OperationsBuilder<S, I, R> {
+  readonly name: string
+
+  constructor(options: OperationsBuilderOptions) {
+    this.name = options.name
+  }
+
+  /**
+   * Iterates over the rules that should be applied to the given situation and input.
+   * @yields {(params: { context: EditorContext, situation: S, input: I}) => Operation[] | null}
+   *  → The build function for the rule.
+   */
+  *iterRules(params: {
+    rules: OperationRule<S, I, R>[]
     context: EditorContext
     situation: S
     input: I
     resources: R
-  }) => Operation[] | null
-> {
-  const { rules, ...rest } = params
-  for (const rule of rules) {
-    if (rule.when({ ...rest })) {
-      yield rule.build
+  }): Generator<
+    (params: {
+      context: EditorContext
+      situation: S
+      input: I
+      resources: R
+    }) => Operation[] | null
+  > {
+    const { rules, ...rest } = params
+    for (const rule of rules) {
+      if (rule.when({ ...rest })) {
+        yield rule.build
+      }
     }
   }
-}
 
-/** Shared interface to implement by operation builders. */
-export interface OperationsBuilder<S, I> {
   /**
    * Describes the situation of the operation builder.
    * based on the given {@link EditorContext}.
    */
-  readonly describe: (context: EditorContext, input: I) => S
+  abstract describe(context: EditorContext, input: I): S
 
   /**
    * Builds the output for the {@link EditorContext} and given input.
    * Returns `null` when no output should be produced.
    */
-  readonly build: (context: EditorContext, input: I) => BuilderOpsIntent | null
+  abstract build(context: EditorContext, input: I): BuilderOpsIntent | null
 }
 
 // --- Builders & Helpers ─────────────────────────────---------------

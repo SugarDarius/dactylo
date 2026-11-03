@@ -18,15 +18,11 @@ import {
 import type { Operation } from './operations'
 import {
   buildPartialMarkRangeOps,
-  iterRules,
   rangeCollapsedError,
   withTrailingSelectionOp,
-} from './operations-builder'
-import type {
-  BuilderOpsIntent,
-  OperationRule,
   OperationsBuilder,
 } from './operations-builder'
+import type { BuilderOpsIntent, OperationRule } from './operations-builder'
 import {
   createCursor,
   createRange,
@@ -281,10 +277,15 @@ export const rangeRules: MarksOpsRule[] = [
 ]
 
 /** Marks operations builder. */
-export class MarksOpsBuilder implements OperationsBuilder<
+export class MarksOpsBuilder extends OperationsBuilder<
   MarksOpsSituation,
-  MarksOpsInput
+  MarksOpsInput,
+  unknown
 > {
+  constructor() {
+    super({ name: 'marks-ops-builder' })
+  }
+
   /** Describes the {@link MarksOpsSituation}. */
   describe(context: EditorContext): MarksOpsSituation {
     const { selection, state } = context
@@ -330,7 +331,7 @@ export class MarksOpsBuilder implements OperationsBuilder<
     const rules = isCursorKind ? cursorRules : rangeRules
 
     /** For marks operations, by design we can only match one rule. */
-    const match = iterRules({
+    const match = this.iterRules({
       context,
       input,
       resources: null,

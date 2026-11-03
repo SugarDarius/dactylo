@@ -22,16 +22,15 @@ import type {
   BuilderOpsIntent,
   OperationsBuilderAutolinkConfig,
   OperationRule,
-  OperationsBuilder,
 } from './operations-builder'
 import {
   buildDeleteRangeCrossBlockIntent,
   buildDeleteRangeWithinBlockIntent,
   buildDeleteTextRunIntent,
   buildError,
-  iterRules,
   rangeCollapsedError,
   resolvesCaretNode,
+  OperationsBuilder,
   withTrailingSelectionOp,
 } from './operations-builder'
 import {
@@ -574,14 +573,16 @@ export interface PastePlainTextOpsBuilderOptions {
   }
 }
 
-export class PastePlainTextOpsBuilder implements OperationsBuilder<
+export class PastePlainTextOpsBuilder extends OperationsBuilder<
   PastePlainTextOpsSituation,
-  PastePlainTextOpsInput
+  PastePlainTextOpsInput,
+  PastePlainTextOpsResources
 > {
   /** Configuration for autolink detection. */
   readonly #autolinkConfig: OperationsBuilderAutolinkConfig
 
   constructor(options: PastePlainTextOpsBuilderOptions) {
+    super({ name: 'paste-plain-text-ops-builder' })
     this.#autolinkConfig = options.autolink
   }
 
@@ -707,7 +708,7 @@ export class PastePlainTextOpsBuilder implements OperationsBuilder<
     const rules = isCursorKind ? cursorRules : rangeRules
 
     /** For paste operations, by design we can only match one rule. */
-    const match = iterRules({
+    const match = this.iterRules({
       context,
       input,
       resources: {
