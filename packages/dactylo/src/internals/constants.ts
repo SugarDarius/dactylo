@@ -117,6 +117,9 @@ export const DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT = '\u200B'
 /** Clipboard data type name. */
 export const CLIPBOARD_DATA_TYPE_NAME = 'application/x-dactylo-data'
 
+/** URL scheme prefix pattern. */
+export const URL_SCHEME_PREFIX_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:/u
+
 /** Markdown link pattern. */
 export const MARKDOWN_LINK_PATTERN =
   /(?<link>\[(?<text>(?:\[[^\]]*\]|[^[\]])*)\]\([ \t]*<?(?<url>(?:\([^)]*\)|[^()\s])*?)>?[ \t]*(?:(?<quote>['"])(?<title>.*?)\k<quote>[ \t]*)?\))/u
@@ -126,7 +129,7 @@ export const PLAIN_TEXT_LINES_SPLIT_PATTERN = /\r?\n/u
 
 /** Plain text link pattern. */
 export const PLAIN_TEXT_LINK_PATTERN =
-  /(?:https?:\/\/(?:www\.)?localhost(?::\d{1,5})?(?:\/[-a-zA-Z0-9().@:%_+~#?&//=]*)?|localhost(?::\d{1,5})?(?:\/[-a-zA-Z0-9().@:%_+~#?&//=]*)?|(?:https?:\/\/(?:www\.)?|www\.)[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b[-a-zA-Z0-9().@:%_+~#?&//=]*)/iu
+  /(?:https?:\/\/(?:www\.)?localhost(?::\d{1,5})?(?:\/[-a-zA-Z0-9().@:%_+~#?&//=]*)?|localhost(?::\d{1,5})?(?:\/[-a-zA-Z0-9().@:%_+~#?&//=]*)?|(?:https?:\/\/(?:www\.)?|www\.)[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b[-a-zA-Z0-9().@:%_+~#?&//=]*|(?<![\w@])[-a-zA-Z0-9]{1,256}\.[a-zA-Z0-9()]{2,6}\b[-a-zA-Z0-9().@:%_+~#?&//=]*)/iu
 
 /**
  * Character to use to trigger:

@@ -27,4 +27,22 @@ describe('collectPlainTextLinks', () => {
       },
     ])
   })
+
+  test('collects scheme-less www and bare domains without matching emails', () => {
+    expect(collectPlainTextLinks('www.google.com', false)).toMatchObject([
+      {
+        end: 'www.google.com'.length,
+        segment: { text: 'www.google.com' },
+        start: 0,
+      },
+    ])
+    expect(collectPlainTextLinks('google.com', false)).toMatchObject([
+      {
+        end: 'google.com'.length,
+        segment: { text: 'google.com' },
+        start: 0,
+      },
+    ])
+    expect(collectPlainTextLinks('user@example.com', false)).toEqual([])
+  })
 })

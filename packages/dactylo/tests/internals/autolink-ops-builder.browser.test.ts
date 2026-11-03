@@ -235,18 +235,36 @@ describe('TransactionPipeline autolink', () => {
     expect(link.url.href).toBe('https://localhost:3000/')
   })
 
-  test('scheme-less www URL does not insert an empty-href link', () => {
+  test('scheme-less www URL converts to an https link', () => {
     const pipeline = makePipeline({ autolink: true, markdown: false })
     focus(pipeline)
-    typeText(pipeline, 'www.example.com')
+    typeText(pipeline, 'www.google.com')
     typeText(pipeline, ' ')
 
-    expect(blockTexts(pipeline.context)).toEqual(['www.example.com '])
-    expect(
-      firstInlineBlock(pipeline.context).content.every(
-        (node) => !isLinkNode(node),
-      ),
-    ).toBe(true)
+    const link = firstInlineBlock(pipeline.context).content.find(isLinkNode)
+    if (!link || !isLinkNode(link)) {
+      throw new Error('Expected a link node')
+    }
+
+    expect(link.text).toBe('www.google.com')
+    expect(link.url.href).toBe('https://www.google.com/')
+    expect(blockTexts(pipeline.context)).toEqual(['www.google.com '])
+  })
+
+  test('scheme-less bare domain converts to an https link', () => {
+    const pipeline = makePipeline({ autolink: true, markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'google.com')
+    typeText(pipeline, ' ')
+
+    const link = firstInlineBlock(pipeline.context).content.find(isLinkNode)
+    if (!link || !isLinkNode(link)) {
+      throw new Error('Expected a link node')
+    }
+
+    expect(link.text).toBe('google.com')
+    expect(link.url.href).toBe('https://google.com/')
+    expect(blockTexts(pipeline.context)).toEqual(['google.com '])
   })
 
   test('autolink disabled leaves the URL as text', () => {
@@ -421,6 +439,20 @@ describe('parsePlainTextAutolink', () => {
       start: 0,
       text: 'https://liveblocks.io',
     })
+    expect(
+      parsePlainTextAutolink('www.google.com ', 'www.google.com '.length),
+    ).toMatchObject({
+      href: 'https://www.google.com/',
+      start: 0,
+      text: 'www.google.com',
+    })
+    expect(
+      parsePlainTextAutolink('google.com ', 'google.com '.length),
+    ).toMatchObject({
+      href: 'https://google.com/',
+      start: 0,
+      text: 'google.com',
+    })
   })
 
   test('ignores missing trigger space, empty href, and glued forms', () => {
@@ -442,9 +474,6 @@ describe('parsePlainTextAutolink', () => {
         'https://liveblocks.io more',
         'https://liveblocks.io more'.length,
       ),
-    ).toBeNull()
-    expect(
-      parsePlainTextAutolink('www.example.com ', 'www.example.com '.length),
     ).toBeNull()
     expect(
       parsePlainTextAutolink(

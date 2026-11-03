@@ -87,7 +87,7 @@ export function parsePlainTextAutolink(
     -INLINE_DETECTOR_TRIGGER_CHARACTER.length,
   )
   const matches = collectPlainTextLinks(beforeSpace, false)
-  const last = matches.at(-1)
+  const last = matches[matches.length - 1]
   if (!last || last.end !== beforeSpace.length) {
     return null
   }

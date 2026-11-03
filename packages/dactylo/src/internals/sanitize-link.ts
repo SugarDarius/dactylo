@@ -1,3 +1,4 @@
+import { URL_SCHEME_PREFIX_PATTERN } from './constants'
 import { DISALLOWED_CONTROL_PATTERN, NUL_PATTERN } from './sanitize-text'
 
 /** Detect dangerous schemes before/alongside href. */
@@ -43,9 +44,10 @@ export const ALLOWED_SCHEMES = new Set<string>([
  * - Not allowing relative URLs (`//`, `./`, `../`).
  *   → Returning an empty url instead.
  * - Parsing absolute URLs with `URL`, allowlists scheme, strips `username` / `password` on http(s).
+ * - Prefixing scheme-less hosts (`google.com`, `www.google.com`) with `https://`.
  * - Normalizing protocol-relative `//host/…` to `https://host/…`.
  *
- * Returns the canonical here string, or an empty string if the href is not valid.
+ * Returns the canonical href string, or an empty string if the href is not valid.
  */
 export function sanitizeLinkHref(href: string): string {
   let watched = href.trim()
@@ -65,21 +67,30 @@ export function sanitizeLinkHref(href: string): string {
     return ''
   }
 
+  let url: URL
   try {
-    const url = new URL(watched)
-
-    const scheme = url.protocol.replace(/:$/u, '').toLowerCase()
-    if (!ALLOWED_SCHEMES.has(scheme)) {
+    url = new URL(watched)
+  } catch {
+    if (URL_SCHEME_PREFIX_PATTERN.test(watched)) {
       return ''
     }
 
-    if (scheme === 'http' || scheme === 'https') {
-      url.username = ''
-      url.password = ''
+    try {
+      url = new URL(`https://${watched}`)
+    } catch {
+      return ''
     }
+  }
 
-    return url.href
-  } catch {
+  const scheme = url.protocol.replace(/:$/u, '').toLowerCase()
+  if (!ALLOWED_SCHEMES.has(scheme)) {
     return ''
   }
+
+  if (scheme === 'http' || scheme === 'https') {
+    url.username = ''
+    url.password = ''
+  }
+
+  return url.href
 }
