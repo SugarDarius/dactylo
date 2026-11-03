@@ -69,7 +69,9 @@ export type AutolinkOpsRule = OperationRule<
 /**
  * Parses a trailing plain-text autolink immediately before `cursorOffset`.
  * The character at `cursorOffset - 1` must be {@link INLINE_DETECTOR_TRIGGER_CHARACTER},
- * and a {@link collectPlainTextLinks} match must end at that space.
+ * a {@link collectPlainTextLinks} match must end at that space, and the match
+ * must start at the node start or after whitespace so glued forms like
+ * `seehttps://example.com` stay literal.
  */
 export function parsePlainTextAutolink(
   nodeText: string,
@@ -88,6 +90,13 @@ export function parsePlainTextAutolink(
   const last = matches.at(-1)
   if (!last || last.end !== beforeSpace.length) {
     return null
+  }
+
+  if (last.start > 0) {
+    const charBefore = beforeSpace[last.start - 1]
+    if (charBefore === undefined || !/\s/u.test(charBefore)) {
+      return null
+    }
   }
 
   const href = sanitizeLinkHref(last.segment.href)
@@ -195,7 +204,9 @@ const rules: AutolinkOpsRule[] = [
   {
     /**
      * 💡 Cursor is immediately after a recognized plain-text URL or leftover
-     *    `[text](url)` in an inline text node, and the last typed character is
+     *    `[text](url)` in an inline text node, with the match at node start or
+     *    after whitespace (e.g. `see https://example.com`, not
+     *    `seehttps://example.com`). The last typed character is
      *    {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
      * 🎯 Wrap that match in a {@link LinkNode}, keep the trigger space (and any
      *    prefix/suffix) as text, caret after the space (not inside the link).

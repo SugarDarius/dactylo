@@ -305,6 +305,20 @@ describe('TransactionPipeline autolink', () => {
     ).toBe(true)
   })
 
+  test('glued URL does not convert', () => {
+    const pipeline = makePipeline({ autolink: true, markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'seehttps://liveblocks.io')
+    typeText(pipeline, ' ')
+
+    expect(blockTexts(pipeline.context)).toEqual(['seehttps://liveblocks.io '])
+    expect(
+      firstInlineBlock(pipeline.context).content.every(
+        (node) => !isLinkNode(node),
+      ),
+    ).toBe(true)
+  })
+
   test('space after later text does not convert an earlier URL', () => {
     const pipeline = makePipeline({ autolink: true, markdown: false })
     focus(pipeline)
@@ -419,16 +433,17 @@ describe('parsePlainTextAutolink', () => {
     })
     expect(
       parsePlainTextAutolink(
-        'seehttps://liveblocks.io ',
-        'seehttps://liveblocks.io '.length,
+        'Hello [Liveblocks](https://liveblocks.io) ',
+        'Hello [Liveblocks](https://liveblocks.io) '.length,
       ),
     ).toMatchObject({
       href: 'https://liveblocks.io/',
-      text: 'https://liveblocks.io',
+      start: 6,
+      text: 'Liveblocks',
     })
   })
 
-  test('ignores matches that are not immediately before the trigger space', () => {
+  test('ignores missing trigger space, empty href, and glued forms', () => {
     expect(
       parsePlainTextAutolink(
         'https://liveblocks.io',
@@ -455,6 +470,18 @@ describe('parsePlainTextAutolink', () => {
       parsePlainTextAutolink(
         '[Liveblocks](javascript:alert(1)) ',
         '[Liveblocks](javascript:alert(1)) '.length,
+      ),
+    ).toBeNull()
+    expect(
+      parsePlainTextAutolink(
+        'seehttps://liveblocks.io ',
+        'seehttps://liveblocks.io '.length,
+      ),
+    ).toBeNull()
+    expect(
+      parsePlainTextAutolink(
+        'Hello[Liveblocks](https://liveblocks.io) ',
+        'Hello[Liveblocks](https://liveblocks.io) '.length,
       ),
     ).toBeNull()
   })
