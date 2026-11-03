@@ -108,7 +108,9 @@ export class OperationsEngine {
     this.#opsRuntime = makeOperationsRuntime()
 
     this.#marksOpsBuilder = new MarksOpsBuilder()
-    this.#markdownShortcutOpsBuilder = new MarkdownShortcutOpsBuilder()
+    this.#markdownShortcutOpsBuilder = new MarkdownShortcutOpsBuilder({
+      autolink: options.autolink,
+    })
     this.#insertTextOpsBuilder = new InsertTextOpsBuilder()
     this.#deleteContentOpsBuilder = new DeleteContentOpsBuilder({
       graphemeOffsetCaret: new GraphemeOffsetCaret({

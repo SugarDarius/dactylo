@@ -17,6 +17,8 @@ import {
   MARKDOWN_BOLD_ITALIC_MARK_SHORTCUT_CLOSING_DELIMITERS,
   MARKDOWN_INLINE_CODE_MARK_SHORTCUT_CLOSING_DELIMITERS,
   MARKDOWN_INLINE_CODE_MARK_SHORTCUT_PATTERN,
+  MARKDOWN_LINK_SHORTCUT_CLOSING_DELIMITERS,
+  MARKDOWN_LINK_SHORTCUT_PATTERN,
   MARKDOWN_MARK_SHORTCUT_REQUIRED_CHAR_BEFORE_OPEN_DELIMITER,
   MARKDOWN_STRIKETHROUGH_MARK_SHORTCUT_CLOSING_DELIMITERS,
   STRIKETHROUGH_MARKDOWN_TILDE_SHORTCUT_PATTERN,
@@ -31,6 +33,7 @@ import { isMarksEqual } from './marks'
 import type { MarkKey, Marks } from './marks'
 import {
   createFromInlineWithEditableText,
+  createLinkNode,
   createTextNode,
   isInlineNodeWithEditableText,
   isTextNode,
@@ -47,9 +50,12 @@ import type {
   BuilderOpsIntent,
   MarkdownMarkShortcutSpec,
   OperationRule,
+  OperationsBuilderAutolinkConfig,
 } from './operations-builder'
+import { sanitizeLinkHref } from './sanitize-link'
 import { createCursor, isRangeSelection, isSelectionActive } from './selection'
 import type { TextCursor } from './selection'
+import { normalizeUrl } from './utils'
 
 /** Situation with no selection. */
 export interface MarkdownShortcutOpsUnhandledSituation {
@@ -84,11 +90,17 @@ export interface MarkdownShortcutOpsInput {
   readonly text: string
 }
 
+/** Resources for markdown operations. */
+export interface MarkdownShortcutOpsResources {
+  /** Whether autolink detection is enabled. */
+  readonly autolinkEnabled: boolean
+}
+
 /** Rule for markdown operations. */
 export type MarkdownShortcutOpsRule = OperationRule<
   MarkdownShortcutOpsSituation,
   MarkdownShortcutOpsInput,
-  unknown
+  MarkdownShortcutOpsResources
 >
 
 /** Parses the level of an ATX markdown heading with trigger space. */
@@ -266,6 +278,137 @@ export function parseMarkdownMarkShortcut(
   }
 
   return null
+}
+
+/** Spec for a trailing markdown link shortcut before the cursor. */
+export interface MarkdownLinkShortcutSpec {
+  /** Discriminant. */
+  readonly kind: 'link'
+
+  /** Index where `[` starts (inclusive), in the string before delimiter removal. */
+  readonly openDelimiterOffset: number
+
+  /** Link label without brackets. */
+  readonly text: string
+
+  /** Sanitized href to store on the created {@link LinkNode}. */
+  readonly href: string
+
+  /** Optional title from `[text](url "title")`, or empty. */
+  readonly title: string
+}
+
+/**
+ * Parses a trailing markdown link shortcut `[text](url)` immediately before
+ * `cursorOffset`. Opening `[` must be at node start or after whitespace,
+ * matching mark shortcuts.
+ */
+export function parseMarkdownLinkShortcut(
+  nodeText: string,
+  cursorOffset: number,
+): MarkdownLinkShortcutSpec | null {
+  const textBeforeCursor = nodeText.slice(0, cursorOffset)
+  const match = MARKDOWN_LINK_SHORTCUT_PATTERN.exec(textBeforeCursor)
+  const text = match?.groups?.text
+  const url = match?.groups?.url
+  if (!match || !text || !url) {
+    return null
+  }
+
+  if (!isMarkdownMarkShortcutOpenBoundary(textBeforeCursor, match.index)) {
+    return null
+  }
+
+  const href = sanitizeLinkHref(normalizeUrl(url))
+  if (href.length === 0) {
+    return null
+  }
+
+  return {
+    href,
+    kind: 'link',
+    openDelimiterOffset: match.index,
+    text,
+    title: match.groups?.title ?? '',
+  }
+}
+
+/** Builds operations for a markdown link shortcut. */
+export function buildMarkdownLinkShortcutOps(
+  context: EditorContext,
+  block: BlockWithInlineContent,
+  node: InlineNodeWithEditableText,
+  index: number,
+  cursorOffset: number,
+  spec: MarkdownLinkShortcutSpec,
+): Operation[] {
+  const { openDelimiterOffset, text, href, title } = spec
+  const markdownLength = cursorOffset - openDelimiterOffset
+  const suffix = node.text.slice(cursorOffset)
+
+  const link = createLinkNode({
+    marks: node.marks,
+    metadata: node.metadata,
+    text,
+    url: { href, title },
+  })
+
+  if (openDelimiterOffset > 0) {
+    const after = createFromInlineWithEditableText(node, {
+      marks: suffix.length > 0 ? node.marks : context.activeMarks,
+      text: suffix,
+    })
+
+    return withTrailingSelectionOp(
+      [
+        {
+          __type: 'delete_text',
+          blockId: block.id,
+          length: node.text.length - openDelimiterOffset,
+          nodeId: node.id,
+          offset: openDelimiterOffset,
+          snapshot: { text: node.text.slice(openDelimiterOffset) },
+        },
+        {
+          __type: 'insert_inline_node',
+          afterNodeId: node.id,
+          blockId: block.id,
+          node: link,
+        },
+        {
+          __type: 'insert_inline_node',
+          afterNodeId: link.id,
+          blockId: block.id,
+          node: after,
+        },
+      ],
+      createCursor({ blockId: block.id, nodeId: after.id, offset: 0 }),
+      context.selection,
+    )
+  }
+
+  const prevNode = block.content[index - 1]
+
+  return withTrailingSelectionOp(
+    [
+      {
+        __type: 'delete_text',
+        blockId: block.id,
+        length: markdownLength,
+        nodeId: node.id,
+        offset: 0,
+        snapshot: { text: node.text.slice(0, markdownLength) },
+      },
+      {
+        __type: 'insert_inline_node',
+        afterNodeId: prevNode?.id ?? null,
+        blockId: block.id,
+        node: link,
+      },
+    ],
+    createCursor({ blockId: block.id, nodeId: node.id, offset: 0 }),
+    context.selection,
+  )
 }
 
 /** Builds operations for a markdown mark shortcut. */
@@ -827,18 +970,89 @@ const rules: MarkdownShortcutOpsRule[] = [
       return true
     },
   },
+  {
+    /**
+     * 💡 Cursor is immediately after `[text](url)` in an inline text node
+     *    (end of node or mid-paragraph), with opening `[` at node start or after
+     *    whitespace (e.g. `Hello [Liveblocks](https://liveblocks.io) there`, not
+     *    `Hello[Liveblocks](https://liveblocks.io)`). The last typed character is
+     *    the closing delimiter (`)`).
+     * 🎯 Remove the markdown syntax, insert a {@link LinkNode} for `text`, keep
+     *    prefix/suffix as text, caret after the link (not inside it).
+     */
+    build: ({ context, situation, input, resources }): Operation[] | null => {
+      if (situation.kind !== 'cursor-selection' || !resources.autolinkEnabled) {
+        return null
+      }
+
+      const { at, block, node, index } = situation
+      if (
+        !isTextNode(node) ||
+        !MARKDOWN_LINK_SHORTCUT_CLOSING_DELIMITERS.includes(input.text)
+      ) {
+        return null
+      }
+
+      const spec = parseMarkdownLinkShortcut(node.text, at.offset)
+      if (spec === null) {
+        return null
+      }
+
+      return buildMarkdownLinkShortcutOps(
+        context,
+        block,
+        node,
+        index,
+        at.offset,
+        spec,
+      )
+    },
+    name: 'cursor/link/inline-closing-delimiter',
+    when: ({ situation, input, resources }): boolean => {
+      if (situation.kind !== 'cursor-selection') {
+        return false
+      }
+
+      const { at, node } = situation
+      if (
+        !isTextNode(node) ||
+        !MARKDOWN_LINK_SHORTCUT_CLOSING_DELIMITERS.includes(input.text)
+      ) {
+        return false
+      }
+
+      const isLinkShortcut =
+        resources.autolinkEnabled &&
+        parseMarkdownLinkShortcut(node.text, at.offset) !== null
+
+      return isLinkShortcut
+    },
+  },
 ]
 
 // --- Builder ───────────────────────────────────────---------------
+
+/** Options for constructing a markdown shortcut ops builder. */
+export interface MarkdownShortcutOpsBuilderOptions {
+  /** Configuration for autolink detection. */
+  readonly autolink: {
+    /** Whether to enable autolink detection. */
+    readonly enabled: boolean
+  }
+}
 
 /** Markdown ops builder. */
 export class MarkdownShortcutOpsBuilder extends OperationsBuilder<
   MarkdownShortcutOpsSituation,
   MarkdownShortcutOpsInput,
-  unknown
+  MarkdownShortcutOpsResources
 > {
-  constructor() {
+  /** Configuration for autolink detection. */
+  readonly #autolinkConfig: OperationsBuilderAutolinkConfig
+
+  constructor(options: MarkdownShortcutOpsBuilderOptions) {
     super({ name: 'markdown-shortcut-ops-builder' })
+    this.#autolinkConfig = options.autolink
   }
 
   /** Describes the {@link MarkdownShortcutOpsSituation}. */
@@ -894,7 +1108,7 @@ export class MarkdownShortcutOpsBuilder extends OperationsBuilder<
     const match = this.iterRules({
       context,
       input,
-      resources: null,
+      resources: { autolinkEnabled: this.#autolinkConfig.enabled },
       rules,
       situation,
     }).next()
@@ -903,7 +1117,12 @@ export class MarkdownShortcutOpsBuilder extends OperationsBuilder<
     }
 
     const build = match.value
-    const ops = build({ context, input, resources: null, situation })
+    const ops = build({
+      context,
+      input,
+      resources: { autolinkEnabled: this.#autolinkConfig.enabled },
+      situation,
+    })
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',

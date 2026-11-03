@@ -268,6 +268,28 @@ export const MARKDOWN_INLINE_CODE_MARK_SHORTCUT_PATTERN =
 export const MARKDOWN_INLINE_CODE_MARK_SHORTCUT_CLOSING_DELIMITERS = ['`']
 
 /**
+ * Markdown link shortcut with closing delimiter typed.
+ * Trailing {@link MARKDOWN_LINK_PATTERN} immediately before the cursor.
+ *
+ * @example
+ * ```txt
+ * User types: )
+ * Node text: "[Liveblocks](https://liveblocks.io)"        ✓ (whole node)
+ * Node text: "Hello [Liveblocks](https://liveblocks.io)"  ✓ (space before `[`)
+ * Node text: "Hello[Liveblocks](https://liveblocks.io)"   ✗ (no boundary before `[`)
+ * Node text: "[](https://liveblocks.io)"                  ✗ (empty text)
+ * Node text: "[Liveblocks]()"                             ✗ (empty url)
+ * ```
+ */
+export const MARKDOWN_LINK_SHORTCUT_PATTERN = new RegExp(
+  `${MARKDOWN_LINK_PATTERN.source}$`,
+  'u',
+)
+
+/** Allowed closing delimiters for markdown link shortcut. */
+export const MARKDOWN_LINK_SHORTCUT_CLOSING_DELIMITERS = [')']
+
+/**
  * Character class for “safe” text before an opening mark delimiter when the
  * shortcut is not at the start of the node. A single ASCII/Unicode whitespace
  * satisfies CommonMark-style “left-flanking” typing UX (`Hello **there**`).

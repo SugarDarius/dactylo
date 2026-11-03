@@ -3,12 +3,16 @@ import { describe, expect, test } from 'vitest'
 import { DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT } from '../../src/internals/constants'
 import { paintTextForDOM } from '../../src/internals/dom'
 import type { EditorContext } from '../../src/internals/editor-context'
-import { parseMarkdownMarkShortcut } from '../../src/internals/markdown-shortcut-ops-builder'
+import {
+  parseMarkdownLinkShortcut,
+  parseMarkdownMarkShortcut,
+} from '../../src/internals/markdown-shortcut-ops-builder'
 import { isMarkEnabled } from '../../src/internals/marks'
 import type { MarkKey } from '../../src/internals/marks'
 import {
   isInlineNodeWithEditableText,
   isLinkNode,
+  isTextNode,
 } from '../../src/internals/nodes'
 import type { TransactionPipeline } from '../../src/internals/transaction'
 import {
@@ -911,6 +915,125 @@ describe('TransactionPipeline markdown shortcuts', () => {
       offset: 0,
     })
   })
+
+  test('[text](url) closing delimiter creates a link; undo restores markdown text; redo converts again', () => {
+    const pipeline = makePipeline({ autolink: true, markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '[Liveblocks](https://liveblocks.io')
+
+    expect(blockTexts(pipeline.context)).toEqual([
+      '[Liveblocks](https://liveblocks.io',
+    ])
+    expect(
+      firstInlineBlock(pipeline.context).content.every(
+        (node) => !isLinkNode(node),
+      ),
+    ).toBe(true)
+
+    typeText(pipeline, ')')
+
+    const nodes = firstInlineBlock(pipeline.context).content
+    const link = nodes.find((node) => isLinkNode(node))
+    if (!link || !isLinkNode(link)) {
+      throw new Error('Expected a link node')
+    }
+
+    expect(blockTexts(pipeline.context)).toEqual(['Liveblocks'])
+    expect(link.text).toBe('Liveblocks')
+    expect(link.url.href).toBe('https://liveblocks.io/')
+    const continuation = nodes.find(
+      (node) => isTextNode(node) && node.id !== link.id,
+    )
+    expect(continuation).toBeDefined()
+    expect(requireCursor(pipeline.context)).toMatchObject({
+      nodeId: continuation?.id,
+      offset: 0,
+    })
+
+    const converted = snapshot(pipeline.context)
+    pipeline.undo()
+    expect(blockTexts(pipeline.context)).toEqual([
+      '[Liveblocks](https://liveblocks.io)',
+    ])
+    expect(
+      firstInlineBlock(pipeline.context).content.every(
+        (node) => !isLinkNode(node),
+      ),
+    ).toBe(true)
+    pipeline.redo()
+    expect(snapshot(pipeline.context)).toEqual(converted)
+
+    typeText(pipeline, ' more')
+    expect(blockTexts(pipeline.context)).toEqual(['Liveblocks more'])
+    expect(
+      firstInlineBlock(pipeline.context).content.some(
+        (node) => isLinkNode(node) && node.text === 'Liveblocks',
+      ),
+    ).toBe(true)
+    expect(
+      firstInlineBlock(pipeline.context).content.some(
+        (node) => isTextNode(node) && node.text === ' more',
+      ),
+    ).toBe(true)
+  })
+
+  test('[text](url) closing delimiter creates a link mid-paragraph without an empty continuation node', () => {
+    const pipeline = makePipeline({ autolink: true, markdown: true })
+    focus(pipeline)
+    typeText(pipeline, longParagraph)
+
+    const laborisEnd = longParagraph.indexOf('laboris') + 'laboris'.length
+    const cursor = requireCursor(pipeline.context)
+    setCursor(pipeline, { ...cursor, offset: laborisEnd })
+    typeText(pipeline, ' [Liveblocks](https://liveblocks.io')
+    typeText(pipeline, ')')
+
+    const prefix = `${longParagraph.slice(0, laborisEnd)} `
+    const suffix = longParagraph.slice(laborisEnd)
+    const nodes = firstInlineBlock(pipeline.context).content.filter(
+      isInlineNodeWithEditableText,
+    )
+
+    expect(blockTexts(pipeline.context)).toEqual([
+      `${prefix}Liveblocks${suffix}`,
+    ])
+    expect(
+      nodes.map((node) => ({
+        href: isLinkNode(node) ? node.url.href : undefined,
+        text: node.text,
+        type: node.__type,
+      })),
+    ).toEqual([
+      { href: undefined, text: prefix, type: 'text' },
+      {
+        href: 'https://liveblocks.io/',
+        text: 'Liveblocks',
+        type: 'link',
+      },
+      { href: undefined, text: suffix, type: 'text' },
+    ])
+    expect(requireCursor(pipeline.context)).toMatchObject({
+      nodeId: nodes[2]?.id,
+      offset: 0,
+    })
+    assertNonEmptyInlinesPaintWithoutZwsp(pipeline.context)
+  })
+
+  test('Hello[text](url) does not convert; opening [ needs a mark-style boundary', () => {
+    const pipeline = makePipeline({ autolink: true, markdown: true })
+    focus(pipeline)
+    typeText(pipeline, 'Hello[Liveblocks](https://liveblocks.io')
+    typeText(pipeline, ')')
+
+    expect(blockTexts(pipeline.context)).toEqual([
+      'Hello[Liveblocks](https://liveblocks.io)',
+    ])
+    expect(
+      firstInlineBlock(pipeline.context).content.every(
+        (node) => !isLinkNode(node),
+      ),
+    ).toBe(true)
+  })
 })
 
 describe('parseMarkdownMarkShortcut', () => {
@@ -1029,6 +1152,70 @@ describe('parseMarkdownMarkShortcut', () => {
       word: 'world',
     })
     expect(parseMarkdownMarkShortcut('``hello`', '`hello`'.length)).toBeNull()
+  })
+})
+
+describe('parseMarkdownLinkShortcut', () => {
+  test('pairs trailing [text](url) and ignores invalid or unbounded forms', () => {
+    expect(
+      parseMarkdownLinkShortcut(
+        '[Liveblocks](https://liveblocks.io)',
+        '[Liveblocks](https://liveblocks.io)'.length,
+      ),
+    ).toMatchObject({
+      href: 'https://liveblocks.io/',
+      kind: 'link',
+      openDelimiterOffset: 0,
+      text: 'Liveblocks',
+    })
+    expect(
+      parseMarkdownLinkShortcut(
+        'Hello [Liveblocks](https://liveblocks.io)',
+        'Hello [Liveblocks](https://liveblocks.io)'.length,
+      ),
+    ).toMatchObject({
+      href: 'https://liveblocks.io/',
+      kind: 'link',
+      openDelimiterOffset: 6,
+      text: 'Liveblocks',
+    })
+    expect(
+      parseMarkdownLinkShortcut(
+        'Hello [Liveblocks](https://liveblocks.io) there',
+        'Hello [Liveblocks](https://liveblocks.io)'.length,
+      ),
+    ).toMatchObject({
+      kind: 'link',
+      openDelimiterOffset: 6,
+      text: 'Liveblocks',
+    })
+    expect(
+      parseMarkdownLinkShortcut(
+        'Hello [Liveblocks](https://liveblocks.io) there',
+        'Hello [Liveblocks](https://liveblocks.io) there'.length,
+      ),
+    ).toBeNull()
+    expect(
+      parseMarkdownLinkShortcut(
+        'Hello[Liveblocks](https://liveblocks.io)',
+        'Hello[Liveblocks](https://liveblocks.io)'.length,
+      ),
+    ).toBeNull()
+    expect(
+      parseMarkdownLinkShortcut(
+        '[](https://liveblocks.io)',
+        '[](https://liveblocks.io)'.length,
+      ),
+    ).toBeNull()
+    expect(
+      parseMarkdownLinkShortcut('[Liveblocks]()', '[Liveblocks]()'.length),
+    ).toBeNull()
+    expect(
+      parseMarkdownLinkShortcut(
+        '[Liveblocks](javascript:alert(1))',
+        '[Liveblocks](javascript:alert(1))'.length,
+      ),
+    ).toBeNull()
   })
 })
 
