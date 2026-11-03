@@ -1,13 +1,17 @@
+import { expect } from 'vitest'
+
 import {
   isDividerBlock,
   isHeadingBlock,
   isParagraphBlock,
 } from '../../src/internals/blocks'
 import type { Block, BlockWithInlineContent } from '../../src/internals/blocks'
+import { DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT } from '../../src/internals/constants'
 import {
   getBlock,
   getBlockWithInlineContent,
 } from '../../src/internals/document'
+import { paintTextForDOM } from '../../src/internals/dom'
 import type { EditorContext } from '../../src/internals/editor-context'
 import type { Marks } from '../../src/internals/marks'
 import type { InlineNode } from '../../src/internals/nodes'
@@ -296,4 +300,39 @@ export function typeLines(
 /** Backspace that may be a no-op (e.g. at the start of the document). */
 export function tryDeleteBackward(pipeline: TransactionPipeline): boolean {
   return pipeline.digestInputEvent(inputEvent('deleteContentBackward'))
+}
+
+/** Undo must restore `before`; redo must restore the post-edit snapshot. */
+export function assertUndoRedo(
+  pipeline: TransactionPipeline,
+  before: DocumentSnapshot,
+): void {
+  const after = snapshot(pipeline.context)
+  expect(pipeline.canUndo()).toBe(true)
+  pipeline.undo()
+  expect(snapshot(pipeline.context)).toEqual(before)
+  expect(pipeline.canRedo()).toBe(true)
+  pipeline.redo()
+  expect(snapshot(pipeline.context)).toEqual(after)
+}
+
+/** Non-empty inlines must not store or paint a ZWSP after a mark/link split. */
+export function assertNonEmptyInlinesPaintWithoutZwsp(
+  context: EditorContext,
+): void {
+  const block = firstInlineBlock(context)
+  for (const node of block.content) {
+    if (!isInlineNodeWithEditableText(node)) {
+      continue
+    }
+
+    expect(node.text).not.toContain(DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT)
+    if (node.text.length === 0) {
+      continue
+    }
+
+    expect(paintTextForDOM(node.text)).not.toContain(
+      DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT,
+    )
+  }
 }
