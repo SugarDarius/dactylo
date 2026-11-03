@@ -11,7 +11,9 @@ import { isMarksEqual, normalizeMarks } from './marks'
 import type { Marks } from './marks'
 import {
   createFromInlineWithEditableText,
+  createTextNode,
   isInlineNodeWithEditableText,
+  isLinkNode,
 } from './nodes'
 import type { InlineNodeWithEditableText, NodeId } from './nodes'
 import type { Operation } from './operations'
@@ -238,6 +240,45 @@ export function buildCursorInsertTextOps(
 
 /** Rules for cursor selection. */
 export const cursorRules: InsertTextOpsRule[] = [
+  {
+    /**
+     * 💡 Cursor is at the end of a link.
+     * 🎯 Insert a new text node after the link instead of continuing the link.
+     */
+    build: ({ context, situation, input }): Operation[] | null => {
+      if (situation.kind !== 'cursor-selection') {
+        return null
+      }
+
+      const { block, node } = situation
+      const insertedText = createTextNode({
+        marks: context.activeMarks,
+        text: input.text,
+      })
+
+      return withTrailingSelectionOp(
+        [
+          {
+            __type: 'insert_inline_node',
+            afterNodeId: node.id,
+            blockId: block.id,
+            node: insertedText,
+          },
+        ],
+        createCursor({
+          blockId: block.id,
+          nodeId: insertedText.id,
+          offset: input.text.length,
+        }),
+        context.selection,
+      )
+    },
+    name: 'cursor/at-link-end/insert-new-text',
+    when: ({ situation }): boolean =>
+      situation.kind === 'cursor-selection' &&
+      isLinkNode(situation.node) &&
+      situation.at.offset === situation.node.text.length,
+  },
   {
     build: ({ context, situation, input }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
