@@ -881,12 +881,6 @@ describe('parseMarkdownMarkShortcut', () => {
     })
     expect(
       parseMarkdownMarkShortcut(
-        'Hello **world** there',
-        'Hello **world** there'.length,
-      ),
-    ).toBeNull()
-    expect(
-      parseMarkdownMarkShortcut(
         'Hello *world* there',
         'Hello *world* there'.length,
       ),
@@ -931,6 +925,20 @@ describe('parseMarkdownMarkShortcut', () => {
     expect(
       parseMarkdownMarkShortcut('Hello ~world~ there', 'Hello ~world~'.length),
     ).toBeNull()
+    expect(
+      parseMarkdownMarkShortcut('`hello`', '`hello`'.length),
+    ).toMatchObject({
+      kind: 'code',
+      word: 'hello',
+    })
+    expect(
+      parseMarkdownMarkShortcut('Hello `world` there', 'Hello `world`'.length),
+    ).toMatchObject({
+      kind: 'code',
+      openDelimiterOffset: 6,
+      word: 'world',
+    })
+    expect(parseMarkdownMarkShortcut('``hello`', '`hello`'.length)).toBeNull()
   })
 })
 
