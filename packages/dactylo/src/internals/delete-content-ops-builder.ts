@@ -13,6 +13,7 @@ import type { EditorContext } from './editor-context'
 import type { GraphemeOffsetCaret } from './grapheme'
 import {
   getInlineNodeTextLength,
+  isEmptyEditableRunway,
   isInlineNodeWithEditableText,
   isLineBreakNode,
   isMentionNode,
@@ -20,7 +21,7 @@ import {
 import type { InlineNodeWithEditableText } from './nodes'
 import type { DeleteTextOp, Operation } from './operations'
 import {
-  buildCollapseEmptyBlockToActiveMarksOps,
+  buildCollapseEmptyBlockOps,
   buildDeleteBlocksBetweenOps,
   buildDeleteRangeCrossBlockIntent,
   buildDeleteRangeWithinBlockIntent,
@@ -28,6 +29,7 @@ import {
   OperationsBuilder,
   rangeCollapsedError,
   resolvesMergeBlocksUndoFields,
+  stripEmptyRunwaysAtMergeSeam,
   withTrailingSelectionOp,
 } from './operations-builder'
 import type { BuilderOpsIntent, OperationRule } from './operations-builder'
@@ -209,20 +211,30 @@ export const cursorRules: DeleteContentOpsRule[] = [
       }
 
       let targetHead = [...targetBlock.content]
-      const collapsedHead = buildCollapseEmptyBlockToActiveMarksOps(
-        targetBlock,
-        targetHead,
-        context.activeMarks,
-      )
+      const collapsedHead = buildCollapseEmptyBlockOps(targetBlock, targetHead)
       if (collapsedHead) {
         ops.push(...collapsedHead.ops)
         targetHead = [collapsedHead.placeholder]
       }
 
-      const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
-        block,
+      const stripped = stripEmptyRunwaysAtMergeSeam(
         { ...targetBlock, content: targetHead },
-        context.activeMarks,
+        block,
+      )
+      ops.push(...stripped.ops)
+
+      const strippedTarget = {
+        ...targetBlock,
+        content: stripped.targetContent,
+      }
+      const strippedSource = {
+        ...block,
+        content: stripped.sourceContent,
+      }
+
+      const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
+        strippedSource,
+        strippedTarget,
       )
 
       return withTrailingSelectionOp(
@@ -230,9 +242,9 @@ export const cursorRules: DeleteContentOpsRule[] = [
           ...ops,
           {
             __type: 'merge_blocks',
-            mergedTailSnapshot: [...block.content],
+            mergedTailSnapshot: [...stripped.sourceContent],
             sourceBlockId: block.id,
-            sourceSnapshot: block,
+            sourceSnapshot: strippedSource,
             splitAtNodeId,
             splitAtOffset,
             targetBlockId: targetBlock.id,
@@ -373,8 +385,67 @@ export const cursorRules: DeleteContentOpsRule[] = [
   {
     /**
      * 💡 Situation:
+     * - Cursor is at the start of a non-empty node.
+     * - The previous sibling is an empty mark-toggle runway.
+     *
+     * 🎯 Operations:
+     * - Remove the empty runway instead of merging this node's text into it.
+     * - Caret stays at the start of the current node.
+     */
+    build: ({ context, situation }): Operation[] | null => {
+      if (situation.kind !== 'cursor-selection') {
+        return null
+      }
+
+      const { block, node, nodeIndex } = situation
+      const prevNode = block.content[nodeIndex - 1]
+      if (!prevNode || !isEmptyEditableRunway(prevNode)) {
+        buildError(
+          `Previous empty runway not found for block ${block.id} at index ${nodeIndex - 1}`,
+          'DeleteContentOpsBuilder/#build',
+        )
+      }
+
+      return withTrailingSelectionOp(
+        [
+          {
+            __type: 'remove_inline_node',
+            blockId: block.id,
+            nodeId: prevNode.id,
+            snapshot: prevNode,
+          },
+        ],
+        createCursor({
+          blockId: block.id,
+          nodeId: node.id,
+          offset: 0,
+        }),
+        context.selection,
+      )
+    },
+    name: 'cursor/delete-content/at-node-start/drop-empty-prev-runway',
+    when: ({ situation }): boolean => {
+      if (situation.kind !== 'cursor-selection') {
+        return false
+      }
+
+      const { at, nodeIndex, node, block } = situation
+      const prevNode = block.content[nodeIndex - 1]
+
+      return (
+        at.offset === 0 &&
+        nodeIndex > 0 &&
+        node.text.length > 0 &&
+        prevNode !== undefined &&
+        isEmptyEditableRunway(prevNode)
+      )
+    },
+  },
+  {
+    /**
+     * 💡 Situation:
      * - Cursor is at the start of the node.
-     * - The previous node is not a line break or mention.
+     * - The previous node is not a line break, mention, or empty runway.
      * - The current node has non-empty text.
      *
      * 🎯 Operations:
@@ -434,7 +505,8 @@ export const cursorRules: DeleteContentOpsRule[] = [
         nodeIndex > 0 &&
         node.text.length > 0 &&
         prevNode !== undefined &&
-        isInlineNodeWithEditableText(prevNode)
+        isInlineNodeWithEditableText(prevNode) &&
+        !isEmptyEditableRunway(prevNode)
       )
     },
   },
@@ -506,11 +578,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
             : inline,
         )
 
-      const collapsed = buildCollapseEmptyBlockToActiveMarksOps(
-        block,
-        remaining,
-        context.activeMarks,
-      )
+      const collapsed = buildCollapseEmptyBlockOps(block, remaining)
 
       if (collapsed) {
         return withTrailingSelectionOp(
@@ -592,11 +660,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
       }
 
       const remaining = block.content.filter((inline) => inline.id !== node.id)
-      const collapsed = buildCollapseEmptyBlockToActiveMarksOps(
-        block,
-        remaining,
-        context.activeMarks,
-      )
+      const collapsed = buildCollapseEmptyBlockOps(block, remaining)
 
       if (collapsed) {
         return withTrailingSelectionOp(
@@ -687,11 +751,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
         inline.id === node.id ? { ...node, text: remainingText } : inline,
       )
 
-      const collapsed = buildCollapseEmptyBlockToActiveMarksOps(
-        block,
-        remaining,
-        context.activeMarks,
-      )
+      const collapsed = buildCollapseEmptyBlockOps(block, remaining)
 
       if (collapsed) {
         return withTrailingSelectionOp(
@@ -772,7 +832,6 @@ export const rangeRules: DeleteContentOpsRule[] = [
       const { block } = topology
 
       const deleteIntent = buildDeleteRangeWithinBlockIntent(
-        context,
         block,
         anchor,
         focus,

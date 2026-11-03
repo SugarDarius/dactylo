@@ -12,12 +12,12 @@ Users write in a familiar editor. Underneath, Dactylo keeps a typed document you
 
 ### Core architecture
 
-Every mutation goes through one **`TransactionPipeline`**. **`Dactylo`** is a thin facade: commands and keyboard handlers build operations, then dispatch a transaction. Subscribers see a full **`EditorContext`** snapshot (document, selection, active marks)—not document-only diffs.
+Every mutation goes through one **`TransactionPipeline`**. **`Dactylo`** is a thin facade: commands and keyboard handlers build operations, then dispatch a transaction. Subscribers see a full **`EditorContext`** snapshot (document, selection)—not document-only diffs.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                      EditorContext                           │
-│  state (DocumentState)  │  selection  │  activeMarks         │
+│  state (DocumentState)  │  selection                             │
 └──────────────────────────────────────────────────────────────┘
          ▲                           │
          │                           ▼
@@ -94,14 +94,12 @@ const editor = new Dactylo({
   placeholder: 'Write something…',
 })
 
-const unsubscribe = editor.subscribe(({ state, selection, activeMarks }) => {
+const unsubscribe = editor.subscribe(({ state, selection }) => {
   render({
     /** The written content. */
     state,
     /** Where the user is editing. */
     selection,
-    /** Which active marks are enabled. */
-    activeMarks,
   })
 })
 

@@ -455,7 +455,6 @@ export const rangeRules: PastePlainTextOpsRule[] = [
       const { block } = topology
 
       const deleteIntent = buildDeleteRangeWithinBlockIntent(
-        context,
         block,
         anchor,
         focus,
@@ -524,6 +523,7 @@ export const rangeRules: PastePlainTextOpsRule[] = [
         startBlock,
         endBlock,
       )
+
       const caretBlock = deleteIntent.caretBlock ?? startBlock
       const caretNode = resolvesCaretNode(caretBlock, deleteIntent)
 

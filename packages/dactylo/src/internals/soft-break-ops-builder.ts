@@ -110,7 +110,6 @@ export type SoftBreakOpsRule = OperationRule<
 
 /** Builds inline soft-break operations at a caret inside a text or link node. */
 export function buildSoftBreakInlineOpsAtCaret(
-  context: EditorContext,
   block: BlockWithInlineContent,
   at: TextCursor,
   node: InlineNodeWithEditableText,
@@ -120,9 +119,10 @@ export function buildSoftBreakInlineOpsAtCaret(
 
   if (isCursorAtBlockEnd(at, block)) {
     const insertedText = createTextNode({
-      marks: context.activeMarks,
+      marks: node.marks,
       text: '',
     })
+
     return {
       next: createCursor({
         blockId: block.id,
@@ -200,7 +200,6 @@ export const cursorRules: SoftBreakOpsRule[] = [
 
       const { at, block, node, index } = situation
       const { ops, next } = buildSoftBreakInlineOpsAtCaret(
-        context,
         block,
         at,
         node,
@@ -231,7 +230,6 @@ export const cursorRules: SoftBreakOpsRule[] = [
 
       const { at, block, node, index } = situation
       const { ops, next } = buildSoftBreakInlineOpsAtCaret(
-        context,
         block,
         at,
         node,
@@ -259,7 +257,7 @@ export const rangeRules: SoftBreakOpsRule[] = [
      * 💡 Range selection lies entirely inside one text/link node.
      * 🎯 Delete the selected run in-node, then soft-break at anchor (no survivor join).
      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ situation }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-node'
@@ -289,7 +287,6 @@ export const rangeRules: SoftBreakOpsRule[] = [
       }
 
       const { ops, next } = buildSoftBreakInlineOpsAtCaret(
-        context,
         newBlock,
         deleteIntent.caret,
         nodeAfter,
@@ -310,7 +307,7 @@ export const rangeRules: SoftBreakOpsRule[] = [
      * 💡 Range spans multiple inline nodes in one block.
      * 🎯 Delete the range without joining survivors, then soft-break at anchor.
      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ situation }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-block'
@@ -323,7 +320,6 @@ export const rangeRules: SoftBreakOpsRule[] = [
       const { block } = topology
 
       const deleteIntent = buildDeleteRangeWithinBlockIntent(
-        context,
         block,
         anchor,
         focus,
@@ -340,7 +336,6 @@ export const rangeRules: SoftBreakOpsRule[] = [
       }
 
       const { ops, next } = buildSoftBreakInlineOpsAtCaret(
-        context,
         newBlock,
         deleteIntent.caret,
         caretNode,
@@ -384,7 +379,6 @@ export const rangeRules: SoftBreakOpsRule[] = [
       )
 
       const { ops, next } = buildSoftBreakInlineOpsAtCaret(
-        context,
         caretBlock,
         deleteIntent.caret,
         caretNode,

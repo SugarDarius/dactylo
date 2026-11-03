@@ -344,9 +344,9 @@ export class OperationsEngine {
     switch (type) {
       case 'paragraph': {
         const insertedText = createTextNode({
-          marks: context.activeMarks,
           text: '',
         })
+
         const paragraph = createParagraphBlock({
           content: [insertedText],
           metadata: spec.metadata,
@@ -374,9 +374,9 @@ export class OperationsEngine {
       }
       case 'heading': {
         const insertedText = createTextNode({
-          marks: context.activeMarks,
           text: '',
         })
+
         const heading = createHeadingBlock({
           content: [insertedText],
           level: spec.level,
@@ -416,9 +416,9 @@ export class OperationsEngine {
          * the selection is set inside it.
          */
         const insertedText = createTextNode({
-          marks: context.activeMarks,
           text: '',
         })
+
         const paragraph = createParagraphBlockAfter(divider, [insertedText])
 
         const ops: Operation[] = [

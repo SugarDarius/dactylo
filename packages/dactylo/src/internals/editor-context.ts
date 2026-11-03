@@ -8,12 +8,8 @@ import {
   replaceBlock,
 } from './document'
 import type { DocumentState } from './document'
-import {
-  createInitialActiveMarks,
-  isMarkEnabled,
-  normalizeMarks,
-} from './marks'
-import type { MarkKey, Marks } from './marks'
+import { isMarkEnabled } from './marks'
+import type { MarkKey } from './marks'
 import { isInlineNodeWithEditableText } from './nodes'
 import type { InlineNode } from './nodes'
 import { isSelectionActive } from './selection'
@@ -30,10 +26,9 @@ import type { Selection } from './selection'
  * │                        EditorContext                               │
  * |  ┌─────────────────────---┐  ┌──────────────────────────────────┐  │
  * |  │  state: DocumentState  │  │ selection: Selection | null      │  │
- * |  |  activeMarks: Marks    |  |            |                     |  |
- * |  |         |              |  |            |                     |  |
- * |  |         ▼              |  |            ▼                     |  |
- * |  │  the written content   │  │ where the user is editing        │  │
+ * |  |         |              |  |            |                     |  │
+ * |  |         ▼              |  |            ▼                     |  │
+ * |  │  the written content   │  │   where the user is editing      │  │
  * |  └─────────────────────---┘  └──────────────────────────────────┘  │
  * └─────────────────────────────────────────────────────────────────---┘
  *         │                              │
@@ -60,24 +55,9 @@ import type { Selection } from './selection'
  * Keyboard handlers check this first before handling key events.
  * Without an explicit `null`, we would need a sentinel cursor or risk applying edits to a stale position.
  *
- * Why `activeMarks: Marks` lives in {@link EditorContext}?
- *
- * Active marks are note a second copy of document marks. It holds pending format for the next keystroke
- * when the caret is collapsed and nothing has been inserted yet:
- *
- * | Concern                   | `TextNode.marks`                        | `EditorContext.activeMarks`                        |
- * |---------------------------|-----------------------------------------|----------------------------------------------------|
- * | Scope                     | Characters already in the document      | Next `insert_text` from the keyboard               |
- * | In `DocumentState`        | Yes                                     | No                                                 |
- * | Exported in JSON/Markdown | Yes (on text nodes only)                | No                                                 |
- * | Undo/redo                 | Via `set_marks` / `insert_text` history | Intentionally no history: `pushToHistory` is false |
- *
- * It lives on {@link EditorContext} (alongside `selection`) so the pipeline and subscribers expose one snapshot (caret position,
- * placeholder flag, document can current typing mode for the toolbar) without mixing pending typing mode
- * into {@link DocumentState} before any characters are written.
- *
- * Do not think marks are "not document content". Only the pre-keystroke typing button is excluded from export;
- * applied marks first-class document content.
+ * Inline marks live on {@link TextNode} / {@link LinkNode} in {@link DocumentState}.
+ * The toolbar reads them from the caret node (or selected spans). Typing inherits the
+ * current node's marks; hard/soft break copies them onto the continuation.
  *
  * How {@link EditorContext} connects to the rest of Dactylo:
  * ```
@@ -104,7 +84,7 @@ import type { Selection } from './selection'
  * import { editor } from '~/dactylo'
  *
  * export function EditableDocument() {
- *   // 👉🏻 One object drives everything: the document, the selection, the marks, and the placeholder flag.
+ *   // 👉🏻 One object drives everything: the document, the selection, and the placeholder flag.
  *   const context = useSyncExternalStore((listener) => editor.subscribe(() => listener()), editor.getContext)
  *
  *   return <>...</>
@@ -123,15 +103,6 @@ export interface EditorContext {
   readonly state: DocumentState
 
   /**
-   * Marks for the next keyboard `insert_text` when the caret is collapsed.
-   * Pending typing mode only — applied marks live on {@link TextNode}
-   * in {@link DocumentState} and are exported via JSON / Markdown.
-   *
-   * 👉🏻 What is the current typing mode
-   */
-  readonly activeMarks: Marks
-
-  /**
    * Active cursor, or range selection; `null` when unfocused.
    * Commits together with document changes so undo/redo restores both.
    *
@@ -142,11 +113,9 @@ export interface EditorContext {
 
 /** Creates the initial context for an empty document. */
 export function createInitialEditorContext(): EditorContext {
-  const initialActiveMarks = createInitialActiveMarks()
   return {
-    activeMarks: initialActiveMarks,
     selection: null,
-    state: createInitialEmptyDocumentState(initialActiveMarks),
+    state: createInitialEmptyDocumentState(),
   }
 }
 
@@ -158,17 +127,6 @@ export function withDocumentState(
   return {
     ...context,
     state,
-  }
-}
-
-/** Returns a copy of the context with updated active marks. */
-export function withActiveMarks(
-  context: EditorContext,
-  activeMarks: Marks,
-): EditorContext {
-  return {
-    ...context,
-    activeMarks,
   }
 }
 
@@ -201,14 +159,14 @@ export function updateBlockWithInlineContent(
  * Whether a mark is active or not depending from the selection on the given editor context.
  * 👉🏻  A toolbar button for a mark that should appear pressed or not.
  *
- * - Cursor: reflects `activeMarks`
+ * - Cursor: reflects the caret node's marks
  * - Range: `true` when every selected text slice already has the mark
  */
 export function isMarkActiveInContext(
   context: EditorContext,
   mark: MarkKey,
 ): boolean {
-  const { selection, activeMarks } = context
+  const { selection } = context
 
   if (!isSelectionActive(selection)) {
     return false
@@ -223,12 +181,7 @@ export function isMarkActiveInContext(
       return false
     }
 
-    const normalized = normalizeMarks({
-      active: activeMarks,
-      node: found.node.marks,
-    })
-
-    return isMarkEnabled(normalized, mark)
+    return isMarkEnabled(found.node.marks, mark)
   } else if (selection.__type === 'range') {
     const normalized = normalizeRange(context.state, selection)
     const spans = collectTextSpansInRange(context.state, normalized)

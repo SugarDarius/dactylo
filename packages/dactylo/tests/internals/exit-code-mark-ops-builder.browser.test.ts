@@ -43,7 +43,6 @@ describe('TransactionPipeline exit code mark', () => {
     const caret = requireCursor(pipeline.context)
     expect(caret.nodeId).toBe(hatch.id)
     expect(caret.offset).toBe(1)
-    expect(pipeline.context.activeMarks.code).toBe(false)
 
     assertUndoRedo(pipeline, before)
   })

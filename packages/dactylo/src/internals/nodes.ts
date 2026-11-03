@@ -10,7 +10,7 @@
 
 import { nanoid } from 'nanoid'
 
-import { isMarksEqual } from './marks'
+import { createBaseMarks, isMarksEqual } from './marks'
 import type { Marks } from './marks'
 import { sanitizeLinkHref } from './sanitize-link'
 import { sanitizeText } from './sanitize-text'
@@ -118,13 +118,13 @@ export function generateNodeId(): NodeId {
 export function createTextNode(opts: {
   text: string
   metadata?: Metadata
-  marks: Marks
+  marks?: Marks
 }): TextNode {
   return {
     __type: 'text',
     createdAt: new Date(),
     id: generateNodeId(),
-    marks: opts.marks,
+    marks: opts.marks ?? createBaseMarks(),
     metadata: opts.metadata ?? {},
     text: sanitizeText(opts.text),
     updatedAt: null,
@@ -166,13 +166,13 @@ export function createLinkNode(opts: {
   }
   metadata?: Metadata
   text: string
-  marks: Marks
+  marks?: Marks
 }): LinkNode {
   return {
     __type: 'link',
     createdAt: new Date(),
     id: generateNodeId(),
-    marks: opts.marks,
+    marks: opts.marks ?? createBaseMarks(),
     metadata: opts.metadata ?? {},
     text: sanitizeText(opts.text),
     updatedAt: null,
@@ -198,6 +198,51 @@ export function isInlineNodeWithEditableText(
   node: InlineNode,
 ): node is InlineNodeWithEditableText {
   return isTextNode(node) || isLinkNode(node)
+}
+
+/**
+ * Empty editable inline used as a mark-toggle typing runway.
+ * Not a block placeholder: callers must keep the sole node of a block.
+ */
+export function isEmptyEditableRunway(node: InlineNode): boolean {
+  return isInlineNodeWithEditableText(node) && node.text.length === 0
+}
+
+/** Collects trailing empty runways, never the first remaining node of the block. */
+export function collectTrailingEmptyRunways(
+  content: readonly InlineNode[],
+): InlineNode[] {
+  const collected: InlineNode[] = []
+
+  for (let i = content.length - 1; i >= 1; i -= 1) {
+    const node = content[i]
+    if (!node || !isEmptyEditableRunway(node)) {
+      break
+    }
+
+    collected.unshift(node)
+  }
+
+  return collected
+}
+
+/** Collects leading empty runways, never the last remaining node of the block. */
+export function collectLeadingEmptyRunways(
+  content: readonly InlineNode[],
+): InlineNode[] {
+  const collected: InlineNode[] = []
+  const lastIndex = content.length - 1
+
+  for (let i = 0; i < lastIndex; i += 1) {
+    const node = content[i]
+    if (!node || !isEmptyEditableRunway(node)) {
+      break
+    }
+
+    collected.push(node)
+  }
+
+  return collected
 }
 
 /** Creates a new inline node with editable text from an existing inline node. */
@@ -280,9 +325,9 @@ export function isEditableTextWithoutVisibleCharacters(text: string): boolean {
 /**
  * Whether inline content has no user-visible text.
  *
- * Unlike {@link isCanonicalEmptyInlineContent}, does **not** compare
- * `TextNode.marks` to {@link EditorContext.activeMarks}. Use this for
- * placeholder / `data-empty` / `isWithEmptyInlineContent`.
+ * Unlike {@link isCanonicalEmptyInlineContent}, does **not** require
+ * unmarked empty text. Use this for placeholder / `data-empty` /
+ * `isWithEmptyInlineContent`.
  *
  * Collapse skip logic should keep using {@link isCanonicalEmptyInlineContent}.
  */
@@ -319,7 +364,7 @@ export function isInlineContentWithoutVisibleText(
 
 /**
  * Whether inline content matches the editor's canonical "empty paragraph" shape:
- * exactly one {@link TextNode} with `text === ""` and marks equal to `activeMarks`.
+ * exactly one unmarked {@link TextNode} with `text === ""`.
  *
  * Empty {@link LinkNode} (or other editable-text inline types) are **not** canonical:
  * an empty block must present as plain text so typing and placeholders stay on a
@@ -327,7 +372,6 @@ export function isInlineContentWithoutVisibleText(
  */
 export function isCanonicalEmptyInlineContent(
   content: readonly InlineNode[],
-  activeMarks: Marks,
 ): boolean {
   if (content.length !== 1) {
     return false
@@ -338,7 +382,7 @@ export function isCanonicalEmptyInlineContent(
     return false
   }
 
-  return first.text.length === 0 && isMarksEqual(first.marks, activeMarks)
+  return first.text.length === 0 && isMarksEqual(first.marks, createBaseMarks())
 }
 
 /**

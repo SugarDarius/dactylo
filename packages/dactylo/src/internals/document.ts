@@ -1,7 +1,6 @@
 import { createParagraphBlock, isBlockWithInlineContent } from './blocks'
 import type { Block, BlockId, BlockWithInlineContent } from './blocks'
 import { DactyloError } from './errors'
-import type { Marks } from './marks'
 import { createTextNode, isInlineContentWithoutVisibleText } from './nodes'
 import type { InsertBlockPosition } from './operations-builder'
 import {
@@ -94,13 +93,10 @@ export interface DocumentState {
 }
 
 /** Creates an initial empty doc state for empty document. */
-export function createInitialEmptyDocumentState(
-  activeMarks: Marks,
-): DocumentState {
+export function createInitialEmptyDocumentState(): DocumentState {
   const block = createParagraphBlock({
     content: [
       createTextNode({
-        marks: activeMarks,
         text: '',
       }),
     ],

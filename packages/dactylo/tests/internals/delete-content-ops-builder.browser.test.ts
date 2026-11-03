@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
+import { isMarkEnabled } from '../../src/internals/marks'
 import { isInlineNodeWithEditableText } from '../../src/internals/nodes'
 import {
   assertUndoRedo,
@@ -178,20 +179,21 @@ describe('TransactionPipeline delete content', () => {
   test('deleting four paragraphs through the last letter, leaving a trailing empty node', () => {
     const pipeline = makePipeline({ markdown: false })
     typeLines(pipeline, ['F', 'S', 'D', 'E'])
-    pipeline.toggleMark('bold', 'user')
-    pipeline.toggleMark('bold', 'user')
+    softBreak(pipeline)
 
     const last = nthInlineBlock(pipeline.context, 3)
-    expect(last.content).toHaveLength(2)
-    const [eNode] = last.content
-    if (!eNode || !isInlineNodeWithEditableText(eNode)) {
-      throw new Error('Expected the last block to start with "E"')
+    expect(last.content).toHaveLength(3)
+    const trailing = last.content.at(-1)
+    if (!trailing || !isInlineNodeWithEditableText(trailing)) {
+      throw new Error(
+        'Expected a trailing empty text node after the line break',
+      )
     }
 
     selectRange(pipeline, startOfBlock(nthInlineBlock(pipeline.context, 0)), {
       blockId: last.id,
-      nodeId: eNode.id,
-      offset: eNode.text.length,
+      nodeId: trailing.id,
+      offset: trailing.text.length,
     })
     const before = snapshot(pipeline.context)
 
@@ -199,6 +201,70 @@ describe('TransactionPipeline delete content', () => {
 
     expect(pipeline.context.state.blockOrderById).toHaveLength(1)
     expect(blockTexts(pipeline.context)).toEqual([''])
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Backspace at the start of the next block drops a trailing empty runway', () => {
+    const pipeline = makePipeline({ markdown: false })
+    typeLines(pipeline, ['Hello', 'World'])
+    setCursor(pipeline, endOfBlock(nthInlineBlock(pipeline.context, 0)))
+    pipeline.toggleMark('bold', 'user')
+    setCursor(pipeline, startOfBlock(nthInlineBlock(pipeline.context, 1)))
+    const before = snapshot(pipeline.context)
+
+    deleteBackward(pipeline)
+
+    expect(pipeline.context.state.blockOrderById).toHaveLength(1)
+    expect(blockTexts(pipeline.context)).toEqual(['HelloWorld'])
+    const merged = firstInlineBlock(pipeline.context)
+    const empty = merged.content.filter(
+      (node) => isInlineNodeWithEditableText(node) && node.text.length === 0,
+    )
+    expect(empty).toHaveLength(0)
+    for (const node of merged.content) {
+      if (isInlineNodeWithEditableText(node)) {
+        expect(isMarkEnabled(node.marks, 'bold')).toBe(false)
+      }
+    }
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Backspace at node start drops a previous empty runway instead of merging into it', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'HelloWorld')
+    setCursor(pipeline, { ...requireCursor(pipeline.context), offset: 5 })
+    pipeline.toggleMark('bold', 'user')
+
+    const block = firstInlineBlock(pipeline.context)
+    const world = block.content.find(
+      (node) => isInlineNodeWithEditableText(node) && node.text === 'World',
+    )
+    if (!world || !isInlineNodeWithEditableText(world)) {
+      throw new Error('Expected a World node after the empty runway')
+    }
+    setCursor(pipeline, {
+      blockId: block.id,
+      nodeId: world.id,
+      offset: 0,
+    })
+    const before = snapshot(pipeline.context)
+
+    deleteBackward(pipeline)
+
+    const after = firstInlineBlock(pipeline.context)
+    const empty = after.content.filter(
+      (node) => isInlineNodeWithEditableText(node) && node.text.length === 0,
+    )
+    expect(empty).toHaveLength(0)
+    const worldAfter = after.content.find(
+      (node) =>
+        isInlineNodeWithEditableText(node) && node.text.includes('World'),
+    )
+    if (!worldAfter || !isInlineNodeWithEditableText(worldAfter)) {
+      throw new Error('Expected World to remain after dropping the runway')
+    }
+    expect(isMarkEnabled(worldAfter.marks, 'bold')).toBe(false)
     assertUndoRedo(pipeline, before)
   })
 

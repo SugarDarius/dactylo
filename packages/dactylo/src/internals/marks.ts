@@ -7,7 +7,7 @@
  * Two user-facing behaviors:
  * | Scenario                        | Behavior                                                      |
  * |---------------------------------|---------------------------------------------------------------|
- * | Collapsed cursor (no selection) | Toggle active marks — next typed characters use bold (or not) |
+ * | Collapsed cursor (no selection) | Split at the caret and insert a node with the toggled mark    |
  * | Range selection                 | Toggle mark on selected text via `set_marks`                  |
  *
  * Architecture:
@@ -18,15 +18,11 @@
  * Dactylo.marks.toggle('bold')
  *      |
  *      ├─ selection.__type === 'cursor'
- *      |     └─ set_active_marks (no history) → context.activeMarks
+ *      |     └─ empty node: set_marks; otherwise split and insert a marked node
  *      |
  *      └─ selection.__type === 'range'
  *            └─ set_marks on normalized range (history)
- *                     |
- *                     ▼
- *             buildTypeOps uses context.activeMarks → insert_text.marks
- *
- * Document content against typing mode:
+ * ```
  *
  * Formatting is document content. Inline marks live on {@link TextNode} inside {@link DocumentState}
  * and are exported like any other text:
@@ -36,31 +32,27 @@
  * | JSON     | `content[].marks` on each text node (lossless)                       |
  * | Markdown | `**bold**`, `*italic*`, `` `code` `` wrappers from markdown exporter |
  *
- * When the user types with bold mark on, `activeMarks` in the {@link EditorContext} is copied
- * onto `insert_text` operation, applied to the new run, and stored as `TextNode.marks` in the {@link DocumentState}.
- * From that point on it's normale document content and round-trips through export.
+ * Typing inherits `TextNode.marks` of the node under the caret. Soft break copies those
+ * marks onto the new empty inline. Hard break inserts an unmarked paragraph.
+ * Emptying a block via delete resets marks.
  *
  * ```
- * toggle('bold') at cursor
+ * toggle('bold') at cursor inside "Hello"
  *         │
  *         ▼
- * context.activeMarks = { bold: true, italic: false, ... } ← typing mode (not yet on a node)
+ * split at caret, insert empty TextNode { bold: true, ... }
  *         │
  *         ▼
  * keydown handler ('A')
  *         │
  *         ▼
- * insert_text { text: 'A', marks: { bold: true, ... } }
- *         │
- *         ▼
- * TextNode { text: 'A', marks: { bold: true, ... } } ← document content
+ * insert_text into the new node
  *         │
  *         ▼
  * markdown exporter → "**A**" / JSON exporter → marks on text node
  * ```
- *
- * Range toggles skip the buffer: `set_marks` writes `TextNode.marks` directly to the document.
  */
+
 export interface Marks {
   /** Whether the text  is bold. */
   bold: boolean
@@ -81,8 +73,8 @@ export interface Marks {
 /** Keys that can be toggled from {@link Dactylo}. */
 export type MarkKey = keyof Marks
 
-/** Create the initial active marks when loading a document. */
-export function createInitialActiveMarks(): Marks {
+/** Create a base marks with every marks off. */
+export function createBaseMarks(): Marks {
   return {
     bold: false,
     code: false,
@@ -113,30 +105,5 @@ export function toggleMarkFlag(marks: Marks, mark: MarkKey): Marks {
   return {
     ...marks,
     [mark]: !isMarkEnabled(marks, mark),
-  }
-}
-
-/**
- * Normalizes marks between active marks and an operation marks.
- *
- * When a text is inserted not by typing a character, then it means the text node is
- * inserted by an external source (e.g: copy/paste, Ai agent). So in that case the intent
- * is to say the final marks applied are the ones from the operation not the current active marks.
- *
- * By design it's a cascade: Text|Link node marks > Active marks.
- */
-export function normalizeMarks(params: {
-  /** Active marks in the editor context. */
-  node: Marks
-  /** Marks required for inserting a text */
-  active: Marks
-}): Marks {
-  const { node, active } = params
-  return {
-    bold: node.bold || active.bold,
-    code: node.code || active.code,
-    italic: node.italic || active.italic,
-    strikethrough: node.strikethrough || active.strikethrough,
-    underline: node.underline || active.underline,
   }
 }

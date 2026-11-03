@@ -74,8 +74,8 @@ export const cursorRules: ExitCodeMarkOpsRule[] = [
   {
     /**
      * 💡 Cursor is at the end of a non-empty text/link node with `code`.
-     * 🎯 Insert a `" "` text node after it (not a link), drop `code` from
-     *    typing mode, and put the caret after that space.
+     * 🎯 Insert a `" "` text node after it (not a link) without `code`,
+     *    and put the caret after that space.
      */
     build: ({ context, situation }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
@@ -95,11 +95,6 @@ export const cursorRules: ExitCodeMarkOpsRule[] = [
           afterNodeId: node.id,
           blockId: block.id,
           node: insertedText,
-        },
-        {
-          __type: 'set_active_marks',
-          activeMarks: marksWithoutCode(context.activeMarks),
-          prevActiveMarks: context.activeMarks,
         },
       ]
 

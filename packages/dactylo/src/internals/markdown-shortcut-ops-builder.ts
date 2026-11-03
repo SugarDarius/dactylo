@@ -355,7 +355,7 @@ export function buildMarkdownLinkShortcutOps(
 
   if (openDelimiterOffset > 0) {
     const after = createFromInlineWithEditableText(node, {
-      marks: suffix.length > 0 ? node.marks : context.activeMarks,
+      marks: node.marks,
       text: suffix,
     })
 
@@ -490,11 +490,10 @@ export function buildMarkdownMarkShortcutOps(
   }
 
   /**
-   * Keep typing with `activeMarks`, not the mark just applied.
+   * Keep typing with the pre-shortcut marks, not the mark just applied.
    * A suffix split already has the original marks — park the caret there
    * instead of inserting an empty node (which paints as a ZWSP sibling).
-   * Only insert an empty continuation when the shortcut is at the node end,
-   * matching cursor mark-toggle on a non-empty node.
+   * Only insert an empty continuation when the shortcut is at the node end.
    */
   if (partial?.after) {
     return withTrailingSelectionOp(
@@ -508,9 +507,9 @@ export function buildMarkdownMarkShortcutOps(
     )
   }
 
-  if (!isMarksEqual(nextMarks, context.activeMarks)) {
+  if (!isMarksEqual(nextMarks, prevMarks)) {
     const inserted = createFromInlineWithEditableText(node, {
-      marks: context.activeMarks,
+      marks: prevMarks,
       text: '',
     })
 
@@ -659,7 +658,6 @@ const rules: MarkdownShortcutOpsRule[] = [
        * the selection is set inside it.
        */
       const insertedText = createTextNode({
-        marks: context.activeMarks,
         text: '',
       })
       const paragraph = createParagraphBlockAfter(divider, [insertedText])

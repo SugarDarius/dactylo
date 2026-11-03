@@ -17,7 +17,6 @@ import {
 import type { DocumentState } from './document'
 import {
   updateBlockWithInlineContent,
-  withActiveMarks,
   withDocumentState,
   withSelection,
 } from './editor-context'
@@ -41,7 +40,6 @@ import type {
   MutateBlockTypeOp,
   Operation,
   RemoveInlineNodeOp,
-  SetActiveMarksOp,
   SetMarksOp,
   SetSelectionOp,
   SplitBlockOp,
@@ -453,9 +451,6 @@ export function validateOp(context: EditorContext, op: Operation): void {
       validateSetSelectionOp(context, op)
       break
     }
-    case 'set_active_marks': {
-      break
-    }
     default: {
       assertNever(type, { hint: 'OperationsRuntime/validateOp' })
     }
@@ -738,14 +733,6 @@ export function applyRemoveInlineNodeOp(
   return updateBlockWithInlineContent(context, op.blockId, content)
 }
 
-/** Applies a {@link SetActiveMarksOp} operation to {@link EditorContext}. */
-export function applySetActiveMarksOp(
-  context: EditorContext,
-  op: SetActiveMarksOp,
-): EditorContext {
-  return withActiveMarks(context, op.activeMarks)
-}
-
 /** Applies a {@link SetMarksOp} operation to {@link EditorContext}. */
 export function applySetMarksOp(
   context: EditorContext,
@@ -818,9 +805,6 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
     }
     case 'remove_inline_node': {
       return applyRemoveInlineNodeOp(context, op)
-    }
-    case 'set_active_marks': {
-      return applySetActiveMarksOp(context, op)
     }
     case 'set_marks': {
       return applySetMarksOp(context, op)
@@ -959,13 +943,6 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
         node: op.snapshot,
       }
     }
-    case 'set_active_marks': {
-      return {
-        __type: 'set_active_marks',
-        activeMarks: op.prevActiveMarks,
-        prevActiveMarks: op.activeMarks,
-      }
-    }
     case 'set_marks': {
       return {
         __type: 'set_marks',
@@ -993,7 +970,7 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
 /**
  * Shared operations runtime for:
  *  - Validating ops: ensuring ops are respecting invariant rules
- *  - Applying ops: updating document state based on active marks
+ *  - Applying ops: updating document state and selection
  *  - Inverting ops: defining inverse ops for undo.
  */
 export interface OperationsRuntime {

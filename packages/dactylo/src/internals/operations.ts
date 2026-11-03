@@ -199,17 +199,6 @@ export interface RemoveInlineNodeOp {
   readonly snapshot: InlineNode
 }
 
-/** Updates active typing marks without mutating document content. */
-export interface SetActiveMarksOp {
-  readonly __type: 'set_active_marks'
-
-  /** Active marks before the change (for invert). */
-  readonly prevActiveMarks: Marks
-
-  /** Active marks after the change. */
-  readonly activeMarks: Marks
-}
-
 /** Applies mark changes to a character range within a text node. */
 export interface SetMarksOp {
   readonly __type: 'set_marks'
@@ -255,6 +244,5 @@ export type Operation =
   | DeleteTextOp
   | InsertInlineNodeOp
   | RemoveInlineNodeOp
-  | SetActiveMarksOp
   | SetMarksOp
   | SetSelectionOp

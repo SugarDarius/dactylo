@@ -31,7 +31,6 @@ import { TransactionPipeline } from '../../src/internals/transaction'
 
 /** Snapshot of a document used to assert undo restores structure, not timestamps. */
 export interface DocumentSnapshot {
-  readonly activeMarks: EditorContext['activeMarks']
   readonly blocks: readonly SerializedBlock[]
   readonly selection: Selection | null
 }
@@ -119,7 +118,6 @@ function serializeBlock(block: Block): SerializedBlock {
 /** Structural snapshot of context (ids, text, marks, selection). */
 export function snapshot(context: EditorContext): DocumentSnapshot {
   return {
-    activeMarks: { ...context.activeMarks },
     blocks: context.state.blockOrderById.map((id) => {
       const block = getBlock(context.state, id)
       return serializeBlock(block)

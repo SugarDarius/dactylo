@@ -3,15 +3,18 @@ import type { BlockId, BlockWithInlineContent, HeadingBlock } from './blocks'
 import { getBlock } from './document'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
-import { isMarksEqual } from './marks'
+import { createBaseMarks, isMarksEqual } from './marks'
 import type { Marks } from './marks'
 import {
+  collectLeadingEmptyRunways,
+  collectTrailingEmptyRunways,
   createFromInlineWithEditableText,
   createLinkNode,
   createTextNode,
   isCanonicalEmptyInlineContent,
   isInlineContentTextEmpty,
   isInlineNodeWithEditableText,
+  isTextNode,
   joinInlineContentAtMergeSeam,
   touchInlineNode,
 } from './nodes'
@@ -69,7 +72,7 @@ export interface PartialMarkRangeIntent {
 
 /**
  * Intent when collapsing a text-empty non-canonical block.
- * Strips remaining inlines, insert one empty {@link TextNode} with active marks.
+ * Strips remaining inlines, insert one empty unmarked {@link TextNode}.
  */
 export interface BuilderCollapseIntent {
   readonly ops: Operation[]
@@ -221,6 +224,7 @@ export interface OperationsBuilderOptions {
  * Forcing to implement `describe` and `build` methods.
  */
 export abstract class OperationsBuilder<S, I, R> {
+  /** Operation builder name. */
   readonly name: string
 
   constructor(options: OperationsBuilderOptions) {
@@ -482,7 +486,6 @@ export function resolvesRemainingInlineNodesAfterInBlockRange(
 export function resolvesMergeBlocksUndoFields(
   source: BlockWithInlineContent,
   target: BlockWithInlineContent,
-  marks: Marks,
 ): { splitAtNodeId: NodeId; splitAtOffset: number } {
   const last = target.content[target.content.length - 1]
   if (!last) {
@@ -492,11 +495,12 @@ export function resolvesMergeBlocksUndoFields(
      * The helper still returns some id/offset pair so MergeBlocksOp can be constructed;
      * in practice merges like this are rare, and undo leans on sourceSnapshot / mergedTailSnapshot /
      * atIndex as well.
+     *
      * The fallback id is not in the document until something else creates it—treat this as a
      * spec placeholder for an edge case, not a happy-path path.
      */
     if (!first) {
-      const fallback = createTextNode({ marks, text: '' })
+      const fallback = createTextNode({ text: '' })
       return { splitAtNodeId: fallback.id, splitAtOffset: 0 }
     }
 
@@ -682,6 +686,48 @@ export function buildRemoveInlineNodeRangeOps(
   return ops
 }
 
+/** Removes the given empty runway nodes from `block`. */
+export function buildRemoveEmptyRunwayOps(
+  blockId: BlockId,
+  nodes: readonly InlineNode[],
+): Operation[] {
+  return nodes.map((node) => ({
+    __type: 'remove_inline_node',
+    blockId,
+    nodeId: node.id,
+    snapshot: node,
+  }))
+}
+
+/**
+ * Drops unused empty mark-toggle runways at a merge seam.
+ * Trailing empties on the target and leading empties on the source, never the
+ * sole remaining node of either block.
+ */
+export function stripEmptyRunwaysAtMergeSeam(
+  target: BlockWithInlineContent,
+  source: BlockWithInlineContent,
+): {
+  ops: Operation[]
+  sourceContent: InlineNode[]
+  targetContent: InlineNode[]
+} {
+  const trailing = collectTrailingEmptyRunways(target.content)
+  const leading = collectLeadingEmptyRunways(source.content)
+
+  return {
+    ops: [
+      ...buildRemoveEmptyRunwayOps(target.id, trailing),
+      ...buildRemoveEmptyRunwayOps(source.id, leading),
+    ],
+    sourceContent: source.content.slice(leading.length),
+    targetContent: target.content.slice(
+      0,
+      target.content.length - trailing.length,
+    ),
+  }
+}
+
 /**
  * Deletes from `from` (inclusive) through the end of the block.
  * Keeps `[block_start, from]`.
@@ -856,27 +902,57 @@ export function buildBackwardTrimBlockOps(
 /**
  * When a block has no visible text ({@link isInlineContentTextEmpty}) but still
  * holds non-canonical inline structure (e.g. a lone empty {@link LinkNode}),
- * strip all inline nodes and insert one empty {@link TextNode} with `activeMarks`.
+ * strip all inline nodes and insert one empty unmarked {@link TextNode}.
+ *
+ * If the block is already a single empty {@link TextNode} with marks, reset
+ * those marks in place so the node id is preserved.
  *
  * Undo restores removed nodes via `remove_inline_node` snapshots.
  *
- * Returns pps plus the new placeholder node id for selection rewrite, or `null`
+ * Returns ops plus the new placeholder node id for selection rewrite, or `null`
  * if the block is not text-empty or is already canonically empty text.
  */
-export function buildCollapseEmptyBlockToActiveMarksOps(
+export function buildCollapseEmptyBlockOps(
   block: BlockWithInlineContent,
   contentAfterPriorGeometry: InlineNode[],
-  activeMarks: Marks,
 ): { ops: Operation[]; placeholder: TextNode } | null {
   if (!isInlineContentTextEmpty(contentAfterPriorGeometry)) {
     return null
   }
 
-  if (isCanonicalEmptyInlineContent(contentAfterPriorGeometry, activeMarks)) {
+  if (isCanonicalEmptyInlineContent(contentAfterPriorGeometry)) {
     return null
   }
 
-  const placeholder = createTextNode({ marks: activeMarks, text: '' })
+  const emptyMarks = createBaseMarks()
+  const [only] = contentAfterPriorGeometry
+
+  if (
+    contentAfterPriorGeometry.length === 1 &&
+    only &&
+    isTextNode(only) &&
+    only.text.length === 0
+  ) {
+    return {
+      ops: [
+        {
+          __type: 'set_marks',
+          blockId: block.id,
+          from: 0,
+          nextMarks: emptyMarks,
+          nodeId: only.id,
+          prevMarks: only.marks,
+          to: 0,
+        },
+      ],
+      placeholder: {
+        ...only,
+        marks: emptyMarks,
+      },
+    }
+  }
+
+  const placeholder = createTextNode({ text: '' })
   const ops: Operation[] = [
     ...buildRemoveInlineNodeRangeOps(
       block,
@@ -900,16 +976,11 @@ export function buildCollapseEmptyBlockToActiveMarksOps(
  * when remaining inline nodes are text-empty and not canonical.
  */
 export function buildApplyCollapseIfNeededIntent(
-  context: EditorContext,
   block: BlockWithInlineContent,
   remaining: InlineNode[],
   intent: BuilderDeleteIntent,
 ): BuilderDeleteIntent {
-  const collapsed = buildCollapseEmptyBlockToActiveMarksOps(
-    block,
-    remaining,
-    context.activeMarks,
-  )
+  const collapsed = buildCollapseEmptyBlockOps(block, remaining)
   if (!collapsed) {
     return intent
   }
@@ -926,7 +997,6 @@ export function buildApplyCollapseIfNeededIntent(
  * Collapse allocates a placeholder and the caret is that id.
  */
 export function buildDeleteRangeWithinBlockIntent(
-  context: EditorContext,
   block: BlockWithInlineContent,
   anchor: TextCursor,
   focus: TextCursor,
@@ -960,7 +1030,6 @@ export function buildDeleteRangeWithinBlockIntent(
     )
 
     return buildApplyCollapseIfNeededIntent(
-      context,
       block,
       resolvesRemainingInlineNodesAfterInBlockRange(
         block,
@@ -1050,7 +1119,6 @@ export function buildDeleteRangeWithinBlockIntent(
   }
 
   return buildApplyCollapseIfNeededIntent(
-    context,
     block,
     resolvesRemainingInlineNodesAfterInBlockRange(
       block,
@@ -1090,11 +1158,7 @@ export function buildDeleteRangeCrossBlockIntent(
     startBlock,
     range.anchor,
   )
-  const collapsedHead = buildCollapseEmptyBlockToActiveMarksOps(
-    startBlock,
-    remainingHead,
-    context.activeMarks,
-  )
+  const collapsedHead = buildCollapseEmptyBlockOps(startBlock, remainingHead)
 
   if (collapsedHead) {
     ops.push(...collapsedHead.ops)
@@ -1105,9 +1169,17 @@ export function buildDeleteRangeCrossBlockIntent(
     endBlock,
     range.focus,
   )
+  const stripped = stripEmptyRunwaysAtMergeSeam(
+    { ...startBlock, content: remainingHead },
+    { ...endBlock, content: remainingTail },
+  )
+  ops.push(...stripped.ops)
+
+  remainingHead = stripped.targetContent
+  const remainingTailAfter = stripped.sourceContent
   const trimmedSource: BlockWithInlineContent = {
     ...endBlock,
-    content: remainingTail,
+    content: remainingTailAfter,
   }
   const trimmedTarget: BlockWithInlineContent = {
     ...startBlock,
@@ -1117,12 +1189,11 @@ export function buildDeleteRangeCrossBlockIntent(
   const { splitAtNodeId, splitAtOffset } = resolvesMergeBlocksUndoFields(
     trimmedSource,
     trimmedTarget,
-    context.activeMarks,
   )
 
   ops.push({
     __type: 'merge_blocks',
-    mergedTailSnapshot: remainingTail,
+    mergedTailSnapshot: remainingTailAfter,
     sourceBlockId: endBlock.id,
     sourceSnapshot: trimmedSource,
     splitAtNodeId,
@@ -1132,12 +1203,11 @@ export function buildDeleteRangeCrossBlockIntent(
 
   const mergedRemaining = joinInlineContentAtMergeSeam(
     remainingHead,
-    remainingTail,
+    remainingTailAfter,
   )
-  const collapsedMerged = buildCollapseEmptyBlockToActiveMarksOps(
+  const collapsedMerged = buildCollapseEmptyBlockOps(
     startBlock,
     mergedRemaining,
-    context.activeMarks,
   )
 
   if (collapsedMerged) {

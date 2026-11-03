@@ -6,6 +6,7 @@ import { isInlineNodeWithEditableText } from '../../src/internals/nodes'
 import {
   assertNonEmptyInlinesPaintWithoutZwsp,
   assertUndoRedo,
+  deleteBackward,
   endOfBlock,
   firstInlineBlock,
   focus,
@@ -14,6 +15,7 @@ import {
   requireCursor,
   selectOffsetsInCurrentNode,
   selectRange,
+  setCursor,
   snapshot,
   startOfBlock,
   typeLines,
@@ -29,14 +31,97 @@ const MARK_KEYS: MarkKey[] = [
 ]
 
 describe('TransactionPipeline marks', () => {
-  test('toggling bold on a collapsed caret updates active marks and is not a history entry', () => {
+  test('toggling bold on a collapsed caret marks the current node and is a history entry', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
+    const before = snapshot(pipeline.context)
 
     pipeline.toggleMark('bold', 'user')
 
-    expect(pipeline.context.activeMarks.bold).toBe(true)
-    expect(pipeline.canUndo()).toBe(false)
+    const [node] = firstInlineBlock(pipeline.context).content
+    if (!node || !isInlineNodeWithEditableText(node)) {
+      throw new Error('Expected an editable text node')
+    }
+    expect(node.text).toBe('')
+    expect(isMarkEnabled(node.marks, 'bold')).toBe(true)
+    expect(pipeline.canUndo()).toBe(true)
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('toggling bold at the end of a node inserts a marked node; existing text stays unmarked', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'Hello')
+
+    pipeline.toggleMark('bold', 'user')
+    typeText(pipeline, '!')
+
+    const [head, marked] = firstInlineBlock(pipeline.context).content
+    if (
+      !head ||
+      !marked ||
+      !isInlineNodeWithEditableText(head) ||
+      !isInlineNodeWithEditableText(marked)
+    ) {
+      throw new Error('Expected the original node plus a marked continuation')
+    }
+    expect(head.text).toBe('Hello')
+    expect(isMarkEnabled(head.marks, 'bold')).toBe(false)
+    expect(marked.text).toBe('!')
+    expect(isMarkEnabled(marked.marks, 'bold')).toBe(true)
+  })
+
+  test('toggling bold inside a node splits at the caret and does not mark existing text', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'Hello')
+    setCursor(pipeline, { ...requireCursor(pipeline.context), offset: 2 })
+
+    pipeline.toggleMark('bold', 'user')
+    typeText(pipeline, 'X')
+
+    const [prefix, marked, suffix] = firstInlineBlock(pipeline.context).content
+    if (
+      !prefix ||
+      !marked ||
+      !suffix ||
+      !isInlineNodeWithEditableText(prefix) ||
+      !isInlineNodeWithEditableText(marked) ||
+      !isInlineNodeWithEditableText(suffix)
+    ) {
+      throw new Error('Expected a three-way split around the caret')
+    }
+    expect(prefix.text).toBe('He')
+    expect(isMarkEnabled(prefix.marks, 'bold')).toBe(false)
+    expect(marked.text).toBe('X')
+    expect(isMarkEnabled(marked.marks, 'bold')).toBe(true)
+    expect(suffix.text).toBe('llo')
+    expect(isMarkEnabled(suffix.marks, 'bold')).toBe(false)
+  })
+
+  test('deleting a bold block resets marks; toggling on the empty node keeps bold', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'Hi')
+    selectOffsetsInCurrentNode(pipeline, 0, 2)
+    pipeline.toggleMark('bold', 'user')
+    deleteBackward(pipeline)
+
+    const [emptied] = firstInlineBlock(pipeline.context).content
+    if (!emptied || !isInlineNodeWithEditableText(emptied)) {
+      throw new Error('Expected an empty placeholder node')
+    }
+    expect(emptied.text).toBe('')
+    expect(isMarkEnabled(emptied.marks, 'bold')).toBe(false)
+
+    pipeline.toggleMark('bold', 'user')
+
+    const [marked] = firstInlineBlock(pipeline.context).content
+    if (!marked || !isInlineNodeWithEditableText(marked)) {
+      throw new Error('Expected the empty node to keep toggled marks')
+    }
+    expect(marked.text).toBe('')
+    expect(isMarkEnabled(marked.marks, 'bold')).toBe(true)
   })
 
   test('toggling bold on a range and undo/redo round-trip', () => {

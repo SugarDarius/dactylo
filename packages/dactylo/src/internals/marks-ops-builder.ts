@@ -9,7 +9,7 @@ import {
 } from './document'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
-import { isMarkEnabled, isMarksEqual, toggleMarkFlag } from './marks'
+import { isMarkEnabled, toggleMarkFlag } from './marks'
 import type { MarkKey, Marks } from './marks'
 import {
   createFromInlineWithEditableText,
@@ -76,10 +76,10 @@ export const cursorRules: MarksOpsRule[] = [
   {
     /**
      * 💡 Selection is a cursor selection.
-     * 🎯 Enables the active mark for the given mark key
-     *   on the whole document (e.g the mark is active on typing) and:
-     *     - Either copy the active marks to the node if it's empty
-     *     - Or insert a new node with editable text if the marks are different
+     * 🎯 Toggles the mark for the next typed characters:
+     *     - Empty node: `set_marks` on that node
+     *     - Non-empty node: split at the caret and insert an empty node with the
+     *       toggled marks (existing text keeps its marks)
      */
     build: ({ context, situation, input }): Operation[] | null => {
       const { selection } = context
@@ -90,66 +90,99 @@ export const cursorRules: MarksOpsRule[] = [
         return null
       }
 
-      const prev = context.activeMarks
-      const next = toggleMarkFlag(prev, input.mark)
-
-      const { blockId, nodeId } = selection.anchor
+      const { blockId, nodeId, offset } = selection.anchor
       const { block } = situation
 
       const found = findNodeInBlockWithInlineContent(block, nodeId)
 
-      const ops: Operation[] = [
-        {
-          __type: 'set_active_marks',
-          activeMarks: next,
-          prevActiveMarks: prev,
-        },
-      ]
+      if (!found || !isInlineNodeWithEditableText(found.node)) {
+        return null
+      }
 
-      if (found && isInlineNodeWithEditableText(found.node)) {
-        const { node } = found
+      const { node, index } = found
+      const prevMarks = node.marks
+      const nextMarks = toggleMarkFlag(prevMarks, input.mark)
 
-        if (node.text.length <= 0) {
-          ops.push({
+      if (node.text.length <= 0) {
+        return [
+          {
             __type: 'set_marks',
             blockId,
             from: 0,
-            nextMarks: next,
+            nextMarks,
             nodeId,
-            prevMarks: prev,
-            to: node.text.length,
-          })
-        } else if (!isMarksEqual(node.marks, next)) {
-          const insertedNode = createFromInlineWithEditableText(node, {
-            marks: next,
-            metadata: node.metadata,
-            text: '',
-          })
-
-          ops.push(
-            {
-              __type: 'insert_inline_node',
-              afterNodeId: node.id,
-              blockId,
-              node: insertedNode,
-            },
-            {
-              __type: 'set_selection',
-              next: createCursor({
-                blockId,
-                nodeId: insertedNode.id,
-                offset: 0,
-              }),
-              prev: selection,
-            },
-          )
-        }
+            prevMarks,
+            to: 0,
+          },
+        ]
       }
 
-      return ops
+      const inserted = createFromInlineWithEditableText(node, {
+        marks: nextMarks,
+        metadata: node.metadata,
+        text: '',
+      })
+      const ops: Operation[] = []
+
+      if (offset <= 0) {
+        const prevNode = block.content[index - 1]
+
+        ops.push({
+          __type: 'insert_inline_node',
+          afterNodeId: prevNode ? prevNode.id : null,
+          blockId,
+          node: inserted,
+        })
+      } else if (offset >= node.text.length) {
+        ops.push({
+          __type: 'insert_inline_node',
+          afterNodeId: node.id,
+          blockId,
+          node: inserted,
+        })
+      } else {
+        const tail = node.text.slice(offset)
+
+        ops.push(
+          {
+            __type: 'delete_text',
+            blockId,
+            length: tail.length,
+            nodeId: node.id,
+            offset,
+            snapshot: { text: tail },
+          },
+          {
+            __type: 'insert_inline_node',
+            afterNodeId: node.id,
+            blockId,
+            node: inserted,
+          },
+          {
+            __type: 'insert_inline_node',
+            afterNodeId: inserted.id,
+            blockId,
+            node: createFromInlineWithEditableText(node, {
+              marks: prevMarks,
+              metadata: node.metadata,
+              text: tail,
+            }),
+          },
+        )
+      }
+
+      return withTrailingSelectionOp(
+        ops,
+        createCursor({
+          blockId,
+          nodeId: inserted.id,
+          offset: 0,
+        }),
+        selection,
+      )
     },
-    /** Toggles an active mark on or off on {@link EditorContext}. */
-    name: 'cursor/toggle-mark/on-context',
+    /** Splits at the caret and inserts an empty node with the toggled mark. */
+    name: 'cursor/toggle-mark/on-node',
     when: ({ situation }): boolean => situation.kind === 'cursor-selection',
   },
 ]
@@ -173,7 +206,7 @@ export const rangeRules: MarksOpsRule[] = [
       /**
        * Collecting text spans must yield at least one text slice.
        * An empty span list is also a contract-violation (collapsed range stored as `range`, stale cursors,
-       * or range or non-text-only inline nodes) - not a cue to toggle {@link EditorContext} active marks.
+       * or range or non-text-only inline nodes) - not a cue to toggle the caret node.
        */
       const spans = collectTextSpansInRange(context.state, range)
       if (spans.length <= 0) {
@@ -357,12 +390,11 @@ export class MarksOpsBuilder extends OperationsBuilder<
       return null
     }
 
-    const label = isCursorKind ? 'on-context' : 'on-selection'
+    const label = isCursorKind ? 'on-node' : 'on-selection'
 
     return {
       label: `${label}:${String(input.mark)}`,
       ops,
-      skipHistory: isCursorKind ? true : undefined,
     }
   }
 }
