@@ -256,8 +256,12 @@ export function buildReplaceLinkRangeWithTextOps(
   const before = node.text.slice(0, from)
   const after = node.text.slice(to)
 
+  const normalizedMarks = normalizeMarks({
+    active: context.activeMarks,
+    node: node.marks,
+  })
   const insertedText = createTextNode({
-    marks: context.activeMarks,
+    marks: normalizedMarks,
     text,
   })
 
@@ -556,7 +560,6 @@ export const rangeRules: InsertTextOpsRule[] = [
         ),
       ]
     },
-    /** Same node text/link → `delete_text` + `insert_text` + `set_selection` */
     name: 'range/same-node/delete-then-insert-char',
     when: ({ situation }): boolean =>
       situation.kind === 'range-selection' &&
