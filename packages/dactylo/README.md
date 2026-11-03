@@ -161,7 +161,7 @@ export function Editor() {
 | Feature                                          | Status             | Description                                                                             |
 | ------------------------------------------------ | ------------------ | --------------------------------------------------------------------------------------- |
 | Transaction pipeline (validate · apply · invert) | 🚧 **In Progress** | Single path for keyboard, commands, and agents                                          |
-| Operations Engine                                | 🚧 **In Progress** | Builds operations for each blocks/inline nodes                                          |
+| Operations Runtime, Builder, and Engine          | 🚧 **In Progress** | Builds operations for each blocks/inline nodes                                          |
 | Blocks and inline nodes split & merge            | 🚧 **In Progress** | Built-in merge / and or split logic                                                     |
 | History (undo / redo, typing coalescing)         | ✅ **Done**        | Build-in history                                                                        |
 | Native keys for composing                        | 🚧 **In Progress** | Handling native composing keys like `Enter`, `shift+enter`, `backspace`, `ArrowLeft`, … |
@@ -230,7 +230,7 @@ export function Editor() {
 | Commands API                 | 🚧 **In Progress** | Exposes commands api to mutate document state                                                   |
 | Marks API                    | ✅ **Done**        | Apply marks on eligible inline nodes                                                            |
 | Document API                 | 🚧 **In Progress** | Init (with JSON or Markdown), replace, and reset document state                                 |
-| History API                  | 🚧 **In Progress** | Work with build-in history                                                                      |
+| History API                  | ✅ **Done**        | Work with build-in history                                                                      |
 | Composer API                 | 🚧 **In Progress** | Sends and reads composing events                                                                |
 | Selection API                | 🚧 **In Progress** | Mutate and reads Dactylo's selection                                                            |
 | DOM API                      | 🚧 **In Progress** | Sync browser DOM native selection with Dactylo's selection                                      |
@@ -239,7 +239,7 @@ export function Editor() {
 | Metadata API                 | 🚧 **In Progress** | Mutate and reads blocks and inline nodes metadata (config for globals metadata)                 |
 | Mentions API                 | 📆 **Planned**     | Mutate and reads mentions as first-class citizen                                                |
 | Export JSON and Markdown API | 📆 **Planned**     | Export document state as JSON and Markdown                                                      |
-| Stats API                    | 📆 **Planned**     | Provides stats like total text length, # of blocks, # number of nodes, # of words & sentences   |
+| Stats API                    | 📆 **Planned**     | Provides stats like total text length, # of blocks, # number of nodes, # of words & chars       |
 | Batching transactions        | 🚧 **In Progress** | Supports for batching big number for transactions (Ai Agent use case)                           |
 | Table of contents            | 📆 **Planned**     | Build-in table of content based on headings contained in the document                           |
 | Find & Replace API           | 📆 **Planned**     | Build-in find and replace actions in the document                                               |
