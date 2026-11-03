@@ -77,7 +77,7 @@ export function paintCaretAt(editable: HTMLElement, cursor: TextCursor): void {
   if (!point) {
     throw DactyloError.from({
       code: 'SELECTION_MANAGER_PAINTING',
-      hint: 'SelectionManager/paintCaretAt',
+      hint: 'DomManager/paintCaretAt',
       message: 'No point from text cursor found',
       payload: {
         cursor,
@@ -94,7 +94,7 @@ export function paintCaretAt(editable: HTMLElement, cursor: TextCursor): void {
   if (!domSelection) {
     throw DactyloError.from({
       code: 'NO_WINDOW_SELECTION',
-      hint: 'dom-manager/paintCaretAt',
+      hint: 'DomManager/paintCaretAt',
       message: 'No window selection found',
     })
   }
@@ -131,7 +131,7 @@ export function paintRangeAt(
   if (!anchorBlockContent) {
     throw DactyloError.from({
       code: 'SELECTION_MANAGER_PAINTING',
-      hint: 'dom-manager/paintRangeAt',
+      hint: 'DomManager/paintRangeAt',
       message: `No editable block content found for anchor block id: ${anchor.blockId}`,
       payload: { blockId: anchor.blockId },
     })
@@ -141,7 +141,7 @@ export function paintRangeAt(
   if (!focusBlockContent) {
     throw DactyloError.from({
       code: 'SELECTION_MANAGER_PAINTING',
-      hint: 'dom-manager/paintRangeAt',
+      hint: 'DomManager/paintRangeAt',
       message: `No editable block content found for focus block id: ${focus.blockId}`,
       payload: { blockId: focus.blockId },
     })
@@ -151,7 +151,7 @@ export function paintRangeAt(
   if (!anchorPoint) {
     throw DactyloError.from({
       code: 'SELECTION_MANAGER_PAINTING',
-      hint: 'dom-manager/paintRangeAt',
+      hint: 'DomManager/paintRangeAt',
       message: `No point from text cursor found for anchor block id: ${anchor.blockId}`,
       payload: { blockId: anchor.blockId },
     })
@@ -160,7 +160,7 @@ export function paintRangeAt(
   if (!focusPoint) {
     throw DactyloError.from({
       code: 'SELECTION_MANAGER_PAINTING',
-      hint: 'dom-manager/paintRangeAt',
+      hint: 'DomManager/paintRangeAt',
       message: `No point from text cursor found for focus block id: ${focus.blockId}`,
       payload: { blockId: focus.blockId },
     })
@@ -179,7 +179,7 @@ export function paintRangeAt(
   if (!domSelection) {
     throw DactyloError.from({
       code: 'NO_WINDOW_SELECTION',
-      hint: 'dom-manager/paintRangeAt',
+      hint: 'DomManager/paintRangeAt',
       message: 'No window selection found',
     })
   }
