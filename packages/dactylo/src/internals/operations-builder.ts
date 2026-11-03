@@ -177,6 +177,24 @@ export type MarkdownMarkShortcutSpec = {
     }
 >
 
+/** Describes spec for a trailing plain-text autolink immediately before the trigger space. */
+export interface PlainTextAutolinkSpec {
+  /** Index where the matched URL or markdown link starts (inclusive). */
+  readonly start: number
+
+  /** Index where the match ends (exclusive), at the trigger space. */
+  readonly end: number
+
+  /** Visible link text (URL string, or markdown label). */
+  readonly text: string
+
+  /** Sanitized href to store on the created {@link LinkNode}. */
+  readonly href: string
+
+  /** Title from the collected segment. */
+  readonly title: string
+}
+
 /** Configuration for autolink detection. */
 export interface OperationsBuilderAutolinkConfig {
   /** Whether to enable autolink detection. */

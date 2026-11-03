@@ -1023,14 +1023,29 @@ export class TransactionPipeline {
 
           /**
            * Applies ops built when {@link INLINE_DETECTOR_TRIGGER_CHARACTER} is typed for autolink detection.
-           *  → User typed `spaced` at the end of a recognized link.
+           *  → User typed `space` at the end of a recognized link.
            */
           if (
             text === INLINE_DETECTOR_TRIGGER_CHARACTER &&
             this.#autolinkEnabled()
           ) {
-            // @todo: detect autolink
-            warn('autolink detection is not implemented yet.')
+            const autolinkIntent = this.#operationsEngine.buildAutolinkOps(
+              this.#context,
+              text,
+            )
+
+            if (autolinkIntent !== null) {
+              const { ops: autolinkOps, label: autolinkLabel } = autolinkIntent
+              this.#commit(autolinkOps, {
+                label: transactionPolicyLabel(
+                  'input',
+                  'digest-event',
+                  autolinkLabel,
+                ),
+                pushToHistory: true,
+                source: 'user',
+              })
+            }
           }
 
           /** Applies inline composition ops built for mentions. */

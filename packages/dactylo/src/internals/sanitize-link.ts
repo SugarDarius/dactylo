@@ -36,7 +36,7 @@ export const ALLOWED_SCHEMES = new Set<string>([
 ])
 
 /**
- * Sanitizes a link `href` for storage on {@link LinkNode.url.href} by:
+ * Sanitizes a link `href` for storage on {@link LinkNode} by:
  * - Trimming whitespace and strips NUL / C0 controls.
  * - Blocking executable or file URLs (`javascript:`, `data:`, `vbscript:`, `file:`).
  *   → Returning an empty url instead.

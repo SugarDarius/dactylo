@@ -1,3 +1,4 @@
+import { AutolinkOpsBuilder } from './autolink-ops-builder'
 import {
   createDividerBlock,
   createHeadingBlock,
@@ -89,6 +90,9 @@ export class OperationsEngine {
   /** Markdown shortcut ops builder. */
   readonly #markdownShortcutOpsBuilder: MarkdownShortcutOpsBuilder
 
+  /** Autolink ops builder. */
+  readonly #autolinkOpsBuilder: AutolinkOpsBuilder
+
   /** Insert text ops builder. */
   readonly #insertTextOpsBuilder: InsertTextOpsBuilder
 
@@ -115,6 +119,7 @@ export class OperationsEngine {
     this.#markdownShortcutOpsBuilder = new MarkdownShortcutOpsBuilder({
       autolink: options.autolink,
     })
+    this.#autolinkOpsBuilder = new AutolinkOpsBuilder()
     this.#insertTextOpsBuilder = new InsertTextOpsBuilder()
     this.#deleteContentOpsBuilder = new DeleteContentOpsBuilder({
       graphemeOffsetCaret: new GraphemeOffsetCaret({
@@ -155,6 +160,14 @@ export class OperationsEngine {
     text: string,
   ): BuilderOpsIntent | null {
     return this.#markdownShortcutOpsBuilder.build(context, { text })
+  }
+
+  /** Builds operations for plain-text autolink detection. */
+  buildAutolinkOps(
+    context: EditorContext,
+    text: string,
+  ): BuilderOpsIntent | null {
+    return this.#autolinkOpsBuilder.build(context, { text })
   }
 
   // --- Composing operations ─────────────────────────────────────────
