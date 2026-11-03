@@ -169,6 +169,9 @@ export type MarkdownMarkShortcutSpec = {
   | {
       readonly kind: 'strikethrough'
     }
+  | {
+      readonly kind: 'code'
+    }
 >
 
 /** Configuration for autolink detection. */

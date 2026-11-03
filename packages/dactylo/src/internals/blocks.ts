@@ -61,8 +61,7 @@ export interface IBlockWithInlineContext extends IBlock {
   /**
    * Inline content tree for the block.
    * By design, this array is kept lightweight as an inline sequence
-   * with coalesced text nodes to give better mutation performances
-   * while staying memory-conscious.
+   * to give better mutation performances while staying memory-conscious.
    * */
   readonly content: readonly InlineNode[]
 }
