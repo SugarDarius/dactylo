@@ -204,7 +204,7 @@ export interface OperationsBuilderAutolinkConfig {
 // --- Core -─────────────────────────────────────────---------------
 
 /** Rule describing a list of operations to apply to the document. */
-export interface OperationRule<S, I, R> {
+export interface OperationRule<S, I = unknown, R = unknown> {
   /** Name given to the operation rule. */
   readonly name: string
 
@@ -241,7 +241,7 @@ export interface OperationsBuilderOptions {
  * Shared class for ops builders.
  * Forcing to implement `describe` and `build` methods.
  */
-export abstract class OperationsBuilder<S, I, R> {
+export abstract class OperationsBuilder<S, I = unknown, R = unknown> {
   /** Operation builder name. */
   readonly name: string
 

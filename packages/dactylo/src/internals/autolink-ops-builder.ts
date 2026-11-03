@@ -63,8 +63,7 @@ export interface AutolinkOpsInput {
 /** Rule for autolink operations. */
 export type AutolinkOpsRule = OperationRule<
   AutolinkOpsSituation,
-  AutolinkOpsInput,
-  unknown
+  AutolinkOpsInput
 >
 
 /**
@@ -243,8 +242,7 @@ const rules: AutolinkOpsRule[] = [
 /** Autolink ops builder. */
 export class AutolinkOpsBuilder extends OperationsBuilder<
   AutolinkOpsSituation,
-  AutolinkOpsInput,
-  unknown
+  AutolinkOpsInput
 > {
   constructor() {
     super({ name: 'autolink-ops-builder' })

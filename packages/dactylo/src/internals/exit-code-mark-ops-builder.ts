@@ -48,11 +48,7 @@ export type ExitCodeMarkOpsSituation =
   | ExitCodeMarkOpsCursorSelectionSituation
 
 /** Exit-code-mark operation rule. */
-export type ExitCodeMarkOpsRule = OperationRule<
-  ExitCodeMarkOpsSituation,
-  unknown,
-  unknown
->
+export type ExitCodeMarkOpsRule = OperationRule<ExitCodeMarkOpsSituation>
 
 /**
  * Whether `node` is already an unmarked-text hatch after a code run.
@@ -128,11 +124,7 @@ export const cursorRules: ExitCodeMarkOpsRule[] = [
 ]
 
 /** Exit-code-mark operations builder. */
-export class ExitCodeMarkOpsBuilder extends OperationsBuilder<
-  ExitCodeMarkOpsSituation,
-  unknown,
-  unknown
-> {
+export class ExitCodeMarkOpsBuilder extends OperationsBuilder<ExitCodeMarkOpsSituation> {
   constructor() {
     super({ name: 'exit-code-mark-ops-builder' })
   }

@@ -1026,8 +1026,8 @@ export class TransactionPipeline {
            *  → User typed `space` at the end of a recognized link.
            */
           if (
-            text === INLINE_DETECTOR_TRIGGER_CHARACTER &&
-            this.#autolinkEnabled()
+            this.#autolinkEnabled() &&
+            text === INLINE_DETECTOR_TRIGGER_CHARACTER
           ) {
             const autolinkIntent = this.#operationsEngine.buildAutolinkOps(
               this.#context,

@@ -108,8 +108,7 @@ export interface InsertTextOpsInput {
 /** Inserted text operation rule. */
 export type InsertTextOpsRule = OperationRule<
   InsertTextOpsSituation,
-  InsertTextOpsInput,
-  unknown
+  InsertTextOpsInput
 >
 
 /** Builds operations to insert text at a cursor selection. */
@@ -565,8 +564,7 @@ export const rangeRules: InsertTextOpsRule[] = [
 /** Insert text operations builder. */
 export class InsertTextOpsBuilder extends OperationsBuilder<
   InsertTextOpsSituation,
-  InsertTextOpsInput,
-  unknown
+  InsertTextOpsInput
 > {
   constructor() {
     super({ name: 'insert-text-ops-builder' })

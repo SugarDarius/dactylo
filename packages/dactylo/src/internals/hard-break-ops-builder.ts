@@ -105,11 +105,7 @@ export type HardBreakOpsSituation =
   | HardBreakOpsRangeSelectionSituation
 
 /** Hard break operations rule. */
-export type HardBreakOpsRule = OperationRule<
-  HardBreakOpsSituation,
-  unknown,
-  unknown
->
+export type HardBreakOpsRule = OperationRule<HardBreakOpsSituation>
 
 /**
  * Builds block-level hard-break operations at a caret inside one block.
@@ -395,11 +391,7 @@ export const rangeRules: HardBreakOpsRule[] = [
 ]
 
 /** Hard break ops builder. */
-export class HardBreakOpsBuilder extends OperationsBuilder<
-  HardBreakOpsSituation,
-  unknown,
-  unknown
-> {
+export class HardBreakOpsBuilder extends OperationsBuilder<HardBreakOpsSituation> {
   constructor() {
     super({ name: 'hard-break-ops-builder' })
   }

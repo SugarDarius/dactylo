@@ -102,11 +102,7 @@ export type SoftBreakOpsSituation =
   | SoftBreakOpsRangeSelectionSituation
 
 /** Soft break operations rule. */
-export type SoftBreakOpsRule = OperationRule<
-  SoftBreakOpsSituation,
-  unknown,
-  unknown
->
+export type SoftBreakOpsRule = OperationRule<SoftBreakOpsSituation>
 
 /** Builds inline soft-break operations at a caret inside a text or link node. */
 export function buildSoftBreakInlineOpsAtCaret(
@@ -396,11 +392,7 @@ export const rangeRules: SoftBreakOpsRule[] = [
 ]
 
 /** Soft break operations builder. */
-export class SoftBreakOpsBuilder extends OperationsBuilder<
-  SoftBreakOpsSituation,
-  unknown,
-  unknown
-> {
+export class SoftBreakOpsBuilder extends OperationsBuilder<SoftBreakOpsSituation> {
   constructor() {
     super({ name: 'soft-break-ops-builder' })
   }

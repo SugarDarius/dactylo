@@ -65,11 +65,7 @@ export interface MarksOpsInput {
 }
 
 /** Marks operation rule. */
-export type MarksOpsRule = OperationRule<
-  MarksOpsSituation,
-  MarksOpsInput,
-  unknown
->
+export type MarksOpsRule = OperationRule<MarksOpsSituation, MarksOpsInput>
 
 /** Rules for cursor selection. */
 export const cursorRules: MarksOpsRule[] = [
@@ -312,8 +308,7 @@ export const rangeRules: MarksOpsRule[] = [
 /** Marks operations builder. */
 export class MarksOpsBuilder extends OperationsBuilder<
   MarksOpsSituation,
-  MarksOpsInput,
-  unknown
+  MarksOpsInput
 > {
   constructor() {
     super({ name: 'marks-ops-builder' })
