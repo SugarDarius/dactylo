@@ -1061,6 +1061,16 @@ export function buildDeleteRangeWithinBlockIntent(
 
   const ops: Operation[] = []
 
+  /**
+   * Remaining-geometry drops a fully consumed focus text node
+   * (`focus.offset >= text.length`). Ops must remove it rather than
+   * `delete_text` the whole run, or the emptied sibling survives.
+   */
+  const fullyConsumesFocusText =
+    fNi !== aNi &&
+    isInlineNodeWithEditableText(fNode) &&
+    focus.offset >= fNode.text.length
+
   const willJoinAndRemoveFocus =
     joinSurvivors &&
     isInlineNodeWithEditableText(aNode) &&
@@ -1073,7 +1083,8 @@ export function buildDeleteRangeWithinBlockIntent(
     fNi !== aNi &&
     isInlineNodeWithEditableText(fNode) &&
     focus.offset > 0 &&
-    !willJoinAndRemoveFocus
+    !willJoinAndRemoveFocus &&
+    !fullyConsumesFocusText
   ) {
     ops.push({
       __type: 'delete_text',
@@ -1128,6 +1139,13 @@ export function buildDeleteRangeWithinBlockIntent(
         text: tailText,
       })
     }
+    ops.push({
+      __type: 'remove_inline_node',
+      blockId: block.id,
+      nodeId: fNode.id,
+      snapshot: fNode,
+    })
+  } else if (fullyConsumesFocusText) {
     ops.push({
       __type: 'remove_inline_node',
       blockId: block.id,

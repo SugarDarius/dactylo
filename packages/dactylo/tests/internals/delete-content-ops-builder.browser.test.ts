@@ -268,6 +268,70 @@ describe('TransactionPipeline delete content', () => {
     assertUndoRedo(pipeline, before)
   })
 
+  test('deleting a same-block range over mixed marks leaves one empty unmarked node', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'Hello ')
+    pipeline.toggleMark('bold', 'user')
+    typeText(pipeline, 'World')
+
+    const block = firstInlineBlock(pipeline.context)
+    expect(block.content).toHaveLength(2)
+    selectRange(pipeline, startOfBlock(block), endOfBlock(block))
+    const before = snapshot(pipeline.context)
+
+    deleteBackward(pipeline)
+
+    const after = firstInlineBlock(pipeline.context)
+    expect(after.content).toHaveLength(1)
+    const [only] = after.content
+    if (!only || !isInlineNodeWithEditableText(only)) {
+      throw new Error('Expected a single empty text node')
+    }
+    expect(only.text).toBe('')
+    expect(isMarkEnabled(only.marks, 'bold')).toBe(false)
+    expect(blockTexts(pipeline.context)).toEqual([''])
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('deleting through the end of a later marked node does not leave an empty sibling', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'Hello ')
+    pipeline.toggleMark('bold', 'user')
+    typeText(pipeline, 'World')
+
+    const block = firstInlineBlock(pipeline.context)
+    const [first, last] = block.content
+    if (
+      !first ||
+      !last ||
+      !isInlineNodeWithEditableText(first) ||
+      !isInlineNodeWithEditableText(last)
+    ) {
+      throw new Error('Expected two text nodes')
+    }
+
+    selectRange(
+      pipeline,
+      { blockId: block.id, nodeId: first.id, offset: 1 },
+      { blockId: block.id, nodeId: last.id, offset: last.text.length },
+    )
+    const before = snapshot(pipeline.context)
+
+    deleteBackward(pipeline)
+
+    const after = firstInlineBlock(pipeline.context)
+    expect(after.content).toHaveLength(1)
+    const [only] = after.content
+    if (!only || !isInlineNodeWithEditableText(only)) {
+      throw new Error('Expected the surviving prefix')
+    }
+    expect(only.text).toBe('H')
+    expect(isMarkEnabled(only.marks, 'bold')).toBe(false)
+    assertUndoRedo(pipeline, before)
+  })
+
   test('deleting a reversed cross-block range still merges in document order', () => {
     const pipeline = makePipeline({ markdown: false })
     typeLines(pipeline, ['Hello', 'World'])
