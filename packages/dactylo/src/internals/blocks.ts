@@ -14,7 +14,7 @@ import { nanoid } from 'nanoid'
 import { DactyloError } from './errors'
 import { cloneInlineNode } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
-import { after } from './position'
+import { after, comparePositions } from './position'
 import type { PosKey } from './position'
 import type { Brand, Metadata } from './types'
 import { assertNever } from './utils'
@@ -254,10 +254,7 @@ export function cloneBlock(source: Block, posKey: PosKey): Block {
 /** Rebuilds block order from a blocks map (after posKey changes). */
 export function sortBlockOrder(blocks: ReadonlyMap<BlockId, Block>): BlockId[] {
   return [...blocks.values()]
-    .toSorted((a, b) =>
-      // @todo: use shared comparator function
-      a.posKey < b.posKey ? -1 : a.posKey > b.posKey ? 1 : 0,
-    )
+    .toSorted((a, b) => comparePositions(a.posKey, b.posKey))
     .map((b) => b.id)
 }
 

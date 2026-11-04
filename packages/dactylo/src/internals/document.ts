@@ -1,4 +1,8 @@
-import { createParagraphBlock, isBlockWithInlineContent } from './blocks'
+import {
+  createParagraphBlock,
+  isBlockWithInlineContent,
+  sortBlockOrder,
+} from './blocks'
 import type { Block, BlockId, BlockWithInlineContent } from './blocks'
 import { DactyloError } from './errors'
 import { createTextNode, isInlineContentWithoutVisibleText } from './nodes'
@@ -109,14 +113,22 @@ export function createInitialEmptyDocumentState(): DocumentState {
   }
 }
 
-/** Immutable update: add a block and refresh cached order. */
-export function insertBlock(state: DocumentState, block: Block): DocumentState {
+/** Immutable update: put a block in document state. */
+export function putBlock(state: DocumentState, block: Block): DocumentState {
   const blocks = new Map([...state.blocks, [block.id, block]])
+  return { ...state, blockOrderById: sortBlockOrder(blocks), blocks }
+}
 
+/** Immutable update: put multiple blocks in document state. */
+export function putBlocks(
+  state: DocumentState,
+  blocks: Block[],
+): DocumentState {
+  const blocksMap = new Map(blocks.map((block) => [block.id, block]))
   return {
     ...state,
-    blockOrderById: [...state.blockOrderById, block.id],
-    blocks,
+    blockOrderById: sortBlockOrder(blocksMap),
+    blocks: blocksMap,
   }
 }
 
@@ -216,17 +228,6 @@ export function isBlockWithInlineContentEmpty(
   return isInlineContentWithoutVisibleText(block.content)
 }
 
-/** Immutable update: replace one block in document state. */
-export function replaceBlock(
-  state: DocumentState,
-  blockId: BlockId,
-  nextBlock: Block,
-): DocumentState {
-  const blocks = new Map([...state.blocks, [blockId, nextBlock]])
-
-  return { ...state, blocks }
-}
-
 /**
  * Computes the position key (fractional index) where to insert a block
  * from a {@link InsertBlockPosition} in the document.
@@ -308,6 +309,46 @@ export function resolveInsertAfterBlockId(
     }
     default: {
       assertNever(pos, { hint: 'DocumentState/#resolveInsertAfterBlockId' })
+    }
+  }
+}
+
+/**
+ * Whether moving `blockId` to `pos` would leave document order unchanged.
+ * Self-referential after/before destinations are treated as no-ops.
+ */
+export function isMoveBlockNoOp(
+  state: DocumentState,
+  blockId: BlockId,
+  pos: InsertBlockPosition,
+): boolean {
+  const from = getBlockIndex(state, blockId)
+
+  switch (pos.type) {
+    case 'start': {
+      return from === 0
+    }
+    case 'end': {
+      return from === state.blockOrderById.length - 1
+    }
+    case 'after': {
+      if (pos.blockId === blockId) {
+        return true
+      }
+
+      const target = getBlockIndex(state, pos.blockId)
+      return from === target + 1
+    }
+    case 'before': {
+      if (pos.blockId === blockId) {
+        return true
+      }
+
+      const target = getBlockIndex(state, pos.blockId)
+      return from === target - 1
+    }
+    default: {
+      assertNever(pos, { hint: 'DocumentState/#isMoveBlockNoOp' })
     }
   }
 }

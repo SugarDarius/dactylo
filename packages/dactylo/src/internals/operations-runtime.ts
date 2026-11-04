@@ -3,16 +3,16 @@ import {
   createParagraphBlock,
   findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
-  sortBlockOrder,
   touchBlock,
 } from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
 import {
   deleteBlock,
   getBlock,
+  getBlockNeighbors,
   getBlockWithInlineContent,
-  insertBlock,
-  replaceBlock,
+  putBlock,
+  putBlocks,
 } from './document'
 import type { DocumentState } from './document'
 import {
@@ -37,6 +37,7 @@ import type {
   InsertInlineNodeOp,
   InsertTextOp,
   MergeBlocksOp,
+  MoveBlockOp,
   MutateBlockTypeOp,
   Operation,
   RemoveInlineNodeOp,
@@ -44,6 +45,7 @@ import type {
   SetSelectionOp,
   SplitBlockOp,
 } from './operations'
+import { isPosKey } from './position'
 import { sanitizeText } from './sanitize-text'
 import type { TextCursor } from './selection'
 import { assertNever } from './utils'
@@ -208,6 +210,26 @@ export function validateDeleteBlockOp(
 
   if (context.state.blockOrderById.length === 1) {
     validationError(`Cannot delete last block in document`, op)
+  }
+}
+
+/** Validates a {@link MoveBlockOp} operation. */
+export function validateMoveBlockOp(
+  context: EditorContext,
+  op: MoveBlockOp,
+): void | never {
+  getBlock(context.state, op.blockId)
+
+  if (op.afterBlockId === op.blockId) {
+    validationError(`Cannot move block ${op.blockId} after itself`, op)
+  }
+
+  if (op.afterBlockId !== null && !context.state.blocks.has(op.afterBlockId)) {
+    validationError(`Block ${op.afterBlockId} not found in document`, op)
+  }
+
+  if (!isPosKey(op.posKey)) {
+    validationError(`Invalid posKey for move_block`, op)
   }
 }
 
@@ -415,6 +437,10 @@ export function validateOp(context: EditorContext, op: Operation): void {
       validateDeleteBlockOp(context, op)
       break
     }
+    case 'move_block': {
+      validateMoveBlockOp(context, op)
+      break
+    }
     case 'split_block': {
       validateSplitBlockOp(context, op)
       break
@@ -474,9 +500,7 @@ export function applyInsertBlockOp(
   context: EditorContext,
   op: InsertBlockOp,
 ): EditorContext {
-  let state = insertBlock(context.state, op.block)
-
-  state = { ...state, blockOrderById: sortBlockOrder(state.blocks) }
+  const state = putBlock(context.state, op.block)
   return withDocumentState(context, state)
 }
 
@@ -486,6 +510,19 @@ export function applyDeleteBlockOp(
   op: DeleteBlockOp,
 ): EditorContext {
   const state = deleteBlock(context.state, op.blockId)
+  return withDocumentState(context, state)
+}
+
+/** Applies a {@link MoveBlockOp} operation to {@link EditorContext}. */
+export function applyMoveBlockOp(
+  context: EditorContext,
+  op: MoveBlockOp,
+): EditorContext {
+  const block = getBlock(context.state, op.blockId)
+  const next = touchBlock({ ...block, posKey: op.posKey })
+
+  const state = putBlock(context.state, next)
+
   return withDocumentState(context, state)
 }
 
@@ -520,11 +557,8 @@ export function applySplitBlockOp(
         content: headNodes,
       })
 
-      let doc = replaceBlock(context.state, op.blockId, updatedOriginal)
-      doc = insertBlock(doc, op.newBlock)
-      doc = { ...doc, blockOrderById: sortBlockOrder(doc.blocks) }
-
-      return withDocumentState(context, doc)
+      const state = putBlocks(context.state, [updatedOriginal, op.newBlock])
+      return withDocumentState(context, state)
     }
     case 'line_break':
     case 'mention': {
@@ -563,7 +597,7 @@ export function applyMergeBlocksOp(
     metadata: mergedMetadata,
   })
 
-  let state = replaceBlock(context.state, op.targetBlockId, updatedTarget)
+  let state = putBlock(context.state, updatedTarget)
   state = deleteBlock(state, op.sourceBlockId)
 
   return withDocumentState(context, state)
@@ -589,9 +623,8 @@ export function applyMutateBlockTypeOp(
 
       return withDocumentState(
         context,
-        replaceBlock(
+        putBlock(
           context.state,
-          op.blockId,
           touchBlock({ ...next, createdAt: prev.createdAt, id: prev.id }),
         ),
       )
@@ -606,9 +639,8 @@ export function applyMutateBlockTypeOp(
 
       return withDocumentState(
         context,
-        replaceBlock(
+        putBlock(
           context.state,
-          op.blockId,
           touchBlock({ ...next, createdAt: prev.createdAt, id: prev.id }),
         ),
       )
@@ -785,6 +817,9 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
     case 'delete_block': {
       return applyDeleteBlockOp(context, op)
     }
+    case 'move_block': {
+      return applyMoveBlockOp(context, op)
+    }
     case 'split_block': {
       return applySplitBlockOp(context, op)
     }
@@ -846,6 +881,17 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
         __type: 'insert_block',
         afterBlockId: op.afterBlockId,
         block: op.snapshot,
+      }
+    }
+    case 'move_block': {
+      const block = getBlock(context.state, op.blockId)
+      const { prev } = getBlockNeighbors(context.state, op.blockId)
+
+      return {
+        __type: 'move_block',
+        afterBlockId: prev,
+        blockId: op.blockId,
+        posKey: block.posKey,
       }
     }
     case 'split_block': {

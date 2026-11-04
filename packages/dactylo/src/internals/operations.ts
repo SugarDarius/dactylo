@@ -24,6 +24,7 @@ import type {
 } from './blocks'
 import type { Marks } from './marks'
 import type { InlineNode, NodeId } from './nodes'
+import type { PosKey } from './position'
 import type { Selection } from './selection'
 
 /** Inserts a block at the given position (fractional index). */
@@ -56,6 +57,24 @@ export interface DeleteBlockOp {
    * directly at the beginning of the document.
    */
   readonly afterBlockId: BlockId | null
+}
+
+/** Moves an existing block to a new fractional index (reorder). */
+export interface MoveBlockOp {
+  readonly __type: 'move_block'
+
+  /** ID of the block being moved. */
+  readonly blockId: BlockId
+
+  /**
+   * Neighbor the block is placed after.
+   * `null` means the start of the document.
+   * Stored for logging / AI; apply uses `posKey`.
+   */
+  readonly afterBlockId: BlockId | null
+
+  /** New posKey computed at build time. */
+  readonly posKey: PosKey
 }
 
 /** Splits a block into two at a cursor position (Enter key). */
@@ -242,6 +261,7 @@ export interface SetSelectionOp {
 export type Operation =
   | InsertBlockOp
   | DeleteBlockOp
+  | MoveBlockOp
   | SplitBlockOp
   | MergeBlocksOp
   | MutateBlockTypeOp

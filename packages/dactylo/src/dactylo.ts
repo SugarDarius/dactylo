@@ -163,6 +163,7 @@ export type DactyloCommand =
   | 'blocks/insert-divider'
   | 'blocks/duplicate'
   | 'blocks/delete'
+  | 'blocks/move'
 
 /** Event emitted when a command is executed */
 export interface DactyloCommandEvent {
@@ -678,6 +679,21 @@ export interface DactyloBlocksCommands {
    */
   readonly duplicate: (
     blockId: BlockId,
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
+   * Moves a {@link Block} by ID to a new document position.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.move(blockId, { type: 'after', blockId: targetId })
+   * editor.blocks.commands.move(blockId, { type: 'start' }, 'ai-agent')
+   * ```
+   */
+  readonly move: (
+    blockId: BlockId,
+    pos: InsertBlockPosition,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 }
@@ -1613,6 +1629,19 @@ export class Dactylo {
             () => this.#pipeline.insertParagraphBlock(opts, source),
             noop,
             { payload: { source } },
+          ),
+
+        /** Moves a {@link Block} by ID to a new document position.  */
+        move: (
+          blockId: BlockId,
+          pos: InsertBlockPosition,
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/move',
+            () => this.#pipeline.moveBlock(blockId, pos, source),
+            noop,
+            { payload: { blockId, pos, source } },
           ),
       },
       tools: {

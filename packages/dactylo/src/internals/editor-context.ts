@@ -5,7 +5,7 @@ import {
   createInitialEmptyDocumentState,
   getBlockWithInlineContent,
   normalizeRange,
-  replaceBlock,
+  putBlock,
 } from './document'
 import type { DocumentState } from './document'
 import { isMarkEnabled } from './marks'
@@ -152,7 +152,7 @@ export function updateBlockWithInlineContent(
     content,
   }
   const next = touchBlock(updated)
-  return withDocumentState(context, replaceBlock(context.state, blockId, next))
+  return withDocumentState(context, putBlock(context.state, next))
 }
 
 /**

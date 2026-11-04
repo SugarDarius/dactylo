@@ -380,3 +380,8 @@ export function asPosKey(str: string): PosKey {
 
   return codes.length > 0 ? (String.fromCodePoint(...codes) as PosKey) : ONE
 }
+
+/* Compare two positions lexicographically. */
+export function comparePositions(a: PosKey, b: PosKey): number {
+  return a < b ? -1 : a > b ? 1 : 0
+}

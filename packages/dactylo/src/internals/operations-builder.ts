@@ -96,7 +96,7 @@ export interface BuilderOpsIntent {
   readonly skipHistory?: true
 }
 
-/** Describes where a new block should be inserted relative to existing blocks. */
+/** Describes where a block should be inserted (or moved to) relative to existing blocks. */
 export type InsertBlockPosition = Relax<
   | {
       /** Insert at document start. */

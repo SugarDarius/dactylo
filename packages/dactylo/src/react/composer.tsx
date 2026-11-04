@@ -477,7 +477,7 @@ export function useBlocksTools() {
  *
  * @example
  * ```tsx
- * const { delete, duplicate, insertParagraph } = useBlocksCommands()
+ * const { delete, duplicate, insertParagraph, move } = useBlocksCommands()
  *
  * delete(blockId)
  * delete(blockId, 'ai-agent')
@@ -494,6 +494,9 @@ export function useBlocksTools() {
  *
  * duplicate(blockId)
  * duplicate(blockId, 'ai-agent')
+ *
+ * move(blockId, { type: 'after', blockId: targetId })
+ * move(blockId, { type: 'start' }, 'ai-agent')
  * ```
  */
 export function useBlocksCommands() {
@@ -535,12 +538,21 @@ export function useBlocksCommands() {
     ) => editor.blocks.commands.delete(blockId, source),
   )
 
+  const move = useStableCallback(
+    (
+      blockId: BlockId,
+      pos: InsertBlockPosition,
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.move(blockId, pos, source),
+  )
+
   return {
     delete: $delete,
     duplicate,
     insertDivider,
     insertHeading,
     insertParagraph,
+    move,
   } as const
 }
 

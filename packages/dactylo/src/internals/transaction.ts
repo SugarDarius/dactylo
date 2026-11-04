@@ -1389,6 +1389,29 @@ export class TransactionPipeline {
     })
   }
 
+  /** Moves a block by ID to a new document position. */
+  moveBlock(
+    blockId: BlockId,
+    pos: InsertBlockPosition,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildMoveBlockOps(
+      this.#context,
+      blockId,
+      pos,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
   /** Removes a block by ID. */
   deleteBlock(
     blockId: BlockId,
