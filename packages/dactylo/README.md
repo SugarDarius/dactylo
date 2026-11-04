@@ -191,24 +191,24 @@ export function Editor() {
 
 ### Blocks (🚧 **In Progress**)
 
-| Feature              | Status         | Description                                                                                                     |
-| -------------------- | -------------- | --------------------------------------------------------------------------------------------------------------- |
-| Paragraph            | ✅ **Done**    | Paragraph block with inline content                                                                             |
-| Heading (levels 1–6) | ✅ **Done**    | Heading block with inline content                                                                               |
-| Divider              | ✅ **Done**    | Block for UI rendering - no inline content                                                                      |
-| Bullet list item     | 📆 **Planned** | Bullet list item block with inline content                                                                      |
-| Numbered list item   | 📆 **Planned** | Numbered list item block with inline content                                                                    |
-| Todo list item       | 📆 **Planned** | Todo list item with block inline content                                                                        |
-| Toggle list item     | 📆 **Planned** | Toggle list item block with inline content                                                                      |
-| Callout              | 📆 **Planned** | Callout block with icon + sub blocks                                                                            |
-| Quote                | 📆 **Planned** | Quote block with inline content only (maybe a sub-kind of ParagraphBlock?)                                      |
-| Table                | 📆 **Planned** | Table block with inline content                                                                                 |
-| Code                 | 📆 **Planned** | Safe code block rendering code with inline content                                                              |
-| Media                | 📆 **Planned** | Media block with no inline content for rendering images, videos or audios                                       |
-| Web embed            | 📆 **Planned** | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
-| Tabs                 | 📆 **Planned** | Tabs block with sub blocks inside                                                                               |
-| 2 / 3 / 4 columns    | 📆 **Planned** | Columns block with sub blocks inside                                                                            |
-| Slot                 | 📆 **Planned** | Hosting custom content and data owned by developer with no inline content                                       |
+| Feature              | Status             | Description                                                                                                     |
+| -------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Paragraph            | ✅ **Done**        | Paragraph block with inline content                                                                             |
+| Heading (levels 1–6) | ✅ **Done**        | Heading block with inline content                                                                               |
+| Divider              | ✅ **Done**        | Block for UI rendering - no inline content                                                                      |
+| Bullet list item     | 🚧 **In Progress** | Bullet list item block with inline content                                                                      |
+| Numbered list item   | 📆 **Planned**     | Numbered list item block with inline content                                                                    |
+| Todo list item       | 📆 **Planned**     | Todo list item with block inline content                                                                        |
+| Toggle list item     | 📆 **Planned**     | Toggle list item block with inline content                                                                      |
+| Callout              | 📆 **Planned**     | Callout block with icon + sub blocks                                                                            |
+| Quote                | 📆 **Planned**     | Quote block with inline content only (maybe a sub-kind of ParagraphBlock?)                                      |
+| Table                | 📆 **Planned**     | Table block with inline content                                                                                 |
+| Code                 | 📆 **Planned**     | Safe code block rendering code with inline content                                                              |
+| Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
+| Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
+| Tabs                 | 📆 **Planned**     | Tabs block with sub blocks inside                                                                               |
+| 2 / 3 / 4 columns    | 📆 **Planned**     | Columns block with sub blocks inside                                                                            |
+| Slot                 | 📆 **Planned**     | Hosting custom content and data owned by developer with no inline content                                       |
 
 ### Inline Nodes (🚧 **In Progress**)
 
@@ -238,6 +238,7 @@ export function Editor() {
 | Inline nodes API             | 🚧 **In Progress** | Mutate and reads inline nodes                                                                   |
 | Metadata API                 | 🚧 **In Progress** | Mutate and reads blocks and inline nodes metadata (config for globals metadata)                 |
 | Mentions API                 | 📆 **Planned**     | Mutate and reads mentions as first-class citizen                                                |
+| OnChange/OnSubmit API        | 🚧 **In Progress** | Callback when document state is changing for saving in databases                                |
 | Export JSON and Markdown API | 📆 **Planned**     | Export document state as JSON and Markdown                                                      |
 | Stats API                    | 📆 **Planned**     | Provides stats like total text length, # of blocks, # number of nodes, # of words & chars       |
 | Batching transactions        | 🚧 **In Progress** | Supports for batching big number for transactions (Ai Agent use case)                           |
