@@ -197,7 +197,6 @@ export function paintRangeAt(
   }
 
   domSelection.removeAllRanges()
-  domSelection.removeAllRanges()
   domSelection.setBaseAndExtent(
     clampedAnchor.node,
     clampedAnchor.offset,
@@ -223,10 +222,16 @@ export interface DOMManagerOptions {
 
 /**
  * Manages the {@link Dactylo} editor's DOM.
- * 1. Sync native browser selection events:
- *  👉🏻 DOM → {@link Selection}: `pointerup` on the editable element + `selectionchange` events.
- * 2. Paint caret
- *  👉🏻 {@link Selection} → DOM: paints a collapsed cursor caret in the current editable block.
+ *
+ * Two pipelines, never fused:
+ * 1. DOM → {@link Selection}: `pointerup` / `selectionchange` coalesced on rAF.
+ * 2. {@link Selection} → DOM: paint caret/range/clear on a microtask (after
+ *    layout effects, and before the browser paints).
+ *    The returned cancel callback drops that write if the layout effect cleans up first.
+ *
+ * A model paint drops a pending DOM sync. Paint and sync have opposite sources
+ * of truth; running both in one frame lets paint overwrite a user gesture and
+ * then sync the overwritten caret.
  */
 export class DOMManager {
   /** The HTML div `[dactylo-editable]` element. */
@@ -234,19 +239,22 @@ export class DOMManager {
 
   /**
    * Whether the DOM selection is currently being painted.
-   * While `true`, DOM → {@link Selection} sync must not run.
-   * So programmatic `addRange` calls does not commit back into {@link EditorContext}
+   * While `true`, DOM → {@link Selection} sync must not run, so a synchronous
+   * `selectionchange` from `addRange` does not commit back into {@link EditorContext}.
    */
   #isPainting = false
 
-  /** Coalesced sync animation frame id (paint then sync). */
-  #frameAfId: number | null = null
+  /** Coalesced DOM → model sync animation frame id. */
+  #syncAfId: number | null = null
 
-  /** Whether DOM → Model sync was requested for the next frame. */
+  /** Whether DOM → model sync was requested for the next frame. */
   #syncPending = false
 
-  /** Whether Model → DOM paint was requested for the next frame. */
+  /** Coalesced model → DOM paint kind for the queued microtask. */
   #paintPending: 'none' | 'caret' | 'range' | 'clear' = 'none'
+
+  /** Whether a paint microtask is already queued. */
+  #paintMicrotaskQueued = false
 
   /** Whether to enable debug mode. */
   readonly #debug: boolean
@@ -269,12 +277,12 @@ export class DOMManager {
 
   /**
    * Runs a {@link Selection} → DOM operation and handles errors.
-   * Flags the orchestrator as painting while running the operation.
+   * Flags the manager as painting while running the operation.
    */
   #runPainting(fn: () => void): void {
     this.#isPainting = true
     try {
-      return fn()
+      fn()
     } catch (err) {
       const wrapped = DactyloError.wrap(err)
 
@@ -286,30 +294,47 @@ export class DOMManager {
     }
   }
 
-  /** Cancels the coalesced selection frame and pending work. */
-  #cancelScheduledFrame(): void {
-    if (this.#frameAfId !== null) {
-      cancelAnimationFrame(this.#frameAfId)
-      this.#frameAfId = null
+  /** Cancels a coalesced DOM → model sync if one is scheduled. */
+  #cancelScheduledSync(): void {
+    if (this.#syncAfId !== null) {
+      cancelAnimationFrame(this.#syncAfId)
+      this.#syncAfId = null
     }
     this.#syncPending = false
-    this.#paintPending = 'none'
   }
 
-  /** Drops the frame when nothing is left to run. */
-  #maybeCancelFrame(): void {
-    if (
-      this.#frameAfId !== null &&
-      !this.#syncPending &&
-      this.#paintPending === 'none'
-    ) {
-      cancelAnimationFrame(this.#frameAfId)
-      this.#frameAfId = null
+  /** Drops a pending paint of `kind` if it has not flushed yet. */
+  #cancelPendingPaint(kind: 'caret' | 'range' | 'clear'): void {
+    if (this.#paintPending === kind) {
+      this.#paintPending = 'none'
     }
   }
 
-  /** Flushes the paint operation. */
-  #flushPaint(kind: 'caret' | 'range' | 'clear' | 'none'): void {
+  /** Queues one microtask that flushes the latest pending paint. */
+  #schedulePaint(): void {
+    if (this.#paintMicrotaskQueued) {
+      return
+    }
+
+    this.#paintMicrotaskQueued = true
+
+    queueMicrotask(() => {
+      this.#paintMicrotaskQueued = false
+
+      const kind = this.#paintPending
+      this.#paintPending = 'none'
+
+      if (kind !== 'none') {
+        this.#flushPaint(kind)
+      }
+    })
+  }
+
+  /**
+   * Writes the model selection into the DOM now.
+   * Drops a pending sync so a later rAF cannot read the caret this paint wrote.
+   */
+  #flushPaint(kind: 'caret' | 'range' | 'clear'): void {
     if (this.#getIMEComposingState()) {
       return
     }
@@ -350,6 +375,7 @@ export class DOMManager {
         this.#runPainting(() => {
           paintCaretAt(editableContent, cursor)
         })
+        this.#cancelScheduledSync()
 
         break
       }
@@ -362,6 +388,7 @@ export class DOMManager {
         this.#runPainting(() => {
           paintRangeAt(editable, selection)
         })
+        this.#cancelScheduledSync()
 
         break
       }
@@ -370,38 +397,18 @@ export class DOMManager {
         if (!domSelection) {
           break
         }
-        domSelection.removeAllRanges()
+
+        this.#runPainting(() => {
+          domSelection.removeAllRanges()
+        })
+        this.#cancelScheduledSync()
+
         break
       }
       default: {
         break
       }
     }
-  }
-
-  /** Schedules one rAF that runs model → DOM paint, then DOM → model sync. */
-  #scheduleFrame(): void {
-    if (this.#frameAfId !== null) {
-      return
-    }
-
-    this.#frameAfId = requestAnimationFrame(() => {
-      this.#frameAfId = null
-
-      const paint = this.#paintPending
-      const sync = this.#syncPending
-
-      this.#paintPending = 'none'
-      this.#syncPending = false
-
-      if (paint !== 'none') {
-        this.#flushPaint(paint)
-      }
-
-      if (sync) {
-        this.#sync()
-      }
-    })
   }
 
   /**
@@ -435,6 +442,24 @@ export class DOMManager {
     this.#commitSelection(nextSelection)
   }
 
+  /** Schedules one rAF that reads DOM → model. */
+  #scheduleSyncFrame(): void {
+    if (this.#syncAfId !== null) {
+      return
+    }
+
+    this.#syncAfId = requestAnimationFrame(() => {
+      this.#syncAfId = null
+
+      const sync = this.#syncPending
+      this.#syncPending = false
+
+      if (sync) {
+        this.#sync()
+      }
+    })
+  }
+
   /** Attaches the view manager to the editable element. */
   attach(editable: HTMLDivElement): void {
     this.#editable = editable
@@ -442,7 +467,8 @@ export class DOMManager {
 
   /** Detaches the view manager from the editable element. */
   detach(): void {
-    this.#cancelScheduledFrame()
+    this.#paintPending = 'none'
+    this.#cancelScheduledSync()
     this.#editable = null
   }
 
@@ -451,6 +477,10 @@ export class DOMManager {
    * Coalesces multiple `pointerup` / `selectionchange` events into one read.
    */
   scheduleSync(fromSelectionChange = false): void {
+    if (this.#isPainting) {
+      return
+    }
+
     const editable = this.#editable
     if (!editable) {
       warnOnceIf(
@@ -478,48 +508,36 @@ export class DOMManager {
     }
 
     this.#syncPending = true
-    this.#scheduleFrame()
+    this.#scheduleSyncFrame()
   }
 
   /** Paints a collapsed caret at the position of the text cursor in the DOM. */
   paintCaretAt(): CancelCallback {
     this.#paintPending = 'caret'
-    this.#scheduleFrame()
+    this.#schedulePaint()
 
     return () => {
-      if (this.#paintPending === 'caret') {
-        this.#paintPending = 'none'
-      }
-
-      this.#maybeCancelFrame()
+      this.#cancelPendingPaint('caret')
     }
   }
 
   /** Paints a range at anchor/focus in the DOM. */
   paintRangeAt(): CancelCallback {
     this.#paintPending = 'range'
-    this.#scheduleFrame()
+    this.#schedulePaint()
 
     return () => {
-      if (this.#paintPending === 'range') {
-        this.#paintPending = 'none'
-      }
-
-      this.#maybeCancelFrame()
+      this.#cancelPendingPaint('range')
     }
   }
 
   /** Clears the selection in the DOM. */
   clearSelection(): CancelCallback {
     this.#paintPending = 'clear'
-    this.#scheduleFrame()
+    this.#schedulePaint()
 
     return () => {
-      if (this.#paintPending === 'clear') {
-        this.#paintPending = 'none'
-      }
-
-      this.#maybeCancelFrame()
+      this.#cancelPendingPaint('clear')
     }
   }
 }

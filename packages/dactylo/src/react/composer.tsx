@@ -627,8 +627,8 @@ export function useHistoryTools() {
 
 /**
  * Binds `<Composer.Editable />` to {@link Dactylo} selection and events.
- *  - DOM → model: `pointerup on the editable element + `selectionchange` events.
- *  - Model → DOM: paths a collapsed cursor caret in the current editable block.
+ *  - DOM → model: `pointerup` on the editable element + `selectionchange` events.
+ *  - Model → DOM: paint caret/range from layout effect (microtask, cancelable).
  * Mount once on `<Composer.Editable />`, do not mount per block.
  *
  * @private
@@ -784,8 +784,10 @@ export function useEditable() {
   /**
    * Paints the native selection from editor context:
    * collapsed caret or range (e.g. shift + arrow keys).
-   *
-   * Runs only when the editor is editable and when there is a selection.
+   * The write is queued on a microtask (after this layout effect, before the
+   * browser paints).
+   * Cleanup cancels it so a stale caret/range is not painted
+   * after the selection changes or the editable unmounts.
    */
   useIsomorphicLayoutEffect(() => {
     if (!canEdit) {
