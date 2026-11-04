@@ -97,7 +97,7 @@ export interface BuilderOpsIntent {
 }
 
 /** Describes where a block should be inserted (or moved to) relative to existing blocks. */
-export type InsertBlockPosition = Relax<
+export type InsertOrMoveBlockPosition = Relax<
   | {
       /** Insert at document start. */
       readonly type: 'start'

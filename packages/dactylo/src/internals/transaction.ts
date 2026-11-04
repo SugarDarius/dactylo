@@ -15,7 +15,7 @@ import type { HistoryEvent, HistoryStackOptions } from './history'
 import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
 import type { Operation } from './operations'
-import type { InsertBlockPosition } from './operations-builder'
+import type { InsertOrMoveBlockPosition } from './operations-builder'
 import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
 import type { Selection } from './selection'
@@ -1288,7 +1288,7 @@ export class TransactionPipeline {
   insertParagraphBlock(
     opts: {
       /** Where to insert the paragraph block. */
-      pos?: InsertBlockPosition
+      pos?: InsertOrMoveBlockPosition
       /** Metadata to associate with the paragraph block. */
       metadata?: Metadata
     },
@@ -1317,7 +1317,7 @@ export class TransactionPipeline {
     level: HeadingBlock['level'],
     opts: {
       /** Where to insert the heading block. */
-      pos?: InsertBlockPosition
+      pos?: InsertOrMoveBlockPosition
       /** Metadata to associate with the heading block. */
       metadata?: Metadata
     },
@@ -1345,7 +1345,7 @@ export class TransactionPipeline {
   insertDividerBlock(
     opts: {
       /** Where to insert the divider block. */
-      pos?: InsertBlockPosition
+      pos?: InsertOrMoveBlockPosition
       /** Metadata to associate with the divider block. */
       metadata?: Metadata
     },
@@ -1392,7 +1392,7 @@ export class TransactionPipeline {
   /** Moves a block by ID to a new document position. */
   moveBlock(
     blockId: BlockId,
-    pos: InsertBlockPosition,
+    pos: InsertOrMoveBlockPosition,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
     const intent = this.#operationsEngine.buildMoveBlockOps(

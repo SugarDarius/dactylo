@@ -22,7 +22,7 @@ import type { EditorContext } from '../internals/editor-context'
 import { isMarkEnabled } from '../internals/marks'
 import type { MarkKey } from '../internals/marks'
 import type { InlineNodeWithEditableText } from '../internals/nodes'
-import type { InsertBlockPosition } from '../internals/operations-builder'
+import type { InsertOrMoveBlockPosition } from '../internals/operations-builder'
 import { isCursorSelection, isRangeSelection } from '../internals/selection'
 import type {
   CursorSelection,
@@ -504,7 +504,7 @@ export function useBlocksCommands() {
 
   const insertParagraph = useStableCallback(
     (
-      opts?: { pos?: InsertBlockPosition; metadata?: Metadata },
+      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertParagraph(opts, source),
   )
@@ -512,14 +512,14 @@ export function useBlocksCommands() {
   const insertHeading = useStableCallback(
     (
       level: HeadingBlock['level'],
-      opts?: { pos?: InsertBlockPosition; metadata?: Metadata },
+      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertHeading(level, opts, source),
   )
 
   const insertDivider = useStableCallback(
     (
-      opts?: { pos?: InsertBlockPosition; metadata?: Metadata },
+      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertDivider(opts, source),
   )
@@ -541,7 +541,7 @@ export function useBlocksCommands() {
   const move = useStableCallback(
     (
       blockId: BlockId,
-      pos: InsertBlockPosition,
+      pos: InsertOrMoveBlockPosition,
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.move(blockId, pos, source),
   )

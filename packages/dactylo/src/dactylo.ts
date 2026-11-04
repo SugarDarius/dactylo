@@ -24,7 +24,7 @@ import type {
 import { EventSource } from './internals/event-source'
 import type { HistoryEvent, HistoryStackOptions } from './internals/history'
 import type { MarkKey } from './internals/marks'
-import type { InsertBlockPosition } from './internals/operations-builder'
+import type { InsertOrMoveBlockPosition } from './internals/operations-builder'
 import {
   isBlockWithActiveCursor,
   isBlockWithActiveRange,
@@ -600,7 +600,7 @@ export interface DactyloBlocksCommands {
   readonly insertParagraph: (
     opts?: {
       /** Where to insert the paragraph block. */
-      pos?: InsertBlockPosition
+      pos?: InsertOrMoveBlockPosition
 
       /** Metadata to associate with the paragraph block. */
       metadata?: Metadata
@@ -625,7 +625,7 @@ export interface DactyloBlocksCommands {
 
     opts?: {
       /** Where to insert the heading block. */
-      pos?: InsertBlockPosition
+      pos?: InsertOrMoveBlockPosition
 
       /** Metadata to associate with the heading block. */
       metadata?: Metadata
@@ -647,7 +647,7 @@ export interface DactyloBlocksCommands {
   readonly insertDivider: (
     opts?: {
       /** Where to insert the divider block. */
-      pos?: InsertBlockPosition
+      pos?: InsertOrMoveBlockPosition
       /** Metadata to associate with the divider block. */
       metadata?: Metadata
     },
@@ -693,7 +693,7 @@ export interface DactyloBlocksCommands {
    */
   readonly move: (
     blockId: BlockId,
-    pos: InsertBlockPosition,
+    pos: InsertOrMoveBlockPosition,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 }
@@ -1575,7 +1575,7 @@ export class Dactylo {
         insertDivider: (
           opts: {
             /** Where to insert the divider block. */
-            pos?: InsertBlockPosition
+            pos?: InsertOrMoveBlockPosition
             /** Metadata to associate with the divider block. */
             metadata?: Metadata
           } = {},
@@ -1598,7 +1598,7 @@ export class Dactylo {
 
           opts: {
             /** Where to insert the heading block. */
-            pos?: InsertBlockPosition
+            pos?: InsertOrMoveBlockPosition
             /** Metadata to associate with the heading block. */
             metadata?: Metadata
           } = {},
@@ -1618,7 +1618,7 @@ export class Dactylo {
         insertParagraph: (
           opts: {
             /** Where to insert the paragraph block. */
-            pos?: InsertBlockPosition
+            pos?: InsertOrMoveBlockPosition
             /** Metadata to associate with the paragraph block. */
             metadata?: Metadata
           } = {},
@@ -1634,7 +1634,7 @@ export class Dactylo {
         /** Moves a {@link Block} by ID to a new document position.  */
         move: (
           blockId: BlockId,
-          pos: InsertBlockPosition,
+          pos: InsertOrMoveBlockPosition,
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
           this.#safeExecuteCommand(

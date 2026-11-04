@@ -6,7 +6,7 @@ import {
 import type { Block, BlockId, BlockWithInlineContent } from './blocks'
 import { DactyloError } from './errors'
 import { createTextNode, isInlineContentWithoutVisibleText } from './nodes'
-import type { InsertBlockPosition } from './operations-builder'
+import type { InsertOrMoveBlockPosition } from './operations-builder'
 import {
   after,
   before,
@@ -230,11 +230,11 @@ export function isBlockWithInlineContentEmpty(
 
 /**
  * Computes the position key (fractional index) where to insert a block
- * from a {@link InsertBlockPosition} in the document.
+ * from a {@link InsertOrMoveBlockPosition} in the document.
  */
 export function computeInsertBlockPosKey(
   state: DocumentState,
-  pos: InsertBlockPosition,
+  pos: InsertOrMoveBlockPosition,
 ): PosKey {
   switch (pos.type) {
     case 'start': {
@@ -287,11 +287,11 @@ export function computeInsertBlockPosKey(
 
 /**
  * Resolves the position where to insert a block from
- * a {@link InsertBlockPosition} in the document.
+ * a {@link InsertOrMoveBlockPosition} in the document.
  */
 export function resolveInsertAfterBlockId(
   state: DocumentState,
-  pos: InsertBlockPosition,
+  pos: InsertOrMoveBlockPosition,
 ): BlockId | null {
   switch (pos.type) {
     case 'start': {
@@ -320,7 +320,7 @@ export function resolveInsertAfterBlockId(
 export function isMoveBlockNoOp(
   state: DocumentState,
   blockId: BlockId,
-  pos: InsertBlockPosition,
+  pos: InsertOrMoveBlockPosition,
 ): boolean {
   const from = getBlockIndex(state, blockId)
 

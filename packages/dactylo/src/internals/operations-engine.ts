@@ -34,7 +34,7 @@ import type { Operation } from './operations'
 import { buildError } from './operations-builder'
 import type {
   BuilderOpsIntent,
-  InsertBlockPosition,
+  InsertOrMoveBlockPosition,
   InsertBlockSpec,
 } from './operations-builder'
 import { makeOperationsRuntime } from './operations-runtime'
@@ -331,7 +331,7 @@ export class OperationsEngine {
   #buildInsertBlockOps(
     context: EditorContext,
     spec: InsertBlockSpec,
-    pos?: InsertBlockPosition,
+    pos?: InsertOrMoveBlockPosition,
   ): BuilderOpsIntent | null {
     const { state, selection } = context
 
@@ -343,7 +343,7 @@ export class OperationsEngine {
       return null
     }
 
-    const finalPos: InsertBlockPosition =
+    const finalPos: InsertOrMoveBlockPosition =
       pos ??
       (isSelectionActive(selection)
         ? {
@@ -471,7 +471,7 @@ export class OperationsEngine {
   /** Builds operations to insert a {@link ParagraphBlock}. */
   buildInsertParagraphBlockOps(
     context: EditorContext,
-    pos?: InsertBlockPosition,
+    pos?: InsertOrMoveBlockPosition,
     metadata?: Metadata,
   ): BuilderOpsIntent | null {
     return this.#buildInsertBlockOps(
@@ -485,7 +485,7 @@ export class OperationsEngine {
   buildInsertHeadingBlockOps(
     context: EditorContext,
     level: HeadingBlock['level'],
-    pos?: InsertBlockPosition,
+    pos?: InsertOrMoveBlockPosition,
     metadata?: Metadata,
   ): BuilderOpsIntent | null {
     return this.#buildInsertBlockOps(
@@ -498,7 +498,7 @@ export class OperationsEngine {
   /** Builds operations to insert a {@link DividerBlock}. */
   buildInsertDividerBlockOps(
     context: EditorContext,
-    pos?: InsertBlockPosition,
+    pos?: InsertOrMoveBlockPosition,
     metadata?: Metadata,
   ): BuilderOpsIntent | null {
     return this.#buildInsertBlockOps(
@@ -516,7 +516,7 @@ export class OperationsEngine {
     const { state, selection } = context
     const source = getBlock(state, blockId)
 
-    const pos: InsertBlockPosition = { blockId: source.id, type: 'after' }
+    const pos: InsertOrMoveBlockPosition = { blockId: source.id, type: 'after' }
 
     const posKey = computeInsertBlockPosKey(state, pos)
     const afterBlockId = resolveInsertAfterBlockId(state, pos)
@@ -604,7 +604,7 @@ export class OperationsEngine {
   buildMoveBlockOps(
     context: EditorContext,
     blockId: BlockId,
-    pos: InsertBlockPosition,
+    pos: InsertOrMoveBlockPosition,
   ): BuilderOpsIntent | null {
     const { state } = context
     getBlock(state, blockId)
