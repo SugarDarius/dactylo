@@ -10,6 +10,7 @@ import {
 } from 'react'
 
 import { Dactylo } from '../dactylo'
+import type { HeadingBlock } from '../internals/blocks'
 import { warnOnce } from '../internals/console'
 import {
   BLOCKS_ATTR_NAME,
@@ -33,7 +34,6 @@ import {
   BLOCK_INDEX_DATA_NAME,
   HEADING_LEVEL_REPLACER,
 } from '../internals/constants'
-import { assertNever } from '../internals/utils'
 import {
   ComposerProvider,
   useSelectionCommands,
@@ -57,6 +57,8 @@ import {
   COMPOSER_DIVIDER_BLOCK_NAME,
   COMPOSER_HEADING_BLOCK_NAME,
   COMPOSER_HEADING_NAME,
+  COMPOSER_HEADING_LEVELS,
+  COMPOSER_HEADING_TAGS,
 } from './internals/constants'
 import {
   useIsMounted,
@@ -286,42 +288,26 @@ const ComposerParagraphBlock = forwardRef<
 })
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
-/** Adds a {@link HeadingBlock} to the composer. */
-const ComposerHeadingOne = forwardRef<
-  HTMLHeadingElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->((props, forwardedRef) => <h1 {...props} ref={forwardedRef} />)
-ComposerHeadingOne.displayName = COMPOSER_HEADING_NAME(1)
+/** Primitive heading components for the composer. */
+const ComposerHeadingsPrimitive = COMPOSER_HEADING_LEVELS.reduce(
+  (headings, level) => {
+    const Heading = forwardRef<
+      HTMLHeadingElement,
+      React.HTMLAttributes<HTMLHeadingElement>
+    >((props, forwardedRef) => {
+      const Comp = COMPOSER_HEADING_TAGS[level]
+      return <Comp {...props} ref={forwardedRef} />
+    })
+    Heading.displayName = COMPOSER_HEADING_NAME(level)
+    headings[level] = Heading
 
-const ComposerHeadingTwo = forwardRef<
-  HTMLHeadingElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->((props, forwardedRef) => <h2 {...props} ref={forwardedRef} />)
-ComposerHeadingTwo.displayName = COMPOSER_HEADING_NAME(2)
-
-const ComposerHeadingThree = forwardRef<
-  HTMLHeadingElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->((props, forwardedRef) => <h3 {...props} ref={forwardedRef} />)
-ComposerHeadingThree.displayName = COMPOSER_HEADING_NAME(3)
-
-const ComposerHeadingFour = forwardRef<
-  HTMLHeadingElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->((props, forwardedRef) => <h4 {...props} ref={forwardedRef} />)
-ComposerHeadingFour.displayName = COMPOSER_HEADING_NAME(4)
-
-const ComposerHeadingFive = forwardRef<
-  HTMLHeadingElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->((props, forwardedRef) => <h5 {...props} ref={forwardedRef} />)
-ComposerHeadingFive.displayName = COMPOSER_HEADING_NAME(5)
-
-const ComposerHeadingSix = forwardRef<
-  HTMLHeadingElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->((props, forwardedRef) => <h6 {...props} ref={forwardedRef} />)
-ComposerHeadingSix.displayName = COMPOSER_HEADING_NAME(6)
+    return headings
+  },
+  {} as Record<
+    HeadingBlock['level'],
+    React.ComponentType<React.HTMLAttributes<HTMLHeadingElement>>
+  >,
+)
 
 /** Adds a {@link HeadingBlock} to the composer. */
 const ComposerHeadingBlock = forwardRef<
@@ -332,34 +318,7 @@ const ComposerHeadingBlock = forwardRef<
   const { canEdit, editableId, withActiveSelection, isEmpty } =
     useEditableBlock(block.id)
 
-  const Comp = useMemo(() => {
-    switch (block.level) {
-      case 1: {
-        return ComposerHeadingOne
-      }
-      case 2: {
-        return ComposerHeadingTwo
-      }
-      case 3: {
-        return ComposerHeadingThree
-      }
-      case 4: {
-        return ComposerHeadingFour
-      }
-      case 5: {
-        return ComposerHeadingFive
-      }
-      case 6: {
-        return ComposerHeadingSix
-      }
-      default: {
-        assertNever(block.level, {
-          hint: 'react/primitives/ComposerHeadingBlock',
-        })
-      }
-    }
-  }, [block.level])
-
+  const Heading = ComposerHeadingsPrimitive[block.level]
   const placeholder = useMemo(
     () =>
       heading.placeholder.replace(
@@ -385,7 +344,7 @@ const ComposerHeadingBlock = forwardRef<
       data-active={isActive ?? undefined}
       aria-roledescription='heading-block'
     >
-      <Comp
+      <Heading
         id={editableId}
         role={canEdit ? 'textbox' : undefined}
         aria-roledescription='heading-block-editable'
@@ -402,7 +361,7 @@ const ComposerHeadingBlock = forwardRef<
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
         <ComposerInlineContent content={block.content} />
-      </Comp>
+      </Heading>
     </div>
   )
 })

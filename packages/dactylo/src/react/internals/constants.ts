@@ -21,6 +21,24 @@ export const COMPOSER_DIVIDER_BLOCK_NAME = 'Composer.DividerBlock'
 /** The name of the composer heading block component. */
 export const COMPOSER_HEADING_BLOCK_NAME = 'Composer.HeadingBlock'
 
+/** The levels of the composer heading blocks. */
+export const COMPOSER_HEADING_LEVELS: HeadingBlock['level'][] = [
+  1, 2, 3, 4, 5, 6,
+]
+
+/** Heading tags for the composer heading blocks. */
+export const COMPOSER_HEADING_TAGS: Record<
+  HeadingBlock['level'],
+  `h${HeadingBlock['level']}`
+> = {
+  1: 'h1',
+  2: 'h2',
+  3: 'h3',
+  4: 'h4',
+  5: 'h5',
+  6: 'h6',
+}
+
 /** The name of the composer heading component. */
 export const COMPOSER_HEADING_NAME = (level: HeadingBlock['level']) =>
   `Composer.Heading${level}`
