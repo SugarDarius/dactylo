@@ -7,7 +7,6 @@ import {
   isMentionNode,
 } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
-import { assertNever } from './utils'
 
 /**
  * {@link Selection} defines how Dactylo tracks cursor position and text selection
@@ -262,33 +261,10 @@ export function cursorAtBlockEnd(
   blockId: BlockId,
   block: BlockWithInlineContent,
 ): CursorSelection {
-  let offset = 0
   const last = findLastInlineNodeInBlock(block)
+  const length = getInlineNodeTextLength(last)
 
-  const type = last.__type
-  switch (type) {
-    case 'text': {
-      offset = last.text.length
-      break
-    }
-    case 'link': {
-      offset = last.text.length
-      break
-    }
-    case 'mention': {
-      offset = last.text.length
-      break
-    }
-    case 'line_break': {
-      offset = 0
-      break
-    }
-    default: {
-      assertNever(type, { hint: 'Selection/#cursorAtBlockEnd' })
-    }
-  }
-
-  return createCursor({ blockId, nodeId: last.id, offset })
+  return createCursor({ blockId, nodeId: last.id, offset: length })
 }
 
 /** Checks whether is a {@link TextCursor} is at block end. */

@@ -90,9 +90,6 @@ export interface MentionNode extends INode {
      */
     readonly type: string
   }
-
-  /** The text to display for the mention */
-  readonly text: string
 }
 
 /** Node representing a like break (soft break, shift+enter) inside a block. */
@@ -296,17 +293,18 @@ export function touchInlineNode(node: InlineNode): InlineNode {
 
 /** Returns the text length of an inline node. */
 export function getInlineNodeTextLength(node: InlineNode): number {
-  switch (node.__type) {
+  const type = node.__type
+  switch (type) {
     case 'text':
-    case 'link':
-    case 'mention': {
+    case 'link': {
       return node.text.length
     }
+    case 'mention':
     case 'line_break': {
       return 0
     }
     default: {
-      assertNever(node, { hint: 'InlineNode/#getInlineNodeTextLength' })
+      assertNever(type, { hint: 'InlineNode/#getInlineNodeTextLength' })
     }
   }
 }
@@ -353,12 +351,7 @@ export function isInlineContentWithoutVisibleText(
         }
         break
       }
-      case 'mention': {
-        if (node.text.length > 0) {
-          return false
-        }
-        break
-      }
+      case 'mention':
       case 'line_break': {
         return false
       }
