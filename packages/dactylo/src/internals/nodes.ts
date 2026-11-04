@@ -299,6 +299,11 @@ export function getInlineNodeTextLength(node: InlineNode): number {
     case 'link': {
       return node.text.length
     }
+    /**
+     * Invariant UX:
+     *  Mentions are customers rendered text, as {@link Dactylo}
+     *  is responsible for rendering content of a mention.
+     */
     case 'mention':
     case 'line_break': {
       return 0

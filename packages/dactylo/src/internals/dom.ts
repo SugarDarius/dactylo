@@ -365,6 +365,8 @@ export function getDOMPointFromTextCursor(
     return { node, offset: 0 }
   }
 
+  // @todo: handle mention nodes.
+
   if (
     node.hasAttribute(TEXT_NODE_ATTR_NAME) ||
     node.hasAttribute(LINK_NODE_ATTR_NAME)
