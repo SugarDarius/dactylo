@@ -5,6 +5,7 @@ import { isInlineNodeWithEditableText } from '../../src/internals/nodes'
 import {
   assertUndoRedo,
   blockTexts,
+  endOfBlock,
   firstInlineBlock,
   focus,
   hardBreak,
@@ -45,6 +46,45 @@ describe('TransactionPipeline hard break', () => {
     hardBreak(pipeline)
 
     expect(blockTexts(pipeline.context)).toEqual(['He', 'llo'])
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Enter in the middle of the second of four paragraphs inserts the tail before the third', () => {
+    const pipeline = makePipeline({ markdown: false })
+    typeLines(pipeline, ['First', 'Second', 'Third', 'Fourth'])
+    const second = nthInlineBlock(pipeline.context, 1)
+    setCursor(pipeline, { ...startOfBlock(second), offset: 3 })
+    const before = snapshot(pipeline.context)
+
+    hardBreak(pipeline)
+
+    expect(blockTexts(pipeline.context)).toEqual([
+      'First',
+      'Sec',
+      'ond',
+      'Third',
+      'Fourth',
+    ])
+    expect(pipeline.context.state.blocks.size).toBe(5)
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Enter at the end of the second of four paragraphs inserts before the third', () => {
+    const pipeline = makePipeline({ markdown: false })
+    typeLines(pipeline, ['First', 'Second', 'Third', 'Fourth'])
+    setCursor(pipeline, endOfBlock(nthInlineBlock(pipeline.context, 1)))
+    const before = snapshot(pipeline.context)
+
+    hardBreak(pipeline)
+
+    expect(blockTexts(pipeline.context)).toEqual([
+      'First',
+      'Second',
+      '',
+      'Third',
+      'Fourth',
+    ])
+    expect(pipeline.context.state.blocks.size).toBe(5)
     assertUndoRedo(pipeline, before)
   })
 

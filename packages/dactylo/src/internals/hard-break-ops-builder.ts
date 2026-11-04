@@ -1,14 +1,16 @@
 import {
-  createParagraphBlockAfter,
+  createParagraphBlock,
   findNodeInBlockWithInlineContent,
 } from './blocks'
 import type { BlockWithInlineContent } from './blocks'
 import { warn } from './console'
 import {
   compareTextCursors,
+  computeInsertBlockPosKey,
   getBlockWithInlineContent,
   normalizeRange,
 } from './document'
+import type { DocumentState } from './document'
 import type { EditorContext } from './editor-context'
 import {
   createTextNode,
@@ -115,14 +117,22 @@ export type HardBreakOpsRule = OperationRule<HardBreakOpsSituation>
  * - Otherwise → `split_block` at the caret, caret at the tail block start.
  */
 export function buildHardBreakBlockOpsAtCaret(
+  state: DocumentState,
   block: BlockWithInlineContent,
   at: TextCursor,
   node: InlineNodeWithEditableText,
 ): { ops: Operation[]; next: CursorSelection } {
+  const posKey = computeInsertBlockPosKey(state, {
+    blockId: block.id,
+    type: 'after',
+  })
+
   if (isCursorAtBlockEnd(at, block)) {
-    const insertedBlock = createParagraphBlockAfter(block, [
-      createTextNode({ text: '' }),
-    ])
+    const insertedBlock = createParagraphBlock({
+      content: [createTextNode({ text: '' })],
+      parentId: block.parentId,
+      posKey,
+    })
 
     const next = cursorAtBlockStart(insertedBlock.id, insertedBlock)
     if (!next) {
@@ -171,11 +181,12 @@ export function buildHardBreakBlockOpsAtCaret(
     { index: found.index, node },
     at.offset,
   )
-  const insertedBlock = createParagraphBlockAfter(
-    block,
-    tailSnapshot,
-    block.metadata,
-  )
+  const insertedBlock = createParagraphBlock({
+    content: tailSnapshot,
+    metadata: block.metadata,
+    parentId: block.parentId,
+    posKey,
+  })
   const next = cursorAtBlockStart(insertedBlock.id, insertedBlock)
   if (!next) {
     buildError(
@@ -212,7 +223,12 @@ export const cursorRules: HardBreakOpsRule[] = [
       }
 
       const { block, node, at } = situation
-      const { ops, next } = buildHardBreakBlockOpsAtCaret(block, at, node)
+      const { ops, next } = buildHardBreakBlockOpsAtCaret(
+        context.state,
+        block,
+        at,
+        node,
+      )
       return withTrailingSelectionOp(ops, next, context.selection)
     },
     name: 'cursor/hard-break/at-block-end',
@@ -236,7 +252,12 @@ export const cursorRules: HardBreakOpsRule[] = [
       }
 
       const { block, node, at } = situation
-      const { ops, next } = buildHardBreakBlockOpsAtCaret(block, at, node)
+      const { ops, next } = buildHardBreakBlockOpsAtCaret(
+        context.state,
+        block,
+        at,
+        node,
+      )
       return withTrailingSelectionOp(ops, next, context.selection)
     },
     name: 'cursor/hard-break/split-block-at',
@@ -258,7 +279,7 @@ export const rangeRules: HardBreakOpsRule[] = [
      * 💡 Range selection lies entirely inside one editable text node.
      * 🎯 `delete_text` on `[anchor, focus)`, then hard-break at anchor (post-delete caret).
      */
-    build: ({ situation }): Operation[] | null => {
+    build: ({ context, situation }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-node'
@@ -289,6 +310,7 @@ export const rangeRules: HardBreakOpsRule[] = [
       }
 
       const { ops, next } = buildHardBreakBlockOpsAtCaret(
+        context.state,
         blockAfter,
         deleteIntent.caret,
         nodeAfter,
@@ -307,7 +329,7 @@ export const rangeRules: HardBreakOpsRule[] = [
      * 💡 Range spans multiple inline nodes in one block.
      * 🎯 Delete the range without joining survivors, then hard-break at anchor.
      */
-    build: ({ situation }): Operation[] | null => {
+    build: ({ context, situation }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-block'
@@ -336,6 +358,7 @@ export const rangeRules: HardBreakOpsRule[] = [
       }
 
       const { ops, next } = buildHardBreakBlockOpsAtCaret(
+        context.state,
         newBlock,
         deleteIntent.caret,
         caretNode,
@@ -375,6 +398,7 @@ export const rangeRules: HardBreakOpsRule[] = [
       const caretNode = resolvesCaretNode(caretBlock, deleteIntent)
 
       const { ops, next } = buildHardBreakBlockOpsAtCaret(
+        context.state,
         caretBlock,
         deleteIntent.caret,
         caretNode,

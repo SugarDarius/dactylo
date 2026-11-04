@@ -115,20 +115,39 @@ export function createInitialEmptyDocumentState(): DocumentState {
 
 /** Immutable update: put a block in document state. */
 export function putBlock(state: DocumentState, block: Block): DocumentState {
+  const prev = state.blocks.get(block.id)
   const blocks = new Map([...state.blocks, [block.id, block]])
+
+  if (prev?.posKey === block.posKey) {
+    return { ...state, blocks }
+  }
+
   return { ...state, blockOrderById: sortBlockOrder(blocks), blocks }
 }
 
-/** Immutable update: put multiple blocks in document state. */
+/** Immutable update: merge blocks into document state. */
 export function putBlocks(
   state: DocumentState,
-  blocks: Block[],
+  incoming: Block[],
 ): DocumentState {
-  const blocksMap = new Map(blocks.map((block) => [block.id, block]))
+  const blocks = new Map(state.blocks)
+  let orderChanged = false
+
+  for (const block of incoming) {
+    const prev = blocks.get(block.id)
+    blocks.set(block.id, block)
+
+    if (!prev || prev.posKey !== block.posKey) {
+      orderChanged = true
+    }
+  }
+
   return {
     ...state,
-    blockOrderById: sortBlockOrder(blocksMap),
-    blocks: blocksMap,
+    blockOrderById: orderChanged
+      ? sortBlockOrder(blocks)
+      : state.blockOrderById,
+    blocks,
   }
 }
 
