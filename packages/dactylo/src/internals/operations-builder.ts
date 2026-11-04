@@ -680,7 +680,7 @@ export function buildDeleteTextRunIntent(
  */
 export function buildRemoveInlineNodeRangeOps(
   block: BlockWithInlineContent,
-  content: InlineNode[],
+  content: readonly InlineNode[],
   firstIndex: number,
   lastIndex: number,
 ): Operation[] {
@@ -727,8 +727,8 @@ export function stripEmptyRunwaysAtMergeSeam(
   source: BlockWithInlineContent,
 ): {
   ops: Operation[]
-  sourceContent: InlineNode[]
-  targetContent: InlineNode[]
+  sourceContent: readonly InlineNode[]
+  targetContent: readonly InlineNode[]
 } {
   const trailing = collectTrailingEmptyRunways(target.content)
   const leading = collectLeadingEmptyRunways(source.content)
@@ -1211,7 +1211,7 @@ export function buildDeleteRangeCrossBlockIntent(
   )
   ops.push(...stripped.ops)
 
-  remainingHead = stripped.targetContent
+  remainingHead = [...stripped.targetContent]
   const remainingTailAfter = stripped.sourceContent
   const trimmedSource: BlockWithInlineContent = {
     ...endBlock,
@@ -1229,7 +1229,7 @@ export function buildDeleteRangeCrossBlockIntent(
 
   ops.push({
     __type: 'merge_blocks',
-    mergedTailSnapshot: remainingTailAfter,
+    mergedTailSnapshot: [...remainingTailAfter],
     sourceBlockId: endBlock.id,
     sourceSnapshot: trimmedSource,
     splitAtNodeId,

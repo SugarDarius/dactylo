@@ -79,7 +79,7 @@ export interface SplitBlockOp {
    * Inline nodes moved to `newBlock` (tail content after split).
    * Stored for undo inversion.
    */
-  readonly tailSnapshot: InlineNode[]
+  readonly tailSnapshot: readonly InlineNode[]
 }
 
 /** Merges a source block's content into a target block (Backspace at block start). */

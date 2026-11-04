@@ -144,7 +144,7 @@ export function withSelection(
 export function updateBlockWithInlineContent(
   context: EditorContext,
   blockId: BlockId,
-  content: InlineNode[],
+  content: readonly InlineNode[],
 ): EditorContext {
   const block = getBlockWithInlineContent(context.state, blockId)
   const updated: BlockWithInlineContent = {
