@@ -547,6 +547,44 @@ export class OperationsEngine {
     return { label: 'duplicate', ops }
   }
 
+  /** Builds operations to move a {@link Block} by ID to a new document position. */
+  buildMoveBlockOps(
+    context: EditorContext,
+    blockId: BlockId,
+    pos: InsertOrMoveBlockPosition,
+  ): BuilderOpsIntent | null {
+    const { state } = context
+    getBlock(state, blockId)
+
+    /**
+     * Invariant UX:
+     *  When the block is already at the destination,
+     *  skip the move so history is not polluted with a posKey-only change.
+     */
+    if (isMoveBlockNoOp(state, blockId, pos)) {
+      warnOnceIf(
+        this.#debug,
+        `Skipping move of block ${blockId} because it is already at the destination.`,
+        'OperationsEngine/buildMoveBlockOps',
+      )
+      return null
+    }
+
+    const posKey = computeInsertBlockPosKey(state, pos)
+    const afterBlockId = resolveInsertAfterBlockId(state, pos)
+
+    const ops: Operation[] = [
+      {
+        __type: 'move_block',
+        afterBlockId,
+        blockId,
+        posKey,
+      },
+    ]
+
+    return { label: 'move', ops }
+  }
+
   /** Builds operations to delete a {@link Block} by ID. */
   buildDeleteBlockOps(
     context: EditorContext,
@@ -598,43 +636,5 @@ export class OperationsEngine {
     ]
 
     return { label: 'delete', ops }
-  }
-
-  /** Builds operations to move a {@link Block} by ID to a new document position. */
-  buildMoveBlockOps(
-    context: EditorContext,
-    blockId: BlockId,
-    pos: InsertOrMoveBlockPosition,
-  ): BuilderOpsIntent | null {
-    const { state } = context
-    getBlock(state, blockId)
-
-    /**
-     * Invariant UX:
-     *  When the block is already at the destination,
-     *  skip the move so history is not polluted with a posKey-only change.
-     */
-    if (isMoveBlockNoOp(state, blockId, pos)) {
-      warnOnceIf(
-        this.#debug,
-        `Skipping move of block ${blockId} because it is already at the destination.`,
-        'OperationsEngine/buildMoveBlockOps',
-      )
-      return null
-    }
-
-    const posKey = computeInsertBlockPosKey(state, pos)
-    const afterBlockId = resolveInsertAfterBlockId(state, pos)
-
-    const ops: Operation[] = [
-      {
-        __type: 'move_block',
-        afterBlockId,
-        blockId,
-        posKey,
-      },
-    ]
-
-    return { label: 'move', ops }
   }
 }
