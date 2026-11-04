@@ -554,7 +554,6 @@ export class OperationsEngine {
     pos: InsertOrMoveBlockPosition,
   ): BuilderOpsIntent | null {
     const { state } = context
-    getBlock(state, blockId)
 
     /**
      * Invariant UX:
