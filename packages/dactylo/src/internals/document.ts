@@ -118,7 +118,7 @@ export function putBlock(state: DocumentState, block: Block): DocumentState {
   const prev = state.blocks.get(block.id)
   const blocks = new Map([...state.blocks, [block.id, block]])
 
-  if (prev?.posKey === block.posKey) {
+  if (prev && prev.posKey === block.posKey) {
     return { ...state, blocks }
   }
 
