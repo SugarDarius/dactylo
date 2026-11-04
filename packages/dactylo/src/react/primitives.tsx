@@ -138,102 +138,102 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 // --- Composer.Editable ─────────────────────────────────────────---
 
 /** Adds a {@link TextNode} to the composer. */
-const ComposerTextNode = forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
-  ({ node, ...props }, forwardedRef) => {
-    const { renderedText, nodeAttributes } = useEditableNode(node)
-    return (
-      <span
-        {...props}
-        ref={forwardedRef}
-        {...{
-          [NODE_ATTR_NAME]: '',
-          [NODE_ID_DATA_NAME]: node.id,
-          [TEXT_NODE_ATTR_NAME]: '',
-          ...nodeAttributes,
-        }}
-        aria-roledescription='text-node'
-      >
-        {renderedText}
-      </span>
-    )
-  },
+const ComposerTextNode = memo(
+  forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
+    ({ node, ...props }, forwardedRef) => {
+      const { renderedText, nodeAttributes } = useEditableNode(node)
+      return (
+        <span
+          {...props}
+          ref={forwardedRef}
+          {...{
+            [NODE_ATTR_NAME]: '',
+            [NODE_ID_DATA_NAME]: node.id,
+            [TEXT_NODE_ATTR_NAME]: '',
+            ...nodeAttributes,
+          }}
+          aria-roledescription='text-node'
+        >
+          {renderedText}
+        </span>
+      )
+    },
+  ),
 )
 ComposerTextNode.displayName = COMPOSER_TEXT_NODE_NAME
 
 /** Adds a {@link LinkNode} to the composer. */
-const ComposerLinkNode = forwardRef<HTMLAnchorElement, ComposerLinkNodeProps>(
-  ({ node, ...props }, forwardedRef) => {
-    const { renderedText, nodeAttributes } = useEditableNode(node)
-    return (
-      <a
-        target='_blank'
-        rel='noopener noreferrer'
-        {...props}
-        ref={forwardedRef}
-        {...{
-          [LINK_NODE_ATTR_NAME]: '',
-          [NODE_ATTR_NAME]: '',
-          [NODE_ID_DATA_NAME]: node.id,
-          ...nodeAttributes,
-        }}
-        aria-roledescription='link-node'
-        href={node.url.href}
-        title={node.url.title}
-      >
-        {renderedText}
-      </a>
-    )
-  },
+const ComposerLinkNode = memo(
+  forwardRef<HTMLAnchorElement, ComposerLinkNodeProps>(
+    ({ node, ...props }, forwardedRef) => {
+      const { renderedText, nodeAttributes } = useEditableNode(node)
+      return (
+        <a
+          target='_blank'
+          rel='noopener noreferrer'
+          {...props}
+          ref={forwardedRef}
+          {...{
+            [LINK_NODE_ATTR_NAME]: '',
+            [NODE_ATTR_NAME]: '',
+            [NODE_ID_DATA_NAME]: node.id,
+            ...nodeAttributes,
+          }}
+          aria-roledescription='link-node'
+          href={node.url.href}
+          title={node.url.title}
+        >
+          {renderedText}
+        </a>
+      )
+    },
+  ),
 )
 ComposerLinkNode.displayName = COMPOSER_LINK_NODE_NAME
 
 /** Adds a {@link LineBreakNode} to the composer. */
-export const ComposerLineBreakNode = forwardRef<
-  HTMLBRElement,
-  ComposerLineBreakNodeProps
->(({ node, ...props }, forwardedRef) => (
-  <br
-    {...props}
-    ref={forwardedRef}
-    {...{
-      [LINE_BREAK_NODE_ATTR_NAME]: '',
-      [NODE_ATTR_NAME]: '',
-      [NODE_ID_DATA_NAME]: node.id,
-    }}
-    aria-roledescription='line-break-node'
-  />
-))
+export const ComposerLineBreakNode = memo(
+  forwardRef<HTMLBRElement, ComposerLineBreakNodeProps>(
+    ({ node, ...props }, forwardedRef) => (
+      <br
+        {...props}
+        ref={forwardedRef}
+        {...{
+          [LINE_BREAK_NODE_ATTR_NAME]: '',
+          [NODE_ATTR_NAME]: '',
+          [NODE_ID_DATA_NAME]: node.id,
+        }}
+        aria-roledescription='line-break-node'
+      />
+    ),
+  ),
+)
 ComposerLineBreakNode.displayName = COMPOSER_LINE_BREAK_NODE_NAME
 
 /** Adds inline content for a block to the composer. */
 const ComposerInlineContent = ({ content }: ComposerInlineContentProps) => {
-  // @todo: add performance rendering optimization
-  const children = useMemo(() => {
-    const items = []
+  const children = []
 
-    for (const node of content) {
-      const type = node.__type
-      switch (type) {
-        case 'text': {
-          items.push(<ComposerTextNode key={node.id} node={node} />)
-          break
-        }
-        case 'link': {
-          items.push(<ComposerLinkNode key={node.id} node={node} />)
-          break
-        }
-        case 'line_break': {
-          items.push(<ComposerLineBreakNode key={node.id} node={node} />)
-          break
-        }
-        default: {
-          warnOnce(`Skipping rendering for unsupported node type: ${type}.`)
-        }
+  for (const node of content) {
+    const type = node.__type
+    switch (type) {
+      case 'text': {
+        children.push(<ComposerTextNode key={node.id} node={node} />)
+        break
+      }
+      case 'link': {
+        children.push(<ComposerLinkNode key={node.id} node={node} />)
+        break
+      }
+      case 'line_break': {
+        children.push(<ComposerLineBreakNode key={node.id} node={node} />)
+        break
+      }
+      default: {
+        warnOnce(`Skipping rendering for unsupported node type: ${type}.`)
       }
     }
-
-    return items
-  }, [content])
+  }
 
   return children
 }
@@ -247,7 +247,6 @@ const ComposerParagraphBlock = forwardRef<
   const { canEdit, editableId, withActiveSelection, isEmpty } =
     useEditableBlock(block.id)
 
-  const content = useMemo(() => [...block.content], [block.content])
   const isActive = canEdit && withActiveSelection
 
   return (
@@ -279,7 +278,7 @@ const ComposerParagraphBlock = forwardRef<
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
-        <ComposerInlineContent content={content} />
+        <ComposerInlineContent content={block.content} />
       </div>
     </div>
   )
@@ -323,6 +322,7 @@ const ComposerHeadingSix = forwardRef<
 >((props, forwardedRef) => <h6 {...props} ref={forwardedRef} />)
 ComposerHeadingSix.displayName = COMPOSER_HEADING_NAME(6)
 
+/** Adds a {@link HeadingBlock} to the composer. */
 const ComposerHeadingBlock = forwardRef<
   HTMLDivElement,
   ComposerHeadingBlockProps
@@ -332,8 +332,7 @@ const ComposerHeadingBlock = forwardRef<
     useEditableBlock(block.id)
 
   const Comp = useMemo(() => {
-    const { level } = block
-    switch (level) {
+    switch (block.level) {
       case 1: {
         return ComposerHeadingOne
       }
@@ -353,16 +352,17 @@ const ComposerHeadingBlock = forwardRef<
         return ComposerHeadingSix
       }
       default: {
-        assertNever(level, { hint: 'react/primitives/ComposerHeadingBlock' })
+        assertNever(block.level, {
+          hint: 'react/primitives/ComposerHeadingBlock',
+        })
       }
     }
-  }, [block])
+  }, [block.level])
 
   const placeholder = useMemo(
     () => heading.placeholder.replace('%level%', block.level.toString()),
     [block.level, heading.placeholder],
   )
-  const content = useMemo(() => [...block.content], [block.content])
 
   const isActive = canEdit && withActiveSelection
 
@@ -396,7 +396,7 @@ const ComposerHeadingBlock = forwardRef<
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
-        <ComposerInlineContent content={content} />
+        <ComposerInlineContent content={block.content} />
       </Comp>
     </div>
   )
