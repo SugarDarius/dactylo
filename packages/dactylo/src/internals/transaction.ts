@@ -1368,6 +1368,27 @@ export class TransactionPipeline {
     })
   }
 
+  /** Duplicates a block by ID. */
+  duplicateBlock(
+    blockId: BlockId,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildDuplicateBlockOps(
+      this.#context,
+      blockId,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
   /** Removes a block by ID. */
   deleteBlock(
     blockId: BlockId,

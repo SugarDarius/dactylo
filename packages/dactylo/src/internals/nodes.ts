@@ -5,7 +5,7 @@
  * Text is stored in text nodes: structural inline elements (soft line breaks, inline code spans, ...)
  *
  * By design, this content tree is kept lightweight as an inline sequence
- * with coalesced text nodes to give better mutation performances while staying memory-conscious.
+ * oo give better mutation performances while staying memory-conscious.
  */
 
 import { nanoid } from 'nanoid'
@@ -198,6 +198,16 @@ export function isInlineNodeWithEditableText(
   node: InlineNode,
 ): node is InlineNodeWithEditableText {
   return isTextNode(node) || isLinkNode(node)
+}
+
+/** Clones an inline node by copying properties and creating a new identity. */
+export function cloneInlineNode(node: InlineNode): InlineNode {
+  return {
+    ...node,
+    createdAt: new Date(),
+    id: generateNodeId(),
+    updatedAt: null,
+  }
 }
 
 /**

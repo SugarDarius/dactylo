@@ -5,6 +5,7 @@ import {
   blockTexts,
   focus,
   makePipeline,
+  requireCursor,
   selectOffsetsInCurrentNode,
   snapshot,
   typeText,
@@ -65,6 +66,37 @@ describe('TransactionPipeline block commands', () => {
     pipeline.deleteBlock(extraId, 'user')
 
     expect(pipeline.context.state.blockOrderById).not.toContain(extraId)
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('duplicateBlock and undo/redo round-trip', () => {
+    const pipeline = makePipeline({ markdown: false })
+
+    focus(pipeline)
+    typeText(pipeline, 'Hello')
+
+    const [sourceId] = pipeline.context.state.blockOrderById
+
+    if (!sourceId) {
+      throw new Error('Expected a source block')
+    }
+
+    const before = snapshot(pipeline.context)
+
+    pipeline.duplicateBlock(sourceId, 'user')
+
+    const order = pipeline.context.state.blockOrderById
+    // oxlint-disable-next-line prefer-destructuring
+    const cloneId = order[1]
+    if (!cloneId) {
+      throw new Error('Expected a duplicated block')
+    }
+
+    expect(order).toHaveLength(2)
+    expect(order[0]).toBe(sourceId)
+    expect(cloneId).not.toBe(sourceId)
+    expect(blockTexts(pipeline.context)).toEqual(['Hello', 'Hello'])
+    expect(requireCursor(pipeline.context).blockId).toBe(cloneId)
     assertUndoRedo(pipeline, before)
   })
 })

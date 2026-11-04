@@ -29,8 +29,10 @@ import type { Selection } from './selection'
 /** Inserts a block at the given position (fractional index). */
 export interface InsertBlockOp {
   readonly __type: 'insert_block'
+
   /** Block to insert. */
   readonly block: Block
+
   /**
    * Position where the block is inserted.
    * If set to `null`, then the block is inserted
@@ -42,10 +44,13 @@ export interface InsertBlockOp {
 /** Deletes a block at the given position (fractional index). */
 export interface DeleteBlockOp {
   readonly __type: 'delete_block'
+
   /** ID of the block to delete. */
   readonly blockId: BlockId
+
   /** Snapshot for undo - full block as it was before deletion. */
   readonly snapshot: Block
+
   /**
    * Position where the block is deleted for undo re-insertion.     * If set to `null`, then the block is deleted
    * directly at the beginning of the document.

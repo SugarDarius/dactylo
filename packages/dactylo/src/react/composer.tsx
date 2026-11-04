@@ -7,7 +7,7 @@ import type {
   DactyloStaticConfig,
   DactyloToolEvent,
 } from '../dactylo'
-import type { Block, BlockId } from '../internals/blocks'
+import type { Block, BlockId, HeadingBlock } from '../internals/blocks'
 import {
   EDITABLE_NODE_BOLD_MARK_DATA_NAME,
   EDITABLE_NODE_ITALIC_MARK_DATA_NAME,
@@ -477,15 +477,23 @@ export function useBlocksTools() {
  *
  * @example
  * ```tsx
- * const { delete, insertParagraph } = useBlocksCommands()
+ * const { delete, duplicate, insertParagraph } = useBlocksCommands()
+ *
  * delete(blockId)
+ * delete(blockId, 'ai-agent')
+ *
  * insertParagraph({ pos: { type: 'end'}, metadata: { fontColor: 'purple' } })
+ *
  * insertHeading(1)
  * insertHeading(2, { pos: { type: 'end' } })
  * insertHeading(3, {}, 'ai-agent')
+ *
  * insertDivider()
  * insertDivider({ pos: { type: 'end' } })
  * insertDivider({}, 'ai-agent')
+ *
+ * duplicate(blockId)
+ * duplicate(blockId, 'ai-agent')
  * ```
  */
 export function useBlocksCommands() {
@@ -500,7 +508,7 @@ export function useBlocksCommands() {
 
   const insertHeading = useStableCallback(
     (
-      level: 1 | 2 | 3 | 4 | 5 | 6,
+      level: HeadingBlock['level'],
       opts?: { pos?: InsertBlockPosition; metadata?: Metadata },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertHeading(level, opts, source),
@@ -513,6 +521,13 @@ export function useBlocksCommands() {
     ) => editor.blocks.commands.insertDivider(opts, source),
   )
 
+  const duplicate = useStableCallback(
+    (
+      blockId: BlockId,
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.duplicate(blockId, source),
+  )
+
   const $delete = useStableCallback(
     (
       blockId: BlockId,
@@ -522,6 +537,7 @@ export function useBlocksCommands() {
 
   return {
     delete: $delete,
+    duplicate,
     insertDivider,
     insertHeading,
     insertParagraph,

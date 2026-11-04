@@ -1,9 +1,11 @@
 import { AutolinkOpsBuilder } from './autolink-ops-builder'
 import {
+  cloneBlock,
   createDividerBlock,
   createHeadingBlock,
   createParagraphBlock,
   createParagraphBlockAfter,
+  isBlockWithInlineContent,
 } from './blocks'
 import type { BlockId, HeadingBlock } from './blocks'
 import type { TextPlainData } from './clipboard'
@@ -41,6 +43,7 @@ import {
   areSelectionsEqual,
   createCursor,
   createRangeSelectingInlineContentInBlock,
+  cursorAtBlockEnd,
   isCursorSelection,
   isRangeSelection,
   isSelectionActive,
@@ -502,6 +505,45 @@ export class OperationsEngine {
       { metadata, type: 'divider' },
       pos,
     )
+  }
+
+  /** Builds operations to duplicate a {@link Block} by ID. */
+  buildDuplicateBlockOps(
+    context: EditorContext,
+    blockId: BlockId,
+  ): BuilderOpsIntent | null {
+    const { state, selection } = context
+    const source = getBlock(state, blockId)
+
+    const pos: InsertBlockPosition = { blockId: source.id, type: 'after' }
+
+    const posKey = computeInsertBlockPosKey(state, pos)
+    const afterBlockId = resolveInsertAfterBlockId(state, pos)
+
+    const clone = cloneBlock(source, posKey)
+
+    const ops: Operation[] = [
+      {
+        __type: 'insert_block',
+        afterBlockId,
+        block: clone,
+      },
+    ]
+
+    /**
+     * Invariant UX:
+     *  When duplicating a block with inline content,
+     *  the selection is set at the end of the duplicated block.
+     */
+    if (isBlockWithInlineContent(clone)) {
+      ops.push({
+        __type: 'set_selection',
+        next: cursorAtBlockEnd(clone.id, clone),
+        prev: selection,
+      })
+    }
+
+    return { label: 'duplicate', ops }
   }
 
   /** Builds operations to delete a {@link Block} by ID. */

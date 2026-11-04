@@ -12,10 +12,12 @@
 import { nanoid } from 'nanoid'
 
 import { DactyloError } from './errors'
+import { cloneInlineNode } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
 import { after } from './position'
 import type { PosKey } from './position'
 import type { Brand, Metadata } from './types'
+import { assertNever } from './utils'
 
 /**
  * Brand type for block unique IDs.
@@ -187,16 +189,66 @@ export function isDividerBlock(block: Block): block is DividerBlock {
   return block.__type === 'divider'
 }
 
-/** Returns a shallow copy of a block with a fresh `updatedAt` timestamp. */
-export function touchBlock(block: Block): Block {
-  return { ...block, updatedAt: new Date() }
-}
-
 /** Whether the block is allowed to have inline content. */
 export function isBlockWithInlineContent(
   block: Block,
 ): block is BlockWithInlineContent {
   return isHeadingBlock(block) || isParagraphBlock(block)
+}
+
+/** Returns a shallow copy of a block with a fresh `updatedAt` timestamp. */
+export function touchBlock(block: Block): Block {
+  return { ...block, updatedAt: new Date() }
+}
+
+/** Clones the inline content of an allowed block. */
+export function cloneBlockInlineContent(
+  content: readonly InlineNode[],
+): InlineNode[] {
+  const cloned: InlineNode[] = []
+  for (const node of content) {
+    cloned.push(cloneInlineNode(node))
+  }
+  return cloned
+}
+
+/**
+ * Clones a block by:
+ *  - Copying properties
+ *  - Creating a new identity
+ *  - Assigning a new defined `posKey`
+ */
+export function cloneBlock(source: Block, posKey: PosKey): Block {
+  const type = source.__type
+  switch (type) {
+    case 'paragraph': {
+      return createParagraphBlock({
+        content: cloneBlockInlineContent(source.content),
+        metadata: source.metadata,
+        parentId: source.parentId,
+        posKey,
+      })
+    }
+    case 'heading': {
+      return createHeadingBlock({
+        content: cloneBlockInlineContent(source.content),
+        level: source.level,
+        metadata: source.metadata,
+        parentId: source.parentId,
+        posKey,
+      })
+    }
+    case 'divider': {
+      return createDividerBlock({
+        metadata: source.metadata,
+        parentId: source.parentId,
+        posKey,
+      })
+    }
+    default: {
+      assertNever(type, { hint: 'Blocks/cloneBlock' })
+    }
+  }
 }
 
 /** Rebuilds block order from a blocks map (after posKey changes). */

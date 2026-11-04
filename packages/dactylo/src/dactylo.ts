@@ -161,6 +161,7 @@ export type DactyloCommand =
   | 'blocks/insert-paragraph'
   | 'blocks/insert-heading'
   | 'blocks/insert-divider'
+  | 'blocks/duplicate'
   | 'blocks/delete'
 
 /** Event emitted when a command is executed */
@@ -500,6 +501,12 @@ export interface DactyloBlocksCommands {
       /** Metadata to associate with the divider block. */
       metadata?: Metadata
     },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /** Duplicates a {@link Block} by ID. */
+  readonly duplicate: (
+    blockId: BlockId,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 
@@ -1451,6 +1458,26 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'blocks/delete',
             () => this.#pipeline.deleteBlock(blockId, source),
+            noop,
+            { payload: { blockId, source } },
+          ),
+
+        /**
+         * Duplicates a {@link Block} by ID.
+         *
+         * @example
+         * ```ts
+         * editor.blocks.commands.duplicate(blockId)
+         * editor.blocks.commands.duplicate(blockId, 'ai-agent')
+         * ```
+         */
+        duplicate: (
+          blockId: BlockId,
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/duplicate',
+            () => this.#pipeline.duplicateBlock(blockId, source),
             noop,
             { payload: { blockId, source } },
           ),
