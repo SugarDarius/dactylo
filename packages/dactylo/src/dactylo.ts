@@ -308,17 +308,29 @@ export type DactyloHistoryApi = DactyloAspectApi<
 /** Tools to query the marks of the editor. */
 export interface DactyloMarksTools {
   /**
-   * Whether a mark is active or not depending on the current current selection.
-   * 👉🏻 A toolbar button for a mark that should appear pressed or not.
+   * Whether a mark is active or not depending from the selection on the given editor context.
+   * 👉🏻  A toolbar button for a mark that should appear pressed or not.
    *
    * This is a pure function that does not mutate the editor context.
+   *
+   * @example
+   * ```ts
+   * const isBoldActive = editor.marks.tools.isActive('bold')
+   * ```
    */
   readonly isActive: (mark: MarkKey) => boolean
 }
 
 /** Commands to mutate the marks of the editor. */
 export interface DactyloMarksCommands {
-  /** Toggle a mark on or off via the transaction pipeline. */
+  /**
+   * Toggle a mark on or off via the pipeline.
+   *
+   * @example
+   * ```ts
+   * editor.marks.commands.toggle('bold')
+   * ```
+   */
   readonly toggle: (
     mark: MarkKey,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -347,6 +359,18 @@ export interface DactyloComposerCommands {
    * by telling us "What's being inserted", not just "What's being pressed".
    *
    * Client only.
+   *
+   * @example
+   * ```ts
+   * const handleBeforeInput = (event: InputEvent) => {
+   *  editor.composer.commands.sendInput(event)
+   * }
+   *
+   * const editable = document.getElementById('editable')
+   * editable?.addEventListener('beforeinput', handleBeforeInput)
+   *
+   * <div id='editable' contentEditable={true} />
+   * ```
    */
   readonly sendInput: (event: InputEvent) => boolean
 
@@ -361,10 +385,27 @@ export interface DactyloComposerCommands {
    *  - arrow navigation from keyboard
    *
    * Client only.
+   *
+   * @example
+   * ```ts
+   * const handleKeyDown = (event: KeyboardEvent) => {
+   *  editor.composer.commands.sendKeydown(event)
+   * }
+   *
+   * const editable = document.getElementById('editable')
+   * editable?.addEventListener('keydown', handleKeyDown)
+   * ```
    */
   readonly sendKeydown: (event: KeyboardEvent) => boolean
 
-  /** Sets the IME composing state. */
+  /**
+   * Sets the IME composing state.
+   *
+   * @example
+   * ```ts
+   * editor.composer.commands.setIMEComposing(true)
+   * ```
+   */
   readonly setIMEComposing: (isComposing: boolean) => void
 }
 
@@ -379,36 +420,71 @@ export interface DactyloSelectionTools {
   /**
    * Whether the block with the given ID is with an active cursor selection within.
    * This is a pure function that does not mutate the editor context.
+   *
+   * @example
+   * ```ts
+   * const withActiveCursor = editor.selection.tools.isBlockWithActiveCursor(blockId)
+   * ```
    */
   readonly isBlockWithActiveCursor: (blockId: BlockId) => boolean
 
   /**
    * Whether the block with the given ID is with an active range selection within.
    * This is a pure function that does not mutate the editor context.
+   *
+   * @example
+   * ```ts
+   * const withActiveRange = editor.selection.tools.isBlockWithActiveRange(blockId)
+   * ```
    */
   readonly isBlockWithActiveRange: (blockId: BlockId) => boolean
 
   /**
    * Whether the block with the given ID is with an active selection within.
    * This is a pure function that does not mutate the editor context.
+   *
+   * @example
+   * ```ts
+   * const withActiveSelection = editor.selection.tools.isBlockWithActiveSelection(blockId)
+   * ```
    */
   readonly isBlockWithActiveSelection: (blockId: BlockId) => boolean
 
   /**
-   * Whether the editor is focused or not.
+   * Whether the selection is active or not.
    * This is a pure function that does not mutate the editor context.
+   *
+   * @example
+   * ```ts
+   * const isFocused = editor.selection.tools.isFocused()
+   * ```
    */
   readonly isFocused: () => boolean
 }
 
 /** Commands to mutate the selection of the editor. */
+// @todo: add select-all and deselect commands
 export interface DactyloSelectionCommands {
-  /** Focus the editor by placing a collapsed cursor at the end of the document. */
+  /**
+   * Focus the editor by placing a collapsed cursor at the end of the document.
+   *
+   * @example
+   * ```ts
+   * editor.selection.commands.focus()
+   * ```
+   */
   readonly focus: (
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 
-  /** Blur the editor by clearing the selection. */
+  /**
+   * Blurs the editor by clearing the selection.
+   *
+   * @example
+   * ```ts
+   * editor.selection.commands.blur()
+   * ```
+   */
   readonly blur: (
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -422,22 +498,69 @@ export type DactyloSelectionApi = DactyloAspectApi<
 
 /** Commands to sync the DOM with the editor state. */
 export interface DactyloDomCommands {
-  /** Attaches the editable `<div />` element to the editor. Client only. */
+  /**
+   * Attaches the DOM to the editor.
+   *
+   * @example
+   * ```ts
+   * editor.dom.commands.attach(editable)
+   * ```
+   */
   readonly attach: (editable: HTMLDivElement) => void
 
-  /** Detaches the editable `<div />` element from the editor. Client only. */
+  /**
+   * Detaches the editable `<div />` element from the editor.
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * editor.dom.commands.detach()
+   * ```
+   */
   readonly detach: () => void
 
-  /** Paints a collapsed caret at the position of the text cursor in the DOM. Client only. */
+  /**
+   * Paints a collapsed caret at the position of the text cursor in the DOM.
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * editor.dom.commands.paintCaret()
+   * ```
+   */
   readonly paintCaret: () => CancelCallback
 
-  /** Paints a range at anchor/focus in the DOM. Client only. */
+  /**
+   * Paints a range at anchor/focus in the DOM.
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * editor.dom.commands.paintRange()
+   * ```
+   */
   readonly paintRange: () => CancelCallback
 
-  /** Synchronizes the DOM selection with the editor state. Client only. */
+  /**
+   * Synchronizes the DOM selection with the editor state.
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * editor.dom.commands.syncSelection()
+   * ```
+   */
   readonly syncSelection: (fromSelectionChange?: boolean) => void
 
-  /** Clears the selection in the DOM. Client only. */
+  /**
+   * Clears the selection in the DOM.
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * editor.dom.commands.clearSelection()
+   * ```
+   */
   readonly clearSelection: () => CancelCallback
 }
 
@@ -451,6 +574,11 @@ export interface DactyloBlocksTools {
   /**
    * Whether the block with the given ID is with empty inline content.
    * This is a pure function that does not mutate the editor context.
+   *
+   * @example
+   * ```ts
+   * const isEmpty = editor.blocks.tools.isWithEmptyInlineContent(blockId)
+   * ```
    */
   readonly isWithEmptyInlineContent: (blockId: BlockId) => boolean
 }
@@ -460,6 +588,13 @@ export interface DactyloBlocksCommands {
   /**
    * Inserts a {@link ParagraphBlock} at the given position with metadata.
    * By defaults it inserts after the current selection.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.insertParagraph()
+   * editor.blocks.commands.insertParagraph({ pos: 'end' })
+   * editor.blocks.commands.insertParagraph({}, 'ai-agent')
+   * ```
    */
   readonly insertParagraph: (
     opts?: {
@@ -475,6 +610,13 @@ export interface DactyloBlocksCommands {
   /**
    * Inserts a {@link HeadingBlock} at the given position with metadata.
    * By defaults it inserts after the current selection.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.insertHeading(1)
+   * editor.blocks.commands.insertHeading(2, { pos: 'end' })
+   * editor.blocks.commands.insertHeading(3, {}, 'ai-agent')
+   * ```
    */
   readonly insertHeading: (
     /** Level of the heading. */
@@ -492,7 +634,14 @@ export interface DactyloBlocksCommands {
 
   /**
    * Inserts a {@link DividerBlock} at the given position with metadata.
-   * By defaults it inserts a level 1 after the current selection.
+   * By defaults it inserts after the current selection.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.insertDivider()
+   * editor.blocks.commands.insertDivider({ pos: 'end' })
+   * editor.blocks.commands.insertDivider({}, 'ai-agent')
+   * ```
    */
   readonly insertDivider: (
     opts?: {
@@ -504,14 +653,30 @@ export interface DactyloBlocksCommands {
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 
-  /** Duplicates a {@link Block} by ID. */
-  readonly duplicate: (
+  /**
+   * Deletes a {@link Block} from the document state by ID.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.delete(blockId)
+   * editor.blocks.commands.delete(blockId, 'ai-agent')
+   * ```
+   */
+  readonly delete: (
     blockId: BlockId,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 
-  /** Deletes a {@link Block} from the document state by ID. */
-  readonly delete: (
+  /**
+   * Duplicates a {@link Block} by ID.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.duplicate(blockId)
+   * editor.blocks.commands.duplicate(blockId, 'ai-agent')
+   * ```
+   */
+  readonly duplicate: (
     blockId: BlockId,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -1111,14 +1276,7 @@ export class Dactylo {
   get marks(): DactyloMarksApi {
     return {
       commands: {
-        /**
-         * Toggle a mark on or off via the pipeline.
-         *
-         * @example
-         * ```ts
-         * editor.marks.commands.toggle('bold')
-         * ```
-         */
+        /** Toggle a mark on or off via the transaction pipeline. */
         toggle: (
           mark: MarkKey,
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
@@ -1132,15 +1290,10 @@ export class Dactylo {
       },
       tools: {
         /**
-         * Whether a mark is active or not depending from the selection on the given editor context.
-         * 👉🏻  A toolbar button for a mark that should appear pressed or not.
+         * Whether a mark is active or not depending on the current current selection.
+         * 👉🏻 A toolbar button for a mark that should appear pressed or not.
          *
          * This is a pure function that does not mutate the editor context.
-         *
-         * @example
-         * ```ts
-         * const isBoldActive = editor.marks.tools.isActive('bold')
-         * ```
          */
         isActive: (mark: MarkKey): boolean =>
           this.#safeExecuteTool(
@@ -1159,19 +1312,18 @@ export class Dactylo {
       commands: {
         /**
          * Sends an input event to the editor and returns a boolean indicating whether the event was processed or not.
+         * Input events are triggered by user actions such as typing, pasting, or selecting text.
+         *
+         * Use it to handle `beforeinput` event to get real user intent and get:
+         *  - inserted characters from typing
+         *  - delete intents from cut/delete
+         *  - data transfer from paste
+         *
+         * Using `beforeinput` event handler is meant to be used to get intent before mutating DOM and
+         * for IME composition and be compliant with virtual mobile keyboards (iOS and Android)
+         * by telling us "What's being inserted", not just "What's being pressed".
+         *
          * Client only.
-         *
-         * @example
-         * ```ts
-         * const handleBeforeInput = (event: InputEvent) => {
-         *  editor.composer.commands.sendInput(event)
-         * }
-         *
-         * const editable = document.getElementById('editable')
-         * editable?.addEventListener('beforeinput', handleBeforeInput)
-         *
-         * <div id='editable' contentEditable={true} />
-         * ```
          */
         sendInput: (event: InputEvent): boolean =>
           this.#safeExecuteCommand(
@@ -1181,18 +1333,16 @@ export class Dactylo {
             { clientOnly: true, payload: { event } },
           ),
         /**
-         * Sends a keydown event to the editor and returns a boolean indicating whether the event was processed or not.
+         * Send a keydown event to the editor and returns a boolean indicating whether the event was processed or not.
+         * Keydown events are triggered by user actions such as undo/redo, copy, select-all, …
+         *
+         * Use it to handle events like `onKeyDown` to get real user intent and get:
+         *  - undo/redo from history
+         *  - copy intents from clipboard
+         *  - select-all/deselect from keyboard
+         *  - arrow navigation from keyboard
+         *
          * Client only.
-         *
-         * @example
-         * ```ts
-         * const handleKeyDown = (event: KeyboardEvent) => {
-         *  editor.composer.commands.sendKeydown(event)
-         * }
-         *
-         * const editable = document.getElementById('editable')
-         * editable?.addEventListener('keydown', handleKeyDown)
-         * ```
          */
         sendKeydown: (event: KeyboardEvent): boolean =>
           this.#safeExecuteCommand(
@@ -1202,14 +1352,7 @@ export class Dactylo {
             { clientOnly: true, payload: { event } },
           ),
 
-        /**
-         * Sets the IME composing state.
-         *
-         * @example
-         * ```ts
-         * editor.composer.commands.setIMEComposing(true)
-         * ```
-         */
+        /** Sets the IME composing state. */
         setIMEComposing: (isComposing: boolean): void =>
           this.#safeExecuteCommand(
             'composer/set-ime-composing',
@@ -1226,14 +1369,7 @@ export class Dactylo {
     return {
       // @todo: add select-all and deselect commands
       commands: {
-        /**
-         * Blurs the editor by clearing the selection.
-         *
-         * @example
-         * ```ts
-         * editor.selection.commands.blur()
-         * ```
-         */
+        /** Blur the editor by clearing the selection. */
         blur: (
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ): void =>
@@ -1243,14 +1379,7 @@ export class Dactylo {
             noop,
           ),
 
-        /**
-         * Focus the editor by placing a collapsed cursor at the end of the document.
-         *
-         * @example
-         * ```ts
-         * editor.selection.commands.focus()
-         * ```
-         */
+        /** Focus the editor by placing a collapsed cursor at the end of the document. */
         focus: (
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ): void =>
@@ -1264,11 +1393,6 @@ export class Dactylo {
         /**
          * Whether the block with the given ID is with an active cursor selection within.
          * This is a pure function that does not mutate the editor context.
-         *
-         * @example
-         * ```ts
-         * const withActiveCursor = editor.selection.tools.isBlockWithActiveCursor(blockId)
-         * ```
          */
         isBlockWithActiveCursor: (blockId: BlockId): boolean =>
           this.#safeExecuteTool(
@@ -1284,11 +1408,6 @@ export class Dactylo {
         /**
          * Whether the block with the given ID is with an active range selection within.
          * This is a pure function that does not mutate the editor context.
-         *
-         * @example
-         * ```ts
-         * const withActiveRange = editor.selection.tools.isBlockWithActiveRange(blockId)
-         * ```
          */
         isBlockWithActiveRange: (blockId: BlockId): boolean =>
           this.#safeExecuteTool(
@@ -1301,11 +1420,6 @@ export class Dactylo {
         /**
          * Whether the block with the given ID is with an active selection within.
          * This is a pure function that does not mutate the editor context.
-         *
-         * @example
-         * ```ts
-         * const withActiveSelection = editor.selection.tools.isBlockWithActiveSelection(blockId)
-         * ```
          */
         isBlockWithActiveSelection: (blockId: BlockId): boolean =>
           this.#safeExecuteTool(
@@ -1319,13 +1433,8 @@ export class Dactylo {
           ),
 
         /**
-         * Whether the selection is active or not.
+         * Whether the editor is focused or not.
          * This is a pure function that does not mutate the editor context.
-         *
-         * @example
-         * ```ts
-         * const isFocused = editor.selection.tools.isFocused()
-         * ```
          */
         isFocused: (): boolean =>
           this.#safeExecuteTool(
@@ -1342,12 +1451,8 @@ export class Dactylo {
     return {
       commands: {
         /**
-         * Attaches the DOM to the editor.
-         *
-         * @example
-         * ```ts
-         * editor.dom.commands.attach(editable)
-         * ```
+         * Attaches the editable `<div />` element to the editor.
+         * Client only.
          */
         attach: (editable: HTMLDivElement) =>
           this.#safeExecuteCommand(
@@ -1356,13 +1461,10 @@ export class Dactylo {
             noop,
             { clientOnly: true, payload: { editable } },
           ),
+
         /**
-         * Clears the selection in the DOM. Client only.
-         *
-         * @example
-         * ```ts
-         * editor.dom.commands.clearSelection()
-         * ```
+         * Clears the selection in the DOM.
+         * Client only.
          */
         clearSelection: () =>
           this.#safeExecuteCommand(
@@ -1371,14 +1473,10 @@ export class Dactylo {
             () => noop,
             { clientOnly: true },
           ),
+
         /**
          * Detaches the editable `<div />` element from the editor.
          * Client only.
-         *
-         * @example
-         * ```ts
-         * editor.dom.commands.detach()
-         * ```
          */
         detach: () =>
           this.#safeExecuteCommand(
@@ -1390,11 +1488,6 @@ export class Dactylo {
         /**
          * Paints a collapsed caret at the position of the text cursor in the DOM.
          * Client only.
-         *
-         * @example
-         * ```ts
-         * editor.dom.commands.paintCaret()
-         * ```
          */
         paintCaret: () =>
           this.#safeExecuteCommand(
@@ -1403,13 +1496,10 @@ export class Dactylo {
             () => noop,
             { clientOnly: true },
           ),
+
         /**
-         * Paints a range at anchor/focus in the DOM. Client only.
-         *
-         * @example
-         * ```ts
-         * editor.dom.commands.paintRange()
-         * ```
+         * Paints a range at anchor/focus in the DOM.
+         * Client only.
          */
         paintRange: () =>
           this.#safeExecuteCommand(
@@ -1418,14 +1508,10 @@ export class Dactylo {
             () => noop,
             { clientOnly: true },
           ),
+
         /**
          * Synchronizes the DOM selection with the editor state.
          * Client only.
-         *
-         * @example
-         * ```ts
-         * editor.dom.commands.syncSelection()
-         * ```
          */
         syncSelection: (fromSelectionChange?: boolean) =>
           this.#safeExecuteCommand(
@@ -1442,15 +1528,7 @@ export class Dactylo {
   get blocks(): DactyloBlocksApi {
     return {
       commands: {
-        /**
-         * Deletes a {@link Block} from the document state by ID.
-         *
-         * @example
-         * ```ts
-         * editor.blocks.commands.delete(blockId)
-         * editor.blocks.commands.delete(blockId, 'ai-agent')
-         * ```
-         */
+        /** Deletes a {@link Block} from the document state by ID. */
         delete: (
           blockId: BlockId,
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
@@ -1462,15 +1540,7 @@ export class Dactylo {
             { payload: { blockId, source } },
           ),
 
-        /**
-         * Duplicates a {@link Block} by ID.
-         *
-         * @example
-         * ```ts
-         * editor.blocks.commands.duplicate(blockId)
-         * editor.blocks.commands.duplicate(blockId, 'ai-agent')
-         * ```
-         */
+        /** Duplicates a {@link Block} by ID. */
         duplicate: (
           blockId: BlockId,
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
@@ -1485,13 +1555,6 @@ export class Dactylo {
         /**
          * Inserts a {@link DividerBlock} at the given position with metadata.
          * By defaults it inserts after the current selection.
-         *
-         * @example
-         * ```ts
-         * editor.blocks.commands.insertDivider()
-         * editor.blocks.commands.insertDivider({ pos: 'end' })
-         * editor.blocks.commands.insertDivider({}, 'ai-agent')
-         * ```
          */
         insertDivider: (
           opts: {
@@ -1512,13 +1575,6 @@ export class Dactylo {
         /**
          * Inserts a {@link HeadingBlock} at the given position with metadata.
          * By defaults it inserts after the current selection.
-         *
-         * @example
-         * ```ts
-         * editor.blocks.commands.insertHeading(1)
-         * editor.blocks.commands.insertHeading(2, { pos: 'end' })
-         * editor.blocks.commands.insertHeading(3, {}, 'ai-agent')
-         * ```
          */
         insertHeading: (
           /** Level of the heading. */
@@ -1542,13 +1598,6 @@ export class Dactylo {
         /**
          * Inserts a {@link ParagraphBlock} at the given position with metadata.
          * By defaults it inserts after the current selection.
-         *
-         * @example
-         * ```ts
-         * editor.blocks.commands.insertParagraph()
-         * editor.blocks.commands.insertParagraph({ pos: 'end' })
-         * editor.blocks.commands.insertParagraph({}, 'ai-agent')
-         * ```
          */
         insertParagraph: (
           opts: {
@@ -1570,11 +1619,6 @@ export class Dactylo {
         /**
          * Whether the block with the given ID is with empty inline content.
          * This is a pure function that does not mutate the editor context.
-         *
-         * @example
-         * ```ts
-         * const isEmpty = editor.blocks.tools.isWithEmptyInlineContent(blockId)
-         * ```
          */
         isWithEmptyInlineContent: (blockId: BlockId): boolean =>
           this.#safeExecuteTool(
