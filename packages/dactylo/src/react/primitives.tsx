@@ -31,6 +31,7 @@ import {
   HEADING_BLOCK_ATTR_NAME,
   HEADING_BLOCK_LEVEL_DATA_NAME,
   BLOCK_INDEX_DATA_NAME,
+  HEADING_LEVEL_REPLACER,
 } from '../internals/constants'
 import { assertNever } from '../internals/utils'
 import {
@@ -360,7 +361,11 @@ const ComposerHeadingBlock = forwardRef<
   }, [block.level])
 
   const placeholder = useMemo(
-    () => heading.placeholder.replace('%level%', block.level.toString()),
+    () =>
+      heading.placeholder.replace(
+        HEADING_LEVEL_REPLACER,
+        block.level.toString(),
+      ),
     [block.level, heading.placeholder],
   )
 

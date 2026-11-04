@@ -1,8 +1,11 @@
 /** Default placeholder text for empty paragraph block. */
 export const DEFAULT_PARAGRAPH_PLACEHOLDER = 'Write something…'
 
+/** The replacer for the heading level in the placeholder. */
+export const HEADING_LEVEL_REPLACER = '%level%'
+
 /** Default placeholder text for the editor when no content is written. */
-export const DEFAULT_HEADING_PLACEHOLDER = 'Heading %level%'
+export const DEFAULT_HEADING_PLACEHOLDER = `Heading ${HEADING_LEVEL_REPLACER}`
 
 /** Default mentions enabled. */
 export const DEFAULT_MENTIONS_ENABLED = true
