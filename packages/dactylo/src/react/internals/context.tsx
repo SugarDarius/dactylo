@@ -1,5 +1,3 @@
-'use client'
-
 import {
   createContext as createContext_byReact,
   useContext as useContext_byReact,
