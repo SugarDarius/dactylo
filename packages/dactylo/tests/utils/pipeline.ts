@@ -46,13 +46,13 @@ type SerializedBlock =
       readonly content: readonly SerializedInline[]
       readonly id: Block['id']
       readonly level?: number
-      readonly type: 'heading' | 'paragraph' | 'bullet-list-item'
+      readonly type: 'heading' | 'paragraph' | 'bullet_list_item'
     }
   | {
       readonly checked: boolean
       readonly content: readonly SerializedInline[]
       readonly id: Block['id']
-      readonly type: 'checkbox-list-item'
+      readonly type: 'checkbox_list_item'
     }
 
 type SerializedInline = {
@@ -124,7 +124,7 @@ function serializeBlock(block: Block): SerializedBlock {
     return {
       content: block.content.map(serializeInline),
       id: block.id,
-      type: 'bullet-list-item',
+      type: 'bullet_list_item',
     }
   }
 
@@ -133,7 +133,7 @@ function serializeBlock(block: Block): SerializedBlock {
       checked: block.checked,
       content: block.content.map(serializeInline),
       id: block.id,
-      type: 'checkbox-list-item',
+      type: 'checkbox_list_item',
     }
   }
 

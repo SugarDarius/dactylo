@@ -83,12 +83,12 @@ export interface ParagraphBlock extends IBlockWithInlineContext {
 
 /** Block representing a bullet list item. */
 export interface BulletListItemBlock extends IBlockWithInlineContext {
-  readonly __type: 'bullet-list-item'
+  readonly __type: 'bullet_list_item'
 }
 
 /** Block representing a checkbox list item. */
 export interface CheckboxListItemBlock extends IBlockWithInlineContext {
-  readonly __type: 'checkbox-list-item'
+  readonly __type: 'checkbox_list_item'
 
   /** Whether the item is checked. */
   readonly checked: boolean
@@ -198,7 +198,7 @@ export function createBulletListItemBlock(opts: {
   parentId?: BlockId | null
 }): BulletListItemBlock {
   return {
-    __type: 'bullet-list-item',
+    __type: 'bullet_list_item',
     content: opts.content,
     createdAt: new Date(),
     id: generateBlockId(),
@@ -213,7 +213,7 @@ export function createBulletListItemBlock(opts: {
 export function isBulletListItemBlock(
   block: Block,
 ): block is BulletListItemBlock {
-  return block.__type === 'bullet-list-item'
+  return block.__type === 'bullet_list_item'
 }
 
 /** Creates a {@link CheckboxListItemBlock}. */
@@ -225,7 +225,7 @@ export function createCheckboxListItemBlock(opts: {
   checked?: boolean
 }): CheckboxListItemBlock {
   return {
-    __type: 'checkbox-list-item',
+    __type: 'checkbox_list_item',
     checked: opts.checked ?? false,
     content: opts.content,
     createdAt: new Date(),
@@ -241,7 +241,7 @@ export function createCheckboxListItemBlock(opts: {
 export function isCheckboxListItemBlock(
   block: Block,
 ): block is CheckboxListItemBlock {
-  return block.__type === 'checkbox-list-item'
+  return block.__type === 'checkbox_list_item'
 }
 
 /** Creates a {@link DividerBlock}. */
@@ -320,7 +320,7 @@ export function cloneBlock(source: Block, posKey: PosKey): Block {
         posKey,
       })
     }
-    case 'bullet-list-item': {
+    case 'bullet_list_item': {
       return createBulletListItemBlock({
         content: cloneBlockInlineContent(source.content),
         metadata: source.metadata,
@@ -328,7 +328,7 @@ export function cloneBlock(source: Block, posKey: PosKey): Block {
         posKey,
       })
     }
-    case 'checkbox-list-item': {
+    case 'checkbox_list_item': {
       return createCheckboxListItemBlock({
         checked: source.checked,
         content: cloneBlockInlineContent(source.content),

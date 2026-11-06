@@ -362,7 +362,7 @@ describe('TransactionPipeline delete content', () => {
     deleteBackward(pipeline)
 
     expect(blockTexts(pipeline.context)).toEqual(['Hello', ''])
-    expect(nthInlineBlock(pipeline.context, 0).__type).toBe('bullet-list-item')
+    expect(nthInlineBlock(pipeline.context, 0).__type).toBe('bullet_list_item')
     const converted = nthInlineBlock(pipeline.context, 1)
     expect(converted.id).toBe(itemId)
     expect(converted.__type).toBe('paragraph')
@@ -402,7 +402,7 @@ describe('TransactionPipeline delete content', () => {
 
     expect(blockTexts(pipeline.context)).toEqual(['HelloWorld'])
     expect(pipeline.context.state.blockOrderById).toHaveLength(1)
-    expect(firstInlineBlock(pipeline.context).__type).toBe('bullet-list-item')
+    expect(firstInlineBlock(pipeline.context).__type).toBe('bullet_list_item')
     assertUndoRedo(pipeline, before)
   })
 
@@ -420,7 +420,7 @@ describe('TransactionPipeline delete content', () => {
 
     expect(blockTexts(pipeline.context)).toEqual(['Hello', ''])
     expect(nthInlineBlock(pipeline.context, 0).__type).toBe(
-      'checkbox-list-item',
+      'checkbox_list_item',
     )
     const converted = nthInlineBlock(pipeline.context, 1)
     expect(converted.id).toBe(itemId)
@@ -461,7 +461,7 @@ describe('TransactionPipeline delete content', () => {
 
     expect(blockTexts(pipeline.context)).toEqual(['HelloWorld'])
     expect(pipeline.context.state.blockOrderById).toHaveLength(1)
-    expect(firstInlineBlock(pipeline.context).__type).toBe('checkbox-list-item')
+    expect(firstInlineBlock(pipeline.context).__type).toBe('checkbox_list_item')
     assertUndoRedo(pipeline, before)
   })
 })

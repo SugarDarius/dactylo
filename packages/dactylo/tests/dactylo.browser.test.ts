@@ -455,7 +455,7 @@ describe('Dactylo blocks', () => {
 
     expect(types).toEqual([
       'paragraph',
-      'bullet-list-item',
+      'bullet_list_item',
       'divider',
       'paragraph',
       'paragraph',
@@ -626,7 +626,7 @@ describe('Dactylo markdown and autolink', () => {
     typeText(editor, ' ')
 
     expect(firstInlineBlock(editor.getContext()).__type).toBe(
-      'bullet-list-item',
+      'bullet_list_item',
     )
     expect(blockTexts(editor.getContext())).toEqual([''])
   })
@@ -638,8 +638,8 @@ describe('Dactylo markdown and autolink', () => {
     typeText(editor, ' ')
 
     const block = firstInlineBlock(editor.getContext())
-    expect(block.__type).toBe('checkbox-list-item')
-    if (block.__type === 'checkbox-list-item') {
+    expect(block.__type).toBe('checkbox_list_item')
+    if (block.__type === 'checkbox_list_item') {
       expect(block.checked).toBe(false)
     }
     expect(blockTexts(editor.getContext())).toEqual([''])

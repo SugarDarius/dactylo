@@ -136,13 +136,13 @@ export type InsertBlockSpec = Relax<
       readonly metadata?: Metadata
     }
   | {
-      readonly type: 'bullet-list-item'
+      readonly type: 'bullet_list_item'
 
       /** Metadata to attach to the block. */
       readonly metadata?: Metadata
     }
   | {
-      readonly type: 'checkbox-list-item'
+      readonly type: 'checkbox_list_item'
 
       /** Whether the item is checked. */
       readonly checked?: boolean
@@ -179,13 +179,13 @@ export type PatchBlockSpec = {
       readonly content?: InlineNode[]
     }
   | {
-      readonly type: 'bullet-list-item'
+      readonly type: 'bullet_list_item'
 
       /** {@link BulletListItemBlock}'s content. */
       readonly content?: InlineNode[]
     }
   | {
-      readonly type: 'checkbox-list-item'
+      readonly type: 'checkbox_list_item'
 
       /** Whether the item is checked. */
       readonly checked?: boolean

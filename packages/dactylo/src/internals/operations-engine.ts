@@ -426,7 +426,7 @@ export class OperationsEngine {
 
         return { label: 'insert-heading', ops }
       }
-      case 'bullet-list-item': {
+      case 'bullet_list_item': {
         const bulletListItem = createBulletListItemBlock({
           content: [insertedText],
           metadata: spec.metadata,
@@ -452,7 +452,7 @@ export class OperationsEngine {
 
         return { label: 'insert-bullet-list-item', ops }
       }
-      case 'checkbox-list-item': {
+      case 'checkbox_list_item': {
         const checkboxListItem = createCheckboxListItemBlock({
           checked: spec.checked,
           content: [insertedText],
@@ -560,7 +560,7 @@ export class OperationsEngine {
   ): BuilderOpsIntent | null {
     return this.#buildInsertBlockOps(
       context,
-      { metadata, type: 'bullet-list-item' },
+      { metadata, type: 'bullet_list_item' },
       pos,
     )
   }
@@ -574,7 +574,7 @@ export class OperationsEngine {
   ): BuilderOpsIntent | null {
     return this.#buildInsertBlockOps(
       context,
-      { checked, metadata, type: 'checkbox-list-item' },
+      { checked, metadata, type: 'checkbox_list_item' },
       pos,
     )
   }
@@ -652,7 +652,7 @@ export class OperationsEngine {
 
         return { label: 'patch-heading', ops }
       }
-      case 'bullet-list-item': {
+      case 'bullet_list_item': {
         if (!isBulletListItemBlock(source)) {
           warnIf(
             this.#debug,
@@ -676,7 +676,7 @@ export class OperationsEngine {
 
         return { label: 'patch-bullet-list-item', ops }
       }
-      case 'checkbox-list-item': {
+      case 'checkbox_list_item': {
         if (!isCheckboxListItemBlock(source)) {
           warnIf(
             this.#debug,
@@ -766,7 +766,7 @@ export class OperationsEngine {
   ): BuilderOpsIntent | null {
     return this.#buildPatchBlockOps(context, blockId, {
       ...opts,
-      type: 'bullet-list-item',
+      type: 'bullet_list_item',
     })
   }
 
@@ -782,7 +782,7 @@ export class OperationsEngine {
   ): BuilderOpsIntent | null {
     return this.#buildPatchBlockOps(context, blockId, {
       ...opts,
-      type: 'checkbox-list-item',
+      type: 'checkbox_list_item',
     })
   }
 

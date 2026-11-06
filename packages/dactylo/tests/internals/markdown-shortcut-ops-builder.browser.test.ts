@@ -33,7 +33,7 @@ describe('TransactionPipeline markdown shortcuts', () => {
     typeText(pipeline, '-')
     typeText(pipeline, ' ')
 
-    expect(firstInlineBlock(pipeline.context).__type).toBe('bullet-list-item')
+    expect(firstInlineBlock(pipeline.context).__type).toBe('bullet_list_item')
     expect(blockTexts(pipeline.context)).toEqual([''])
 
     const converted = snapshot(pipeline.context)
@@ -51,8 +51,8 @@ describe('TransactionPipeline markdown shortcuts', () => {
     typeText(pipeline, ' ')
 
     const block = firstInlineBlock(pipeline.context)
-    expect(block.__type).toBe('checkbox-list-item')
-    if (block.__type === 'checkbox-list-item') {
+    expect(block.__type).toBe('checkbox_list_item')
+    if (block.__type === 'checkbox_list_item') {
       expect(block.checked).toBe(false)
     }
     expect(blockTexts(pipeline.context)).toEqual([''])

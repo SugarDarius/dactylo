@@ -223,7 +223,7 @@ describe('TransactionPipeline hard break', () => {
       pipeline.context.state.blockOrderById.map(
         (id) => pipeline.context.state.blocks.get(id)?.__type,
       ),
-    ).toEqual(['bullet-list-item', 'bullet-list-item'])
+    ).toEqual(['bullet_list_item', 'bullet_list_item'])
     assertUndoRedo(pipeline, before)
   })
 
@@ -244,7 +244,7 @@ describe('TransactionPipeline hard break', () => {
       pipeline.context.state.blockOrderById.map(
         (id) => pipeline.context.state.blocks.get(id)?.__type,
       ),
-    ).toEqual(['bullet-list-item', 'bullet-list-item'])
+    ).toEqual(['bullet_list_item', 'bullet_list_item'])
     assertUndoRedo(pipeline, before)
   })
 
@@ -280,7 +280,7 @@ describe('TransactionPipeline hard break', () => {
       pipeline.context.state.blockOrderById.map(
         (id) => pipeline.context.state.blocks.get(id)?.__type,
       ),
-    ).toEqual(['checkbox-list-item', 'checkbox-list-item'])
+    ).toEqual(['checkbox_list_item', 'checkbox_list_item'])
     assertUndoRedo(pipeline, before)
   })
 
@@ -301,7 +301,7 @@ describe('TransactionPipeline hard break', () => {
       pipeline.context.state.blockOrderById.map(
         (id) => pipeline.context.state.blocks.get(id)?.__type,
       ),
-    ).toEqual(['checkbox-list-item', 'checkbox-list-item'])
+    ).toEqual(['checkbox_list_item', 'checkbox_list_item'])
     assertUndoRedo(pipeline, before)
   })
 

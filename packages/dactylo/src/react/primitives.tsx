@@ -546,12 +546,12 @@ const ComposerBlock = memo<ComposerBlockProps>(({ blockId, ...props }) => {
     case 'heading': {
       return <ComposerHeadingBlock key={block.id} {...props} block={block} />
     }
-    case 'bullet-list-item': {
+    case 'bullet_list_item': {
       return (
         <ComposerBulletListItemBlock key={block.id} {...props} block={block} />
       )
     }
-    case 'checkbox-list-item': {
+    case 'checkbox_list_item': {
       return (
         <ComposerCheckboxListItemBlock
           key={block.id}

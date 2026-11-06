@@ -1026,7 +1026,7 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
             },
           }
         }
-        case 'bullet-list-item': {
+        case 'bullet_list_item': {
           return {
             __type: 'mutate_block_type',
             blockId: op.blockId,
@@ -1037,7 +1037,7 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
             },
           }
         }
-        case 'checkbox-list-item': {
+        case 'checkbox_list_item': {
           return {
             __type: 'mutate_block_type',
             blockId: op.blockId,
