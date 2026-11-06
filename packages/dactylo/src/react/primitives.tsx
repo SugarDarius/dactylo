@@ -482,7 +482,7 @@ const ComposerCheckboxListItemBlock = forwardRef<
           type='button'
           role='checkbox'
           disabled={!canEdit}
-          onClickCapture={handleClick}
+          onClick={handleClick}
           aria-checked={block.checked ? 'true' : 'false'}
           aria-roledescription='checkbox-list-item-marker-input'
           {...{ [CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME]: '' }}

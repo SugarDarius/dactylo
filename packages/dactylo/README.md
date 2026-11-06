@@ -197,6 +197,7 @@ export function Editor() {
 | Toggle list item     | 📆 **Planned**     | Toggle list item block with inline content                                                                      |
 | Code                 | 📆 **Planned**     | Safe code block rendering code with inline content                                                              |
 | Quote                | 🚧 **In Progress** | Quote block with inline content only (a variant of ParagraphBlock)                                              |
+| File                 | 📆 **Planned**     | File block with no inline content for rendering files                                                           |
 | Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
 | Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
 | Callout              | 📆 **Planned**     | Callout parent block with icon + sub blocks                                                                     |
