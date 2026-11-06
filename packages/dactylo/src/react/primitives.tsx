@@ -445,9 +445,12 @@ const ComposerCheckboxListItemBlock = forwardRef<
     useEditableBlock(block.id)
   const { patch } = useCheckboxLists()
 
-  const handleChange = useStableCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const { checked } = e.target
+  const handleClick = useStableCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      const checked = !block.checked
 
       patch(block.id, { checked })
       onCheckedChange?.(checked)
@@ -475,11 +478,12 @@ const ComposerCheckboxListItemBlock = forwardRef<
         aria-roledescription='checkbox-list-item-marker'
         {...{ [CHECKBOX_LIST_ITEM_MARKER_ATTR_NAME]: '' }}
       >
-        <input
-          type='checkbox'
-          checked={block.checked}
-          onChange={handleChange}
-          readOnly={!canEdit}
+        <button
+          type='button'
+          role='checkbox'
+          disabled={!canEdit}
+          onClickCapture={handleClick}
+          aria-checked={block.checked ? 'true' : 'false'}
           aria-roledescription='checkbox-list-item-marker-input'
           {...{ [CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME]: '' }}
         />
