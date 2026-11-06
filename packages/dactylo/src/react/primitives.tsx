@@ -374,7 +374,7 @@ const ComposerBulletListItemBlock = forwardRef<
   HTMLDivElement,
   ComposerBulletListItemBlockProps
 >(({ block, indexOfRendering, ...props }, forwardedRef) => {
-  const { bulletListItem } = useEditorConfig()
+  const { bulletedList } = useEditorConfig()
   const { canEdit, editableId, withActiveSelection, isEmpty } =
     useEditableBlock(block.id)
 
@@ -411,7 +411,7 @@ const ComposerBulletListItemBlock = forwardRef<
         {...{
           [BLOCK_CONTENT_ATTR_NAME]: '',
           [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
-          [BLOCK_PLACEHOLDER_ATTR_NAME]: bulletListItem.placeholder,
+          [BLOCK_PLACEHOLDER_ATTR_NAME]: bulletedList.placeholder,
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >

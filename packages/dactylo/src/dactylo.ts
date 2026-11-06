@@ -100,20 +100,20 @@ export interface DactyloStaticConfig {
     readonly character: string
   }
 
-  /** Configuration for the headings */
+  /** Configuration for headings. */
   readonly heading: {
     /** Placeholder text when a heading is created or empty. */
     readonly placeholder: string
   }
 
-  /** Configuration for the paragraphs */
+  /** Configuration for paragraphs. */
   readonly paragraph: {
     /** Placeholder text when an empty paragraph is created or empty. */
     readonly placeholder: string
   }
 
-  /** Configuration for the bullet list items */
-  readonly bulletListItem: {
+  /** Configuration for bulleted lists. */
+  readonly bulletedList: {
     /** Placeholder text when a bullet list item is created or empty. */
     readonly placeholder: string
   }
@@ -791,7 +791,7 @@ export interface DactyloConfigOptions {
       readonly enabled?: boolean
     }
 
-    /** Configuration for the paragraphs */
+    /** Configuration for paragraphs. */
     readonly paragraph?: {
       /**
        * Placeholder text when an empty paragraph is created or empty.
@@ -801,7 +801,7 @@ export interface DactyloConfigOptions {
       readonly placeholder?: string
     }
 
-    /** Configuration for the headings */
+    /** Configuration for headings. */
     readonly heading?: {
       /**
        * Placeholder text when a heading is created or empty.
@@ -814,10 +814,10 @@ export interface DactyloConfigOptions {
       readonly placeholder?: string
     }
 
-    /** Configuration for the bullet list items */
-    readonly bulletListItem?: {
+    /** Configuration for bulleted lists. */
+    readonly bulletedList?: {
       /**
-       * Placeholder text when a bullet list item is created or empty.
+       * Placeholder text when a bulleted list is created or empty.
        * Defaults to {@link DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER}.
        */
       readonly placeholder?: string
@@ -918,9 +918,9 @@ export class Dactylo {
         enabled:
           options.config?.editor?.autolink?.enabled ?? DEFAULT_AUTOLINK_ENABLED,
       },
-      bulletListItem: {
+      bulletedList: {
         placeholder:
-          options.config?.editor?.bulletListItem?.placeholder ??
+          options.config?.editor?.bulletedList?.placeholder ??
           DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
       },
       heading: {
