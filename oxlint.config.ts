@@ -15,6 +15,13 @@ export default defineConfig({
     'eslint/no-bitwise': 'off',
     'eslint/no-nested-ternary': 'off',
     'eslint/no-warning-comments': 'off',
+    'eslint/sort-imports': [
+      'error',
+      {
+        ignoreCase: true,
+        ignoreDeclarationSort: true,
+      },
+    ],
     'jsx-a11y/click-events-have-key-events': 'off',
     'jsx-a11y/heading-has-content': 'off',
     'jsx-a11y/no-noninteractive-element-interactions': 'off',

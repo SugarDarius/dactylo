@@ -25,7 +25,7 @@ import type {
   TextNode,
 } from './nodes'
 import type { Operation } from './operations'
-import type { Selection, TextCursor, RangeSelection } from './selection'
+import type { RangeSelection, Selection, TextCursor } from './selection'
 import type { Metadata, Relax } from './types'
 import { assertNever } from './utils'
 

@@ -18,9 +18,9 @@ import {
 import type { Operation } from './operations'
 import {
   buildPartialMarkRangeOps,
+  OperationsBuilder,
   rangeCollapsedError,
   withTrailingSelectionOp,
-  OperationsBuilder,
 } from './operations-builder'
 import type { BuilderOpsIntent, OperationRule } from './operations-builder'
 import {

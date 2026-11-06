@@ -1,7 +1,7 @@
 import {
+  MARKDOWN_LINK_PATTERN,
   PLAIN_TEXT_LINES_SPLIT_PATTERN,
   PLAIN_TEXT_LINK_PATTERN,
-  MARKDOWN_LINK_PATTERN,
 } from './constants'
 import type { Marks } from './marks'
 import { coalesceInlineNodes, createLinkNode, createTextNode } from './nodes'

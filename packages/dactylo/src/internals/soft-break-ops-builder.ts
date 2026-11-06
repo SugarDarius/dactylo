@@ -21,9 +21,9 @@ import {
   buildDeleteRangeWithinBlockIntent,
   buildDeleteTextRunIntent,
   buildError,
+  OperationsBuilder,
   rangeCollapsedError,
   resolvesCaretNode,
-  OperationsBuilder,
   withTrailingSelectionOp,
 } from './operations-builder'
 import {

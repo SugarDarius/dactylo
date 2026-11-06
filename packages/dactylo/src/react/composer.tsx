@@ -11,11 +11,11 @@ import type {
 import type { Block, BlockId, HeadingBlock } from '../internals/blocks'
 import {
   EDITABLE_NODE_BOLD_MARK_DATA_NAME,
+  EDITABLE_NODE_CODE_MARK_DATA_NAME,
+  EDITABLE_NODE_EMPTY_DATA_NAME,
   EDITABLE_NODE_ITALIC_MARK_DATA_NAME,
   EDITABLE_NODE_STRIKETHROUGH_MARK_DATA_NAME,
   EDITABLE_NODE_UNDERLINE_MARK_DATA_NAME,
-  EDITABLE_NODE_CODE_MARK_DATA_NAME,
-  EDITABLE_NODE_EMPTY_DATA_NAME,
 } from '../internals/constants'
 import type { DocumentState } from '../internals/document'
 import { paintTextForDOM } from '../internals/dom'

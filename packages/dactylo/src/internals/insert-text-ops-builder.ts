@@ -32,7 +32,7 @@ import {
   isCursorSelection,
   isSelectionActive,
 } from './selection'
-import type { Selection, RangeSelection, TextCursor } from './selection'
+import type { RangeSelection, Selection, TextCursor } from './selection'
 
 /** Situation with no selection. */
 export interface InsertTextOpsNoSelectionSituation {

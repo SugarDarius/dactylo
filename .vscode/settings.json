@@ -1,10 +1,11 @@
 {
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "file",
   "editor.formatOnPaste": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.oxc": "explicit",
-    "source.organizeImports.oxc": "explicit"
+    "source.organizeImports": "never",
+    "source.fixAll.oxc": "always"
   },
   "emmet.showExpandedAbbreviation": "never",
   "js/ts.tsdk.path": "node_modules/typescript/lib",

@@ -20,17 +20,17 @@ import type { InlineNodeWithEditableText, NodeId } from './nodes'
 import type { Operation } from './operations'
 import type {
   BuilderOpsIntent,
-  OperationsBuilderAutolinkConfig,
   OperationRule,
+  OperationsBuilderAutolinkConfig,
 } from './operations-builder'
 import {
   buildDeleteRangeCrossBlockIntent,
   buildDeleteRangeWithinBlockIntent,
   buildDeleteTextRunIntent,
   buildError,
+  OperationsBuilder,
   rangeCollapsedError,
   resolvesCaretNode,
-  OperationsBuilder,
   withTrailingSelectionOp,
 } from './operations-builder'
 import {

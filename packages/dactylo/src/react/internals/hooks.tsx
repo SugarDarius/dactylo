@@ -1,12 +1,12 @@
 import {
-  useMemo,
-  useLayoutEffect,
-  useEffect,
-  useRef,
   useCallback,
+  useDebugValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
-  useDebugValue,
 } from 'react'
 
 import { canUseDOM } from '../../internals/utils'

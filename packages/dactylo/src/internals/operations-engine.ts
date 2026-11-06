@@ -43,8 +43,8 @@ import type { Operation } from './operations'
 import { buildError } from './operations-builder'
 import type {
   BuilderOpsIntent,
-  InsertOrMoveBlockPosition,
   InsertBlockSpec,
+  InsertOrMoveBlockPosition,
   PatchBlockSpec,
 } from './operations-builder'
 import { makeOperationsRuntime } from './operations-runtime'

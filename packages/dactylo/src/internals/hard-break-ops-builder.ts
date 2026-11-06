@@ -30,9 +30,9 @@ import {
   buildDeleteTextRunIntent,
   buildError,
   computeSplitTailSnapshot,
+  OperationsBuilder,
   rangeCollapsedError,
   resolvesCaretNode,
-  OperationsBuilder,
   withTrailingSelectionOp,
 } from './operations-builder'
 import type { BuilderOpsIntent, OperationRule } from './operations-builder'
