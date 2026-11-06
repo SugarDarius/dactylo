@@ -29,7 +29,10 @@ export {
   useBlock,
   useMarks,
   useIsMarkActive,
+  useEditableListener,
+  useErrorsListener,
   useCommandsListener,
   useToolsListener,
-  useEditableListener,
+  useTransactionDidApplyListener,
+  useTransactionDidRejectListener,
 } from './composer'

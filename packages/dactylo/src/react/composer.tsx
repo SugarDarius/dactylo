@@ -4,6 +4,7 @@ import type {
   Dactylo,
   DactyloCommandEvent,
   DactyloEditableEvent,
+  DactyloErrorEvent,
   DactyloStaticConfig,
   DactyloToolEvent,
 } from '../dactylo'
@@ -29,7 +30,7 @@ import type {
   RangeSelection,
   Selection,
 } from '../internals/selection'
-import type { TransactionSource } from '../internals/transaction'
+import type { Transaction, TransactionSource } from '../internals/transaction'
 import type { Metadata } from '../internals/types'
 import { noop, shallow } from '../internals/utils'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
@@ -942,6 +943,28 @@ export function useEditableNode(node: InlineNodeWithEditableText) {
 // --- Listeners ------─────────────────────────────────────────-----
 
 /**
+ * Get informed when an error is thrown.
+ *
+ * @example
+ * ```tsx
+ * useErrorsListener(({ error }) => {
+ *   console.log(error)
+ * })
+ * ```
+ */
+export function useErrorsListener(
+  listener: (event: DactyloErrorEvent) => void,
+): void {
+  const { editor } = useComposer()
+  const stableListener = useStableCallback(listener)
+
+  useEffect(
+    () => editor.events.errors.subscribe(stableListener),
+    [editor, stableListener],
+  )
+}
+
+/**
  * Get informed when a tool is executed successfully or not.
  *
  * @example
@@ -981,6 +1004,50 @@ export function useCommandsListener(
 
   useEffect(
     () => editor.events.commands.subscribe(stableListener),
+    [editor, stableListener],
+  )
+}
+
+/**
+ * Get informed when a transaction did apply successfully.
+ *
+ * @example
+ * ```tsx
+ * useTransactionDidApplyListener((transaction) => {
+ *   console.log(transaction)
+ * })
+ * ```
+ */
+export function useTransactionDidApplyListener(
+  listener: (transaction: Transaction) => void,
+): void {
+  const { editor } = useComposer()
+  const stableListener = useStableCallback(listener)
+
+  useEffect(
+    () => editor.events.transactionDidApply.subscribe(stableListener),
+    [editor, stableListener],
+  )
+}
+
+/**
+ * Get informed when a transaction did reject.
+ *
+ * @example
+ * ```tsx
+ * useTransactionDidRejectListener((transaction) => {
+ *   console.log(transaction)
+ * })
+ * ```
+ */
+export function useTransactionDidRejectListener(
+  listener: (transaction: Transaction) => void,
+): void {
+  const { editor } = useComposer()
+  const stableListener = useStableCallback(listener)
+
+  useEffect(
+    () => editor.events.transactionDidReject.subscribe(stableListener),
     [editor, stableListener],
   )
 }
