@@ -136,7 +136,12 @@ export function Toolbar() {
   const { canUndo, canRedo } = useHistoryTools()
   const { undo, redo } = useHistoryCommands()
 
-  const { insertParagraph, insertDivider, insertHeading } = useBlocksCommands()
+  const {
+    insertParagraph,
+    insertDivider,
+    insertHeading,
+    insertBulletListItem,
+  } = useBlocksCommands()
   const { toggle } = useMarksCommands()
 
   useEditableListener(({ editable }) => {
@@ -328,7 +333,7 @@ export function Toolbar() {
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuLabel>Lists</DropdownMenuLabel>
-                <DropdownMenuItem disabled>
+                <DropdownMenuItem onClick={() => insertBulletListItem()}>
                   <List className='size-3.5' />
                   Bulleted List
                 </DropdownMenuItem>

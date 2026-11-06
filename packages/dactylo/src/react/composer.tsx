@@ -488,6 +488,10 @@ export function useBlocksTools() {
  * insertHeading(2, { pos: { type: 'end' } })
  * insertHeading(3, {}, 'ai-agent')
  *
+ * insertBulletListItem()
+ * insertBulletListItem({ pos: { type: 'end' } })
+ * insertBulletListItem({}, 'ai-agent')
+ *
  * insertDivider()
  * insertDivider({ pos: { type: 'end' } })
  * insertDivider({}, 'ai-agent')
@@ -515,6 +519,13 @@ export function useBlocksCommands() {
       opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertHeading(level, opts, source),
+  )
+
+  const insertBulletListItem = useStableCallback(
+    (
+      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.insertBulletListItem(opts, source),
   )
 
   const insertDivider = useStableCallback(
@@ -549,6 +560,7 @@ export function useBlocksCommands() {
   return {
     delete: $delete,
     duplicate,
+    insertBulletListItem,
     insertDivider,
     insertHeading,
     insertParagraph,
