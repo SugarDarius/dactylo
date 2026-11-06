@@ -447,7 +447,7 @@ export function useComposerInput() {
  * const {
  *   isEmpty,
  *   move,
- *   delete,
+ *   remove,
  *   duplicate,
  *   insertParagraph,
  *   insertHeading,
@@ -458,8 +458,8 @@ export function useComposerInput() {
  *
  * console.log(isEmpty(blockId))
  *
- * delete(blockId)
- * delete(blockId, 'ai-agent')
+ * remove(blockId)
+ * remove(blockId, 'ai-agent')
  *
  * insertParagraph({ pos: { type: 'end'}, metadata: { fontColor: 'purple' } })
  *
@@ -540,7 +540,7 @@ export function useBlocks() {
     ) => editor.blocks.commands.duplicate(blockId, source),
   )
 
-  const $delete = useStableCallback(
+  const remove = useStableCallback(
     (
       blockId: BlockId,
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -556,7 +556,6 @@ export function useBlocks() {
   )
 
   return {
-    delete: $delete,
     duplicate,
     insertBulletListItem,
     insertCheckboxListItem,
@@ -565,6 +564,7 @@ export function useBlocks() {
     insertParagraph,
     isEmpty,
     move,
+    remove,
   } as const
 }
 
