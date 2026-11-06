@@ -1,6 +1,7 @@
 import {
   createDividerBlock,
   createParagraphBlockAfter,
+  findFirstInlineNodeInBlock,
   findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
   isBulletListItemBlock,
@@ -428,6 +429,20 @@ export function buildMarkdownLinkShortcutOps(
   )
 }
 
+/** Whether the node is the first leading text node for a markdown shortcut. */
+export function isSingleLeadingTextNodeForMarkdownShortcut(
+  block: BlockWithInlineContent,
+  node: InlineNodeWithEditableText,
+): boolean {
+  const first = findFirstInlineNodeInBlock(block)
+
+  return (
+    isTextNode(first) &&
+    first.id === node.id &&
+    first.text.length === node.text.length
+  )
+}
+
 /** Builds operations for a markdown mark shortcut. */
 export function buildMarkdownMarkShortcutOps(
   context: EditorContext,
@@ -619,13 +634,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         return false
       }
 
-      const [first] = block.content
-      if (
-        !first ||
-        !isTextNode(first) ||
-        first.id !== node.id ||
-        first.text.length !== node.text.length
-      ) {
+      if (!isSingleLeadingTextNodeForMarkdownShortcut(block, node)) {
         return false
       }
 
@@ -695,13 +704,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         return false
       }
 
-      const [first] = block.content
-      if (
-        !first ||
-        !isTextNode(first) ||
-        first.id !== node.id ||
-        first.text.length !== node.text.length
-      ) {
+      if (!isSingleLeadingTextNodeForMarkdownShortcut(block, node)) {
         return false
       }
 
@@ -770,13 +773,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         return false
       }
 
-      const [first] = block.content
-      if (
-        !first ||
-        !isTextNode(first) ||
-        first.id !== node.id ||
-        first.text.length !== node.text.length
-      ) {
+      if (!isSingleLeadingTextNodeForMarkdownShortcut(block, node)) {
         return false
       }
 
@@ -881,13 +878,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         return false
       }
 
-      const [first] = block.content
-      if (
-        !first ||
-        !isTextNode(first) ||
-        first.id !== node.id ||
-        first.text.length !== node.text.length
-      ) {
+      if (!isSingleLeadingTextNodeForMarkdownShortcut(block, node)) {
         return false
       }
 
