@@ -10,6 +10,7 @@ import {
 import {
   DEFAULT_AUTOLINK_ENABLED,
   DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
+  DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
   DEFAULT_HEADING_PLACEHOLDER,
   DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
   DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
@@ -67,6 +68,7 @@ describe('Dactylo construction', () => {
     expect(editor.config).toEqual({
       autolink: { enabled: DEFAULT_AUTOLINK_ENABLED },
       bulletedList: { placeholder: DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER },
+      checkboxList: { placeholder: DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER },
       heading: { placeholder: DEFAULT_HEADING_PLACEHOLDER },
       inlineCommandTrigger: {
         character: DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
@@ -101,6 +103,7 @@ describe('Dactylo construction', () => {
     expect(editor.config).toEqual({
       autolink: { enabled: false },
       bulletedList: { placeholder: 'Item' },
+      checkboxList: { placeholder: DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER },
       heading: { placeholder: 'Title' },
       inlineCommandTrigger: { character: '!', enabled: false },
       locales: 'fr-FR',
@@ -511,6 +514,20 @@ describe('Dactylo markdown and autolink', () => {
     expect(blockTexts(editor.getContext())).toEqual([''])
   })
 
+  test('markdown converts "[] " into a checkbox list item', () => {
+    const editor = makeEditor()
+    editor.selection.commands.focus()
+    typeText(editor, '[]')
+    typeText(editor, ' ')
+
+    const block = firstInlineBlock(editor.getContext())
+    expect(block.__type).toBe('checkbox-list-item')
+    if (block.__type === 'checkbox-list-item') {
+      expect(block.checked).toBe(false)
+    }
+    expect(blockTexts(editor.getContext())).toEqual([''])
+  })
+
   test('disabled markdown leaves the trigger characters in the paragraph', () => {
     const editor = makeEditor({
       config: { editor: { markdown: { enabled: false } } },
@@ -521,6 +538,18 @@ describe('Dactylo markdown and autolink', () => {
 
     expect(firstInlineBlock(editor.getContext()).__type).toBe('paragraph')
     expect(blockTexts(editor.getContext())).toEqual(['- '])
+  })
+
+  test('disabled markdown leaves the checkbox trigger characters in the paragraph', () => {
+    const editor = makeEditor({
+      config: { editor: { markdown: { enabled: false } } },
+    })
+    editor.selection.commands.focus()
+    typeText(editor, '[]')
+    typeText(editor, ' ')
+
+    expect(firstInlineBlock(editor.getContext()).__type).toBe('paragraph')
+    expect(blockTexts(editor.getContext())).toEqual(['[] '])
   })
 
   test('autolink converts a URL followed by a space into a link node', () => {

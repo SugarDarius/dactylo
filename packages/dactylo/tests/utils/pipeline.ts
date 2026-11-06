@@ -2,6 +2,7 @@ import { expect } from 'vitest'
 
 import {
   isBulletListItemBlock,
+  isCheckboxListItemBlock,
   isDividerBlock,
   isHeadingBlock,
   isParagraphBlock,
@@ -46,6 +47,12 @@ type SerializedBlock =
       readonly id: Block['id']
       readonly level?: number
       readonly type: 'heading' | 'paragraph' | 'bullet-list-item'
+    }
+  | {
+      readonly checked: boolean
+      readonly content: readonly SerializedInline[]
+      readonly id: Block['id']
+      readonly type: 'checkbox-list-item'
     }
 
 type SerializedInline = {
@@ -118,6 +125,15 @@ function serializeBlock(block: Block): SerializedBlock {
       content: block.content.map(serializeInline),
       id: block.id,
       type: 'bullet-list-item',
+    }
+  }
+
+  if (isCheckboxListItemBlock(block)) {
+    return {
+      checked: block.checked,
+      content: block.content.map(serializeInline),
+      id: block.id,
+      type: 'checkbox-list-item',
     }
   }
 

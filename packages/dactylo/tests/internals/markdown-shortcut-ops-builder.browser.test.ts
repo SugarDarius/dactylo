@@ -44,6 +44,27 @@ describe('TransactionPipeline markdown shortcuts', () => {
     expect(snapshot(pipeline.context)).toEqual(converted)
   })
 
+  test('checkbox list item on space converts the paragraph; undo restores the trigger; redo converts again', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '[]')
+    typeText(pipeline, ' ')
+
+    const block = firstInlineBlock(pipeline.context)
+    expect(block.__type).toBe('checkbox-list-item')
+    if (block.__type === 'checkbox-list-item') {
+      expect(block.checked).toBe(false)
+    }
+    expect(blockTexts(pipeline.context)).toEqual([''])
+
+    const converted = snapshot(pipeline.context)
+    pipeline.undo()
+    expect(firstInlineBlock(pipeline.context).__type).toBe('paragraph')
+    expect(blockTexts(pipeline.context)).toEqual(['[] '])
+    pipeline.redo()
+    expect(snapshot(pipeline.context)).toEqual(converted)
+  })
+
   test('ATX heading on space converts the paragraph; undo restores the trigger; redo converts again', () => {
     const pipeline = makePipeline({ markdown: true })
     focus(pipeline)

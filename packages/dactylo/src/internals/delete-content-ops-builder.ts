@@ -1,6 +1,7 @@
 import {
   findNodeInBlockWithInlineContent,
   isBulletListItemBlock,
+  isCheckboxListItemBlock,
 } from './blocks'
 import type { BlockWithInlineContent } from './blocks'
 import { warn } from './console'
@@ -155,7 +156,7 @@ export function buildAbsorbEmptyTextNodeIntoPrevOps(
 }
 
 /** Whether Backspace at block start should exit an empty list item to a paragraph. */
-export function isEmptyBulletListItemAtBlockStart(
+export function isEmptyListItemAtBlockStart(
   context: EditorContext,
   situation: DeleteContentOpsCursorSelectionSituation,
 ): boolean {
@@ -165,7 +166,7 @@ export function isEmptyBulletListItemAtBlockStart(
   }
 
   return (
-    isBulletListItemBlock(block) &&
+    (isBulletListItemBlock(block) || isCheckboxListItemBlock(block)) &&
     isBlockWithInlineContentEmpty(context.state, block.id)
   )
 }
@@ -175,7 +176,8 @@ export const cursorRules: DeleteContentOpsRule[] = [
   {
     /**
      * 💡 Situation:
-     * - Cursor is at the start of an empty {@link BulletListItemBlock}.
+     * - Cursor is at the start of an empty {@link BulletListItemBlock} or
+     *   {@link CheckboxListItemBlock}.
      *
      * 🎯 Operations:
      * - Mutate the block into a {@link ParagraphBlock} in place.
@@ -205,7 +207,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
         return false
       }
 
-      return isEmptyBulletListItemAtBlockStart(context, situation)
+      return isEmptyListItemAtBlockStart(context, situation)
     },
   },
   {
@@ -1060,15 +1062,16 @@ export class DeleteContentOpsBuilder extends OperationsBuilder<
      * deletes nothing. We are not at "delete the character before the cursor" (→ offset - 1),
      * because we already took the block-start branch and there is no previous block to join with.
      *
-     * Empty {@link BulletListItemBlock} is the exception: Backspace exits the list
-     * by mutating the item into a paragraph, including when it is the first block.
+     * Empty {@link BulletListItemBlock} or {@link CheckboxListItemBlock} is the
+     * exception: Backspace exits the list by mutating the item into a paragraph,
+     * including when it is the first block.
      */
     if (
       isCursorKind &&
       situation.at.offset === 0 &&
       situation.blockIndex === 0 &&
       situation.nodeIndex === 0 &&
-      !isEmptyBulletListItemAtBlockStart(context, situation)
+      !isEmptyListItemAtBlockStart(context, situation)
     ) {
       return null
     }
