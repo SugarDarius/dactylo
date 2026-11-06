@@ -1,6 +1,7 @@
 import { AutolinkOpsBuilder } from './autolink-ops-builder'
 import {
   cloneBlock,
+  createBulletListItemBlock,
   createDividerBlock,
   createHeadingBlock,
   createParagraphBlock,
@@ -357,13 +358,13 @@ export class OperationsEngine {
     const posKey = computeInsertBlockPosKey(state, finalPos)
     const afterBlockId = resolveInsertAfterBlockId(state, finalPos)
 
+    const insertedText = createTextNode({
+      text: '',
+    })
+
     const { type } = spec
     switch (type) {
       case 'paragraph': {
-        const insertedText = createTextNode({
-          text: '',
-        })
-
         const paragraph = createParagraphBlock({
           content: [insertedText],
           metadata: spec.metadata,
@@ -390,10 +391,6 @@ export class OperationsEngine {
         return { label: 'insert-paragraph', ops }
       }
       case 'heading': {
-        const insertedText = createTextNode({
-          text: '',
-        })
-
         const heading = createHeadingBlock({
           content: [insertedText],
           level: spec.level,
@@ -420,23 +417,47 @@ export class OperationsEngine {
 
         return { label: 'insert-heading', ops }
       }
+      case 'bullet-list-item': {
+        const bulletListItem = createBulletListItemBlock({
+          content: [insertedText],
+          metadata: spec.metadata,
+          posKey,
+        })
+
+        const ops: Operation[] = [
+          {
+            __type: 'insert_block',
+            afterBlockId,
+            block: bulletListItem,
+          },
+          {
+            __type: 'set_selection',
+            next: createCursor({
+              blockId: bulletListItem.id,
+              nodeId: insertedText.id,
+              offset: 0,
+            }),
+            prev: selection,
+          },
+        ]
+
+        return { label: 'insert-bullet-list-item', ops }
+      }
       case 'divider': {
         const divider = createDividerBlock({
           metadata: spec.metadata,
           posKey,
         })
 
-        /**
-         * Invariant UX:
-         * When inserting a divider block,
-         * a {@link ParagraphBlock} is inserted right after it and
-         * the selection is set inside it.
-         */
-        const insertedText = createTextNode({
-          text: '',
-        })
-
-        const paragraph = createParagraphBlockAfter(divider, [insertedText])
+        const paragraph = createParagraphBlockAfter(divider, [
+          /**
+           * Invariant UX:
+           * When inserting a divider block,
+           * a {@link ParagraphBlock} is inserted right after it and
+           * the selection is set inside it.
+           */
+          insertedText,
+        ])
 
         const ops: Operation[] = [
           {

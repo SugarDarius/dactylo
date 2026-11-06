@@ -71,6 +71,7 @@ export interface IBlockWithInlineContext extends IBlock {
 /** Block representing a heading with markdown level (1-6). */
 export interface HeadingBlock extends IBlockWithInlineContext {
   readonly __type: 'heading'
+
   /** Level of the heading. */
   readonly level: 1 | 2 | 3 | 4 | 5 | 6
 }
@@ -80,16 +81,28 @@ export interface ParagraphBlock extends IBlockWithInlineContext {
   readonly __type: 'paragraph'
 }
 
+/** Block representing a bullet list item. */
+export interface BulletListItemBlock extends IBlockWithInlineContext {
+  readonly __type: 'bullet-list-item'
+}
+
 /** Block representing a divider. */
 export interface DividerBlock extends IBlock {
   readonly __type: 'divider'
 }
 
 /** Discriminated union of blocks supported by {@link Dactylo}, */
-export type Block = HeadingBlock | ParagraphBlock | DividerBlock
+export type Block =
+  | HeadingBlock
+  | ParagraphBlock
+  | BulletListItemBlock
+  | DividerBlock
 
 /** Allowed blocks to own inline content */
-export type BlockWithInlineContent = HeadingBlock | ParagraphBlock
+export type BlockWithInlineContent =
+  | HeadingBlock
+  | ParagraphBlock
+  | BulletListItemBlock
 
 /** Discriminated union of block types.. */
 export type BlockType = Block['__type']
@@ -167,6 +180,32 @@ export function isHeadingBlock(block: Block): block is HeadingBlock {
   return block.__type === 'heading'
 }
 
+/** Creates a {@link BulletListItemBlock}. */
+export function createBulletListItemBlock(opts: {
+  content: InlineNode[]
+  metadata?: Metadata
+  posKey: PosKey
+  parentId?: BlockId | null
+}): BulletListItemBlock {
+  return {
+    __type: 'bullet-list-item',
+    content: opts.content,
+    createdAt: new Date(),
+    id: generateBlockId(),
+    metadata: opts.metadata ?? {},
+    parentId: opts.parentId ?? null,
+    posKey: opts.posKey,
+    updatedAt: null,
+  }
+}
+
+/** Whether the block is a bullet list item block. */
+export function isBulletListItemBlock(
+  block: Block,
+): block is BulletListItemBlock {
+  return block.__type === 'bullet-list-item'
+}
+
 /** Creates a {@link DividerBlock}. */
 export function createDividerBlock(opts: {
   metadata?: Metadata
@@ -193,7 +232,11 @@ export function isDividerBlock(block: Block): block is DividerBlock {
 export function isBlockWithInlineContent(
   block: Block,
 ): block is BlockWithInlineContent {
-  return isHeadingBlock(block) || isParagraphBlock(block)
+  return (
+    isHeadingBlock(block) ||
+    isParagraphBlock(block) ||
+    isBulletListItemBlock(block)
+  )
 }
 
 /** Returns a shallow copy of a block with a fresh `updatedAt` timestamp. */
@@ -233,6 +276,14 @@ export function cloneBlock(source: Block, posKey: PosKey): Block {
       return createHeadingBlock({
         content: cloneBlockInlineContent(source.content),
         level: source.level,
+        metadata: source.metadata,
+        parentId: source.parentId,
+        posKey,
+      })
+    }
+    case 'bullet-list-item': {
+      return createBulletListItemBlock({
+        content: cloneBlockInlineContent(source.content),
         metadata: source.metadata,
         parentId: source.parentId,
         posKey,

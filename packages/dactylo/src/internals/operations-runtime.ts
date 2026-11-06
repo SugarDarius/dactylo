@@ -1,4 +1,5 @@
 import {
+  createBulletListItemBlock,
   createHeadingBlock,
   createParagraphBlock,
   findNodeInBlockWithInlineContent,
@@ -631,6 +632,22 @@ export function applyMutateBlockTypeOp(
     }
     case 'to_paragraph': {
       const next = createParagraphBlock({
+        content: [...prev.content],
+        metadata: op.dropMetadata ? undefined : prev.metadata,
+        parentId: prev.parentId,
+        posKey: prev.posKey,
+      })
+
+      return withDocumentState(
+        context,
+        putBlock(
+          context.state,
+          touchBlock({ ...next, createdAt: prev.createdAt, id: prev.id }),
+        ),
+      )
+    }
+    case 'to_bullet_list_item': {
+      const next = createBulletListItemBlock({
         content: [...prev.content],
         metadata: op.dropMetadata ? undefined : prev.metadata,
         parentId: prev.parentId,

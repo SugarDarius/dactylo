@@ -149,6 +149,7 @@ export interface MutateBlockTypeOp {
         level: HeadingBlock['level']
       }
     | { kind: 'to_paragraph' }
+    | { kind: 'to_bullet_list_item' }
 }
 
 /** Inserts a text into an existing text node at a character offset.  */

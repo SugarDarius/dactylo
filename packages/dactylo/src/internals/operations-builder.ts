@@ -136,6 +136,12 @@ export type InsertBlockSpec = Relax<
       readonly metadata?: Metadata
     }
   | {
+      readonly type: 'bullet-list-item'
+
+      /** Metadata to attach to the block. */
+      readonly metadata?: Metadata
+    }
+  | {
       readonly type: 'divider'
 
       /** Metadata to attach to the block. */
