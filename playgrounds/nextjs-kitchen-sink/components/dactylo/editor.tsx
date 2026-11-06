@@ -460,6 +460,23 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '[&_[dactylo-bullet-list-item-block]_[dactylo-block-content]]:min-w-0',
             '[&_[dactylo-bullet-list-item-block]_[dactylo-block-content]]:flex-1',
 
+            // checkbox list item block
+            '**:[[dactylo-checkbox-list-item-block]]:flex **:[[dactylo-checkbox-list-item-block]]:flex-row',
+            '**:[[dactylo-checkbox-list-item-block]]:items-start',
+            '**:[[dactylo-checkbox-list-item-block]]:gap-2',
+            '**:[[dactylo-checkbox-list-item-block]]:px-1.5',
+            '**:[[dactylo-checkbox-list-item-input]]:mt-[0.35em]',
+            '**:[[dactylo-checkbox-list-item-input]]:size-3.5',
+            '**:[[dactylo-checkbox-list-item-input]]:shrink-0',
+            '**:[[dactylo-checkbox-list-item-input]]:rounded-sm',
+            '**:[[dactylo-checkbox-list-item-input]]:border',
+            '**:[[dactylo-checkbox-list-item-input]]:border-current',
+            '[&_[dactylo-checkbox-list-item-block][data-dactylo-checkbox-list-item-checked=true]_[dactylo-checkbox-list-item-input]]:bg-current',
+            '[&_[dactylo-checkbox-list-item-block][data-dactylo-checkbox-list-item-checked=true]_[dactylo-block-content]]:text-muted-foreground',
+            '[&_[dactylo-checkbox-list-item-block][data-dactylo-checkbox-list-item-checked=true]_[dactylo-block-content]]:line-through',
+            '[&_[dactylo-checkbox-list-item-block]_[dactylo-block-content]]:min-w-0',
+            '[&_[dactylo-checkbox-list-item-block]_[dactylo-block-content]]:flex-1',
+
             // heading block
             '**:[[dactylo-heading-block]]:flex **:[[dactylo-heading-block]]:flex-col',
             '**:[[dactylo-heading-block]]:px-1.5',

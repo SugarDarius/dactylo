@@ -6,6 +6,7 @@ export type {
   ComposerParagraphBlockProps,
   ComposerDividerBlockProps,
   ComposerBulletListItemBlockProps,
+  ComposerCheckboxListItemBlockProps,
   ComposerTextNodeProps,
   ComposerLinkNodeProps,
 } from './types'

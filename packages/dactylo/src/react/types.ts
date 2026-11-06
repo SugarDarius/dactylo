@@ -2,6 +2,7 @@ import type { DactyloOptions } from '../dactylo'
 import type {
   BlockId,
   BulletListItemBlock,
+  CheckboxListItemBlock,
   DividerBlock,
   HeadingBlock,
   ParagraphBlock,
@@ -80,6 +81,15 @@ export interface ComposerBulletListItemBlockProps extends React.HTMLAttributes<H
   block: BulletListItemBlock
 
   /** At which index the bullet list item block is rendered inside `<Composer.Editable />`. */
+  indexOfRendering: number
+}
+
+/** Props for declaring a checkbox list item block component. */
+export interface ComposerCheckboxListItemBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** The checkbox list item block to render. */
+  block: CheckboxListItemBlock
+
+  /** At which index the checkbox list item block is rendered inside `<Composer.Editable />`. */
   indexOfRendering: number
 }
 

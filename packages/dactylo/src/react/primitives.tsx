@@ -33,6 +33,9 @@ import {
   HEADING_LEVEL_REPLACER,
   BULLET_LIST_ITEM_BLOCK_ATTR_NAME,
   BULLET_LIST_ITEM_MARKER_ATTR_NAME,
+  CHECKBOX_LIST_ITEM_BLOCK_ATTR_NAME,
+  CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME,
+  CHECKBOX_LIST_ITEM_INPUT_ATTR_NAME,
 } from '../internals/constants'
 import {
   ComposerProvider,
@@ -60,6 +63,7 @@ import {
   COMPOSER_HEADING_LEVELS,
   COMPOSER_HEADING_TAGS,
   COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME,
+  COMPOSER_CHECKBOX_LIST_ITEM_BLOCK_NAME,
 } from './internals/constants'
 import {
   useIsMounted,
@@ -79,6 +83,7 @@ import type {
   ComposerDividerBlockProps,
   ComposerHeadingBlockProps,
   ComposerBulletListItemBlockProps,
+  ComposerCheckboxListItemBlockProps,
 } from './types'
 
 /** Base style for the editable area of the composer. */
@@ -422,6 +427,65 @@ const ComposerBulletListItemBlock = forwardRef<
 })
 ComposerBulletListItemBlock.displayName = COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME
 
+/** Adds a {@link CheckboxListItemBlock} to the composer. */
+const ComposerCheckboxListItemBlock = forwardRef<
+  HTMLDivElement,
+  ComposerCheckboxListItemBlockProps
+>(({ block, indexOfRendering, ...props }, forwardedRef) => {
+  const { checkboxList } = useEditorConfig()
+  const { canEdit, editableId, withActiveSelection, isEmpty } =
+    useEditableBlock(block.id)
+
+  const isActive = canEdit && withActiveSelection
+
+  return (
+    <div
+      {...props}
+      ref={forwardedRef}
+      {...{
+        [BLOCK_ATTR_NAME]: '',
+        [BLOCK_ID_DATA_NAME]: block.id,
+        [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
+        [CHECKBOX_LIST_ITEM_BLOCK_ATTR_NAME]: '',
+        [CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME]: block.checked.toString(),
+      }}
+      data-active={isActive ?? undefined}
+      aria-roledescription='checkbox-list-item-block'
+    >
+      <input
+        type='checkbox'
+        aria-hidden
+        contentEditable={false}
+        disabled
+        aria-roledescription='checkbox-list-item-marker'
+        // oxlint-disable-next-line react/checked-requires-onchange-or-readonly
+        checked={block.checked}
+        {...{ [CHECKBOX_LIST_ITEM_INPUT_ATTR_NAME]: '' }}
+      />
+      <div
+        id={editableId}
+        role={canEdit ? 'textbox' : undefined}
+        aria-roledescription='checkbox-list-item-block-editable'
+        aria-multiline={canEdit ? 'true' : undefined}
+        contentEditable={canEdit ? 'true' : undefined}
+        suppressContentEditableWarning
+        data-active={isActive ?? undefined}
+        data-empty={isEmpty ?? undefined}
+        {...{
+          [BLOCK_CONTENT_ATTR_NAME]: '',
+          [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
+          [BLOCK_PLACEHOLDER_ATTR_NAME]: checkboxList.placeholder,
+        }}
+        style={{ ...EDITABLE_OUTLINE_STYLE }}
+      >
+        <ComposerInlineContent content={block.content} />
+      </div>
+    </div>
+  )
+})
+ComposerCheckboxListItemBlock.displayName =
+  COMPOSER_CHECKBOX_LIST_ITEM_BLOCK_NAME
+
 /** Adds a {@link DividerBlock} to the composer. */
 const ComposerDividerBlock = forwardRef<
   HTMLDivElement,
@@ -478,6 +542,15 @@ const ComposerBlock = memo<ComposerBlockProps>(({ blockId, ...props }) => {
       case 'bullet-list-item': {
         return (
           <ComposerBulletListItemBlock
+            key={block.id}
+            {...props}
+            block={block}
+          />
+        )
+      }
+      case 'checkbox-list-item': {
+        return (
+          <ComposerCheckboxListItemBlock
             key={block.id}
             {...props}
             block={block}
@@ -594,6 +667,7 @@ export {
   ComposerParagraphBlock as ParagraphBlock,
   ComposerHeadingBlock as HeadingBlock,
   ComposerBulletListItemBlock as BulletListItemBlock,
+  ComposerCheckboxListItemBlock as CheckboxListItemBlock,
   ComposerDividerBlock as DividerBlock,
   ComposerTextNode as TextNode,
   ComposerLinkNode as LinkNode,

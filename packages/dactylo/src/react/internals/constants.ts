@@ -47,6 +47,10 @@ export const COMPOSER_HEADING_NAME = (level: HeadingBlock['level']) =>
 export const COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME =
   'Composer.BulletListItemBlock'
 
+/** The name of the composer checkbox list item block component. */
+export const COMPOSER_CHECKBOX_LIST_ITEM_BLOCK_NAME =
+  'Composer.CheckboxListItemBlock'
+
 /** The name of the composer text node component. */
 export const COMPOSER_TEXT_NODE_NAME = 'Composer.TextNode'
 
