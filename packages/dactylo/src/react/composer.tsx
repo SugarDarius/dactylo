@@ -444,7 +444,17 @@ export function useComposerInput() {
  *
  * @example
  * ```tsx
- * const { isEmpty, delete, duplicate, insertParagraph, move } = useBlocks()
+ * const {
+ *   isEmpty,
+ *   move,
+ *   delete,
+ *   duplicate,
+ *   insertParagraph,
+ *   insertHeading,
+ *   insertBulletListItem,
+ *   insertCheckboxListItem,
+ *   insertDivider,
+ * } = useBlocks()
  *
  * console.log(isEmpty(blockId))
  *
@@ -460,6 +470,10 @@ export function useComposerInput() {
  * insertBulletListItem()
  * insertBulletListItem({ pos: { type: 'end' } })
  * insertBulletListItem({}, 'ai-agent')
+ *
+ * insertCheckboxListItem()
+ * insertCheckboxListItem({ checked: true, pos: { type: 'end' } })
+ * insertCheckboxListItem({}, 'ai-agent')
  *
  * insertDivider()
  * insertDivider({ pos: { type: 'end' } })
@@ -492,6 +506,17 @@ export function useBlocks() {
       opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertHeading(level, opts, source),
+  )
+
+  const insertCheckboxListItem = useStableCallback(
+    (
+      opts?: {
+        checked?: boolean
+        pos?: InsertOrMoveBlockPosition
+        metadata?: Metadata
+      },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.insertCheckboxListItem(opts, source),
   )
 
   const insertBulletListItem = useStableCallback(
@@ -534,6 +559,7 @@ export function useBlocks() {
     delete: $delete,
     duplicate,
     insertBulletListItem,
+    insertCheckboxListItem,
     insertDivider,
     insertHeading,
     insertParagraph,

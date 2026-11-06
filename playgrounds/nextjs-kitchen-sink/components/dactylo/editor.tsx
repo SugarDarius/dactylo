@@ -39,6 +39,7 @@ import {
   Plus,
   Minus,
   Pilcrow,
+  SquareCheck,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
@@ -139,6 +140,7 @@ export function Toolbar() {
     insertDivider,
     insertHeading,
     insertBulletListItem,
+    insertCheckboxListItem,
   } = useBlocks()
   const { toggle } = useMarks()
 
@@ -338,6 +340,10 @@ export function Toolbar() {
                 <DropdownMenuItem disabled>
                   <ListOrdered className='size-3.5' />
                   Numbered List
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertCheckboxListItem()}>
+                  <SquareCheck className='size-3.5' />
+                  Checkbox List
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
