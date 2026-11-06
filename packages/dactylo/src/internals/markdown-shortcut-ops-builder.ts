@@ -2,7 +2,9 @@ import {
   createDividerBlock,
   createParagraphBlockAfter,
   findNodeInBlockWithInlineContent,
-  isParagraphBlock,
+  isBlockWithInlineContent,
+  isBulletListItemBlock,
+  isHeadingBlock,
 } from './blocks'
 import type { BlockWithInlineContent, HeadingBlock } from './blocks'
 import { warn } from './console'
@@ -547,11 +549,10 @@ export function buildMarkdownMarkShortcutOps(
 const rules: MarkdownShortcutOpsRule[] = [
   {
     /**
-     * 💡 Cursor is at the end of an inline text node whose **entire** content is
-     *    `**word**` or `__word__` (not `prefix**word**`), and the keystroke just
-     *    typed is the final closing delimiter (`*` or `_`).
-     * 🎯 Strip both delimiter pairs, apply bold on `word`, and collapse the
-     *    selection at the end of that word.
+     * 💡 Cursor is at the end of a {BlockWithInlineContent} whose entire first
+     *    text is `#{1,6}<space>` and the typed character is
+     *    {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
+     * 🎯 Mutate the block into a {@link HeadingBlock} and strip `#{1,6}<space>`.
      */
     build: ({ context, situation, input }): Operation[] | null => {
       if (
@@ -605,7 +606,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         return false
       }
 
-      if (!isParagraphBlock(block)) {
+      if (!isBlockWithInlineContent(block) || isHeadingBlock(block)) {
         return false
       }
 
@@ -625,7 +626,7 @@ const rules: MarkdownShortcutOpsRule[] = [
   },
   {
     /**
-     * 💡 Cursor is at the end of a {@link ParagraphBlock} whose entire first
+     * 💡 Cursor is at the end of a {@link BlockWithInlineContent} whose entire first
      *    text node is `-`, and the typed character is
      *    {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
      * 🎯 Mutate the paragraph into a {@link BulletListItemBlock} and strip `- `.
@@ -681,7 +682,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         return false
       }
 
-      if (!isParagraphBlock(block)) {
+      if (!isBlockWithInlineContent(block) || isBulletListItemBlock(block)) {
         return false
       }
 
@@ -700,7 +701,7 @@ const rules: MarkdownShortcutOpsRule[] = [
   },
   {
     /**
-     * 💡 Cursor selection is at a {@link ParagraphBlock}, first text node only,
+     * 💡 Cursor selection is at a {@link BlockWithInlineContent}, first text node only,
      *    content is `---`, and the typed character is
      *    {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
      * 🎯 Replace the paragraph with a {@link DividerBlock} at the same document
@@ -792,7 +793,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         return false
       }
 
-      if (!isParagraphBlock(block)) {
+      if (!isBlockWithInlineContent(block)) {
         return false
       }
 
