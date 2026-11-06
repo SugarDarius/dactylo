@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest'
 import type { DactyloCommandEvent } from '../src/dactylo'
 import {
   isBulletListItemBlock,
+  isCheckboxListItemBlock,
   isHeadingBlock,
   isParagraphBlock,
 } from '../src/internals/blocks'
@@ -498,6 +499,122 @@ describe('Dactylo blocks', () => {
 
     expect(editor.getContext().state.blockOrderById).toHaveLength(1)
     expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+  })
+
+  test('patchCheckboxListItem sets checked and keeps the same id', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    editor.blocks.commands.insertCheckboxListItem()
+
+    const checkbox = nthInlineBlock(editor.getContext(), 1)
+    expect(isCheckboxListItemBlock(checkbox)).toBe(true)
+
+    editor.blocks.commands.patchCheckboxListItem(checkbox.id, { checked: true })
+
+    const patched = nthInlineBlock(editor.getContext(), 1)
+    expect(patched.id).toBe(checkbox.id)
+    expect(isCheckboxListItemBlock(patched)).toBe(true)
+    if (isCheckboxListItemBlock(patched)) {
+      expect(patched.checked).toBe(true)
+    }
+  })
+
+  test('undo restores unchecked and redo restores checked', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    editor.blocks.commands.insertCheckboxListItem()
+    const checkboxId = nthInlineBlock(editor.getContext(), 1).id
+
+    editor.blocks.commands.patchCheckboxListItem(checkboxId, { checked: true })
+    editor.history.commands.undo()
+
+    const afterUndo = nthInlineBlock(editor.getContext(), 1)
+    expect(afterUndo.id).toBe(checkboxId)
+    if (isCheckboxListItemBlock(afterUndo)) {
+      expect(afterUndo.checked).toBe(false)
+    }
+
+    editor.history.commands.redo()
+
+    const afterRedo = nthInlineBlock(editor.getContext(), 1)
+    expect(afterRedo.id).toBe(checkboxId)
+    if (isCheckboxListItemBlock(afterRedo)) {
+      expect(afterRedo.checked).toBe(true)
+    }
+  })
+
+  test('patchCheckboxListItem metadata keeps checked', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    editor.blocks.commands.insertCheckboxListItem()
+    const checkboxId = nthInlineBlock(editor.getContext(), 1).id
+
+    editor.blocks.commands.patchCheckboxListItem(checkboxId, { checked: true })
+    editor.blocks.commands.patchCheckboxListItem(checkboxId, {
+      metadata: { a: 1 },
+    })
+
+    const patched = nthInlineBlock(editor.getContext(), 1)
+    expect(isCheckboxListItemBlock(patched)).toBe(true)
+    if (isCheckboxListItemBlock(patched)) {
+      expect(patched.checked).toBe(true)
+      expect(patched.metadata).toEqual({ a: 1 })
+    }
+  })
+
+  test('patchDivider sets metadata', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    editor.blocks.commands.insertDivider()
+
+    const { state } = editor.getContext()
+    const dividerId = state.blockOrderById.find((id) => {
+      const block = state.blocks.get(id)
+      return block?.__type === 'divider'
+    })
+    if (!dividerId) {
+      throw new Error('Expected a divider block')
+    }
+
+    editor.blocks.commands.patchDivider(dividerId, { metadata: { a: 1 } })
+
+    const patched = editor.getContext().state.blocks.get(dividerId)
+    expect(patched?.__type).toBe('divider')
+    expect(patched?.metadata).toEqual({ a: 1 })
+  })
+
+  test('patchCheckboxListItem on a paragraph is a no-op and leaves the document unchanged', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    const paragraphId = firstInlineBlock(editor.getContext()).id
+    const before = snapshot(editor.getContext())
+
+    editor.blocks.commands.patchCheckboxListItem(paragraphId, {
+      checked: true,
+    })
+    expect(snapshot(editor.getContext())).toEqual(before)
+  })
+
+  test('patchHeading changes level only', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    editor.blocks.commands.insertHeading(2)
+
+    const heading = nthInlineBlock(editor.getContext(), 1)
+    expect(isHeadingBlock(heading)).toBe(true)
+    const { content } = heading
+
+    editor.blocks.commands.patchHeading(heading.id, { level: 3 })
+
+    const patched = nthInlineBlock(editor.getContext(), 1)
+    expect(patched.id).toBe(heading.id)
+    expect(isHeadingBlock(patched)).toBe(true)
+    if (isHeadingBlock(patched)) {
+      expect(patched.level).toBe(3)
+      expect(patched.content).toEqual(content)
+    }
   })
 })
 

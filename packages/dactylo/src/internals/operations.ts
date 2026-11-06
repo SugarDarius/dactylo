@@ -42,6 +42,17 @@ export interface InsertBlockOp {
   readonly afterBlockId: BlockId | null
 }
 
+/** Replaces an existing block with a same-identity patched copy. */
+export interface UpdateBlockOp {
+  readonly __type: 'update_block'
+
+  /** Patched Block. */
+  readonly patch: Block
+
+  /** Snapshot before patch for undo. */
+  readonly snapshot: Block
+}
+
 /** Deletes a block at the given position (fractional index). */
 export interface DeleteBlockOp {
   readonly __type: 'delete_block'
@@ -266,6 +277,7 @@ export interface SetSelectionOp {
 /** Discriminated union of all operations supported by Dactylo. */
 export type Operation =
   | InsertBlockOp
+  | UpdateBlockOp
   | DeleteBlockOp
   | MoveBlockOp
   | SplitBlockOp

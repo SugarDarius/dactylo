@@ -158,6 +158,46 @@ export type InsertBlockSpec = Relax<
     }
 >
 
+/** Describes which block to patch. */
+export type PatchBlockSpec = {
+  /** Replaces the block metadata record when provided. */
+  readonly metadata?: Metadata
+} & Relax<
+  | {
+      readonly type: 'paragraph'
+
+      /** {@link ParagraphBlock}'s  content.  */
+      readonly content?: InlineNode[]
+    }
+  | {
+      readonly type: 'heading'
+
+      /** {@link HeadingBlock}'s level. */
+      readonly level?: HeadingBlock['level']
+
+      /** {@link HeadingBlock}'s content. */
+      readonly content?: InlineNode[]
+    }
+  | {
+      readonly type: 'bullet-list-item'
+
+      /** {@link BulletListItemBlock}'s content. */
+      readonly content?: InlineNode[]
+    }
+  | {
+      readonly type: 'checkbox-list-item'
+
+      /** Whether the item is checked. */
+      readonly checked?: boolean
+
+      /** {@link CheckboxListItemBlock}'s content. */
+      readonly content?: InlineNode[]
+    }
+  | {
+      readonly type: 'divider'
+    }
+>
+
 /**
  * Describes spec location about a markdown shortcut mark.
  * All offset are in the string before delimiter removal.

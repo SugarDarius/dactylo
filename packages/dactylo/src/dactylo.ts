@@ -26,6 +26,7 @@ import type {
 import { EventSource } from './internals/event-source'
 import type { HistoryEvent, HistoryStackOptions } from './internals/history'
 import type { MarkKey } from './internals/marks'
+import type { InlineNode } from './internals/nodes'
 import type { InsertOrMoveBlockPosition } from './internals/operations-builder'
 import {
   isBlockWithActiveCursor,
@@ -180,6 +181,11 @@ export type DactyloCommand =
   | 'blocks/duplicate'
   | 'blocks/delete'
   | 'blocks/move'
+  | 'blocks/patch-paragraph'
+  | 'blocks/patch-heading'
+  | 'blocks/patch-bullet-list-item'
+  | 'blocks/patch-checkbox-list-item'
+  | 'blocks/patch-divider'
 
 /** Event emitted when a command is executed */
 export interface DactyloCommandEvent {
@@ -754,6 +760,83 @@ export interface DactyloBlocksCommands {
   readonly move: (
     blockId: BlockId,
     pos: InsertOrMoveBlockPosition,
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
+   * Patches a {@link ParagraphBlock} in place with the given options.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.patchParagraph(blockId, { metadata: { fontColor: 'purple' } })
+   * editor.blocks.commands.patchParagraph(blockId, { content }, 'ai-agent')
+   * ```
+   */
+  readonly patchParagraph: (
+    blockId: BlockId,
+    opts?: { content?: InlineNode[]; metadata?: Metadata },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
+   * Patches a {@link HeadingBlock} in place with the given options.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.patchHeading(blockId, { level: 3 })
+   * editor.blocks.commands.patchHeading(blockId, { level: 2 }, 'ai-agent')
+   * ```
+   */
+  readonly patchHeading: (
+    blockId: BlockId,
+    opts?: {
+      level?: HeadingBlock['level']
+      content?: InlineNode[]
+      metadata?: Metadata
+    },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
+   * Patches a {@link BulletListItemBlock} in place with the given options.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.patchBulletListItem(blockId, { metadata: { source: 'import' } })
+   * ```
+   */
+  readonly patchBulletListItem: (
+    blockId: BlockId,
+    opts?: { content?: InlineNode[]; metadata?: Metadata },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
+   * Patches a {@link CheckboxListItemBlock} in place with the given options.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.patchCheckboxListItem(blockId, { checked: true })
+   * editor.blocks.commands.patchCheckboxListItem(blockId, { checked: true }, 'ai-agent')
+   * ```
+   */
+  readonly patchCheckboxListItem: (
+    blockId: BlockId,
+    opts?: { checked?: boolean; content?: InlineNode[]; metadata?: Metadata },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
+   * Patches a {@link DividerBlock} in place with the given options.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.patchDivider(blockId, { metadata: { source: 'import' } })
+   * ```
+   */
+  readonly patchDivider: (
+    blockId: BlockId,
+    opts?: { metadata?: Metadata },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 }
@@ -1772,6 +1855,81 @@ export class Dactylo {
             () => this.#pipeline.moveBlock(blockId, pos, source),
             noop,
             { payload: { blockId, pos, source } },
+          ),
+
+        /** Patches a {@link BulletListItemBlock} in place with the given options. */
+        patchBulletListItem: (
+          blockId: BlockId,
+          opts: { content?: InlineNode[]; metadata?: Metadata } = {},
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/patch-bullet-list-item',
+            () =>
+              this.#pipeline.patchBulletListItemBlock(blockId, opts, source),
+            noop,
+            { payload: { blockId, source } },
+          ),
+
+        /** Patches a {@link CheckboxListItemBlock} in place with the given options. */
+        patchCheckboxListItem: (
+          blockId: BlockId,
+          opts: {
+            checked?: boolean
+            content?: InlineNode[]
+            metadata?: Metadata
+          } = {},
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/patch-checkbox-list-item',
+            () =>
+              this.#pipeline.patchCheckboxListItemBlock(blockId, opts, source),
+            noop,
+            { payload: { blockId, source } },
+          ),
+
+        /** Patches a {@link DividerBlock} in place with the given options. */
+        patchDivider: (
+          blockId: BlockId,
+          opts: { metadata?: Metadata } = {},
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/patch-divider',
+            () => this.#pipeline.patchDividerBlock(blockId, opts, source),
+            noop,
+            { payload: { blockId, source } },
+          ),
+
+        /** Patches a {@link HeadingBlock} in place with the given options. */
+        patchHeading: (
+          blockId: BlockId,
+          opts: {
+            level?: HeadingBlock['level']
+            content?: InlineNode[]
+            metadata?: Metadata
+          } = {},
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/patch-heading',
+            () => this.#pipeline.patchHeadingBlock(blockId, opts, source),
+            noop,
+            { payload: { blockId, source } },
+          ),
+
+        /** Patches a {@link ParagraphBlock} in place with the given options. */
+        patchParagraph: (
+          blockId: BlockId,
+          opts: { content?: InlineNode[]; metadata?: Metadata } = {},
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/patch-paragraph',
+            () => this.#pipeline.patchParagraphBlock(blockId, opts, source),
+            noop,
+            { payload: { blockId, source } },
           ),
       },
       tools: {

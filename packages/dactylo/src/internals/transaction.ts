@@ -14,6 +14,7 @@ import { HistoryStack } from './history'
 import type { HistoryEvent, HistoryStackOptions } from './history'
 import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
+import type { InlineNode } from './nodes'
 import type { Operation } from './operations'
 import type { InsertOrMoveBlockPosition } from './operations-builder'
 import { OperationsEngine } from './operations-engine'
@@ -1311,7 +1312,7 @@ export class TransactionPipeline {
     })
   }
 
-  /** Inserts a heading block at the given document position. */
+  /** Inserts a {@link HeadingBlock} at the given document position. */
   insertHeadingBlock(
     /** Level of the heading. */
     level: HeadingBlock['level'],
@@ -1341,7 +1342,7 @@ export class TransactionPipeline {
     })
   }
 
-  /** Inserts a bullet list item block at the given document position. */
+  /** Inserts a {@link BulletListItemBlock} at the given document position. */
   insertBulletListItemBlock(
     opts: {
       /** Where to insert the bullet list item block. */
@@ -1368,7 +1369,7 @@ export class TransactionPipeline {
     })
   }
 
-  /** Inserts a checkbox list item block at the given document position. */
+  /** Inserts a {@link CheckboxListItemBlock} at the given document position. */
   insertCheckboxListItemBlock(
     opts: {
       /** Whether the item is checked. */
@@ -1397,7 +1398,7 @@ export class TransactionPipeline {
       source,
     })
   }
-  /** Inserts a divider block at the given document position. */
+  /** Inserts a {@link DividerBlock} at the given document position. */
   insertDividerBlock(
     opts: {
       /** Where to insert the divider block. */
@@ -1424,7 +1425,134 @@ export class TransactionPipeline {
     })
   }
 
-  /** Duplicates a block by ID. */
+  /** Patches a {@link ParagraphBlock} by ID with the given options. */
+  patchParagraphBlock(
+    blockId: BlockId,
+    opts: { content?: InlineNode[]; metadata?: Metadata } | undefined,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildPatchParagraphBlockOps(
+      this.#context,
+      blockId,
+      opts,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
+  /** Patches a {@link HeadingBlock} by ID with the given options. */
+  patchHeadingBlock(
+    blockId: BlockId,
+    opts:
+      | {
+          level?: HeadingBlock['level']
+          content?: InlineNode[]
+          metadata?: Metadata
+        }
+      | undefined,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildPatchHeadingBlockOps(
+      this.#context,
+      blockId,
+      opts,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
+  /** Patches a {@link BulletListItemBlock} by ID with the given options. */
+  patchBulletListItemBlock(
+    blockId: BlockId,
+    opts: { content?: InlineNode[]; metadata?: Metadata } | undefined,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildPatchBulletListItemBlockOps(
+      this.#context,
+      blockId,
+      opts,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
+  /** Patches a {@link CheckboxListItemBlock} by ID with the given options. */
+  patchCheckboxListItemBlock(
+    blockId: BlockId,
+    opts:
+      | {
+          checked?: boolean
+          content?: InlineNode[]
+          metadata?: Metadata
+        }
+      | undefined,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildPatchCheckboxListItemBlockOps(
+      this.#context,
+      blockId,
+      opts,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
+  /** Patches a {@link DividerBlock} by ID with the given options. */
+  patchDividerBlock(
+    blockId: BlockId,
+    opts: { metadata?: Metadata } | undefined,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildPatchDividerBlockOps(
+      this.#context,
+      blockId,
+      opts,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
+  /** Duplicates a {@link Block} by ID. */
   duplicateBlock(
     blockId: BlockId,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -1445,7 +1573,7 @@ export class TransactionPipeline {
     })
   }
 
-  /** Moves a block by ID to a new document position. */
+  /** Moves a {@link Block} by ID to a new document position. */
   moveBlock(
     blockId: BlockId,
     pos: InsertOrMoveBlockPosition,
@@ -1468,7 +1596,7 @@ export class TransactionPipeline {
     })
   }
 
-  /** Removes a block by ID. */
+  /** Removes a {@link Block} by ID. */
   deleteBlock(
     blockId: BlockId,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,

@@ -8,10 +8,16 @@ import {
   createParagraphBlock,
   createParagraphBlockAfter,
   isBlockWithInlineContent,
+  isBulletListItemBlock,
+  isCheckboxListItemBlock,
+  isDividerBlock,
+  isHeadingBlock,
+  isParagraphBlock,
+  touchBlock,
 } from './blocks'
 import type { BlockId, HeadingBlock } from './blocks'
 import type { TextPlainData } from './clipboard'
-import { warn, warnOnceIf } from './console'
+import { warn, warnIf, warnOnceIf } from './console'
 import { DeleteContentOpsBuilder } from './delete-content-ops-builder'
 import {
   computeInsertBlockPosKey,
@@ -32,12 +38,14 @@ import { MarkdownShortcutOpsBuilder } from './markdown-shortcut-ops-builder'
 import type { MarkKey } from './marks'
 import { MarksOpsBuilder } from './marks-ops-builder'
 import { createTextNode } from './nodes'
+import type { InlineNode } from './nodes'
 import type { Operation } from './operations'
 import { buildError } from './operations-builder'
 import type {
   BuilderOpsIntent,
   InsertOrMoveBlockPosition,
   InsertBlockSpec,
+  PatchBlockSpec,
 } from './operations-builder'
 import { makeOperationsRuntime } from './operations-runtime'
 import type { OperationsRuntime } from './operations-runtime'
@@ -582,6 +590,212 @@ export class OperationsEngine {
       { metadata, type: 'divider' },
       pos,
     )
+  }
+
+  /** Builds operations to patch an existing block in place. */
+  #buildPatchBlockOps(
+    context: EditorContext,
+    blockId: BlockId,
+    spec: PatchBlockSpec,
+  ): BuilderOpsIntent | null {
+    const source = getBlock(context.state, blockId)
+
+    // @todo: add a policy config to merge blocks metadata
+    const { type } = spec
+    switch (type) {
+      case 'paragraph': {
+        if (!isParagraphBlock(source)) {
+          warnIf(
+            this.#debug,
+            `Cannot patch paragraph block ${blockId} because source type is ${source.__type}`,
+            'OperationsEngine/buildPatchBlockOps',
+          )
+          return null
+        }
+
+        const ops: Operation[] = [
+          {
+            __type: 'update_block',
+            patch: touchBlock({
+              ...source,
+              content: spec.content ?? [...source.content],
+              metadata: spec.metadata ?? source.metadata,
+            }),
+            snapshot: source,
+          },
+        ]
+
+        return { label: 'patch-paragraph', ops }
+      }
+      case 'heading': {
+        if (!isHeadingBlock(source)) {
+          warnIf(
+            this.#debug,
+            `Cannot patch heading block ${blockId} because source type is ${source.__type}`,
+            'OperationsEngine/buildPatchBlockOps',
+          )
+          return null
+        }
+
+        const ops: Operation[] = [
+          {
+            __type: 'update_block',
+            patch: touchBlock({
+              ...source,
+              content: spec.content ?? [...source.content],
+              level: spec.level ?? source.level,
+              metadata: spec.metadata ?? source.metadata,
+            }),
+            snapshot: source,
+          },
+        ]
+
+        return { label: 'patch-heading', ops }
+      }
+      case 'bullet-list-item': {
+        if (!isBulletListItemBlock(source)) {
+          warnIf(
+            this.#debug,
+            `Cannot patch bullet list item block ${blockId} because source type is ${source.__type}`,
+            'OperationsEngine/buildPatchBlockOps',
+          )
+          return null
+        }
+
+        const ops: Operation[] = [
+          {
+            __type: 'update_block',
+            patch: touchBlock({
+              ...source,
+              content: spec.content ?? [...source.content],
+              metadata: spec.metadata ?? source.metadata,
+            }),
+            snapshot: source,
+          },
+        ]
+
+        return { label: 'patch-bullet-list-item', ops }
+      }
+      case 'checkbox-list-item': {
+        if (!isCheckboxListItemBlock(source)) {
+          warnIf(
+            this.#debug,
+            `Cannot patch checkbox list item block ${blockId} because source type is ${source.__type}`,
+            'OperationsEngine/buildPatchBlockOps',
+          )
+          return null
+        }
+
+        const ops: Operation[] = [
+          {
+            __type: 'update_block',
+            patch: touchBlock({
+              ...source,
+              checked: spec.checked ?? source.checked,
+              content: spec.content ?? source.content,
+              metadata: spec.metadata ?? source.metadata,
+            }),
+            snapshot: source,
+          },
+        ]
+
+        return { label: 'patch-checkbox-list-item', ops }
+      }
+      case 'divider': {
+        if (!isDividerBlock(source)) {
+          warnIf(
+            this.#debug,
+            `Cannot patch divider block ${blockId} because source type is ${source.__type}`,
+            'OperationsEngine/buildPatchBlockOps',
+          )
+          return null
+        }
+
+        const ops: Operation[] = [
+          {
+            __type: 'update_block',
+            patch: touchBlock({
+              ...source,
+              metadata: spec.metadata ?? source.metadata,
+            }),
+            snapshot: source,
+          },
+        ]
+
+        return { label: 'patch-divider', ops }
+      }
+      default: {
+        assertNever(type, { hint: 'OperationsEngine/buildPathBlockOps' })
+      }
+    }
+  }
+
+  /** Builds operations to patch a {@link ParagraphBlock}. */
+  buildPatchParagraphBlockOps(
+    context: EditorContext,
+    blockId: BlockId,
+    opts?: { content?: InlineNode[]; metadata?: Metadata },
+  ): BuilderOpsIntent | null {
+    return this.#buildPatchBlockOps(context, blockId, {
+      ...opts,
+      type: 'paragraph',
+    })
+  }
+
+  /** Builds operations to patch an {@link HeadingBlock}. */
+  buildPatchHeadingBlockOps(
+    context: EditorContext,
+    blockId: BlockId,
+    opts?: {
+      level?: HeadingBlock['level']
+      content?: InlineNode[]
+      metadata?: Metadata
+    },
+  ): BuilderOpsIntent | null {
+    return this.#buildPatchBlockOps(context, blockId, {
+      ...opts,
+      type: 'heading',
+    })
+  }
+
+  /** Builds operations to patch a {@link BulletListItemBlock}. */
+  buildPatchBulletListItemBlockOps(
+    context: EditorContext,
+    blockId: BlockId,
+    opts?: { content?: InlineNode[]; metadata?: Metadata },
+  ): BuilderOpsIntent | null {
+    return this.#buildPatchBlockOps(context, blockId, {
+      ...opts,
+      type: 'bullet-list-item',
+    })
+  }
+
+  /** Builds operations to patch a {@link CheckboxListItemBlock}. */
+  buildPatchCheckboxListItemBlockOps(
+    context: EditorContext,
+    blockId: BlockId,
+    opts?: {
+      checked?: boolean
+      content?: InlineNode[]
+      metadata?: Metadata
+    },
+  ): BuilderOpsIntent | null {
+    return this.#buildPatchBlockOps(context, blockId, {
+      ...opts,
+      type: 'checkbox-list-item',
+    })
+  }
+
+  /** Builds operations to patch a {@link DividerBlock}. */
+  buildPatchDividerBlockOps(
+    context: EditorContext,
+    blockId: BlockId,
+    opts?: { metadata?: Metadata },
+  ): BuilderOpsIntent | null {
+    return this.#buildPatchBlockOps(context, blockId, {
+      ...opts,
+      type: 'divider',
+    })
   }
 
   /** Builds operations to duplicate a {@link Block} by ID. */

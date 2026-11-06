@@ -46,6 +46,7 @@ import type {
   SetMarksOp,
   SetSelectionOp,
   SplitBlockOp,
+  UpdateBlockOp,
 } from './operations'
 import { isPosKey } from './position'
 import { sanitizeText } from './sanitize-text'
@@ -188,6 +189,42 @@ export function validateInsertBlockOp(
   const { state } = context
   if (state.blocks.has(op.block.id)) {
     validationError(`Block ${op.block.id} already exists in document`, op)
+  }
+}
+
+/** Validates an {@link UpdateBlockOp} operation. */
+export function validateUpdateBlockOp(
+  context: EditorContext,
+  op: UpdateBlockOp,
+): void | never {
+  if (op.patch.id !== op.snapshot.id) {
+    validationError(
+      `Patch block ID ${op.patch.id} does not match snapshot block ID ${op.snapshot.id}`,
+      op,
+    )
+  }
+
+  const source = getBlock(context.state, op.patch.id)
+
+  if (
+    op.patch.__type !== op.snapshot.__type ||
+    op.patch.__type !== source.__type
+  ) {
+    validationError(
+      `Cannot change block type from ${source.__type} to ${op.patch.__type} while updating`,
+      op,
+    )
+  }
+
+  if (
+    op.patch.posKey !== op.snapshot.posKey ||
+    op.patch.parentId !== op.snapshot.parentId ||
+    op.patch.createdAt !== op.snapshot.createdAt
+  ) {
+    validationError(
+      `Cannot change identity fields of block ${op.patch.id} while updating`,
+      op,
+    )
   }
 }
 
@@ -435,6 +472,10 @@ export function validateOp(context: EditorContext, op: Operation): void {
       validateInsertBlockOp(context, op)
       break
     }
+    case 'update_block': {
+      validateUpdateBlockOp(context, op)
+      break
+    }
     case 'delete_block': {
       validateDeleteBlockOp(context, op)
       break
@@ -455,6 +496,7 @@ export function validateOp(context: EditorContext, op: Operation): void {
       validateMutateBlockTypeOp(context, op)
       break
     }
+
     case 'insert_text': {
       validateInsertTextOp(context, op)
       break
@@ -503,6 +545,15 @@ export function applyInsertBlockOp(
   op: InsertBlockOp,
 ): EditorContext {
   const state = putBlock(context.state, op.block)
+  return withDocumentState(context, state)
+}
+
+/** Applies an {@link UpdateBlockOp} operation to {@link EditorContext}. */
+export function applyUpdateBlockOp(
+  context: EditorContext,
+  op: UpdateBlockOp,
+): EditorContext {
+  const state = putBlock(context.state, op.patch)
   return withDocumentState(context, state)
 }
 
@@ -849,6 +900,9 @@ export function applyOp(context: EditorContext, op: Operation): EditorContext {
     case 'insert_block': {
       return applyInsertBlockOp(context, op)
     }
+    case 'update_block': {
+      return applyUpdateBlockOp(context, op)
+    }
     case 'delete_block': {
       return applyDeleteBlockOp(context, op)
     }
@@ -909,6 +963,13 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
         afterBlockId: op.afterBlockId,
         blockId: op.block.id,
         snapshot: op.block,
+      }
+    }
+    case 'update_block': {
+      return {
+        __type: 'update_block',
+        patch: op.snapshot,
+        snapshot: op.patch,
       }
     }
     case 'delete_block': {
