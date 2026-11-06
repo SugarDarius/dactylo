@@ -41,6 +41,15 @@ function makeConsole() {
     error,
     /** Log a non-fatal diagnostic. */
     warn,
+    warnIf: (
+      condition: boolean,
+      message: string,
+      ...args: readonly unknown[]
+    ): void => {
+      if (condition) {
+        warn(message, ...args)
+      }
+    },
     /** Emits a warning only once. */
     warnOnce,
     /** Emits a warning only once if the condition is met. */
@@ -56,4 +65,4 @@ function makeConsole() {
   }
 }
 
-export const { error, warn, warnOnce, warnOnceIf } = makeConsole()
+export const { error, warn, warnIf, warnOnce, warnOnceIf } = makeConsole()
