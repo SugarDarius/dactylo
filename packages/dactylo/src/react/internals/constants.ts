@@ -43,6 +43,10 @@ export const COMPOSER_HEADING_TAGS: Record<
 export const COMPOSER_HEADING_NAME = (level: HeadingBlock['level']) =>
   `Composer.Heading${level}`
 
+/** The name of the composer bullet list item block component. */
+export const COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME =
+  'Composer.BulletListItemBlock'
+
 /** The name of the composer text node component. */
 export const COMPOSER_TEXT_NODE_NAME = 'Composer.TextNode'
 

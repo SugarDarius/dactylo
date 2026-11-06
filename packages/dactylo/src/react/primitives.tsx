@@ -31,6 +31,8 @@ import {
   HEADING_BLOCK_LEVEL_DATA_NAME,
   BLOCK_INDEX_DATA_NAME,
   HEADING_LEVEL_REPLACER,
+  BULLET_LIST_ITEM_BLOCK_ATTR_NAME,
+  BULLET_LIST_ITEM_MARKER_ATTR_NAME,
 } from '../internals/constants'
 import {
   ComposerProvider,
@@ -57,6 +59,7 @@ import {
   COMPOSER_HEADING_NAME,
   COMPOSER_HEADING_LEVELS,
   COMPOSER_HEADING_TAGS,
+  COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME,
 } from './internals/constants'
 import {
   useIsMounted,
@@ -75,6 +78,7 @@ import type {
   ComposerBlockProps,
   ComposerDividerBlockProps,
   ComposerHeadingBlockProps,
+  ComposerBulletListItemBlockProps,
 } from './types'
 
 /** Base style for the editable area of the composer. */
@@ -365,6 +369,59 @@ const ComposerHeadingBlock = forwardRef<
 })
 ComposerHeadingBlock.displayName = COMPOSER_HEADING_BLOCK_NAME
 
+/** Adds a {@link BulletListItemBlock} to the composer. */
+const ComposerBulletListItemBlock = forwardRef<
+  HTMLDivElement,
+  ComposerBulletListItemBlockProps
+>(({ block, indexOfRendering, ...props }, forwardedRef) => {
+  const { bulletListItem } = useEditorConfig()
+  const { canEdit, editableId, withActiveSelection, isEmpty } =
+    useEditableBlock(block.id)
+
+  const isActive = canEdit && withActiveSelection
+
+  return (
+    <div
+      {...props}
+      ref={forwardedRef}
+      {...{
+        [BLOCK_ATTR_NAME]: '',
+        [BLOCK_ID_DATA_NAME]: block.id,
+        [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
+        [BULLET_LIST_ITEM_BLOCK_ATTR_NAME]: '',
+      }}
+      data-active={isActive ?? undefined}
+      aria-roledescription='bullet-list-item-block'
+    >
+      <div
+        aria-hidden
+        contentEditable={false}
+        aria-roledescription='bullet-list-item-marker'
+        {...{ [BULLET_LIST_ITEM_MARKER_ATTR_NAME]: '' }}
+      />
+      <div
+        id={editableId}
+        role={canEdit ? 'textbox' : undefined}
+        aria-roledescription='bullet-list-item-block-editable'
+        aria-multiline={canEdit ? 'true' : undefined}
+        contentEditable={canEdit ? 'true' : undefined}
+        suppressContentEditableWarning
+        data-active={isActive ?? undefined}
+        data-empty={isEmpty ?? undefined}
+        {...{
+          [BLOCK_CONTENT_ATTR_NAME]: '',
+          [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
+          [BLOCK_PLACEHOLDER_ATTR_NAME]: bulletListItem.placeholder,
+        }}
+        style={{ ...EDITABLE_OUTLINE_STYLE }}
+      >
+        <ComposerInlineContent content={block.content} />
+      </div>
+    </div>
+  )
+})
+ComposerBulletListItemBlock.displayName = COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME
+
 /** Adds a {@link DividerBlock} to the composer. */
 const ComposerDividerBlock = forwardRef<
   HTMLDivElement,
@@ -373,6 +430,7 @@ const ComposerDividerBlock = forwardRef<
   <div
     {...props}
     ref={forwardedRef}
+    contentEditable={false}
     {...{
       [BLOCK_ATTR_NAME]: '',
       [BLOCK_ID_DATA_NAME]: block.id,
@@ -416,6 +474,15 @@ const ComposerBlock = memo<ComposerBlockProps>(({ blockId, ...props }) => {
       }
       case 'heading': {
         return <ComposerHeadingBlock key={block.id} {...props} block={block} />
+      }
+      case 'bullet-list-item': {
+        return (
+          <ComposerBulletListItemBlock
+            key={block.id}
+            {...props}
+            block={block}
+          />
+        )
       }
       case 'divider': {
         return <ComposerDividerBlock key={block.id} {...props} block={block} />
@@ -526,6 +593,7 @@ export {
   ComposerEditable as Editable,
   ComposerParagraphBlock as ParagraphBlock,
   ComposerHeadingBlock as HeadingBlock,
+  ComposerBulletListItemBlock as BulletListItemBlock,
   ComposerDividerBlock as DividerBlock,
   ComposerTextNode as TextNode,
   ComposerLinkNode as LinkNode,

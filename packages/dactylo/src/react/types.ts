@@ -1,6 +1,7 @@
 import type { DactyloOptions } from '../dactylo'
 import type {
   BlockId,
+  BulletListItemBlock,
   DividerBlock,
   HeadingBlock,
   ParagraphBlock,
@@ -70,6 +71,15 @@ export interface ComposerHeadingBlockProps extends React.HTMLAttributes<HTMLDivE
   block: HeadingBlock
 
   /** At which index the heading block is rendered inside `<Composer.Editable />`. */
+  indexOfRendering: number
+}
+
+/** Props for declaring a bullet list item block component. */
+export interface ComposerBulletListItemBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** The bullet list item block to render. */
+  block: BulletListItemBlock
+
+  /** At which index the bullet list item block is rendered inside `<Composer.Editable />`. */
   indexOfRendering: number
 }
 

@@ -1,6 +1,7 @@
 import type { BlockId, HeadingBlock } from './internals/blocks'
 import { error, warnOnceIf } from './internals/console'
 import {
+  DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
   DEFAULT_HEADING_PLACEHOLDER,
   DEFAULT_LOCALES,
   DEFAULT_MENTION_CHARACTER,
@@ -108,6 +109,12 @@ export interface DactyloStaticConfig {
   /** Configuration for the paragraphs */
   readonly paragraph: {
     /** Placeholder text when an empty paragraph is created or empty. */
+    readonly placeholder: string
+  }
+
+  /** Configuration for the bullet list items */
+  readonly bulletListItem: {
+    /** Placeholder text when a bullet list item is created or empty. */
     readonly placeholder: string
   }
 }
@@ -806,6 +813,15 @@ export interface DactyloConfigOptions {
        */
       readonly placeholder?: string
     }
+
+    /** Configuration for the bullet list items */
+    readonly bulletListItem?: {
+      /**
+       * Placeholder text when a bullet list item is created or empty.
+       * Defaults to {@link DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER}.
+       */
+      readonly placeholder?: string
+    }
   }
 
   /** Configuration for the transaction pipeline */
@@ -901,6 +917,11 @@ export class Dactylo {
       autolink: {
         enabled:
           options.config?.editor?.autolink?.enabled ?? DEFAULT_AUTOLINK_ENABLED,
+      },
+      bulletListItem: {
+        placeholder:
+          options.config?.editor?.bulletListItem?.placeholder ??
+          DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
       },
       heading: {
         placeholder:
@@ -1124,6 +1145,7 @@ export class Dactylo {
    *
    * console.log(config.paragraph.placeholder)
    * console.log(config.heading.placeholder)
+   * console.log(config.bulletListItem.placeholder)
    * ```
    */
   get config(): DactyloStaticConfig {

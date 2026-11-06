@@ -7,6 +7,9 @@ export const HEADING_LEVEL_REPLACER = '%level%'
 /** Default placeholder text for the editor when no content is written. */
 export const DEFAULT_HEADING_PLACEHOLDER = `Heading ${HEADING_LEVEL_REPLACER}`
 
+/** Default placeholder text for empty bullet list item block. */
+export const DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER = 'List'
+
 /** Default mentions enabled. */
 export const DEFAULT_MENTIONS_ENABLED = true
 
@@ -87,6 +90,12 @@ export const DIVIDER_SEPARATOR_ATTR_NAME = 'dactylo-divider-separator'
 export const HEADING_BLOCK_ATTR_NAME = 'dactylo-heading-block'
 /** Heading block level data name. */
 export const HEADING_BLOCK_LEVEL_DATA_NAME = 'data-dactylo-heading-block-level'
+
+/** Bullet list item block attribute name. */
+export const BULLET_LIST_ITEM_BLOCK_ATTR_NAME = 'dactylo-bullet-list-item-block'
+/** Bullet list item marker attribute name. */
+export const BULLET_LIST_ITEM_MARKER_ATTR_NAME =
+  'dactylo-bullet-list-item-marker'
 
 /** Node attribute name. */
 export const NODE_ATTR_NAME = 'dactylo-node'
