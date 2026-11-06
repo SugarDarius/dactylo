@@ -160,6 +160,7 @@ export type DactyloCommand =
   /** Blocks commands */
   | 'blocks/insert-paragraph'
   | 'blocks/insert-heading'
+  | 'blocks/insert-bullet-list-item'
   | 'blocks/insert-divider'
   | 'blocks/duplicate'
   | 'blocks/delete'
@@ -634,6 +635,27 @@ export interface DactyloBlocksCommands {
   ) => void
 
   /**
+   * Inserts a {@link BulletListItemBlock} at the given position with metadata.
+   * By defaults it inserts after the current selection.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.insertBulletListItem()
+   * editor.blocks.commands.insertBulletListItem({ pos: 'end' })
+   * editor.blocks.commands.insertBulletListItem({}, 'ai-agent')
+   * ```
+   */
+  readonly insertBulletListItem: (
+    opts?: {
+      /** Where to insert the bullet list item block. */
+      pos?: InsertOrMoveBlockPosition
+      /** Metadata to associate with the bullet list item block. */
+      metadata?: Metadata
+    },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
    * Inserts a {@link DividerBlock} at the given position with metadata.
    * By defaults it inserts after the current selection.
    *
@@ -834,10 +856,10 @@ export interface DactyloOptions {
  *  4. Uniform input paths: keyboard, Ai edits, imports, all produce transactions
  *
  * Pipeline stages:
- * ┌─────────────┐   ┌──────────────┐   ┌───────────┐   ┌────────────┐   ┌──────────---------┐
- * │   Source    │ → │ Build Tx     │ → │ Validate  │ → │ Apply      │ → │ Commit Effects    │
- * │ (input/AI)  │   │ (ops batch)  │   │ (schema)  │   │ (pure)     │   │ (history/events)  │
- * └─────────────┘   └──────────────┘   └───────────┘   └────────────┘   └──────────---------┘
+ * ┌─────────────┐   ┌──────────────┐   ┌───────────┐   ┌────────────┐   ┌──────────-----------┐
+ * │   Source    │ → │ Build Tx     │ → │ Validate  │ → │ Apply      │ → │ Commit Side Effects │
+ * │ (input/AI)  │   │ (ops batch)  │   │ (schema)  │   │ (pure)     │   │ (history/events)    │
+ * └─────────────┘   └──────────────┘   └───────────┘   └────────────┘   └──────────-----------┘
  *                                          ↓ fail
  *                              Reject (state unchanged) + error
  *
@@ -1566,6 +1588,26 @@ export class Dactylo {
             () => this.#pipeline.duplicateBlock(blockId, source),
             noop,
             { payload: { blockId, source } },
+          ),
+
+        /**
+         * Inserts a {@link BulletListItemBlock} at the given position with metadata.
+         * By defaults it inserts after the current selection.
+         */
+        insertBulletListItem: (
+          opts: {
+            /** Where to insert the bullet list item block. */
+            pos?: InsertOrMoveBlockPosition
+            /** Metadata to associate with the bullet list item block. */
+            metadata?: Metadata
+          } = {},
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/insert-bullet-list-item',
+            () => this.#pipeline.insertBulletListItemBlock(opts, source),
+            noop,
+            { payload: { source } },
           ),
 
         /**

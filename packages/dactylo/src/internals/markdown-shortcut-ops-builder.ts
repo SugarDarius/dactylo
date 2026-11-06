@@ -10,6 +10,7 @@ import {
   ATX_MARKDOWN_HEADING_WITH_TRIGGER_SPACE_PATTERN,
   BOLD_MARKDOWN_ASTERISK_SHORTCUT_PATTERN,
   BOLD_MARKDOWN_UNDERSCORE_SHORTCUT_PATTERN,
+  BULLET_LIST_ITEM_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN,
   HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN,
   INLINE_DETECTOR_TRIGGER_CHARACTER,
   ITALIC_MARKDOWN_ASTERISK_SHORTCUT_PATTERN,
@@ -119,6 +120,11 @@ export function parseAtxHeadingShortcutLevel(
 /** Whether the node text is a horizontal rule markdown shortcut. */
 export function isMarkdownDividerShortcut(nodeText: string): boolean {
   return HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN.test(nodeText)
+}
+
+/** Whether the node text is a bullet list item markdown shortcut. */
+export function isMarkdownBulletListItemShortcut(nodeText: string): boolean {
+  return BULLET_LIST_ITEM_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN.test(nodeText)
 }
 
 /**
@@ -615,6 +621,81 @@ const rules: MarkdownShortcutOpsRule[] = [
 
       const level = parseAtxHeadingShortcutLevel(node.text)
       return level !== null
+    },
+  },
+  {
+    /**
+     * 💡 Cursor is at the end of a {@link ParagraphBlock} whose entire first
+     *    text node is `-`, and the typed character is
+     *    {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
+     * 🎯 Mutate the paragraph into a {@link BulletListItemBlock} and strip `- `.
+     */
+    build: ({ context, situation, input }): Operation[] | null => {
+      if (
+        situation.kind !== 'cursor-selection' ||
+        input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
+      ) {
+        return null
+      }
+
+      const { block, node } = situation
+      if (!isMarkdownBulletListItemShortcut(node.text)) {
+        return null
+      }
+
+      const ops: Operation[] = [
+        {
+          __type: 'mutate_block_type',
+          blockId: block.id,
+          snapshot: block,
+          spec: { kind: 'to_bullet_list_item' },
+        },
+        {
+          __type: 'delete_text',
+          blockId: block.id,
+          length: node.text.length,
+          nodeId: node.id,
+          offset: 0,
+          snapshot: { text: node.text },
+        },
+        {
+          __type: 'set_selection',
+          next: createCursor({ blockId: block.id, nodeId: node.id, offset: 0 }),
+          prev: context.selection,
+        },
+      ]
+
+      return ops
+    },
+    name: 'cursor/bullet-list-item/inline-detector-trigger-character',
+    when: ({ situation, input }): boolean => {
+      if (
+        situation.kind !== 'cursor-selection' ||
+        input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
+      ) {
+        return false
+      }
+
+      const { block, node, at } = situation
+      if (at.offset !== node.text.length) {
+        return false
+      }
+
+      if (!isParagraphBlock(block)) {
+        return false
+      }
+
+      const [first] = block.content
+      if (
+        !first ||
+        !isTextNode(first) ||
+        first.id !== node.id ||
+        first.text.length !== node.text.length
+      ) {
+        return false
+      }
+
+      return isMarkdownBulletListItemShortcut(node.text)
     },
   },
   {

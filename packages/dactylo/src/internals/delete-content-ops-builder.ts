@@ -1,4 +1,7 @@
-import { findNodeInBlockWithInlineContent } from './blocks'
+import {
+  findNodeInBlockWithInlineContent,
+  isBulletListItemBlock,
+} from './blocks'
 import type { BlockWithInlineContent } from './blocks'
 import { warn } from './console'
 import {
@@ -151,8 +154,60 @@ export function buildAbsorbEmptyTextNodeIntoPrevOps(
   )
 }
 
+/** Whether Backspace at block start should exit an empty list item to a paragraph. */
+export function isEmptyBulletListItemAtBlockStart(
+  context: EditorContext,
+  situation: DeleteContentOpsCursorSelectionSituation,
+): boolean {
+  const { nodeIndex, at, block } = situation
+  if (!(nodeIndex === 0 && at.offset === 0)) {
+    return false
+  }
+
+  return (
+    isBulletListItemBlock(block) &&
+    isBlockWithInlineContentEmpty(context.state, block.id)
+  )
+}
+
 /** Rules for cursor selection. */
 export const cursorRules: DeleteContentOpsRule[] = [
+  {
+    /**
+     * 💡 Situation:
+     * - Cursor is at the start of an empty {@link BulletListItemBlock}.
+     *
+     * 🎯 Operations:
+     * - Mutate the block into a {@link ParagraphBlock} in place.
+     */
+    build: ({ context, situation }): Operation[] | null => {
+      if (situation.kind !== 'cursor-selection') {
+        return null
+      }
+
+      const { block, at } = situation
+      return withTrailingSelectionOp(
+        [
+          {
+            __type: 'mutate_block_type',
+            blockId: block.id,
+            snapshot: block,
+            spec: { kind: 'to_paragraph' },
+          },
+        ],
+        createCursor(at),
+        context.selection,
+      )
+    },
+    name: 'cursor/delete-content/at-block-start/empty-bullet-list-item-to-paragraph',
+    when: ({ context, situation }): boolean => {
+      if (situation.kind !== 'cursor-selection') {
+        return false
+      }
+
+      return isEmptyBulletListItemAtBlockStart(context, situation)
+    },
+  },
   {
     /**
      * 💡 Situation:
@@ -1004,12 +1059,16 @@ export class DeleteContentOpsBuilder extends OperationsBuilder<
      * At the very start of the document (first block, offset = 0), `Backspace` key typically
      * deletes nothing. We are not at "delete the character before the cursor" (→ offset - 1),
      * because we already took the block-start branch and there is no previous block to join with.
+     *
+     * Empty {@link BulletListItemBlock} is the exception: Backspace exits the list
+     * by mutating the item into a paragraph, including when it is the first block.
      */
     if (
       isCursorKind &&
       situation.at.offset === 0 &&
       situation.blockIndex === 0 &&
-      situation.nodeIndex === 0
+      situation.nodeIndex === 0 &&
+      !isEmptyBulletListItemAtBlockStart(context, situation)
     ) {
       return null
     }

@@ -1,6 +1,7 @@
 import { expect } from 'vitest'
 
 import {
+  isBulletListItemBlock,
   isDividerBlock,
   isHeadingBlock,
   isParagraphBlock,
@@ -44,7 +45,7 @@ type SerializedBlock =
       readonly content: readonly SerializedInline[]
       readonly id: Block['id']
       readonly level?: number
-      readonly type: 'heading' | 'paragraph'
+      readonly type: 'heading' | 'paragraph' | 'bullet-list-item'
     }
 
 type SerializedInline = {
@@ -109,6 +110,14 @@ function serializeBlock(block: Block): SerializedBlock {
       content: block.content.map(serializeInline),
       id: block.id,
       type: 'paragraph',
+    }
+  }
+
+  if (isBulletListItemBlock(block)) {
+    return {
+      content: block.content.map(serializeInline),
+      id: block.id,
+      type: 'bullet-list-item',
     }
   }
 

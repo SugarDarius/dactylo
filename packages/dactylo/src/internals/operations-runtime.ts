@@ -947,7 +947,18 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
             },
           }
         }
-        default: {
+        case 'bullet-list-item': {
+          return {
+            __type: 'mutate_block_type',
+            blockId: op.blockId,
+            dropMetadata: op.dropMetadata,
+            snapshot: op.snapshot,
+            spec: {
+              kind: 'to_bullet_list_item',
+            },
+          }
+        }
+        case 'paragraph': {
           return {
             __type: 'mutate_block_type',
             blockId: op.blockId,
@@ -957,6 +968,11 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
               kind: 'to_paragraph',
             },
           }
+        }
+        default: {
+          return assertNever(snapshotType, {
+            hint: 'OperationsRuntime/invertOp/mutate_block_type',
+          })
         }
       }
     }

@@ -155,6 +155,19 @@ export const ATX_MARKDOWN_HEADING_WITH_TRIGGER_SPACE_PATTERN =
   /^(?<level>#{1,6}) $/u
 
 /**
+ * Bullet list item markdown shortcut with trigger pattern.
+ * Matched after the user types {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
+ * Exactly one hyphen so `---` still matches the horizontal-rule shortcut.
+ *
+ * @example
+ * ```txt
+ * User type: -<space>
+ * Node text: "- "
+ * ```
+ */
+export const BULLET_LIST_ITEM_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN = /^- $/u
+
+/**
  * Horizontal rule markdown shortcut with trigger pattern.
  * Matched after the user types {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
  *

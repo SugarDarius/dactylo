@@ -516,6 +516,19 @@ export class OperationsEngine {
     )
   }
 
+  /** Builds operations to insert a {@link BulletListItemBlock}. */
+  buildInsertBulletListItemBlockOps(
+    context: EditorContext,
+    pos?: InsertOrMoveBlockPosition,
+    metadata?: Metadata,
+  ): BuilderOpsIntent | null {
+    return this.#buildInsertBlockOps(
+      context,
+      { metadata, type: 'bullet-list-item' },
+      pos,
+    )
+  }
+
   /** Builds operations to insert a {@link DividerBlock}. */
   buildInsertDividerBlockOps(
     context: EditorContext,

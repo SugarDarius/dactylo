@@ -1341,6 +1341,33 @@ export class TransactionPipeline {
     })
   }
 
+  /** Inserts a bullet list item block at the given document position. */
+  insertBulletListItemBlock(
+    opts: {
+      /** Where to insert the bullet list item block. */
+      pos?: InsertOrMoveBlockPosition
+      /** Metadata to associate with the bullet list item block. */
+      metadata?: Metadata
+    },
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildInsertBulletListItemBlockOps(
+      this.#context,
+      opts.pos,
+      opts.metadata,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
   /** Inserts a divider block at the given document position. */
   insertDividerBlock(
     opts: {

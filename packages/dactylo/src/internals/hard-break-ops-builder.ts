@@ -1,6 +1,8 @@
 import {
+  createBulletListItemBlock,
   createParagraphBlock,
   findNodeInBlockWithInlineContent,
+  isBulletListItemBlock,
 } from './blocks'
 import type { BlockWithInlineContent } from './blocks'
 import { warn } from './console'
@@ -15,9 +17,10 @@ import type { EditorContext } from './editor-context'
 import {
   createTextNode,
   isEmptyEditableRunway,
+  isInlineContentWithoutVisibleText,
   isInlineNodeWithEditableText,
 } from './nodes'
-import type { InlineNodeWithEditableText } from './nodes'
+import type { InlineNode, InlineNodeWithEditableText } from './nodes'
 import type { Operation } from './operations'
 import {
   buildDeleteRangeCrossBlockIntent,
@@ -32,6 +35,7 @@ import {
 } from './operations-builder'
 import type { BuilderOpsIntent, OperationRule } from './operations-builder'
 import {
+  createCursor,
   cursorAtBlockStart,
   getRangeSelectionTopology,
   isCursorAtBlockEnd,
@@ -109,11 +113,37 @@ export type HardBreakOpsSituation =
 /** Hard break operations rule. */
 export type HardBreakOpsRule = OperationRule<HardBreakOpsSituation>
 
+/** Creates the block inserted or split by a hard break from `source`. */
+export function createBlockAfterHardBreak(
+  source: BlockWithInlineContent,
+  content: InlineNode[],
+  posKey: ReturnType<typeof computeInsertBlockPosKey>,
+  metadata?: BlockWithInlineContent['metadata'],
+): BlockWithInlineContent {
+  if (isBulletListItemBlock(source)) {
+    return createBulletListItemBlock({
+      content,
+      metadata,
+      parentId: source.parentId,
+      posKey,
+    })
+  }
+
+  return createParagraphBlock({
+    content,
+    metadata,
+    parentId: source.parentId,
+    posKey,
+  })
+}
+
 /**
  * Builds block-level hard-break operations at a caret inside one block.
  *
  * Mirrors cursor situation rules:
- * - At block end → `insert_block` with an unmarked empty paragraph, caret at new block start.
+ * - Empty {@link BulletListItemBlock} → `mutate_block_type` to paragraph, caret stays.
+ * - At block end → `insert_block` with an unmarked empty successor (list item
+ *   stays a list item; otherwise a paragraph), caret at new block start.
  * - Otherwise → `split_block` at the caret, caret at the tail block start.
  */
 export function buildHardBreakBlockOpsAtCaret(
@@ -122,22 +152,39 @@ export function buildHardBreakBlockOpsAtCaret(
   at: TextCursor,
   node: InlineNodeWithEditableText,
 ): { ops: Operation[]; next: CursorSelection } {
+  if (
+    isBulletListItemBlock(block) &&
+    isInlineContentWithoutVisibleText(block.content)
+  ) {
+    return {
+      next: createCursor(at),
+      ops: [
+        {
+          __type: 'mutate_block_type',
+          blockId: block.id,
+          snapshot: block,
+          spec: { kind: 'to_paragraph' },
+        },
+      ],
+    }
+  }
+
   const posKey = computeInsertBlockPosKey(state, {
     blockId: block.id,
     type: 'after',
   })
 
   if (isCursorAtBlockEnd(at, block)) {
-    const insertedBlock = createParagraphBlock({
-      content: [createTextNode({ text: '' })],
-      parentId: block.parentId,
+    const insertedBlock = createBlockAfterHardBreak(
+      block,
+      [createTextNode({ text: '' })],
       posKey,
-    })
+    )
 
     const next = cursorAtBlockStart(insertedBlock.id, insertedBlock)
     if (!next) {
       buildError(
-        'New paragraph has no editable inline node for caret',
+        'New block has no editable inline node for caret',
         'HardBreakOpsBuilder/buildHardBreakBlockOpsAtCaret',
       )
     }
@@ -181,12 +228,12 @@ export function buildHardBreakBlockOpsAtCaret(
     { index: found.index, node },
     at.offset,
   )
-  const insertedBlock = createParagraphBlock({
-    content: tailSnapshot,
-    metadata: block.metadata,
-    parentId: block.parentId,
+  const insertedBlock = createBlockAfterHardBreak(
+    block,
+    tailSnapshot,
     posKey,
-  })
+    block.metadata,
+  )
   const next = cursorAtBlockStart(insertedBlock.id, insertedBlock)
   if (!next) {
     buildError(
