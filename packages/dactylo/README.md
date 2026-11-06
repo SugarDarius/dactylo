@@ -193,10 +193,10 @@ export function Editor() {
 | Divider              | ✅ **Done**        | Block for UI rendering - no inline content                                                                      |
 | Bullet list item     | ✅ **Done**        | Bullet list item block with inline content                                                                      |
 | Numbered list item   | 📆 **Planned**     | Numbered list item block with inline content with variants (lower or upper alpha, lower or upper roman)         |
-| Checkbox list item   | 🚧 **In Progress** | Checkbox list item with block inline content                                                                    |
+| Checkbox list item   | ✅ **Done**        | Checkbox list item with block inline content                                                                    |
 | Toggle list item     | 📆 **Planned**     | Toggle list item block with inline content                                                                      |
 | Code                 | 📆 **Planned**     | Safe code block rendering code with inline content                                                              |
-| Quote                | 📆 **Planned**     | Quote block with inline content only (a variant of ParagraphBlock)                                              |
+| Quote                | 🚧 **In Progress** | Quote block with inline content only (a variant of ParagraphBlock)                                              |
 | Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
 | Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
 | Callout              | 📆 **Planned**     | Callout parent block with icon + sub blocks                                                                     |
