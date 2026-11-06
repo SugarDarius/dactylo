@@ -4,6 +4,7 @@ export type {
   ComposerRootProps,
   ComposerEditableProps,
   ComposerParagraphBlockProps,
+  ComposerDividerBlockProps,
   ComposerBulletListItemBlockProps,
   ComposerTextNodeProps,
   ComposerLinkNodeProps,
