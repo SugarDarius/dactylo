@@ -35,7 +35,9 @@ import {
   BULLET_LIST_ITEM_MARKER_ATTR_NAME,
   CHECKBOX_LIST_ITEM_BLOCK_ATTR_NAME,
   CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME,
-  CHECKBOX_LIST_ITEM_INPUT_ATTR_NAME,
+  CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME,
+  BULLET_LIST_ITEM_MARKER_DOT_ATTR_NAME,
+  CHECKBOX_LIST_ITEM_MARKER_ATTR_NAME,
 } from '../internals/constants'
 import {
   ComposerProvider,
@@ -399,11 +401,15 @@ const ComposerBulletListItemBlock = forwardRef<
       aria-roledescription='bullet-list-item-block'
     >
       <div
-        aria-hidden
         contentEditable={false}
         aria-roledescription='bullet-list-item-marker'
         {...{ [BULLET_LIST_ITEM_MARKER_ATTR_NAME]: '' }}
-      />
+      >
+        <div
+          aria-roledescription='bullet-list-item-marker-dot'
+          {...{ [BULLET_LIST_ITEM_MARKER_DOT_ATTR_NAME]: '' }}
+        />
+      </div>
       <div
         id={editableId}
         role={canEdit ? 'textbox' : undefined}
@@ -452,16 +458,20 @@ const ComposerCheckboxListItemBlock = forwardRef<
       data-active={isActive ?? undefined}
       aria-roledescription='checkbox-list-item-block'
     >
-      <input
-        type='checkbox'
-        aria-hidden
+      <div
         contentEditable={false}
-        disabled
         aria-roledescription='checkbox-list-item-marker'
-        // oxlint-disable-next-line react/checked-requires-onchange-or-readonly
-        checked={block.checked}
-        {...{ [CHECKBOX_LIST_ITEM_INPUT_ATTR_NAME]: '' }}
-      />
+        {...{ [CHECKBOX_LIST_ITEM_MARKER_ATTR_NAME]: '' }}
+      >
+        <input
+          type='checkbox'
+          disabled
+          aria-roledescription='checkbox-list-item-marker'
+          // oxlint-disable-next-line react/checked-requires-onchange-or-readonly
+          checked={block.checked}
+          {...{ [CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME]: '' }}
+        />
+      </div>
       <div
         id={editableId}
         role={canEdit ? 'textbox' : undefined}

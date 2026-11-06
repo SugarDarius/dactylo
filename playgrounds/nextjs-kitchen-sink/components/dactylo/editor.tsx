@@ -449,14 +449,21 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
 
             // bullet list item block
             '**:[[dactylo-bullet-list-item-block]]:flex **:[[dactylo-bullet-list-item-block]]:flex-row',
-            '**:[[dactylo-bullet-list-item-block]]:items-start',
+            '**:[[dactylo-bullet-list-item-block]]:items-center',
             '**:[[dactylo-bullet-list-item-block]]:gap-2',
             '**:[[dactylo-bullet-list-item-block]]:px-1.5',
-            '**:[[dactylo-bullet-list-item-marker]]:mt-[0.55em]',
-            '**:[[dactylo-bullet-list-item-marker]]:size-1.5',
-            '**:[[dactylo-bullet-list-item-marker]]:shrink-0',
-            '**:[[dactylo-bullet-list-item-marker]]:rounded-full',
-            '**:[[dactylo-bullet-list-item-marker]]:bg-current',
+
+            '**:[[dactylo-bullet-list-item-marker]]:flex',
+            '**:[[dactylo-bullet-list-item-marker]]:flex-col',
+            '**:[[dactylo-bullet-list-item-marker]]:justify-center',
+            '**:[[dactylo-bullet-list-item-marker]]:items-center',
+            '**:[[dactylo-bullet-list-item-marker]]:p-1.5',
+
+            '**:[[dactylo-bullet-list-item-marker-dot]]:size-1.5',
+            '**:[[dactylo-bullet-list-item-marker-dot]]:shrink-0',
+            '**:[[dactylo-bullet-list-item-marker-dot]]:rounded-full',
+            '**:[[dactylo-bullet-list-item-marker-dot]]:bg-current',
+
             '[&_[dactylo-bullet-list-item-block]_[dactylo-block-content]]:min-w-0',
             '[&_[dactylo-bullet-list-item-block]_[dactylo-block-content]]:flex-1',
 

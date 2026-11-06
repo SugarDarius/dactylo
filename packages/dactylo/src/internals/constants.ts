@@ -99,13 +99,19 @@ export const BULLET_LIST_ITEM_BLOCK_ATTR_NAME = 'dactylo-bullet-list-item-block'
 /** Bullet list item marker attribute name. */
 export const BULLET_LIST_ITEM_MARKER_ATTR_NAME =
   'dactylo-bullet-list-item-marker'
+/** Bullet list item marker dot attribute name. */
+export const BULLET_LIST_ITEM_MARKER_DOT_ATTR_NAME =
+  'dactylo-bullet-list-item-marker-dot'
 
 /** Checkbox list item block attribute name. */
 export const CHECKBOX_LIST_ITEM_BLOCK_ATTR_NAME =
   'dactylo-checkbox-list-item-block'
+export const CHECKBOX_LIST_ITEM_MARKER_ATTR_NAME =
+  'dactylo-checkbox-list-item-marker'
 /** Checkbox list item input attribute name. */
-export const CHECKBOX_LIST_ITEM_INPUT_ATTR_NAME =
-  'dactylo-checkbox-list-item-input'
+export const CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME =
+  'dactylo-checkbox-list-item-marker-input'
+
 /** Checkbox list item checked data name. */
 export const CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME =
   'data-dactylo-checkbox-list-item-checked'
