@@ -3,12 +3,16 @@
 import type { MarkKey } from '@sugardarius/dactylo'
 import {
   Composer,
-  useBlocks,
+  useBulletLists,
   useCanEdit,
+  useCheckboxLists,
+  useDividers,
   useEditableListener,
+  useHeadings,
   useHistory,
   useIsMarkActive,
   useMarks,
+  useParagraphs,
   useSetEditable,
 } from '@sugardarius/dactylo/react'
 import {
@@ -135,13 +139,12 @@ export function Toolbar() {
 
   const { canUndo, canRedo, undo, redo } = useHistory()
 
-  const {
-    insertParagraph,
-    insertDivider,
-    insertHeading,
-    insertBulletListItem,
-    insertCheckboxListItem,
-  } = useBlocks()
+  const { insert: insertParagraph } = useParagraphs()
+  const { insert: insertHeading } = useHeadings()
+  const { insert: insertDivider } = useDividers()
+  const { insert: insertBulletListItem } = useBulletLists()
+  const { insert: insertCheckboxListItem } = useCheckboxLists()
+
   const { toggle } = useMarks()
 
   useEditableListener(({ editable }) => {

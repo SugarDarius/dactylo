@@ -774,7 +774,7 @@ export interface DactyloBlocksCommands {
    */
   readonly patchParagraph: (
     blockId: BlockId,
-    opts?: { content?: InlineNode[]; metadata?: Metadata },
+    opts: { content?: InlineNode[]; metadata?: Metadata },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 
@@ -789,7 +789,7 @@ export interface DactyloBlocksCommands {
    */
   readonly patchHeading: (
     blockId: BlockId,
-    opts?: {
+    opts: {
       level?: HeadingBlock['level']
       content?: InlineNode[]
       metadata?: Metadata
@@ -807,7 +807,7 @@ export interface DactyloBlocksCommands {
    */
   readonly patchBulletListItem: (
     blockId: BlockId,
-    opts?: { content?: InlineNode[]; metadata?: Metadata },
+    opts: { content?: InlineNode[]; metadata?: Metadata },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 
@@ -822,7 +822,7 @@ export interface DactyloBlocksCommands {
    */
   readonly patchCheckboxListItem: (
     blockId: BlockId,
-    opts?: { checked?: boolean; content?: InlineNode[]; metadata?: Metadata },
+    opts: { checked?: boolean; content?: InlineNode[]; metadata?: Metadata },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 
@@ -836,7 +836,7 @@ export interface DactyloBlocksCommands {
    */
   readonly patchDivider: (
     blockId: BlockId,
-    opts?: { metadata?: Metadata },
+    opts: { metadata?: Metadata },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 }
@@ -1860,7 +1860,7 @@ export class Dactylo {
         /** Patches a {@link BulletListItemBlock} in place with the given options. */
         patchBulletListItem: (
           blockId: BlockId,
-          opts: { content?: InlineNode[]; metadata?: Metadata } = {},
+          opts: { content?: InlineNode[]; metadata?: Metadata },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
           this.#safeExecuteCommand(
@@ -1878,7 +1878,7 @@ export class Dactylo {
             checked?: boolean
             content?: InlineNode[]
             metadata?: Metadata
-          } = {},
+          },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
           this.#safeExecuteCommand(
@@ -1892,7 +1892,7 @@ export class Dactylo {
         /** Patches a {@link DividerBlock} in place with the given options. */
         patchDivider: (
           blockId: BlockId,
-          opts: { metadata?: Metadata } = {},
+          opts: { metadata?: Metadata },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
           this.#safeExecuteCommand(
@@ -1909,7 +1909,7 @@ export class Dactylo {
             level?: HeadingBlock['level']
             content?: InlineNode[]
             metadata?: Metadata
-          } = {},
+          },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
           this.#safeExecuteCommand(
@@ -1922,7 +1922,7 @@ export class Dactylo {
         /** Patches a {@link ParagraphBlock} in place with the given options. */
         patchParagraph: (
           blockId: BlockId,
-          opts: { content?: InlineNode[]; metadata?: Metadata } = {},
+          opts: { content?: InlineNode[]; metadata?: Metadata },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
           this.#safeExecuteCommand(

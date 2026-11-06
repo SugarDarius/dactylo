@@ -450,16 +450,6 @@ export function useComposerInput() {
  *   move,
  *   remove,
  *   duplicate,
- *   insertParagraph,
- *   insertHeading,
- *   insertBulletListItem,
- *   insertCheckboxListItem,
- *   insertDivider,
- *   patchParagraph,
- *   patchHeading,
- *   patchBulletListItem,
- *   patchCheckboxListItem,
- *   patchDivider,
  * } = useBlocks()
  *
  * console.log(isEmpty(blockId))
@@ -490,10 +480,6 @@ export function useComposerInput() {
  *
  * move(blockId, { type: 'after', blockId: targetId })
  * move(blockId, { type: 'start' }, 'ai-agent')
- *
- * patchCheckboxListItem(blockId, { checked: true })
- * patchHeading(blockId, { level: 3 })
- * patchDivider(blockId, { metadata: { fontColor: 'purple' } })
  * ```
  */
 export function useBlocks() {
@@ -501,46 +487,6 @@ export function useBlocks() {
 
   const isEmpty = useStableCallback((blockId: BlockId) =>
     editor.blocks.tools.isWithEmptyInlineContent(blockId),
-  )
-
-  const insertParagraph = useStableCallback(
-    (
-      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
-      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insertParagraph(opts, source),
-  )
-
-  const insertHeading = useStableCallback(
-    (
-      level: HeadingBlock['level'],
-      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
-      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insertHeading(level, opts, source),
-  )
-
-  const insertCheckboxListItem = useStableCallback(
-    (
-      opts?: {
-        checked?: boolean
-        pos?: InsertOrMoveBlockPosition
-        metadata?: Metadata
-      },
-      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insertCheckboxListItem(opts, source),
-  )
-
-  const insertBulletListItem = useStableCallback(
-    (
-      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
-      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insertBulletListItem(opts, source),
-  )
-
-  const insertDivider = useStableCallback(
-    (
-      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
-      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insertDivider(opts, source),
   )
 
   const duplicate = useStableCallback(
@@ -565,68 +511,248 @@ export function useBlocks() {
     ) => editor.blocks.commands.move(blockId, pos, source),
   )
 
-  const patchParagraph = useStableCallback(
+  return {
+    duplicate,
+    isEmpty,
+    move,
+    remove,
+  } as const
+}
+
+/**
+ * Returns paragraph queries and commands.
+ * Extends from {@link useBlocks}.
+ *
+ * @example
+ * ```tsx
+ * const { insert, patch } = useParagraphs()
+ *
+ * insertParagraph({ pos: { type: 'end'}, metadata: { fontColor: 'purple' } })
+ *
+ * patch(blockId, { metadata: { fontColor: 'red' }  })
+ * patch({}, 'ai-agent')
+ * ```
+ */
+export function useParagraphs() {
+  const { editor } = useComposer()
+  const { isEmpty, duplicate, move, remove } = useBlocks()
+
+  const insert = useStableCallback(
     (
-      blockId: BlockId,
-      opts?: { content?: InlineNode[]; metadata?: Metadata },
+      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.patchParagraph(blockId, opts, source),
+    ) => editor.blocks.commands.insertParagraph(opts, source),
   )
 
-  const patchHeading = useStableCallback(
+  const patch = useStableCallback(
     (
-      blockId: BlockId,
-      opts?: {
+      paragraphBlockId: BlockId,
+      opts: { content?: InlineNode[]; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.patchParagraph(paragraphBlockId, opts, source),
+  )
+
+  return {
+    duplicate,
+    insert,
+    isEmpty,
+    move,
+    patch,
+    remove,
+  } as const
+}
+
+/**
+ * Returns heading queries and commands.
+ * Extends from {@link useBlocks}.
+ *
+ * @example
+ * ```tsx
+ * const { insert, patch } = useHeadings()
+ *
+ * insertHeading(1)
+ * insertHeading(2, { pos: { type: 'end' } })
+ * insertHeading(3, {}, 'ai-agent')
+ *
+ * patch(blockId, { level: 3 })
+ * patch({}, 'ai-agent')
+ * ```
+ */
+export function useHeadings() {
+  const { editor } = useComposer()
+  const { isEmpty, duplicate, move, remove } = useBlocks()
+
+  const insert = useStableCallback(
+    (
+      level: HeadingBlock['level'],
+      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.insertHeading(level, opts, source),
+  )
+
+  const patch = useStableCallback(
+    (
+      headingBlockId: BlockId,
+      opts: {
         level?: HeadingBlock['level']
         content?: InlineNode[]
         metadata?: Metadata
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.patchHeading(blockId, opts, source),
-  )
-
-  const patchBulletListItem = useStableCallback(
-    (
-      blockId: BlockId,
-      opts?: { content?: InlineNode[]; metadata?: Metadata },
-      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.patchBulletListItem(blockId, opts, source),
-  )
-
-  const patchCheckboxListItem = useStableCallback(
-    (
-      blockId: BlockId,
-      opts?: {
-        checked?: boolean
-        content?: InlineNode[]
-        metadata?: Metadata
-      },
-      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.patchCheckboxListItem(blockId, opts, source),
-  )
-
-  const patchDivider = useStableCallback(
-    (
-      blockId: BlockId,
-      opts?: { metadata?: Metadata },
-      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.patchDivider(blockId, opts, source),
+    ) => editor.blocks.commands.patchHeading(headingBlockId, opts, source),
   )
 
   return {
     duplicate,
-    insertBulletListItem,
-    insertCheckboxListItem,
-    insertDivider,
-    insertHeading,
-    insertParagraph,
+    insert,
     isEmpty,
     move,
-    patchBulletListItem,
-    patchCheckboxListItem,
-    patchDivider,
-    patchHeading,
-    patchParagraph,
+    patch,
+    remove,
+  } as const
+}
+
+/**
+ * Returns divider queries and commands.
+ * Extends from {@link useBlocks}.
+ *
+ * @example
+ * ```tsx
+ * const { insert, patch } = useDividers()
+ *
+ * insertDivider()
+ * insertDivider({ pos: { type: 'end' } })
+ * insertDivider({}, 'ai-agent')
+ *
+ * patch(blockId, { metadata: { bgColor: 'red' }  })
+ * patch({}, 'ai-agent')
+ * ```
+ */
+export function useDividers() {
+  const { editor } = useComposer()
+  const { isEmpty, duplicate, move, remove } = useBlocks()
+
+  const insert = useStableCallback(
+    (
+      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.insertDivider(opts, source),
+  )
+
+  const patch = useStableCallback(
+    (
+      dividerBlockId: BlockId,
+      opts: { metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.patchDivider(dividerBlockId, opts, source),
+  )
+
+  return {
+    duplicate,
+    insert,
+    isEmpty,
+    move,
+    patch,
+    remove,
+  } as const
+}
+
+/**
+ * Returns bullet list queries and commands.
+ * Extends from {@link useBlocks}.
+ *
+ * @example
+ * ```tsx
+ * const { insert, patch } = useBulletLists()
+ *
+ * insertBulletListItem()
+ * insertBulletListItem({ pos: { type: 'end' } })
+ * insertBulletListItem({}, 'ai-agent')
+ *
+ * patch(blockId, { metadata: { frontColor: 'red' }  })
+ * patch({}, 'ai-agent')
+ * ```
+ */
+export function useBulletLists() {
+  const { editor } = useComposer()
+  const { isEmpty, duplicate, move, remove } = useBlocks()
+
+  const insert = useStableCallback(
+    (
+      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.insertBulletListItem(opts, source),
+  )
+
+  const patch = useStableCallback(
+    (
+      bulletListItemBlockId: BlockId,
+      opts: { content?: InlineNode[]; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) =>
+      editor.blocks.commands.patchBulletListItem(
+        bulletListItemBlockId,
+        opts,
+        source,
+      ),
+  )
+
+  return {
+    duplicate,
+    insert,
+    isEmpty,
+    move,
+    patch,
+    remove,
+  } as const
+}
+
+/**
+ * Returns checkbox list queries and commands.
+ * Extends from {@link useBlocks}.
+ *
+ * @example
+ * ```tsx
+ * const { insert, patch } = useCheckboxLists()
+ *
+ * insertCheckboxListItem()
+ * insertCheckboxListItem({ pos: { type: 'end' } })
+ * insertCheckboxListItem({}, 'ai-agent')
+ *
+ * patch(blockId, { checked: true })
+ * patch({}, 'ai-agent')
+ * ```
+ */
+export function useCheckboxLists() {
+  const { editor } = useComposer()
+  const { isEmpty, duplicate, move, remove } = useBlocks()
+
+  const insert = useStableCallback(
+    (
+      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.insertCheckboxListItem(opts, source),
+  )
+
+  const patch = useStableCallback(
+    (
+      checkboxListItemBlockId: BlockId,
+      opts: { checked?: boolean; content?: InlineNode[]; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) =>
+      editor.blocks.commands.patchCheckboxListItem(
+        checkboxListItemBlockId,
+        opts,
+        source,
+      ),
+  )
+
+  return {
+    duplicate,
+    insert,
+    isEmpty,
+    move,
+    patch,
     remove,
   } as const
 }
