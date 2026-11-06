@@ -10,6 +10,9 @@ export const DEFAULT_HEADING_PLACEHOLDER = `Heading ${HEADING_LEVEL_REPLACER}`
 /** Default placeholder text for empty bullet list item block. */
 export const DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER = 'List'
 
+/** Default placeholder text for empty checkbox list item block. */
+export const DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER = 'Task'
+
 /** Default mentions enabled. */
 export const DEFAULT_MENTIONS_ENABLED = true
 

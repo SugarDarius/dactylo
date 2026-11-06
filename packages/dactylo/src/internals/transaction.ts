@@ -1368,6 +1368,35 @@ export class TransactionPipeline {
     })
   }
 
+  /** Inserts a checkbox list item block at the given document position. */
+  insertCheckboxListItemBlock(
+    opts: {
+      /** Whether the item is checked. */
+      checked?: boolean
+      /** Where to insert the checkbox list item block. */
+      pos?: InsertOrMoveBlockPosition
+      /** Metadata to associate with the checkbox list item block. */
+      metadata?: Metadata
+    },
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildInsertCheckboxListItemBlockOps(
+      this.#context,
+      opts.checked,
+      opts.pos,
+      opts.metadata,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
   /** Inserts a divider block at the given document position. */
   insertDividerBlock(
     opts: {

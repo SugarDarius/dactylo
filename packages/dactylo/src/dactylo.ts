@@ -11,6 +11,7 @@ import {
   DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
   DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
   DEFAULT_MARKDOWN_SHORTCUTS_ENABLED,
+  DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
 } from './internals/constants'
 import { isBlockWithInlineContentEmpty } from './internals/document'
 import { DOMManager } from './internals/dom-manager'
@@ -117,6 +118,12 @@ export interface DactyloStaticConfig {
     /** Placeholder text when a bullet list item is created or empty. */
     readonly placeholder: string
   }
+
+  /** Configuration for checkbox lists. */
+  readonly checkboxList: {
+    /** Placeholder text when a checkbox list item is created or empty. */
+    readonly placeholder: string
+  }
 }
 
 /** Discriminated union of tools that can be executed by the user/ai-agent. */
@@ -168,6 +175,7 @@ export type DactyloCommand =
   | 'blocks/insert-paragraph'
   | 'blocks/insert-heading'
   | 'blocks/insert-bullet-list-item'
+  | 'blocks/insert-checkbox-list-item'
   | 'blocks/insert-divider'
   | 'blocks/duplicate'
   | 'blocks/delete'
@@ -663,6 +671,29 @@ export interface DactyloBlocksCommands {
   ) => void
 
   /**
+   * Inserts a {@link CheckboxListItemBlock} at the given position with metadata.
+   * By defaults it inserts after the current selection.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.insertCheckboxListItem()
+   * editor.blocks.commands.insertCheckboxListItem({ checked: true, pos: 'end' })
+   * editor.blocks.commands.insertCheckboxListItem({ checked: true, pos: 'end' }, 'ai-agent')
+   * ```
+   */
+  readonly insertCheckboxListItem: (
+    opts?: {
+      /** Whether the item is checked. */
+      checked?: boolean
+      /** Where to insert the checkbox list item block. */
+      pos?: InsertOrMoveBlockPosition
+      /** Metadata to associate with the checkbox list item block. */
+      metadata?: Metadata
+    },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
    * Inserts a {@link DividerBlock} at the given position with metadata.
    * By defaults it inserts after the current selection.
    *
@@ -822,6 +853,15 @@ export interface DactyloConfigOptions {
        */
       readonly placeholder?: string
     }
+
+    /** Configuration for checkbox lists. */
+    readonly checkboxList?: {
+      /**
+       * Placeholder text when a checkbox list is created or empty.
+       * Defaults to {@link DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER}.
+       */
+      readonly placeholder?: string
+    }
   }
 
   /** Configuration for the transaction pipeline */
@@ -922,6 +962,11 @@ export class Dactylo {
         placeholder:
           options.config?.editor?.bulletedList?.placeholder ??
           DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
+      },
+      checkboxList: {
+        placeholder:
+          options.config?.editor?.checkboxList?.placeholder ??
+          DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
       },
       heading: {
         placeholder:
@@ -1632,6 +1677,27 @@ export class Dactylo {
             { payload: { source } },
           ),
 
+        /**
+         * Inserts a {@link CheckboxListItemBlock} at the given position with metadata.
+         * By defaults it inserts after the current selection.
+         */
+        insertCheckboxListItem: (
+          opts: {
+            /** Whether the item is checked. */
+            checked?: boolean
+            /** Where to insert the checkbox list item block. */
+            pos?: InsertOrMoveBlockPosition
+            /** Metadata to associate with the checkbox list item block. */
+            metadata?: Metadata
+          } = {},
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/insert-checkbox-list-item',
+            () => this.#pipeline.insertCheckboxListItemBlock(opts, source),
+            noop,
+            { payload: { source } },
+          ),
         /**
          * Inserts a {@link DividerBlock} at the given position with metadata.
          * By defaults it inserts after the current selection.

@@ -142,6 +142,15 @@ export type InsertBlockSpec = Relax<
       readonly metadata?: Metadata
     }
   | {
+      readonly type: 'checkbox-list-item'
+
+      /** Whether the item is checked. */
+      readonly checked?: boolean
+
+      /** Metadata to attach to the block. */
+      readonly metadata?: Metadata
+    }
+  | {
       readonly type: 'divider'
 
       /** Metadata to attach to the block. */

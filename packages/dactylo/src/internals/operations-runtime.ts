@@ -1,5 +1,6 @@
 import {
   createBulletListItemBlock,
+  createCheckboxListItemBlock,
   createHeadingBlock,
   createParagraphBlock,
   findNodeInBlockWithInlineContent,
@@ -662,6 +663,23 @@ export function applyMutateBlockTypeOp(
         ),
       )
     }
+    case 'to_checkbox_list_item': {
+      const next = createCheckboxListItemBlock({
+        checked: op.spec.checked,
+        content: [...prev.content],
+        metadata: op.dropMetadata ? undefined : prev.metadata,
+        parentId: prev.parentId,
+        posKey: prev.posKey,
+      })
+
+      return withDocumentState(
+        context,
+        putBlock(
+          context.state,
+          touchBlock({ ...next, createdAt: prev.createdAt, id: prev.id }),
+        ),
+      )
+    }
     default: {
       assertNever(kind, {
         hint: 'OperationsRuntime/applyMutateBlockTypeOp',
@@ -958,6 +976,18 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
             },
           }
         }
+        case 'checkbox-list-item': {
+          return {
+            __type: 'mutate_block_type',
+            blockId: op.blockId,
+            dropMetadata: op.dropMetadata,
+            snapshot: op.snapshot,
+            spec: {
+              checked: op.snapshot.checked,
+              kind: 'to_checkbox_list_item',
+            },
+          }
+        }
         case 'paragraph': {
           return {
             __type: 'mutate_block_type',
@@ -969,6 +999,7 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
             },
           }
         }
+
         default: {
           return assertNever(snapshotType, {
             hint: 'OperationsRuntime/invertOp/mutate_block_type',

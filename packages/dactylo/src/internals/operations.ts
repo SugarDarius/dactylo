@@ -150,6 +150,11 @@ export interface MutateBlockTypeOp {
       }
     | { kind: 'to_paragraph' }
     | { kind: 'to_bullet_list_item' }
+    | {
+        kind: 'to_checkbox_list_item'
+        /** Whether the item is checked. */
+        checked?: boolean
+      }
 }
 
 /** Inserts a text into an existing text node at a character offset.  */

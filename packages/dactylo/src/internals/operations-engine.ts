@@ -2,6 +2,7 @@ import { AutolinkOpsBuilder } from './autolink-ops-builder'
 import {
   cloneBlock,
   createBulletListItemBlock,
+  createCheckboxListItemBlock,
   createDividerBlock,
   createHeadingBlock,
   createParagraphBlock,
@@ -443,6 +444,33 @@ export class OperationsEngine {
 
         return { label: 'insert-bullet-list-item', ops }
       }
+      case 'checkbox-list-item': {
+        const checkboxListItem = createCheckboxListItemBlock({
+          checked: spec.checked,
+          content: [insertedText],
+          metadata: spec.metadata,
+          posKey,
+        })
+
+        const ops: Operation[] = [
+          {
+            __type: 'insert_block',
+            afterBlockId,
+            block: checkboxListItem,
+          },
+          {
+            __type: 'set_selection',
+            next: createCursor({
+              blockId: checkboxListItem.id,
+              nodeId: insertedText.id,
+              offset: 0,
+            }),
+            prev: selection,
+          },
+        ]
+
+        return { label: 'insert-checkbox-list-item', ops }
+      }
       case 'divider': {
         const divider = createDividerBlock({
           metadata: spec.metadata,
@@ -525,6 +553,20 @@ export class OperationsEngine {
     return this.#buildInsertBlockOps(
       context,
       { metadata, type: 'bullet-list-item' },
+      pos,
+    )
+  }
+
+  /** Builds operations to insert a {@link CheckboxListItemBlock}. */
+  buildInsertCheckboxListItemBlockOps(
+    context: EditorContext,
+    checked?: boolean,
+    pos?: InsertOrMoveBlockPosition,
+    metadata?: Metadata,
+  ): BuilderOpsIntent | null {
+    return this.#buildInsertBlockOps(
+      context,
+      { checked, metadata, type: 'checkbox-list-item' },
       pos,
     )
   }
