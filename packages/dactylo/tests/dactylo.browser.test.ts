@@ -1,13 +1,666 @@
+// @vitest-environment happy-dom
 import { describe, expect, test } from 'vitest'
 
-import { makeFixtureSetupApi } from './utils/fixture'
+import type { DactyloCommandEvent } from '../src/dactylo'
+import {
+  isBulletListItemBlock,
+  isHeadingBlock,
+  isParagraphBlock,
+} from '../src/internals/blocks'
+import {
+  DEFAULT_AUTOLINK_ENABLED,
+  DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
+  DEFAULT_HEADING_PLACEHOLDER,
+  DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
+  DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
+  DEFAULT_LOCALES,
+  DEFAULT_MARKDOWN_SHORTCUTS_ENABLED,
+  DEFAULT_MENTION_CHARACTER,
+  DEFAULT_MENTIONS_ENABLED,
+  DEFAULT_PARAGRAPH_PLACEHOLDER,
+} from '../src/internals/constants'
+import type { HistoryEvent } from '../src/internals/history'
+import { isMarkEnabled } from '../src/internals/marks'
+import {
+  isInlineNodeWithEditableText,
+  isLineBreakNode,
+  isLinkNode,
+} from '../src/internals/nodes'
+import type { Transaction } from '../src/internals/transaction'
+import {
+  deleteBackward,
+  hardBreak,
+  makeEditor,
+  makeTypingEditor,
+  pastePlainText,
+  pressShortcut,
+  sendInput,
+  softBreak,
+  tryDeleteBackward,
+  typeText,
+} from './utils/editor'
+import {
+  blockTexts,
+  firstInlineBlock,
+  nthInlineBlock,
+  requireCursor,
+  snapshot,
+} from './utils/pipeline'
 
-describe('Dactylo', () => {
-  const fixture = makeFixtureSetupApi()
+describe('Dactylo construction', () => {
+  test('starts as an empty editable paragraph with no selection', () => {
+    const editor = makeEditor()
+    const context = editor.getContext()
+    const block = firstInlineBlock(context)
 
-  test('editor should be empty when initialized', () => {
-    const context = fixture.dactylo.getContext()
+    expect(context.state.schemaVersion).toBe(1)
+    expect(context.state.blockOrderById).toHaveLength(1)
+    expect(context.selection).toBeNull()
+    expect(editor.canEdit()).toBe(true)
+    expect(isParagraphBlock(block)).toBe(true)
+    expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe(true)
+  })
 
-    expect(context.state.blockOrderById.length).toBe(1)
+  test('resolves default config from constructor options', () => {
+    const editor = makeEditor({ placeholder: 'Notes…' })
+
+    expect(editor.config).toEqual({
+      autolink: { enabled: DEFAULT_AUTOLINK_ENABLED },
+      bulletedList: { placeholder: DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER },
+      heading: { placeholder: DEFAULT_HEADING_PLACEHOLDER },
+      inlineCommandTrigger: {
+        character: DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
+        enabled: DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
+      },
+      locales: DEFAULT_LOCALES,
+      markdown: { enabled: DEFAULT_MARKDOWN_SHORTCUTS_ENABLED },
+      mentions: {
+        character: DEFAULT_MENTION_CHARACTER,
+        enabled: DEFAULT_MENTIONS_ENABLED,
+      },
+      paragraph: { placeholder: 'Notes…' },
+    })
+  })
+
+  test('applies config.editor overrides', () => {
+    const editor = makeEditor({
+      config: {
+        editor: {
+          autolink: { enabled: false },
+          bulletedList: { placeholder: 'Item' },
+          heading: { placeholder: 'Title' },
+          inlineCommandTrigger: { character: '!', enabled: false },
+          locales: 'fr-FR',
+          markdown: { enabled: false },
+          mentions: { character: '#', enabled: false },
+          paragraph: { placeholder: 'Start here' },
+        },
+      },
+    })
+
+    expect(editor.config).toEqual({
+      autolink: { enabled: false },
+      bulletedList: { placeholder: 'Item' },
+      heading: { placeholder: 'Title' },
+      inlineCommandTrigger: { character: '!', enabled: false },
+      locales: 'fr-FR',
+      markdown: { enabled: false },
+      mentions: { character: '#', enabled: false },
+      paragraph: { placeholder: 'Start here' },
+    })
+    expect(editor.config.paragraph.placeholder).not.toBe(
+      DEFAULT_PARAGRAPH_PLACEHOLDER,
+    )
+  })
+})
+
+describe('Dactylo selection', () => {
+  test('focus places a caret at document end', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    const context = editor.getContext()
+    const block = firstInlineBlock(context)
+
+    expect(editor.selection.tools.isFocused()).toBe(true)
+    expect(editor.selection.tools.isBlockWithActiveCursor(block.id)).toBe(true)
+    expect(editor.selection.tools.isBlockWithActiveRange(block.id)).toBe(false)
+    expect(editor.selection.tools.isBlockWithActiveSelection(block.id)).toBe(
+      true,
+    )
+    expect(requireCursor(context)).toMatchObject({
+      blockId: block.id,
+      offset: 0,
+    })
+  })
+
+  test('blur clears the selection', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    editor.selection.commands.blur()
+
+    expect(editor.getContext().selection).toBeNull()
+    expect(editor.selection.tools.isFocused()).toBe(false)
+  })
+
+  test('Escape via sendKeydown clears the selection', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    const handled = pressShortcut(editor, 'Escape')
+
+    expect(handled).toBe(true)
+    expect(editor.getContext().selection).toBeNull()
+    expect(editor.selection.tools.isFocused()).toBe(false)
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+  })
+})
+
+describe('Dactylo composer', () => {
+  test('types into the focused empty paragraph', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    typeText(editor, 'Hello')
+
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+    expect(requireCursor(editor.getContext()).offset).toBe(5)
+  })
+
+  test('empty insertText is ignored', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    const before = snapshot(editor.getContext())
+
+    expect(sendInput(editor, 'insertText', '')).toBe(false)
+    expect(snapshot(editor.getContext())).toEqual(before)
+  })
+
+  test('Enter splits into a new paragraph', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    hardBreak(editor)
+
+    expect(blockTexts(editor.getContext())).toEqual(['Hello', ''])
+    expect(editor.getContext().state.blockOrderById).toHaveLength(2)
+  })
+
+  test('Shift+Enter inserts a line break in the same block', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    softBreak(editor)
+
+    const block = firstInlineBlock(editor.getContext())
+    expect(editor.getContext().state.blockOrderById).toHaveLength(1)
+    expect(block.content.some(isLineBreakNode)).toBe(true)
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+  })
+
+  test('Backspace deletes the last character', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    deleteBackward(editor)
+
+    expect(blockTexts(editor.getContext())).toEqual(['Hell'])
+    expect(requireCursor(editor.getContext()).offset).toBe(4)
+  })
+
+  test('Backspace at the start of the only empty block is a no-op', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const before = snapshot(editor.getContext())
+
+    expect(tryDeleteBackward(editor)).toBe(false)
+    expect(snapshot(editor.getContext())).toEqual(before)
+  })
+
+  test('pastes plain text at the caret', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hi')
+
+    pastePlainText(editor, ' there')
+
+    expect(blockTexts(editor.getContext())).toEqual(['Hi there'])
+  })
+
+  test('historyUndo and historyRedo input types are not handled', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    const before = snapshot(editor.getContext())
+
+    expect(sendInput(editor, 'historyUndo')).toBe(false)
+    expect(sendInput(editor, 'historyRedo')).toBe(false)
+    expect(snapshot(editor.getContext())).toEqual(before)
+    expect(editor.history.tools.canUndo()).toBe(true)
+  })
+})
+
+describe('Dactylo keyboard shortcuts', () => {
+  test('Mod+Z undoes and Mod+Shift+Z redoes', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    expect(pressShortcut(editor, 'KeyZ', { meta: true })).toBe(true)
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(editor.history.tools.canUndo()).toBe(false)
+    expect(editor.history.tools.canRedo()).toBe(true)
+
+    expect(pressShortcut(editor, 'KeyZ', { meta: true, shift: true })).toBe(
+      true,
+    )
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+    expect(editor.history.tools.canUndo()).toBe(true)
+    expect(editor.history.tools.canRedo()).toBe(false)
+  })
+
+  test('Mod+Y redoes after undo', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    pressShortcut(editor, 'KeyZ', { ctrl: true })
+
+    expect(pressShortcut(editor, 'KeyY', { ctrl: true })).toBe(true)
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+  })
+
+  test('Mod+A selects the current block then typing replaces it', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    const blockId = firstInlineBlock(editor.getContext()).id
+    expect(pressShortcut(editor, 'KeyA', { meta: true })).toBe(true)
+
+    const { selection } = editor.getContext()
+    expect(selection?.__type).toBe('range')
+    expect(editor.selection.tools.isBlockWithActiveRange(blockId)).toBe(true)
+    expect(editor.selection.tools.isBlockWithActiveCursor(blockId)).toBe(false)
+
+    typeText(editor, 'X')
+
+    expect(blockTexts(editor.getContext())).toEqual(['X'])
+    expect(requireCursor(editor.getContext()).offset).toBe(1)
+  })
+
+  test('Mod+C is not implemented and does not throw', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    const before = snapshot(editor.getContext())
+
+    expect(pressShortcut(editor, 'KeyC', { meta: true })).toBe(false)
+    expect(snapshot(editor.getContext())).toEqual(before)
+  })
+})
+
+describe('Dactylo marks', () => {
+  test('toggling bold on a caret marks the next typed text', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    editor.marks.commands.toggle('bold')
+    typeText(editor, 'Hi')
+
+    const [node] = firstInlineBlock(editor.getContext()).content
+    if (!node || !isInlineNodeWithEditableText(node)) {
+      throw new Error('Expected a marked text node')
+    }
+    expect(node.text).toBe('Hi')
+    expect(isMarkEnabled(node.marks, 'bold')).toBe(true)
+    expect(editor.marks.tools.isActive('bold')).toBe(true)
+  })
+
+  test('toggling bold off continues with unmarked text', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    editor.marks.commands.toggle('bold')
+    typeText(editor, 'Hi')
+    editor.marks.commands.toggle('bold')
+    typeText(editor, '!')
+
+    const [marked, unmarked] = firstInlineBlock(editor.getContext()).content
+    if (
+      !marked ||
+      !unmarked ||
+      !isInlineNodeWithEditableText(marked) ||
+      !isInlineNodeWithEditableText(unmarked)
+    ) {
+      throw new Error('Expected a marked node and an unmarked continuation')
+    }
+    expect(marked.text).toBe('Hi')
+    expect(isMarkEnabled(marked.marks, 'bold')).toBe(true)
+    expect(unmarked.text).toBe('!')
+    expect(isMarkEnabled(unmarked.marks, 'bold')).toBe(false)
+    expect(editor.marks.tools.isActive('bold')).toBe(false)
+  })
+
+  test('toggling italic on a Mod+A range marks the selection and undo restores', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    pressShortcut(editor, 'KeyA', { meta: true })
+    const before = snapshot(editor.getContext())
+
+    editor.marks.commands.toggle('italic')
+
+    const [node] = firstInlineBlock(editor.getContext()).content
+    if (!node || !isInlineNodeWithEditableText(node)) {
+      throw new Error('Expected the selected text node')
+    }
+    expect(isMarkEnabled(node.marks, 'italic')).toBe(true)
+    expect(editor.marks.tools.isActive('italic')).toBe(true)
+
+    editor.history.commands.undo()
+    expect(snapshot(editor.getContext())).toEqual(before)
+  })
+})
+
+describe('Dactylo history', () => {
+  test('undo and redo restore typed content', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    editor.history.commands.undo()
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(editor.history.tools.canRedo()).toBe(true)
+
+    editor.history.commands.redo()
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+    expect(editor.history.tools.canUndo()).toBe(true)
+  })
+
+  test('clear empties the stacks without changing content', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    editor.history.commands.undo()
+    expect(editor.history.tools.canRedo()).toBe(true)
+
+    editor.history.commands.clear()
+
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(editor.history.tools.canUndo()).toBe(false)
+    expect(editor.history.tools.canRedo()).toBe(false)
+  })
+
+  test('events.history reports canUndo after an edit', () => {
+    const editor = makeTypingEditor()
+    const events: HistoryEvent[] = []
+    editor.events.history.subscribe((event) => {
+      events.push(event)
+    })
+
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    expect(events.at(-1)).toEqual({ canRedo: false, canUndo: true })
+  })
+})
+
+describe('Dactylo blocks', () => {
+  test('insertHeading adds a heading after the current paragraph', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    editor.blocks.commands.insertHeading(2)
+
+    const context = editor.getContext()
+    expect(context.state.blockOrderById).toHaveLength(2)
+    expect(isParagraphBlock(nthInlineBlock(context, 0))).toBe(true)
+    const heading = nthInlineBlock(context, 1)
+    expect(isHeadingBlock(heading)).toBe(true)
+    if (isHeadingBlock(heading)) {
+      expect(heading.level).toBe(2)
+    }
+    expect(blockTexts(context)).toEqual(['Hello', ''])
+    expect(editor.blocks.tools.isWithEmptyInlineContent(heading.id)).toBe(true)
+  })
+
+  test('inserts a list item, divider, and trailing paragraph', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    editor.blocks.commands.insertBulletListItem()
+    editor.blocks.commands.insertDivider()
+    editor.blocks.commands.insertParagraph({ pos: { type: 'end' } })
+
+    // Divider insert always places a paragraph after the rule for the caret.
+
+    const { state } = editor.getContext()
+    const types = state.blockOrderById.map((id) => {
+      const block = state.blocks.get(id)
+      if (!block) {
+        throw new Error(`Missing block ${id}`)
+      }
+      return block.__type
+    })
+
+    expect(types).toEqual([
+      'paragraph',
+      'bullet-list-item',
+      'divider',
+      'paragraph',
+      'paragraph',
+    ])
+    expect(isBulletListItemBlock(nthInlineBlock(editor.getContext(), 1))).toBe(
+      true,
+    )
+  })
+
+  test('duplicate copies a block and move reorders it', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    editor.blocks.commands.insertHeading(1)
+
+    const paragraphId = nthInlineBlock(editor.getContext(), 0).id
+    editor.blocks.commands.duplicate(paragraphId)
+
+    expect(blockTexts(editor.getContext())).toEqual(['Hello', 'Hello', ''])
+
+    editor.blocks.commands.move(paragraphId, { type: 'end' })
+
+    expect(blockTexts(editor.getContext())).toEqual(['Hello', '', 'Hello'])
+    expect(nthInlineBlock(editor.getContext(), 2).id).toBe(paragraphId)
+  })
+
+  test('delete skips the first empty block and removes a later block', () => {
+    const editor = makeTypingEditor()
+    const emptyId = firstInlineBlock(editor.getContext()).id
+    const before = snapshot(editor.getContext())
+
+    editor.blocks.commands.delete(emptyId)
+    expect(snapshot(editor.getContext())).toEqual(before)
+
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    editor.blocks.commands.insertHeading(2)
+    const headingId = nthInlineBlock(editor.getContext(), 1).id
+
+    editor.blocks.commands.delete(headingId)
+
+    expect(editor.getContext().state.blockOrderById).toHaveLength(1)
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+  })
+})
+
+describe('Dactylo markdown and autolink', () => {
+  test('markdown converts "- " into a bullet list item', () => {
+    const editor = makeEditor()
+    editor.selection.commands.focus()
+    typeText(editor, '-')
+    typeText(editor, ' ')
+
+    expect(firstInlineBlock(editor.getContext()).__type).toBe(
+      'bullet-list-item',
+    )
+    expect(blockTexts(editor.getContext())).toEqual([''])
+  })
+
+  test('disabled markdown leaves the trigger characters in the paragraph', () => {
+    const editor = makeEditor({
+      config: { editor: { markdown: { enabled: false } } },
+    })
+    editor.selection.commands.focus()
+    typeText(editor, '-')
+    typeText(editor, ' ')
+
+    expect(firstInlineBlock(editor.getContext()).__type).toBe('paragraph')
+    expect(blockTexts(editor.getContext())).toEqual(['- '])
+  })
+
+  test('autolink converts a URL followed by a space into a link node', () => {
+    const editor = makeEditor({
+      config: { editor: { markdown: { enabled: false } } },
+    })
+    editor.selection.commands.focus()
+    typeText(editor, 'https://example.com')
+    typeText(editor, ' ')
+
+    const link = firstInlineBlock(editor.getContext()).content.find(isLinkNode)
+    expect(link).toBeDefined()
+    if (!link || !isLinkNode(link)) {
+      throw new Error('Expected a link node')
+    }
+    expect(link.text).toBe('https://example.com')
+    expect(link.url.href).toBe('https://example.com/')
+  })
+
+  test('disabled autolink leaves the URL as plain text', () => {
+    const editor = makeEditor({
+      config: {
+        editor: { autolink: { enabled: false }, markdown: { enabled: false } },
+      },
+    })
+    editor.selection.commands.focus()
+    typeText(editor, 'https://example.com')
+    typeText(editor, ' ')
+
+    expect(firstInlineBlock(editor.getContext()).content.some(isLinkNode)).toBe(
+      false,
+    )
+    expect(blockTexts(editor.getContext())).toEqual(['https://example.com '])
+  })
+})
+
+describe('Dactylo read-only mode', () => {
+  test('setEditable(false) clears selection and emits editable events', () => {
+    const editor = makeTypingEditor()
+    const editableEvents: boolean[] = []
+    editor.events.editable.subscribe((event) => {
+      editableEvents.push(event.editable)
+    })
+
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    editor.setEditable(false)
+
+    expect(editor.canEdit()).toBe(false)
+    expect(editor.getContext().selection).toBeNull()
+    expect(editableEvents).toEqual([false])
+
+    editor.setEditable(false)
+    expect(editableEvents).toEqual([false])
+
+    editor.setEditable(true)
+    expect(editor.canEdit()).toBe(true)
+    expect(editableEvents).toEqual([false, true])
+  })
+
+  test('commands are no-ops and tools return fallbacks while read-only', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    editor.setEditable(false)
+    const before = snapshot(editor.getContext())
+
+    expect(sendInput(editor, 'insertText', 'x')).toBe(false)
+    editor.marks.commands.toggle('bold')
+    editor.history.commands.undo()
+    editor.blocks.commands.insertParagraph()
+
+    expect(snapshot(editor.getContext())).toEqual(before)
+    expect(editor.history.tools.canUndo()).toBe(false)
+    expect(editor.selection.tools.isFocused()).toBe(false)
+    expect(editor.marks.tools.isActive('bold')).toBe(false)
+
+    editor.setEditable(true)
+    expect(editor.history.tools.canUndo()).toBe(true)
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+  })
+})
+
+describe('Dactylo subscribe and events', () => {
+  test('subscribe fires after typing and unsubscribe stops further calls', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    const contexts: string[][] = []
+    const unsubscribe = editor.subscribe((context) => {
+      contexts.push(blockTexts(context))
+    })
+
+    typeText(editor, 'Hello')
+    expect(contexts).toEqual([['Hello']])
+
+    unsubscribe()
+    typeText(editor, '!')
+    expect(contexts).toEqual([['Hello']])
+    expect(blockTexts(editor.getContext())).toEqual(['Hello!'])
+  })
+
+  test('events.commands records composer and marks commands', () => {
+    const editor = makeTypingEditor()
+    const commands: DactyloCommandEvent[] = []
+    editor.events.commands.subscribe((event) => {
+      commands.push(event)
+    })
+
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    editor.marks.commands.toggle('bold')
+
+    expect(commands).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          command: 'composer/send-input',
+          result: true,
+          status: 'success',
+        }),
+        expect.objectContaining({
+          command: 'marks/toggle',
+          status: 'success',
+        }),
+      ]),
+    )
+  })
+
+  test('events.transactionDidApply fires after a successful type', () => {
+    const editor = makeTypingEditor()
+    const applied: Transaction[] = []
+    editor.events.transactionDidApply.subscribe((transaction) => {
+      applied.push(transaction)
+    })
+
+    editor.selection.commands.focus()
+    const afterFocus = applied.length
+    typeText(editor, 'Hello')
+
+    expect(applied.length).toBeGreaterThan(afterFocus)
+    expect(applied.at(-1)?.ops.length).toBeGreaterThan(0)
   })
 })
