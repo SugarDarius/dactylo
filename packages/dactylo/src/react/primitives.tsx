@@ -516,58 +516,48 @@ ComposerDividerBlock.displayName = COMPOSER_DIVIDER_BLOCK_NAME
 /** Renders a block based on its type. */
 const ComposerBlock = memo<ComposerBlockProps>(({ blockId, ...props }) => {
   const block = useBlock(blockId)
-  const rendered = useMemo(() => {
-    /**
-     * Skipping rendering for blocks that are not in the document state.
-     * It should never happens because `blockOrderById` from {@link DocumentState}
-     * is always n sync `blocks` after each inserts.
-     *
-     * 👉🏻 We don't throw an error because we don't want to break users' UI
-     * to keep a seamless experience.
-     */
-    if (!block) {
+  /**
+   * Skipping rendering for blocks that are not in the document state.
+   * It should never happens because `blockOrderById` from {@link DocumentState}
+   * is always n sync `blocks` after each inserts.
+   *
+   * 👉🏻 We don't throw an error because we don't want to break users' UI
+   * to keep a seamless experience.
+   */
+  if (!block) {
+    return null
+  }
+
+  const type = block.__type
+  switch (type) {
+    case 'paragraph': {
+      return <ComposerParagraphBlock key={block.id} {...props} block={block} />
+    }
+    case 'heading': {
+      return <ComposerHeadingBlock key={block.id} {...props} block={block} />
+    }
+    case 'bullet-list-item': {
+      return (
+        <ComposerBulletListItemBlock key={block.id} {...props} block={block} />
+      )
+    }
+    case 'checkbox-list-item': {
+      return (
+        <ComposerCheckboxListItemBlock
+          key={block.id}
+          {...props}
+          block={block}
+        />
+      )
+    }
+    case 'divider': {
+      return <ComposerDividerBlock key={block.id} {...props} block={block} />
+    }
+    default: {
+      warnOnce(`Skipping rendering for unsupported block type: ${type}.`)
       return null
     }
-
-    const type = block.__type
-    switch (type) {
-      case 'paragraph': {
-        return (
-          <ComposerParagraphBlock key={block.id} {...props} block={block} />
-        )
-      }
-      case 'heading': {
-        return <ComposerHeadingBlock key={block.id} {...props} block={block} />
-      }
-      case 'bullet-list-item': {
-        return (
-          <ComposerBulletListItemBlock
-            key={block.id}
-            {...props}
-            block={block}
-          />
-        )
-      }
-      case 'checkbox-list-item': {
-        return (
-          <ComposerCheckboxListItemBlock
-            key={block.id}
-            {...props}
-            block={block}
-          />
-        )
-      }
-      case 'divider': {
-        return <ComposerDividerBlock key={block.id} {...props} block={block} />
-      }
-      default: {
-        warnOnce(`Skipping rendering for unsupported block type: ${type}.`)
-        return null
-      }
-    }
-  }, [block, props])
-
-  return rendered
+  }
 })
 ComposerBlock.displayName = COMPOSER_BLOCK_NAME
 
