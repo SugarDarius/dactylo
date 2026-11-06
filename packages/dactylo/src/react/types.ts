@@ -91,6 +91,9 @@ export interface ComposerCheckboxListItemBlockProps extends React.HTMLAttributes
 
   /** At which index the checkbox list item block is rendered inside `<Composer.Editable />`. */
   indexOfRendering: number
+
+  /** A callback function that is called when the checkbox list item block is checked or unchecked. */
+  onCheckedChange?: (checked: boolean) => void
 }
 
 /** Props for declaring a divider block component. */

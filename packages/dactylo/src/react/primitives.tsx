@@ -43,6 +43,7 @@ import {
   ComposerProvider,
   useBlock,
   useBlockOrderById,
+  useCheckboxLists,
   useEditable,
   useEditableBlock,
   useEditableNode,
@@ -70,6 +71,7 @@ import {
 import {
   useIsMounted,
   useIsomorphicLayoutEffect,
+  useStableCallback,
   useStableValue,
 } from './internals/hooks'
 import { mergeRefs } from './internals/utils'
@@ -437,10 +439,20 @@ ComposerBulletListItemBlock.displayName = COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME
 const ComposerCheckboxListItemBlock = forwardRef<
   HTMLDivElement,
   ComposerCheckboxListItemBlockProps
->(({ block, indexOfRendering, ...props }, forwardedRef) => {
+>(({ block, indexOfRendering, onCheckedChange, ...props }, forwardedRef) => {
   const { checkboxList } = useEditorConfig()
   const { canEdit, editableId, withActiveSelection, isEmpty } =
     useEditableBlock(block.id)
+  const { patch } = useCheckboxLists()
+
+  const handleChange = useStableCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { checked } = e.target
+
+      patch(block.id, { checked })
+      onCheckedChange?.(checked)
+    },
+  )
 
   const isActive = canEdit && withActiveSelection
 
@@ -465,10 +477,10 @@ const ComposerCheckboxListItemBlock = forwardRef<
       >
         <input
           type='checkbox'
-          disabled
-          aria-roledescription='checkbox-list-item-marker'
-          // oxlint-disable-next-line react/checked-requires-onchange-or-readonly
           checked={block.checked}
+          onChange={handleChange}
+          readOnly={!canEdit}
+          aria-roledescription='checkbox-list-item-marker-input'
           {...{ [CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME]: '' }}
         />
       </div>
