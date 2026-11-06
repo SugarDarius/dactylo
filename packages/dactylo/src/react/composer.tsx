@@ -66,6 +66,8 @@ export const { Provider: ComposerProvider, useContext: useComposer } =
  * const { state } = useEditorContextStore(({ state }) => state)
  * console.log(state)
  * ```
+ *
+ * @private
  */
 export function useEditorContextStore<S>(
   selector: (context: EditorContext) => S,
