@@ -330,6 +330,7 @@ export function cloneBlock(source: Block, posKey: PosKey): Block {
     }
     case 'checkbox-list-item': {
       return createCheckboxListItemBlock({
+        checked: source.checked,
         content: cloneBlockInlineContent(source.content),
         metadata: source.metadata,
         parentId: source.parentId,
