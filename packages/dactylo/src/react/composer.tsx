@@ -279,50 +279,32 @@ export function useRangeSelection(): RangeSelection | null {
 }
 
 /**
- * Returns the selection tools.
+ * Returns selection queries and focus commands.
  *
  * @example
  * ```tsx
- * const { isBlockWithActiveCursor } = useSelectionTools()
- * console.log(isBlockWithActiveCursor(blockId))
+ * const { withCursorIn, withRangeIn, isSelectedBlock, focus, blur } = useFocus()
+ *
+ * console.log(withCursorIn(blockId), withRangeIn(blockId), isSelectedBlock(blockId))
+ *
+ * focus()
+ * blur()
  * ```
  */
-export function useSelectionTools() {
+export function useFocus() {
   const { editor } = useComposer()
 
-  const isBlockWithActiveCursor = useStableCallback((blockId: BlockId) =>
+  const withCursorIn = useStableCallback((blockId: BlockId) =>
     editor.selection.tools.isBlockWithActiveCursor(blockId),
   )
 
-  const isBlockWithActiveRange = useStableCallback((blockId: BlockId) =>
+  const withRangeIn = useStableCallback((blockId: BlockId) =>
     editor.selection.tools.isBlockWithActiveRange(blockId),
   )
 
-  const isBlockWithActiveSelection = useStableCallback((blockId: BlockId) =>
+  const isSelectedBlock = useStableCallback((blockId: BlockId) =>
     editor.selection.tools.isBlockWithActiveSelection(blockId),
   )
-
-  return {
-    isBlockWithActiveCursor,
-    isBlockWithActiveRange,
-    isBlockWithActiveSelection,
-  } as const
-}
-
-/**
- * Returns the selection focus command.
- *
- * @example
- * ```tsx
- * const { focus } = useSelectionCommands()
- *
- * useLayoutEffect(() => {
- *  focus()
- * }, [])
- * ```
- */
-export function useSelectionCommands() {
-  const { editor } = useComposer()
 
   const focus = useStableCallback(
     (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
@@ -334,7 +316,13 @@ export function useSelectionCommands() {
       editor.selection.commands.blur(source),
   )
 
-  return { blur, focus } as const
+  return {
+    blur,
+    focus,
+    isSelectedBlock,
+    withCursorIn,
+    withRangeIn,
+  } as const
 }
 
 /**
@@ -362,11 +350,11 @@ export function useIsFocused(): boolean {
  *
  * @example
  * ```tsx
- * const isWithActiveSelection = useIsBlockWithActiveSelection(blockId)
- * console.log(isWithActiveSelection)
+ * const selected = useIsSelectedBlock(blockId)
+ * console.log(selected)
  * ```
  */
-export function useIsBlockWithActiveSelection(blockId: BlockId): boolean {
+export function useIsSelectedBlock(blockId: BlockId): boolean {
   const { editor } = useComposer()
 
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
@@ -380,24 +368,40 @@ export function useIsBlockWithActiveSelection(blockId: BlockId): boolean {
 // --- Marks ─────────────────────────────────────────---------------
 
 /**
- * Returns the marks tools.
+ * Returns mark queries and commands.
  *
  * @example
  * ```tsx
- * const { isActive } = useMarksTools()
+ * const { isActive, toggle } = useMarks()
  * console.log(isActive('bold'))
+ * toggle('bold')
+ * toggle('bold', 'ai-agent')
  * ```
  */
-export function useMarksTools() {
+export function useMarks() {
   const { editor } = useComposer()
 
   const isActive = useStableCallback((mark: MarkKey) =>
     editor.marks.tools.isActive(mark),
   )
 
-  return { isActive } as const
+  const toggle = useStableCallback(
+    (mark: MarkKey, source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.marks.commands.toggle(mark, source),
+  )
+
+  return { isActive, toggle } as const
 }
 
+/**
+ * Returns whether the mark is active.
+ *
+ * @example
+ * ```tsx
+ * const isActive = useIsMarkActive('bold')
+ * console.log(isActive)
+ * ```
+ */
 export function useIsMarkActive(mark: MarkKey): boolean {
   const { editor } = useComposer()
 
@@ -407,39 +411,19 @@ export function useIsMarkActive(mark: MarkKey): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
-/**
- * Returns the marks commands.
- *
- * @example
- * ```tsx
- * const { toggle } = useMarksCommands()
- * toggle('bold')
- * toggle('bold', 'ai-agent')
- * ```
- */
-export function useMarksCommands() {
-  const { editor } = useComposer()
-
-  const toggle = useStableCallback(
-    (mark: MarkKey, source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
-      editor.marks.commands.toggle(mark, source),
-  )
-
-  return { toggle } as const
-}
-
 // --- Composer ------─────────────────────────────────────────------
 
 /**
- * Returns the composer commands.
+ * Returns composer input commands.
  *
  * @example
  * ```tsx
- * const { sendInput } = useComposerCommands()
- * console.log(sendInput)
+ * const { sendInput, sendKeydown } = useComposerInput()
+ * sendInput(event)
+ * sendKeydown(event)
  * ```
  */
-export function useComposerCommands() {
+export function useComposerInput() {
   const { editor } = useComposer()
 
   const sendInput = useStableCallback((event: InputEvent) =>
@@ -456,30 +440,13 @@ export function useComposerCommands() {
 // --- Blocks ------─────────────────────────────────────────--------
 
 /**
- * Returns the blocks tools.
+ * Returns block queries and commands.
  *
  * @example
  * ```tsx
- * const { isWithEmptyInlineContent } = useBlocksTools()
- * console.log(isWithEmptyInlineContent(blockId))
- * ```
- */
-export function useBlocksTools() {
-  const { editor } = useComposer()
-
-  const isWithEmptyInlineContent = useStableCallback((blockId: BlockId) =>
-    editor.blocks.tools.isWithEmptyInlineContent(blockId),
-  )
-
-  return { isWithEmptyInlineContent } as const
-}
-
-/**
- * Returns the blocks commands.
+ * const { isEmpty, delete, duplicate, insertParagraph, move } = useBlocks()
  *
- * @example
- * ```tsx
- * const { delete, duplicate, insertParagraph, move } = useBlocksCommands()
+ * console.log(isEmpty(blockId))
  *
  * delete(blockId)
  * delete(blockId, 'ai-agent')
@@ -505,8 +472,12 @@ export function useBlocksTools() {
  * move(blockId, { type: 'start' }, 'ai-agent')
  * ```
  */
-export function useBlocksCommands() {
+export function useBlocks() {
   const { editor } = useComposer()
+
+  const isEmpty = useStableCallback((blockId: BlockId) =>
+    editor.blocks.tools.isWithEmptyInlineContent(blockId),
+  )
 
   const insertParagraph = useStableCallback(
     (
@@ -566,6 +537,7 @@ export function useBlocksCommands() {
     insertDivider,
     insertHeading,
     insertParagraph,
+    isEmpty,
     move,
   } as const
 }
@@ -594,35 +566,19 @@ export function useIsBlockEmpty(blockId: BlockId): boolean {
 // --- History ------─────────────────────────────────────────-------
 
 /**
- * Returns the history commands.
+ * Returns history queries and commands.
  *
  * @example
  * ```tsx
- * const { undo, redo } = useHistoryCommands()
- * console.log(undo, redo)
+ * const { canUndo, canRedo, undo, redo, clear } = useHistory()
  * ```
  */
-export function useHistoryCommands() {
+export function useHistory() {
   const { editor } = useComposer()
 
   const undo = useStableCallback(() => editor.history.commands.undo())
   const redo = useStableCallback(() => editor.history.commands.redo())
   const clear = useStableCallback(() => editor.history.commands.clear())
-
-  return { clear, redo, undo } as const
-}
-
-/**
- * Returns the history tools.
- *
- * @example
- * ```tsx
- * const { canUndo, canRedo } = useHistoryTools()
- * console.log(canUndo, canRedo)
- * ```
- */
-export function useHistoryTools() {
-  const { editor } = useComposer()
 
   const subscribe = useStableCallback(
     editor.events.history.subscribe.bind(editor),
@@ -646,7 +602,7 @@ export function useHistoryTools() {
     getSnapshotCanRedo,
   )
 
-  return { canRedo, canUndo } as const
+  return { canRedo, canUndo, clear, redo, undo } as const
 }
 
 // --- Editable ------─────────────────────────────────────────------
@@ -670,8 +626,8 @@ export function useEditable() {
   const cursorSelection = useCursorSelection()
   const rangeSelection = useRangeSelection()
 
-  const { focus } = useSelectionCommands()
-  const { sendInput, sendKeydown } = useComposerCommands()
+  const { focus } = useFocus()
+  const { sendInput, sendKeydown } = useComposerInput()
 
   /**
    * `beforeinput` event handler used to capture the following input types:
@@ -849,7 +805,7 @@ export function useEditableBlock(blockId: BlockId) {
 
   const canEdit = useCanEdit()
 
-  const withActiveSelection = useIsBlockWithActiveSelection(blockId)
+  const withActiveSelection = useIsSelectedBlock(blockId)
   const isEmpty = useIsBlockEmpty(blockId)
 
   return {

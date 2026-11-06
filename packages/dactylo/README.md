@@ -114,15 +114,10 @@ The same split exists on `editor.history`, `editor.marks`, `editor.blocks`, `edi
 ### React
 
 ```tsx
-import {
-  Composer,
-  useHistoryCommands,
-  useHistoryTools,
-} from '@sugardarius/dactylo/react'
+import { Composer, useHistory } from '@sugardarius/dactylo/react'
 
 function Toolbar() {
-  const { canUndo, canRedo } = useHistoryTools()
-  const { undo, redo } = useHistoryCommands()
+  const { canUndo, canRedo, undo, redo } = useHistory()
 
   return (
     <>
@@ -146,7 +141,7 @@ export function Editor() {
 }
 ```
 
-`Composer.Root` owns the editor. `Composer.Editable` renders the blocks. Hooks mirror the core API: history, blocks, selection, the document, and listeners for commands and tools.
+`Composer.Root` owns the editor. `Composer.Editable` renders the blocks. Domain hooks (`useHistory`, `useBlocks`, `useMarks`, `useFocus`) flatten the core tools and commands split for React.
 
 ## Roadmap
 

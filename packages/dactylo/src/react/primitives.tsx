@@ -36,7 +36,7 @@ import {
 } from '../internals/constants'
 import {
   ComposerProvider,
-  useSelectionCommands,
+  useFocus,
   useEditorConfig,
   useEditableBlock,
   useEditable,
@@ -549,7 +549,7 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
     const { editableRef, canEdit, focused } = useEditable()
     const mergedRefs = mergeRefs(forwardedRef, editableRef)
 
-    const { focus } = useSelectionCommands()
+    const { focus } = useFocus()
 
     useEffect(() => {
       if (!canEdit) {

@@ -5,11 +5,10 @@ import {
   Composer,
   useCanEdit,
   useEditableListener,
-  useHistoryCommands,
-  useHistoryTools,
+  useHistory,
   useIsMarkActive,
-  useMarksCommands,
-  useBlocksCommands,
+  useMarks,
+  useBlocks,
   useSetEditable,
 } from '@sugardarius/dactylo/react'
 import {
@@ -74,7 +73,7 @@ export function MarkToggleButton({
   mark: MarkKey
   tooltipContent: React.ReactNode
 }>) {
-  const { toggle } = useMarksCommands()
+  const { toggle } = useMarks()
   const canEdit = useCanEdit()
 
   const active = useIsMarkActive(mark)
@@ -133,16 +132,15 @@ export function Toolbar() {
   const canEdit = useCanEdit()
   const setEditable = useSetEditable()
 
-  const { canUndo, canRedo } = useHistoryTools()
-  const { undo, redo } = useHistoryCommands()
+  const { canUndo, canRedo, undo, redo } = useHistory()
 
   const {
     insertParagraph,
     insertDivider,
     insertHeading,
     insertBulletListItem,
-  } = useBlocksCommands()
-  const { toggle } = useMarksCommands()
+  } = useBlocks()
+  const { toggle } = useMarks()
 
   useEditableListener(({ editable }) => {
     toast.add({
