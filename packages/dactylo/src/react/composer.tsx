@@ -395,21 +395,32 @@ export function useMarks() {
 }
 
 /**
- * Returns whether the mark is active.
+ * Returns for a given {@link MarkKey}:
+ *  - Whether the mark is active
+ *  - A `toggle` callback to enable of disable the mark
  *
  * @example
  * ```tsx
- * const isActive = useIsMarkActive('bold')
+ * const { isActive, toggle } = useMark('bold')
  * console.log(isActive)
+ * toggle()
+ * toggle('ai-agent')
  * ```
  */
-export function useIsMarkActive(mark: MarkKey): boolean {
+export function useMark(mark: MarkKey) {
   const { editor } = useComposer()
 
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() => editor.marks.tools.isActive(mark))
 
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  const active = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+
+  const toggle = useStableCallback(
+    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.marks.commands.toggle(mark, source),
+  )
+
+  return { active, toggle } as const
 }
 
 // --- Composer ------─────────────────────────────────────────------
@@ -456,24 +467,6 @@ export function useComposerInput() {
  *
  * remove(blockId)
  * remove(blockId, 'ai-agent')
- *
- * insertParagraph({ pos: { type: 'end'}, metadata: { fontColor: 'purple' } })
- *
- * insertHeading(1)
- * insertHeading(2, { pos: { type: 'end' } })
- * insertHeading(3, {}, 'ai-agent')
- *
- * insertBulletListItem()
- * insertBulletListItem({ pos: { type: 'end' } })
- * insertBulletListItem({}, 'ai-agent')
- *
- * insertCheckboxListItem()
- * insertCheckboxListItem({ checked: true, pos: { type: 'end' } })
- * insertCheckboxListItem({}, 'ai-agent')
- *
- * insertDivider()
- * insertDivider({ pos: { type: 'end' } })
- * insertDivider({}, 'ai-agent')
  *
  * duplicate(blockId)
  * duplicate(blockId, 'ai-agent')

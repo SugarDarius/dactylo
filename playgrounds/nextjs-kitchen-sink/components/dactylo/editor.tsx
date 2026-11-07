@@ -10,7 +10,7 @@ import {
   useEditableListener,
   useHeadings,
   useHistory,
-  useIsMarkActive,
+  useMark,
   useMarks,
   useParagraphs,
   useSetEditable,
@@ -78,10 +78,8 @@ export function MarkToggleButton({
   mark: MarkKey
   tooltipContent: React.ReactNode
 }>) {
-  const { toggle } = useMarks()
   const canEdit = useCanEdit()
-
-  const active = useIsMarkActive(mark)
+  const { active, toggle } = useMark(mark)
 
   return (
     <Tooltip>
@@ -91,7 +89,7 @@ export function MarkToggleButton({
             pressed={active}
             variant='outline'
             size='sm'
-            onPressedChange={() => toggle(mark)}
+            onPressedChange={() => toggle()}
             disabled={!canEdit}
             className='border-0'
           >
