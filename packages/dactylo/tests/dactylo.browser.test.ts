@@ -20,6 +20,7 @@ import {
   DEFAULT_MENTION_CHARACTER,
   DEFAULT_MENTIONS_ENABLED,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
+  DEFAULT_QUOTE_PLACEHOLDER,
 } from '../src/internals/constants'
 import type { HistoryEvent } from '../src/internals/history'
 import { isMarkEnabled } from '../src/internals/marks'
@@ -82,6 +83,7 @@ describe('Dactylo construction', () => {
         enabled: DEFAULT_MENTIONS_ENABLED,
       },
       paragraph: { placeholder: 'Notes…' },
+      quote: { placeholder: DEFAULT_QUOTE_PLACEHOLDER },
     })
   })
 
@@ -97,6 +99,7 @@ describe('Dactylo construction', () => {
           markdown: { enabled: false },
           mentions: { character: '#', enabled: false },
           paragraph: { placeholder: 'Start here' },
+          quote: { placeholder: 'Quote' },
         },
       },
     })
@@ -111,6 +114,7 @@ describe('Dactylo construction', () => {
       markdown: { enabled: false },
       mentions: { character: '#', enabled: false },
       paragraph: { placeholder: 'Start here' },
+      quote: { placeholder: 'Quote' },
     })
     expect(editor.config.paragraph.placeholder).not.toBe(
       DEFAULT_PARAGRAPH_PLACEHOLDER,
