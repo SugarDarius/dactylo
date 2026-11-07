@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, test } from 'vitest'
 
-import type { DactyloCommandEvent } from '../src/dactylo'
+import type { DactyloCommandEvent, DactyloToolEvent } from '../src/dactylo'
 import {
   isBulletListItemBlock,
   isCheckboxListItemBlock,
@@ -818,6 +818,32 @@ describe('Dactylo read-only mode', () => {
     editor.setEditable(true)
     expect(editor.history.tools.canUndo()).toBe(true)
     expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+  })
+})
+
+describe('Dactylo DOM', () => {
+  test('getActiveRange returns null when nothing is attached', () => {
+    const editor = makeTypingEditor()
+
+    expect(editor.dom.tools.getActiveRange()).toBeNull()
+  })
+
+  test('getActiveRange emits a tools event', () => {
+    const editor = makeTypingEditor()
+    const tools: DactyloToolEvent[] = []
+    editor.events.tools.subscribe((event) => {
+      tools.push(event)
+    })
+
+    editor.dom.tools.getActiveRange()
+
+    expect(tools).toEqual([
+      expect.objectContaining({
+        result: null,
+        status: 'success',
+        tool: 'dom/get-active-range',
+      }),
+    ])
   })
 })
 

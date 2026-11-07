@@ -540,4 +540,46 @@ export class DOMManager {
       this.#cancelPendingPaint('clear')
     }
   }
+
+  /**
+   * Returns a cloned DOM `Range` for the current non-collapsed window selection
+   * inside the attached editable, or `null`.
+   *
+   * The clone is a snapshot: later selection changes do not mutate it.
+   *
+   * A major use-case to call this method is for rendering floating UI elements
+   * like contextual menus, floating tooltips with libraries like `@floating-ui/react`
+   * in the editable element when we can use `range.getBoundingClientRect()` as a virtual element.
+   */
+  getActiveRange(): Range | null {
+    if (this.#isPainting || this.#getIMEComposingState()) {
+      return null
+    }
+
+    const editable = this.#editable
+    if (!editable) {
+      return null
+    }
+
+    const selection = this.#getSelection()
+    if (!isRangeSelection(selection)) {
+      return null
+    }
+
+    const domSelection = window.getSelection()
+    if (
+      !domSelection ||
+      domSelection.rangeCount === 0 ||
+      !isWindowSelectionInsideEditable(editable, domSelection)
+    ) {
+      return null
+    }
+
+    const range = domSelection.getRangeAt(0)
+    if (range.collapsed) {
+      return null
+    }
+
+    return range.cloneRange()
+  }
 }

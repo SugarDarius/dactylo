@@ -12,6 +12,7 @@ export {
   useComposerInput,
   useCursorSelection,
   useDividers,
+  useDomActiveRange,
   useEditableListener,
   useEditorConfig,
   useErrorsListener,

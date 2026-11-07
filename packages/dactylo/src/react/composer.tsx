@@ -456,6 +456,26 @@ export function useComposerInput() {
   return { sendInput, sendKeydown } as const
 }
 
+// --- DOM ------─────────────────────────────────────────-----------
+
+/**
+ * Returns the active range from the {@link EditorContext}.
+ *
+ * @example
+ * ```tsx
+ * const domActiveRange = useDomActiveRange()
+ * console.log(domActiveRange)
+ * ```
+ */
+export function useDomActiveRange(): Range | null {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() => editor.dom.tools.getActiveRange())
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
 // --- Blocks ------─────────────────────────────────────────--------
 
 /**

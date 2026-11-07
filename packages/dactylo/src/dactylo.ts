@@ -136,11 +136,11 @@ export interface DactyloStaticConfig {
 
 /** Discriminated union of tools that can be executed by the user/ai-agent. */
 export type DactyloTool =
-  /** History tools */
+  /** History tools. */
   | 'history/can-undo'
   | 'history/can-redo'
 
-  /** Marks tools */
+  /** Marks tools. */
   | 'marks/is-active'
 
   /** Selection tools */
@@ -149,37 +149,41 @@ export type DactyloTool =
   | 'selection/is-block-with-active-selection'
   | 'selection/is-focused'
 
-  /** Blocks tools */
+  /** DOM tools. */
+  | 'dom/get-active-range'
+
+  /** Blocks tools. */
   | 'blocks/is-with-empty-inline-content'
 
 /** Discriminated union of commands that can be executed by the user/ai-agent. */
 export type DactyloCommand =
-  /** History commands */
+  /** History commands. */
   | 'history/undo'
   | 'history/redo'
   | 'history/clear'
 
-  /** Marks commands */
+  /** Marks commands. */
   | 'marks/toggle'
 
-  /** Composer commands */
+  /** Composer commands. */
   | 'composer/send-input'
   | 'composer/send-keydown'
   | 'composer/set-ime-composing'
 
-  /** Selection commands */
+  /** Selection commands. */
   | 'selection/focus'
   | 'selection/blur'
 
-  /** DOM commands */
+  /** DOM commands. */
   | 'dom/attach'
   | 'dom/detach'
   | 'dom/paint-caret-at'
   | 'dom/paint-range-at'
   | 'dom/sync-selection'
   | 'dom/clear-selection'
+  | 'dom/get-active-range'
 
-  /** Blocks commands */
+  /** Blocks commands. */
   | 'blocks/insert-paragraph'
   | 'blocks/insert-quote'
   | 'blocks/insert-heading'
@@ -196,7 +200,7 @@ export type DactyloCommand =
   | 'blocks/patch-checkbox-list-item'
   | 'blocks/patch-divider'
 
-/** Event emitted when a command is executed */
+/** Event emitted when a command is executed. */
 export interface DactyloCommandEvent {
   /** The command that was executed. */
   readonly command: DactyloCommand
@@ -528,6 +532,29 @@ export type DactyloSelectionApi = DactyloAspectApi<
   DactyloSelectionCommands
 >
 
+/** Tools to query the DOM of the editor. */
+export interface DactyloDomTools {
+  /**
+   * Returns a cloned DOM `Range` for the current non-collapsed window selection
+   * inside the attached editable, or `null`.
+   *
+   * The clone is a snapshot: later selection changes do not mutate it.
+   *
+   * A major use-case to call this method is for rendering floating UI elements
+   * like contextual menus, floating tooltips with libraries like `@floating-ui/react`
+   * in the editable element when we can use `range.getBoundingClientRect()` as a virtual element.
+   *
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * const range = editor.dom.commands.getActiveRange()
+   * range?.getBoundingClientRect()
+   * ```
+   */
+  readonly getActiveRange: () => Range | null
+}
+
 /** Commands to sync the DOM with the editor state. */
 export interface DactyloDomCommands {
   /**
@@ -597,9 +624,10 @@ export interface DactyloDomCommands {
 }
 
 /** Api to interact with the editor's DOM. */
-export interface DactyloDomApi {
-  readonly commands: DactyloDomCommands
-}
+export type DactyloDomApi = DactyloAspectApi<
+  DactyloDomTools,
+  DactyloDomCommands
+>
 
 /** Tools to query the {@link DocumentState} blocks of the editor. */
 export interface DactyloBlocksTools {
@@ -1278,7 +1306,7 @@ export class Dactylo {
     tool: DactyloTool,
     executor: () => T,
     fallback: () => T,
-    opts?: { payload?: Record<string, unknown> },
+    opts?: { payload?: Record<string, unknown>; clientOnly?: true },
   ): T {
     const startedAt = Date.now()
 
@@ -1287,6 +1315,12 @@ export class Dactylo {
       warnOnceIf(
         this.#debug,
         `Tool \`${tool}\` cannot be executed as editor is not editable. To make it editable please call the method \`.setEditable(true)\`. Fallback executor is used instead.`,
+      )
+      $executor = fallback
+    } else if (opts?.clientOnly && !canUseDOM()) {
+      warnOnceIf(
+        this.#debug,
+        `Tool \`${tool}\` cannot be executed in a non-DOM environment. Fallback executor is used instead.`,
       )
       $executor = fallback
     }
@@ -1737,6 +1771,7 @@ export class Dactylo {
             noop,
             { clientOnly: true },
           ),
+
         /**
          * Paints a collapsed caret at the position of the text cursor in the DOM.
          * Client only.
@@ -1770,6 +1805,27 @@ export class Dactylo {
             'dom/sync-selection',
             () => this.#domManager.scheduleSync(fromSelectionChange),
             noop,
+            { clientOnly: true },
+          ),
+      },
+      tools: {
+        /**
+         * Returns a cloned DOM `Range` for the current non-collapsed window selection
+         * inside the attached editable, or `null`.
+         *
+         * The clone is a snapshot: later selection changes do not mutate it.
+         *
+         * A major use-case to call this method is for rendering floating UI elements
+         * like contextual menus, floating tooltips with libraries like `@floating-ui/react`
+         * in the editable element when we can use `range.getBoundingClientRect()` as a virtual element.
+         *
+         * Client only.
+         */
+        getActiveRange: () =>
+          this.#safeExecuteTool(
+            'dom/get-active-range',
+            () => this.#domManager.getActiveRange(),
+            () => null,
             { clientOnly: true },
           ),
       },
