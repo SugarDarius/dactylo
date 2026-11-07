@@ -569,14 +569,17 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '**:[[dactylo-divider-separator]]:h-px',
             '**:[[dactylo-divider-separator]]:w-full',
 
-            // nodes
-            '[&_[dactylo-node][dactylo-link-node]]:cursor-pointer',
+            // link node
+            '[&_[dactylo-node][dactylo-link-node][data-dactylo-link-clickable=true]]:cursor-pointer',
+            '[&_[dactylo-node][dactylo-link-node][data-dactylo-link-clickable=false]]:cursor-default',
             '[&_[dactylo-node][dactylo-link-node]]:text-cyan-500',
             '[&_[dactylo-node][dactylo-link-node]]:underline',
             '[&_[dactylo-node][dactylo-link-node]]:decoration-cyan-500',
             '[&_[dactylo-node][dactylo-link-node]]:underline-offset-2',
             '[&_[dactylo-node][dactylo-link-node]]:hover:text-cyan-400',
             '[&_[dactylo-node][dactylo-link-node]]:hover:decoration-cyan-400',
+
+            // marks
             '**:data-[dactylo-italic-mark=true]:italic',
             '**:data-[dactylo-bold-mark=true]:font-extrabold',
             '**:[&[data-dactylo-code-mark=true]:not([data-dactylo-editable-node-empty=true])]:p-0.5',

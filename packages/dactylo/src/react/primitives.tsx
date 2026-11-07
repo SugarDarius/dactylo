@@ -33,6 +33,7 @@ import {
   HEADING_LEVEL_REPLACER,
   LINE_BREAK_NODE_ATTR_NAME,
   LINK_NODE_ATTR_NAME,
+  LINK_NODE_CLICKABLE_ATTR_NAME,
   NODE_ATTR_NAME,
   NODE_ID_DATA_NAME,
   PARAGRAPH_BLOCK_ATTR_NAME,
@@ -185,7 +186,9 @@ ComposerTextNode.displayName = COMPOSER_TEXT_NODE_NAME
 const ComposerLinkNode = memo(
   forwardRef<HTMLAnchorElement, ComposerLinkNodeProps>(
     ({ node, ...props }, forwardedRef) => {
+      const { link } = useEditorConfig()
       const { renderedText, nodeAttributes } = useEditableNode(node)
+
       return (
         <a
           target='_blank'
@@ -194,6 +197,9 @@ const ComposerLinkNode = memo(
           ref={forwardedRef}
           {...{
             [LINK_NODE_ATTR_NAME]: '',
+            [LINK_NODE_CLICKABLE_ATTR_NAME]: link.openOnClick
+              ? 'true'
+              : 'false',
             [NODE_ATTR_NAME]: '',
             [NODE_ID_DATA_NAME]: node.id,
             ...nodeAttributes,

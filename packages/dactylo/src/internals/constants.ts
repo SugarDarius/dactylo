@@ -16,6 +16,9 @@ export const DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER = 'List'
 /** Default placeholder text for empty {@link CheckboxListItemBlock}. */
 export const DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER = 'Task'
 
+/** Default link open on click enabled. */
+export const DEFAULT_LINK_OPEN_ON_CLICK_ENABLED = true
+
 /** Default mentions enabled. */
 export const DEFAULT_MENTIONS_ENABLED = true
 
@@ -146,8 +149,12 @@ export const EDITABLE_NODE_CODE_MARK_DATA_NAME = 'data-dactylo-code-mark'
 
 /** Text node attribute name. */
 export const TEXT_NODE_ATTR_NAME = 'dactylo-text-node'
+
 /** Link node attribute name. */
 export const LINK_NODE_ATTR_NAME = 'dactylo-link-node'
+/** Link node clickable attribute name. */
+export const LINK_NODE_CLICKABLE_ATTR_NAME = 'data-dactylo-link-clickable'
+
 /** Line break node attribute name. */
 export const LINE_BREAK_NODE_ATTR_NAME = 'dactylo-line-break-node'
 

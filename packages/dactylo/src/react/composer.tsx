@@ -907,6 +907,7 @@ export function useHistory() {
 export function useEditable() {
   const editableRef = useRef<HTMLDivElement>(null)
 
+  const { link } = useEditorConfig()
   const { editor } = useComposer()
 
   const canEdit = useCanEdit()
@@ -973,7 +974,7 @@ export function useEditable() {
   })
 
   const onLinkClick = useStableCallback((event: MouseEvent) => {
-    if (event.defaultPrevented) {
+    if (event.defaultPrevented || !link.openOnClick) {
       return
     }
 

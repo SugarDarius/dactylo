@@ -7,6 +7,7 @@ import {
   DEFAULT_HEADING_PLACEHOLDER,
   DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
   DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
+  DEFAULT_LINK_OPEN_ON_CLICK_ENABLED,
   DEFAULT_LOCALES,
   DEFAULT_MARKDOWN_SHORTCUTS_ENABLED,
   DEFAULT_MENTION_CHARACTER,
@@ -131,6 +132,15 @@ export interface DactyloStaticConfig {
   readonly checkboxList: {
     /** Placeholder text when a checkbox list item is created or empty. */
     readonly placeholder: string
+  }
+
+  /** Configuration for links. */
+  readonly link: {
+    /**
+     * Whether to open links on click when the editor is editable.
+     * Defaults to `true`
+     */
+    readonly openOnClick: boolean
   }
 }
 
@@ -1032,6 +1042,15 @@ export interface DactyloConfigOptions {
        */
       readonly placeholder?: string
     }
+
+    /** Configuration for links. */
+    readonly link?: {
+      /**
+       * Whether to open links on click when the editor is editable.
+       * Defaults to `true`
+       */
+      readonly openOnClick?: boolean
+    }
   }
 
   /** Configuration for the transaction pipeline */
@@ -1150,6 +1169,11 @@ export class Dactylo {
         enabled:
           options.config?.editor?.inlineCommandTrigger?.enabled ??
           DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
+      },
+      link: {
+        openOnClick:
+          options.config?.editor?.link?.openOnClick ??
+          DEFAULT_LINK_OPEN_ON_CLICK_ENABLED,
       },
       locales,
       markdown: {
