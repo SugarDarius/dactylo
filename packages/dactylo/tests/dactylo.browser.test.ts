@@ -418,6 +418,21 @@ describe('Dactylo history', () => {
 })
 
 describe('Dactylo blocks', () => {
+  test('isWithEmptyInlineContent is false after typing spaces', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const block = firstInlineBlock(editor.getContext())
+
+    expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe(true)
+
+    typeText(editor, ' ')
+    expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe(false)
+
+    typeText(editor, ' ')
+    expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe(false)
+    expect(blockTexts(editor.getContext())).toEqual(['  '])
+  })
+
   test('insertHeading adds a heading after the current paragraph', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()

@@ -18,6 +18,7 @@ import type { GraphemeOffsetCaret } from './grapheme'
 import {
   getInlineNodeTextLength,
   isEmptyEditableRunway,
+  isInlineContentWithoutVisibleText,
   isInlineNodeWithEditableText,
   isLineBreakNode,
   isMentionNode,
@@ -157,7 +158,7 @@ export function buildAbsorbEmptyTextNodeIntoPrevOps(
 
 /** Whether Backspace at block start should exit an empty list item to a paragraph. */
 export function isEmptyListItemAtBlockStart(
-  context: EditorContext,
+  _context: EditorContext,
   situation: DeleteContentOpsCursorSelectionSituation,
 ): boolean {
   const { nodeIndex, at, block } = situation
@@ -167,7 +168,7 @@ export function isEmptyListItemAtBlockStart(
 
   return (
     (isBulletListItemBlock(block) || isCheckboxListItemBlock(block)) &&
-    isBlockWithInlineContentEmpty(context.state, block.id)
+    isInlineContentWithoutVisibleText(block.content)
   )
 }
 

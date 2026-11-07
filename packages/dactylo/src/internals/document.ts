@@ -5,7 +5,7 @@ import {
 } from './blocks'
 import type { Block, BlockId, BlockWithInlineContent } from './blocks'
 import { DactyloError } from './errors'
-import { createTextNode, isInlineContentWithoutVisibleText } from './nodes'
+import { createTextNode, isInlineContentEmpty } from './nodes'
 import type { InsertOrMoveBlockPosition } from './operations-builder'
 import {
   after,
@@ -238,13 +238,13 @@ export function getBlockWithInlineContent(
   return block
 }
 
-/** Checks whether a block content is empty. */
+/** Checks whether a block has no inserted text and no structural inlines. */
 export function isBlockWithInlineContentEmpty(
   state: DocumentState,
   blockId: BlockId,
 ): boolean {
   const block = getBlockWithInlineContent(state, blockId)
-  return isInlineContentWithoutVisibleText(block.content)
+  return isInlineContentEmpty(block.content)
 }
 
 /**

@@ -265,6 +265,23 @@ describe('TransactionPipeline hard break', () => {
     assertUndoRedo(pipeline, before)
   })
 
+  test('Enter on a whitespace-only bullet list item mutates it to a paragraph', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '-')
+    typeText(pipeline, ' ')
+    typeText(pipeline, ' ')
+    const itemId = firstInlineBlock(pipeline.context).id
+
+    hardBreak(pipeline)
+
+    const block = firstInlineBlock(pipeline.context)
+    expect(block.id).toBe(itemId)
+    expect(block.__type).toBe('paragraph')
+    expect(blockTexts(pipeline.context)).toEqual([' '])
+    expect(pipeline.context.state.blockOrderById).toHaveLength(1)
+  })
+
   test('Enter at the end of a checkbox list item inserts another item and undo/redo round-trip', () => {
     const pipeline = makePipeline({ markdown: true })
     focus(pipeline)

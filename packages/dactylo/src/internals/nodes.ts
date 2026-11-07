@@ -313,13 +313,44 @@ export function getInlineNodeTextLength(node: InlineNode): number {
   }
 }
 
-/** Whether the inline content is empty. */
+/** Whether the inline content has no stored text characters. */
 export function isInlineContentTextEmpty(
   content: readonly InlineNode[],
 ): boolean {
   for (const node of content) {
     if (getInlineNodeTextLength(node) > 0) {
       return false
+    }
+  }
+
+  return true
+}
+
+/**
+ * Whether inline content has no inserted text and no structural inlines.
+ *
+ * Spaces count as content. Mentions and line breaks also count as content.
+ *
+ * Use this for placeholder / `data-empty` / `isWithEmptyInlineContent`.
+ * List-exit "looks empty" checks should use {@link isInlineContentWithoutVisibleText}.
+ */
+export function isInlineContentEmpty(content: readonly InlineNode[]): boolean {
+  for (const node of content) {
+    switch (node.__type) {
+      case 'text':
+      case 'link': {
+        if (node.text.length > 0) {
+          return false
+        }
+        break
+      }
+      case 'mention':
+      case 'line_break': {
+        return false
+      }
+      default: {
+        assertNever(node, { hint: 'InlineNode/#isInlineContentEmpty' })
+      }
     }
   }
 
@@ -337,11 +368,11 @@ export function isEditableTextWithoutVisibleCharacters(text: string): boolean {
 /**
  * Whether inline content has no user-visible text.
  *
- * Unlike {@link isCanonicalEmptyInlineContent}, does **not** require
- * unmarked empty text. Use this for placeholder / `data-empty` /
- * `isWithEmptyInlineContent`.
+ * Whitespace-only editable text is treated as empty. Mentions and line breaks
+ * count as visible. Use this for list-exit that cares how the block looks.
  *
- * Collapse skip logic should keep using {@link isCanonicalEmptyInlineContent}.
+ * Placeholder / `data-empty` / `isWithEmptyInlineContent` should use
+ * {@link isInlineContentEmpty} so inserted spaces count as content.
  */
 export function isInlineContentWithoutVisibleText(
   content: readonly InlineNode[],
