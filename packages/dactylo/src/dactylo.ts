@@ -12,6 +12,7 @@ import {
   DEFAULT_MENTION_CHARACTER,
   DEFAULT_MENTIONS_ENABLED,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
+  DEFAULT_QUOTE_PLACEHOLDER,
 } from './internals/constants'
 import { isBlockWithInlineContentEmpty } from './internals/document'
 import { DOMManager } from './internals/dom-manager'
@@ -114,6 +115,12 @@ export interface DactyloStaticConfig {
     readonly placeholder: string
   }
 
+  /** Configuration for quotes. */
+  readonly quote: {
+    /** Placeholder text when an empty quote is created or empty. */
+    readonly placeholder: string
+  }
+
   /** Configuration for bulleted lists. */
   readonly bulletedList: {
     /** Placeholder text when a bullet list item is created or empty. */
@@ -174,6 +181,7 @@ export type DactyloCommand =
 
   /** Blocks commands */
   | 'blocks/insert-paragraph'
+  | 'blocks/insert-quote'
   | 'blocks/insert-heading'
   | 'blocks/insert-bullet-list-item'
   | 'blocks/insert-checkbox-list-item'
@@ -182,6 +190,7 @@ export type DactyloCommand =
   | 'blocks/delete'
   | 'blocks/move'
   | 'blocks/patch-paragraph'
+  | 'blocks/patch-quote'
   | 'blocks/patch-heading'
   | 'blocks/patch-bullet-list-item'
   | 'blocks/patch-checkbox-list-item'
@@ -621,10 +630,32 @@ export interface DactyloBlocksCommands {
    */
   readonly insertParagraph: (
     opts?: {
-      /** Where to insert the paragraph block. */
+      /** Where to insert the {@link ParagraphBlock}. */
       pos?: InsertOrMoveBlockPosition
 
-      /** Metadata to associate with the paragraph block. */
+      /** Metadata to associate with the {@link ParagraphBlock}. */
+      metadata?: Metadata
+    },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
+   * Inserts a {@link QuoteBlock} at the given position with metadata.
+   * By defaults it inserts after the current selection.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.insertQuote()
+   * editor.blocks.commands.insertQuote({ pos: 'end' })
+   * editor.blocks.commands.insertQuote({}, 'ai-agent')
+   * ```
+   */
+  readonly insertQuote: (
+    opts?: {
+      /** Where to insert the {@link QuoteBlock}. */
+      pos?: InsertOrMoveBlockPosition
+
+      /** Metadata to associate with the {@link QuoteBlock}. */
       metadata?: Metadata
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -646,10 +677,10 @@ export interface DactyloBlocksCommands {
     level: HeadingBlock['level'],
 
     opts?: {
-      /** Where to insert the heading block. */
+      /** Where to insert the {@link HeadingBlock}. */
       pos?: InsertOrMoveBlockPosition
 
-      /** Metadata to associate with the heading block. */
+      /** Metadata to associate with the {@link HeadingBlock}. */
       metadata?: Metadata
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -668,9 +699,10 @@ export interface DactyloBlocksCommands {
    */
   readonly insertBulletListItem: (
     opts?: {
-      /** Where to insert the bullet list item block. */
+      /** Where to insert the {@link BulletListItemBlock}. */
       pos?: InsertOrMoveBlockPosition
-      /** Metadata to associate with the bullet list item block. */
+
+      /** Metadata to associate with the {@link BulletListItemBlock}. */
       metadata?: Metadata
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -691,9 +723,11 @@ export interface DactyloBlocksCommands {
     opts?: {
       /** Whether the item is checked. */
       checked?: boolean
-      /** Where to insert the checkbox list item block. */
+
+      /** Where to insert the {@link CheckboxListItemBlock}. */
       pos?: InsertOrMoveBlockPosition
-      /** Metadata to associate with the checkbox list item block. */
+
+      /** Metadata to associate with the {@link CheckboxListItemBlock}. */
       metadata?: Metadata
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -712,9 +746,10 @@ export interface DactyloBlocksCommands {
    */
   readonly insertDivider: (
     opts?: {
-      /** Where to insert the divider block. */
+      /** Where to insert the {@link DividerBlock}. */
       pos?: InsertOrMoveBlockPosition
-      /** Metadata to associate with the divider block. */
+
+      /** Metadata to associate with the {@link DividerBlock}. */
       metadata?: Metadata
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -773,6 +808,20 @@ export interface DactyloBlocksCommands {
    * ```
    */
   readonly patchParagraph: (
+    blockId: BlockId,
+    opts: { content?: InlineNode[]; metadata?: Metadata },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
+   * Patches a {@link QuoteBlock} in place with the given options.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.patchQuote(blockId, { content }, 'ai-agent')
+   * ```
+   */
+  readonly patchQuote: (
     blockId: BlockId,
     opts: { content?: InlineNode[]; metadata?: Metadata },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -911,6 +960,16 @@ export interface DactyloConfigOptions {
        * Placeholder text when an empty paragraph is created or empty.
        * Defaults to placeholder option in {@link DactyloOptions} if set
        * or defaults to {@link DEFAULT_PARAGRAPH_PLACEHOLDER}.
+       */
+      readonly placeholder?: string
+    }
+
+    /** Configuration for quotes. */
+    readonly quote?: {
+      /**
+       * Placeholder text when an empty quote is created or empty.
+       * Defaults to placeholder option in {@link DactyloOptions} if set
+       * or defaults to {@link DEFAULT_QUOTE_PLACEHOLDER}.
        */
       readonly placeholder?: string
     }
@@ -1082,6 +1141,11 @@ export class Dactylo {
           options.placeholder ??
           options.config?.editor?.paragraph?.placeholder ??
           DEFAULT_PARAGRAPH_PLACEHOLDER,
+      },
+      quote: {
+        placeholder:
+          options.config?.editor?.quote?.placeholder ??
+          DEFAULT_QUOTE_PLACEHOLDER,
       },
     }
     this.#pipeline = new TransactionPipeline({
@@ -1746,9 +1810,7 @@ export class Dactylo {
          */
         insertBulletListItem: (
           opts: {
-            /** Where to insert the bullet list item block. */
             pos?: InsertOrMoveBlockPosition
-            /** Metadata to associate with the bullet list item block. */
             metadata?: Metadata
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
@@ -1768,9 +1830,7 @@ export class Dactylo {
           opts: {
             /** Whether the item is checked. */
             checked?: boolean
-            /** Where to insert the checkbox list item block. */
             pos?: InsertOrMoveBlockPosition
-            /** Metadata to associate with the checkbox list item block. */
             metadata?: Metadata
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
@@ -1787,9 +1847,7 @@ export class Dactylo {
          */
         insertDivider: (
           opts: {
-            /** Where to insert the divider block. */
             pos?: InsertOrMoveBlockPosition
-            /** Metadata to associate with the divider block. */
             metadata?: Metadata
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
@@ -1810,9 +1868,7 @@ export class Dactylo {
           level: HeadingBlock['level'],
 
           opts: {
-            /** Where to insert the heading block. */
             pos?: InsertOrMoveBlockPosition
-            /** Metadata to associate with the heading block. */
             metadata?: Metadata
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
@@ -1830,9 +1886,7 @@ export class Dactylo {
          */
         insertParagraph: (
           opts: {
-            /** Where to insert the paragraph block. */
             pos?: InsertOrMoveBlockPosition
-            /** Metadata to associate with the paragraph block. */
             metadata?: Metadata
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
@@ -1840,6 +1894,24 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'blocks/insert-paragraph',
             () => this.#pipeline.insertParagraphBlock(opts, source),
+            noop,
+            { payload: { source } },
+          ),
+
+        /**
+         * Inserts a {@link QuoteBlock} at the given position with metadata.
+         * By defaults it inserts after the current selection.
+         */
+        insertQuote: (
+          opts: {
+            pos?: InsertOrMoveBlockPosition
+            metadata?: Metadata
+          } = {},
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/insert-quote',
+            () => this.#pipeline.insertQuoteBlock(opts, source),
             noop,
             { payload: { source } },
           ),
@@ -1928,6 +2000,19 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'blocks/patch-paragraph',
             () => this.#pipeline.patchParagraphBlock(blockId, opts, source),
+            noop,
+            { payload: { blockId, source } },
+          ),
+
+        /** Patches a {@link QuoteBlock} in place with the given options. */
+        patchQuote: (
+          blockId: BlockId,
+          opts: { content?: InlineNode[]; metadata?: Metadata },
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/patch-quote',
+            () => this.#pipeline.patchQuoteBlock(blockId, opts, source),
             noop,
             { payload: { blockId, source } },
           ),

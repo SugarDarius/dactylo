@@ -1312,6 +1312,33 @@ export class TransactionPipeline {
     })
   }
 
+  /** Inserts a {@link QuoteBlock} at the given document position. */
+  insertQuoteBlock(
+    opts: {
+      /** Where to insert the quote block. */
+      pos?: InsertOrMoveBlockPosition
+      /** Metadata to associate with the quote block. */
+      metadata?: Metadata
+    },
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildInsertQuoteBlockOps(
+      this.#context,
+      opts.pos,
+      opts.metadata,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
   /** Inserts a {@link HeadingBlock} at the given document position. */
   insertHeadingBlock(
     /** Level of the heading. */
@@ -1398,6 +1425,7 @@ export class TransactionPipeline {
       source,
     })
   }
+
   /** Inserts a {@link DividerBlock} at the given document position. */
   insertDividerBlock(
     opts: {
@@ -1432,6 +1460,29 @@ export class TransactionPipeline {
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
     const intent = this.#operationsEngine.buildPatchParagraphBlockOps(
+      this.#context,
+      blockId,
+      opts,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
+  /** Patches a {@link QuoteBlock} by ID with the given options. */
+  patchQuoteBlock(
+    blockId: BlockId,
+    opts: { content?: InlineNode[]; metadata?: Metadata } | undefined,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildPatchQuoteBlockOps(
       this.#context,
       blockId,
       opts,

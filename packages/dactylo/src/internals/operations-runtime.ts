@@ -3,6 +3,7 @@ import {
   createCheckboxListItemBlock,
   createHeadingBlock,
   createParagraphBlock,
+  createQuoteBlock,
   findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
   touchBlock,
@@ -698,6 +699,22 @@ export function applyMutateBlockTypeOp(
         ),
       )
     }
+    case 'to_quote': {
+      const next = createQuoteBlock({
+        content: [...prev.content],
+        metadata: op.dropMetadata ? undefined : prev.metadata,
+        parentId: prev.parentId,
+        posKey: prev.posKey,
+      })
+
+      return withDocumentState(
+        context,
+        putBlock(
+          context.state,
+          touchBlock({ ...next, createdAt: prev.createdAt, id: prev.id }),
+        ),
+      )
+    }
     case 'to_bullet_list_item': {
       const next = createBulletListItemBlock({
         content: [...prev.content],
@@ -1060,7 +1077,15 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
             },
           }
         }
-
+        case 'quote': {
+          return {
+            __type: 'mutate_block_type',
+            blockId: op.blockId,
+            dropMetadata: op.dropMetadata,
+            snapshot: op.snapshot,
+            spec: { kind: 'to_quote' },
+          }
+        }
         default: {
           return assertNever(snapshotType, {
             hint: 'OperationsRuntime/invertOp/mutate_block_type',

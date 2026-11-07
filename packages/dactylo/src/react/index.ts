@@ -24,6 +24,7 @@ export {
   useMark,
   useMarks,
   useParagraphs,
+  useQuotes,
   useSelection,
   useSetEditable,
   useToolsListener,

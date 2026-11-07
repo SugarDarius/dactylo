@@ -123,7 +123,13 @@ export type InsertBlockSpec = Relax<
   | {
       readonly type: 'paragraph'
 
-      /** Metadata to attach to the block. */
+      /** Metadata to attach to the {@link ParagraphBlock}. */
+      readonly metadata?: Metadata
+    }
+  | {
+      readonly type: 'quote'
+
+      /** Metadata to attach to the {@link QuoteBlock}. */
       readonly metadata?: Metadata
     }
   | {
@@ -132,13 +138,13 @@ export type InsertBlockSpec = Relax<
       /** Level of the heading. */
       readonly level: HeadingBlock['level']
 
-      /** Metadata to attach to the block. */
+      /** Metadata to attach to the {@link HeadingBlock}. */
       readonly metadata?: Metadata
     }
   | {
       readonly type: 'bullet_list_item'
 
-      /** Metadata to attach to the block. */
+      /** Metadata to attach to the {@link BulletListItemBlock}. */
       readonly metadata?: Metadata
     }
   | {
@@ -147,13 +153,13 @@ export type InsertBlockSpec = Relax<
       /** Whether the item is checked. */
       readonly checked?: boolean
 
-      /** Metadata to attach to the block. */
+      /** Metadata to attach to the {@link CheckboxListItemBlock}. */
       readonly metadata?: Metadata
     }
   | {
       readonly type: 'divider'
 
-      /** Metadata to attach to the block. */
+      /** Metadata to attach to the {@link DividerBlock}. */
       readonly metadata?: Metadata
     }
 >
@@ -167,6 +173,12 @@ export type PatchBlockSpec = {
       readonly type: 'paragraph'
 
       /** {@link ParagraphBlock}'s  content.  */
+      readonly content?: InlineNode[]
+    }
+  | {
+      readonly type: 'quote'
+
+      /** {@link QuoteBlock}'s content. */
       readonly content?: InlineNode[]
     }
   | {

@@ -521,9 +521,10 @@ export function useBlocks() {
  * const { insert, patch } = useParagraphs()
  *
  * insertParagraph({ pos: { type: 'end'}, metadata: { fontColor: 'purple' } })
+ * insertParagraph({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { fontColor: 'red' }  })
- * patch({}, 'ai-agent')
+ * patch(blockId, {}, 'ai-agent')
  * ```
  */
 export function useParagraphs() {
@@ -556,6 +557,50 @@ export function useParagraphs() {
 }
 
 /**
+ * Returns quote queries and commands.
+ * Extends from {@link useBlocks}.
+ *
+ * @example
+ * ```tsx
+ * const { insert, patch } = useQuotes()
+ *
+ * insertQuote({ pos: { type: 'end' } })
+ * insertQuote({}, 'ai-agent')
+ *
+ * patch(blockId, { content: [textNode] })
+ * patch(blockId, {}, 'ai-agent')
+ * ```
+ */
+export function useQuotes() {
+  const { editor } = useComposer()
+  const { isEmpty, duplicate, move, remove } = useBlocks()
+
+  const insert = useStableCallback(
+    (
+      opts?: { pos?: InsertOrMoveBlockPosition; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.insertQuote(opts, source),
+  )
+
+  const patch = useStableCallback(
+    (
+      quoteBlockId: BlockId,
+      opts: { content?: InlineNode[]; metadata?: Metadata },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.patchQuote(quoteBlockId, opts, source),
+  )
+
+  return {
+    duplicate,
+    insert,
+    isEmpty,
+    move,
+    patch,
+    remove,
+  } as const
+}
+
+/**
  * Returns heading queries and commands.
  * Extends from {@link useBlocks}.
  *
@@ -568,7 +613,7 @@ export function useParagraphs() {
  * insertHeading(3, {}, 'ai-agent')
  *
  * patch(blockId, { level: 3 })
- * patch({}, 'ai-agent')
+ * patch(blockId, {}, 'ai-agent')
  * ```
  */
 export function useHeadings() {
@@ -618,7 +663,7 @@ export function useHeadings() {
  * insertDivider({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { bgColor: 'red' }  })
- * patch({}, 'ai-agent')
+ * patch(blockId, {}, 'ai-agent')
  * ```
  */
 export function useDividers() {
@@ -663,7 +708,7 @@ export function useDividers() {
  * insertBulletListItem({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { frontColor: 'red' }  })
- * patch({}, 'ai-agent')
+ * patch(blockId, {}, 'ai-agent')
  * ```
  */
 export function useBulletLists() {
@@ -713,7 +758,7 @@ export function useBulletLists() {
  * insertCheckboxListItem({}, 'ai-agent')
  *
  * patch(blockId, { checked: true })
- * patch({}, 'ai-agent')
+ * patch(blockId, {}, 'ai-agent')
  * ```
  */
 export function useCheckboxLists() {

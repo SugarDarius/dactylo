@@ -1,16 +1,19 @@
-/** Default placeholder text for empty paragraph block. */
+/** Default placeholder text for empty {@link ParagraphBlock}. */
 export const DEFAULT_PARAGRAPH_PLACEHOLDER = 'Write something…'
+
+/** Default placeholder text for empty {@link QuoteBlock}. */
+export const DEFAULT_QUOTE_PLACEHOLDER = 'Empty quote'
 
 /** The replacer for the heading level in the placeholder. */
 export const HEADING_LEVEL_REPLACER = '%level%'
 
-/** Default placeholder text for the editor when no content is written. */
+/** Default placeholder text for empty {@link HeadingBlock}. */
 export const DEFAULT_HEADING_PLACEHOLDER = `Heading ${HEADING_LEVEL_REPLACER}`
 
-/** Default placeholder text for empty bullet list item block. */
+/** Default placeholder text for empty {@link BulletListItemBlock}. */
 export const DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER = 'List'
 
-/** Default placeholder text for empty checkbox list item block. */
+/** Default placeholder text for empty {@link CheckboxListItemBlock}. */
 export const DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER = 'Task'
 
 /** Default mentions enabled. */
@@ -81,20 +84,20 @@ export const BLOCK_CONTENT_ATTR_NAME = 'dactylo-block-content'
 export const BLOCK_CONTENT_EDITABLE_DATA_NAME =
   'data-dactylo-block-content-editable'
 
-/** Paragraph block attribute name. */
+/** {@link ParagraphBlock} attribute name. */
 export const PARAGRAPH_BLOCK_ATTR_NAME = 'dactylo-paragraph-block'
 
-/** Divider block attribute name. */
+/** {@link DividerBlock} attribute name. */
 export const DIVIDER_BLOCK_ATTR_NAME = 'dactylo-divider-block'
 /** Divider separator attribute name. */
 export const DIVIDER_SEPARATOR_ATTR_NAME = 'dactylo-divider-separator'
 
-/** Heading block attribute name. */
+/** {@link HeadingBlock} attribute name. */
 export const HEADING_BLOCK_ATTR_NAME = 'dactylo-heading-block'
 /** Heading block level data name. */
 export const HEADING_BLOCK_LEVEL_DATA_NAME = 'data-dactylo-heading-block-level'
 
-/** Bullet list item block attribute name. */
+/** {@link BulletListItemBlock} attribute name. */
 export const BULLET_LIST_ITEM_BLOCK_ATTR_NAME = 'dactylo-bullet-list-item-block'
 /** Bullet list item marker attribute name. */
 export const BULLET_LIST_ITEM_MARKER_ATTR_NAME =
@@ -103,28 +106,28 @@ export const BULLET_LIST_ITEM_MARKER_ATTR_NAME =
 export const BULLET_LIST_ITEM_MARKER_DOT_ATTR_NAME =
   'dactylo-bullet-list-item-marker-dot'
 
-/** Checkbox list item block attribute name. */
+/** {@link CheckboxListItemBlock} attribute name. */
 export const CHECKBOX_LIST_ITEM_BLOCK_ATTR_NAME =
   'dactylo-checkbox-list-item-block'
 export const CHECKBOX_LIST_ITEM_MARKER_ATTR_NAME =
   'dactylo-checkbox-list-item-marker'
-/** Checkbox list item input attribute name. */
+/** {@link CheckboxListItemBlock} input attribute name. */
 export const CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME =
   'dactylo-checkbox-list-item-marker-input'
 
-/** Checkbox list item checked data name. */
+/** {@link CheckboxListItemBlock} checked data name. */
 export const CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME =
   'data-dactylo-checkbox-list-item-checked'
 
-/** Node attribute name. */
+/** {@link InlineNode} attribute name. */
 export const NODE_ATTR_NAME = 'dactylo-node'
-/** Node ID data name. */
+/** {@link InlineNode} ID data name. */
 export const NODE_ID_DATA_NAME = 'data-dactylo-node-id'
 
-/** Editable node empty data attribute name. */
+/** {@link InlineNodeWithEditableText} empty data attribute name. */
 export const EDITABLE_NODE_EMPTY_DATA_NAME = 'data-dactylo-editable-node-empty'
 
-/** Editable node marks data attributes names. */
+/** {@link InlineNodeWithEditableText} marks data attributes names. */
 export const EDITABLE_NODE_BOLD_MARK_DATA_NAME = 'data-dactylo-bold-mark'
 export const EDITABLE_NODE_ITALIC_MARK_DATA_NAME = 'data-dactylo-italic-mark'
 export const EDITABLE_NODE_STRIKETHROUGH_MARK_DATA_NAME =

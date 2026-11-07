@@ -80,6 +80,11 @@ export interface ParagraphBlock extends IBlockWithInlineContext {
   readonly __type: 'paragraph'
 }
 
+/** Block representing a quote. */
+export interface QuoteBlock extends IBlockWithInlineContext {
+  readonly __type: 'quote'
+}
+
 /** Block representing a bullet list item. */
 export interface BulletListItemBlock extends IBlockWithInlineContext {
   readonly __type: 'bullet_list_item'
@@ -102,6 +107,7 @@ export interface DividerBlock extends IBlock {
 export type Block =
   | HeadingBlock
   | ParagraphBlock
+  | QuoteBlock
   | BulletListItemBlock
   | CheckboxListItemBlock
   | DividerBlock
@@ -110,6 +116,7 @@ export type Block =
 export type BlockWithInlineContent =
   | HeadingBlock
   | ParagraphBlock
+  | QuoteBlock
   | BulletListItemBlock
   | CheckboxListItemBlock
 
@@ -140,7 +147,7 @@ export function createParagraphBlock(opts: {
   }
 }
 
-/** Whether the block is a paragraph block. */
+/** Whether the block is a {@link ParagraphBlock}. */
 export function isParagraphBlock(block: Block): block is ParagraphBlock {
   return block.__type === 'paragraph'
 }
@@ -161,6 +168,30 @@ export function createParagraphBlockAfter(
     parentId: afterBlock.parentId,
     posKey,
   })
+}
+
+/** Creates a {@link QuoteBlock}. */
+export function createQuoteBlock(opts: {
+  content: InlineNode[]
+  metadata?: Metadata
+  posKey: PosKey
+  parentId?: BlockId | null
+}): QuoteBlock {
+  return {
+    __type: 'quote',
+    content: opts.content,
+    createdAt: new Date(),
+    id: generateBlockId(),
+    metadata: opts.metadata ?? {},
+    parentId: opts.parentId ?? null,
+    posKey: opts.posKey,
+    updatedAt: null,
+  }
+}
+
+/** Whether the block is a {@link QuoteBlock}. */
+export function isQuoteBlock(block: Block): block is QuoteBlock {
+  return block.__type === 'quote'
 }
 
 /** Creates an {@link HeadingBlock}. */
@@ -184,7 +215,7 @@ export function createHeadingBlock(opts: {
   }
 }
 
-/** Whether the block is a heading block. */
+/** Whether the block is a {@link HeadingBlock}. */
 export function isHeadingBlock(block: Block): block is HeadingBlock {
   return block.__type === 'heading'
 }
@@ -208,7 +239,7 @@ export function createBulletListItemBlock(opts: {
   }
 }
 
-/** Whether the block is a bullet list item block. */
+/** Whether the block is a {@link BulletListItemBlock}. */
 export function isBulletListItemBlock(
   block: Block,
 ): block is BulletListItemBlock {
@@ -236,7 +267,7 @@ export function createCheckboxListItemBlock(opts: {
   }
 }
 
-/** Whether the block is a checkbox list item block. */
+/** Whether the block is a {@link CheckboxListItemBlock}. */
 export function isCheckboxListItemBlock(
   block: Block,
 ): block is CheckboxListItemBlock {
@@ -260,7 +291,7 @@ export function createDividerBlock(opts: {
   }
 }
 
-/** Whether the block is a divider block. */
+/** Whether the block is a {@link DividerBlock}. */
 export function isDividerBlock(block: Block): block is DividerBlock {
   return block.__type === 'divider'
 }
@@ -272,6 +303,7 @@ export function isBlockWithInlineContent(
   return (
     isHeadingBlock(block) ||
     isParagraphBlock(block) ||
+    isQuoteBlock(block) ||
     isBulletListItemBlock(block) ||
     isCheckboxListItemBlock(block)
   )
@@ -304,6 +336,14 @@ export function cloneBlock(source: Block, posKey: PosKey): Block {
   switch (type) {
     case 'paragraph': {
       return createParagraphBlock({
+        content: cloneBlockInlineContent(source.content),
+        metadata: source.metadata,
+        parentId: source.parentId,
+        posKey,
+      })
+    }
+    case 'quote': {
+      return createQuoteBlock({
         content: cloneBlockInlineContent(source.content),
         metadata: source.metadata,
         parentId: source.parentId,

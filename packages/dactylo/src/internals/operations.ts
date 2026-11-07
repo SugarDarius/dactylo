@@ -160,6 +160,7 @@ export interface MutateBlockTypeOp {
         level: HeadingBlock['level']
       }
     | { kind: 'to_paragraph' }
+    | { kind: 'to_quote' }
     | { kind: 'to_bullet_list_item' }
     | {
         kind: 'to_checkbox_list_item'

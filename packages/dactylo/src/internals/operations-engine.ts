@@ -7,12 +7,14 @@ import {
   createHeadingBlock,
   createParagraphBlock,
   createParagraphBlockAfter,
+  createQuoteBlock,
   isBlockWithInlineContent,
   isBulletListItemBlock,
   isCheckboxListItemBlock,
   isDividerBlock,
   isHeadingBlock,
   isParagraphBlock,
+  isQuoteBlock,
   touchBlock,
 } from './blocks'
 import type { BlockId, HeadingBlock } from './blocks'
@@ -399,6 +401,32 @@ export class OperationsEngine {
 
         return { label: 'insert-paragraph', ops }
       }
+      case 'quote': {
+        const quote = createQuoteBlock({
+          content: [insertedText],
+          metadata: spec.metadata,
+          posKey,
+        })
+
+        const ops: Operation[] = [
+          {
+            __type: 'insert_block',
+            afterBlockId,
+            block: quote,
+          },
+          {
+            __type: 'set_selection',
+            next: createCursor({
+              blockId: quote.id,
+              nodeId: insertedText.id,
+              offset: 0,
+            }),
+            prev: selection,
+          },
+        ]
+
+        return { label: 'insert-quote', ops }
+      }
       case 'heading': {
         const heading = createHeadingBlock({
           content: [insertedText],
@@ -538,6 +566,15 @@ export class OperationsEngine {
     )
   }
 
+  /** Builds operations to insert a {@link QuoteBlock}. */
+  buildInsertQuoteBlockOps(
+    context: EditorContext,
+    pos?: InsertOrMoveBlockPosition,
+    metadata?: Metadata,
+  ): BuilderOpsIntent | null {
+    return this.#buildInsertBlockOps(context, { metadata, type: 'quote' }, pos)
+  }
+
   /** Builds operations to insert an {@link HeadingBlock}. */
   buildInsertHeadingBlockOps(
     context: EditorContext,
@@ -626,6 +663,30 @@ export class OperationsEngine {
         ]
 
         return { label: 'patch-paragraph', ops }
+      }
+      case 'quote': {
+        if (!isQuoteBlock(source)) {
+          warnIf(
+            this.#debug,
+            `Cannot patch quote block ${blockId} because source type is ${source.__type}`,
+            'OperationsEngine/buildPatchBlockOps',
+          )
+          return null
+        }
+
+        const ops: Operation[] = [
+          {
+            __type: 'update_block',
+            patch: touchBlock({
+              ...source,
+              content: spec.content ?? [...source.content],
+              metadata: spec.metadata ?? source.metadata,
+            }),
+            snapshot: source,
+          },
+        ]
+
+        return { label: 'patch-quote', ops }
       }
       case 'heading': {
         if (!isHeadingBlock(source)) {
@@ -739,6 +800,18 @@ export class OperationsEngine {
     return this.#buildPatchBlockOps(context, blockId, {
       ...opts,
       type: 'paragraph',
+    })
+  }
+
+  /** Builds operations to patch a {@link QuoteBlock}. */
+  buildPatchQuoteBlockOps(
+    context: EditorContext,
+    blockId: BlockId,
+    opts?: { content?: InlineNode[]; metadata?: Metadata },
+  ): BuilderOpsIntent | null {
+    return this.#buildPatchBlockOps(context, blockId, {
+      ...opts,
+      type: 'quote',
     })
   }
 
