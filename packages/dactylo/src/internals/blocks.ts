@@ -9,13 +9,12 @@
  * @todo supports parents/nested blocks
  */
 
-import { nanoid } from 'nanoid'
-
 import { DactyloError } from './errors'
 import { cloneInlineNode } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
 import { after, comparePositions } from './position'
 import type { PosKey } from './position'
+import { generateRandomId } from './random-id'
 import type { Brand, Metadata } from './types'
 import { assertNever } from './utils'
 
@@ -119,7 +118,7 @@ export type BlockType = Block['__type']
 
 /** Generates a 24 characters long unique block ID. */
 export function generateBlockId(): BlockId {
-  return `bl_${nanoid(21)}` as BlockId
+  return `bl_${generateRandomId(21)}` as BlockId
 }
 
 /** Creates a {@link ParagraphBlock}. */

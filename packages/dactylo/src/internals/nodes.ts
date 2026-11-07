@@ -8,10 +8,9 @@
  * oo give better mutation performances while staying memory-conscious.
  */
 
-import { nanoid } from 'nanoid'
-
 import { createBaseMarks, isMarksEqual } from './marks'
 import type { Marks } from './marks'
+import { generateRandomId } from './random-id'
 import { sanitizeLinkHref } from './sanitize-link'
 import { sanitizeText } from './sanitize-text'
 import type { Brand, Metadata } from './types'
@@ -105,7 +104,7 @@ export type InlineNodeWithEditableText = TextNode | LinkNode
 
 /** Generates a 24 characters long unique node ID. */
 export function generateNodeId(): NodeId {
-  return `nd_${nanoid(21)}` as NodeId
+  return `nd_${generateRandomId(21)}` as NodeId
 }
 
 /**

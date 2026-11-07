@@ -63,9 +63,6 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "nanoid": "^6.0.2"
-  },
   "devDependencies": {
     "@types/react": "catalog:react19",
     "@types/react-dom": "catalog:react19",
