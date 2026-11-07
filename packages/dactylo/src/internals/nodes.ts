@@ -332,7 +332,7 @@ export function isInlineContentTextEmpty(
  * Spaces count as content. Mentions and line breaks also count as content.
  *
  * Use this for placeholder / `data-empty` / `isWithEmptyInlineContent`.
- * List-exit "looks empty" checks should use {@link isInlineContentWithoutVisibleText}.
+ * List/quote-exit "looks empty" checks should use {@link isInlineContentWithoutVisibleText}.
  */
 export function isInlineContentEmpty(content: readonly InlineNode[]): boolean {
   for (const node of content) {
@@ -369,7 +369,7 @@ export function isEditableTextWithoutVisibleCharacters(text: string): boolean {
  * Whether inline content has no user-visible text.
  *
  * Whitespace-only editable text is treated as empty. Mentions and line breaks
- * count as visible. Use this for list-exit that cares how the block looks.
+ * count as visible. Use this for list/quote-exit that cares how the block looks.
  *
  * Placeholder / `data-empty` / `isWithEmptyInlineContent` should use
  * {@link isInlineContentEmpty} so inserted spaces count as content.

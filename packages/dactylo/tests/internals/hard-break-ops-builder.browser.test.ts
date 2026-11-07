@@ -338,4 +338,78 @@ describe('TransactionPipeline hard break', () => {
     expect(pipeline.context.state.blockOrderById).toHaveLength(1)
     assertUndoRedo(pipeline, before)
   })
+
+  test('Enter at the end of a quote inserts a paragraph and undo/redo round-trip', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '>')
+    typeText(pipeline, ' ')
+    typeText(pipeline, 'Hello')
+    const before = snapshot(pipeline.context)
+
+    hardBreak(pipeline)
+
+    expect(blockTexts(pipeline.context)).toEqual(['Hello', ''])
+    expect(
+      pipeline.context.state.blockOrderById.map(
+        (id) => pipeline.context.state.blocks.get(id)?.__type,
+      ),
+    ).toEqual(['quote', 'paragraph'])
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Enter in the middle of a quote splits it into a quote then a paragraph and undo/redo round-trip', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '>')
+    typeText(pipeline, ' ')
+    typeText(pipeline, 'Hello')
+    const cursor = requireCursor(pipeline.context)
+    setCursor(pipeline, { ...cursor, offset: 2 })
+    const before = snapshot(pipeline.context)
+
+    hardBreak(pipeline)
+
+    expect(blockTexts(pipeline.context)).toEqual(['He', 'llo'])
+    expect(
+      pipeline.context.state.blockOrderById.map(
+        (id) => pipeline.context.state.blocks.get(id)?.__type,
+      ),
+    ).toEqual(['quote', 'paragraph'])
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Enter on an empty quote mutates it to a paragraph and undo/redo round-trip', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '>')
+    typeText(pipeline, ' ')
+    const quoteId = firstInlineBlock(pipeline.context).id
+    const before = snapshot(pipeline.context)
+
+    hardBreak(pipeline)
+
+    const block = firstInlineBlock(pipeline.context)
+    expect(block.id).toBe(quoteId)
+    expect(block.__type).toBe('paragraph')
+    expect(pipeline.context.state.blockOrderById).toHaveLength(1)
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Enter on a whitespace-only quote mutates it to a paragraph', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '>')
+    typeText(pipeline, ' ')
+    typeText(pipeline, ' ')
+    const quoteId = firstInlineBlock(pipeline.context).id
+
+    hardBreak(pipeline)
+
+    const block = firstInlineBlock(pipeline.context)
+    expect(block.id).toBe(quoteId)
+    expect(block.__type).toBe('paragraph')
+    expect(blockTexts(pipeline.context)).toEqual([' '])
+    expect(pipeline.context.state.blockOrderById).toHaveLength(1)
+  })
 })

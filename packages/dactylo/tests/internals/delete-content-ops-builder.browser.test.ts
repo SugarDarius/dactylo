@@ -464,4 +464,65 @@ describe('TransactionPipeline delete content', () => {
     expect(firstInlineBlock(pipeline.context).__type).toBe('checkbox_list_item')
     assertUndoRedo(pipeline, before)
   })
+
+  test('Backspace on an empty quote mutates it to a paragraph and undo/redo round-trip', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '>')
+    typeText(pipeline, ' ')
+    typeText(pipeline, 'Hello')
+    hardBreak(pipeline)
+    typeText(pipeline, '>')
+    typeText(pipeline, ' ')
+    const quoteId = nthInlineBlock(pipeline.context, 1).id
+    const before = snapshot(pipeline.context)
+
+    deleteBackward(pipeline)
+
+    expect(blockTexts(pipeline.context)).toEqual(['Hello', ''])
+    expect(nthInlineBlock(pipeline.context, 0).__type).toBe('quote')
+    const converted = nthInlineBlock(pipeline.context, 1)
+    expect(converted.id).toBe(quoteId)
+    expect(converted.__type).toBe('paragraph')
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Backspace on an empty first quote mutates it to a paragraph and undo/redo round-trip', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '>')
+    typeText(pipeline, ' ')
+    const quoteId = firstInlineBlock(pipeline.context).id
+    const before = snapshot(pipeline.context)
+
+    deleteBackward(pipeline)
+
+    const block = firstInlineBlock(pipeline.context)
+    expect(block.id).toBe(quoteId)
+    expect(block.__type).toBe('paragraph')
+    expect(pipeline.context.state.blockOrderById).toHaveLength(1)
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Backspace at the start of a non-empty quote merges and undo/redo round-trip', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '>')
+    typeText(pipeline, ' ')
+    typeText(pipeline, 'Hello')
+    hardBreak(pipeline)
+    typeText(pipeline, '>')
+    typeText(pipeline, ' ')
+    typeText(pipeline, 'World')
+    const cursor = requireCursor(pipeline.context)
+    setCursor(pipeline, { ...cursor, offset: 0 })
+    const before = snapshot(pipeline.context)
+
+    deleteBackward(pipeline)
+
+    expect(blockTexts(pipeline.context)).toEqual(['HelloWorld'])
+    expect(pipeline.context.state.blockOrderById).toHaveLength(1)
+    expect(firstInlineBlock(pipeline.context).__type).toBe('quote')
+    assertUndoRedo(pipeline, before)
+  })
 })

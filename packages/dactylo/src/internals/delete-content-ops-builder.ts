@@ -2,6 +2,7 @@ import {
   findNodeInBlockWithInlineContent,
   isBulletListItemBlock,
   isCheckboxListItemBlock,
+  isQuoteBlock,
 } from './blocks'
 import type { BlockWithInlineContent } from './blocks'
 import { warn } from './console'
@@ -156,8 +157,8 @@ export function buildAbsorbEmptyTextNodeIntoPrevOps(
   )
 }
 
-/** Whether Backspace at block start should exit an empty list item to a paragraph. */
-export function isEmptyListItemAtBlockStart(
+/** Whether Backspace at block start should exit an empty list item or quote to a paragraph. */
+export function isEmptyBlockExitingToParagraph(
   _context: EditorContext,
   situation: DeleteContentOpsCursorSelectionSituation,
 ): boolean {
@@ -167,7 +168,9 @@ export function isEmptyListItemAtBlockStart(
   }
 
   return (
-    (isBulletListItemBlock(block) || isCheckboxListItemBlock(block)) &&
+    (isBulletListItemBlock(block) ||
+      isCheckboxListItemBlock(block) ||
+      isQuoteBlock(block)) &&
     isInlineContentWithoutVisibleText(block.content)
   )
 }
@@ -177,8 +180,8 @@ export const cursorRules: DeleteContentOpsRule[] = [
   {
     /**
      * 💡 Situation:
-     * - Cursor is at the start of an empty {@link BulletListItemBlock} or
-     *   {@link CheckboxListItemBlock}.
+     * - Cursor is at the start of an empty {@link BulletListItemBlock},
+     *   {@link CheckboxListItemBlock}, or {@link QuoteBlock}.
      *
      * 🎯 Operations:
      * - Mutate the block into a {@link ParagraphBlock} in place.
@@ -202,13 +205,13 @@ export const cursorRules: DeleteContentOpsRule[] = [
         context.selection,
       )
     },
-    name: 'cursor/delete-content/at-block-start/empty-bullet-list-item-to-paragraph',
+    name: 'cursor/delete-content/at-block-start/empty-block-to-paragraph',
     when: ({ context, situation }): boolean => {
       if (situation.kind !== 'cursor-selection') {
         return false
       }
 
-      return isEmptyListItemAtBlockStart(context, situation)
+      return isEmptyBlockExitingToParagraph(context, situation)
     },
   },
   {
@@ -1063,16 +1066,16 @@ export class DeleteContentOpsBuilder extends OperationsBuilder<
      * deletes nothing. We are not at "delete the character before the cursor" (→ offset - 1),
      * because we already took the block-start branch and there is no previous block to join with.
      *
-     * Empty {@link BulletListItemBlock} or {@link CheckboxListItemBlock} is the
-     * exception: Backspace exits the list by mutating the item into a paragraph,
-     * including when it is the first block.
+     * Empty {@link BulletListItemBlock}, {@link CheckboxListItemBlock}, or
+     * {@link QuoteBlock} is the exception: Backspace exits the block by mutating
+     * it into a paragraph, including when it is the first block.
      */
     if (
       isCursorKind &&
       situation.at.offset === 0 &&
       situation.blockIndex === 0 &&
       situation.nodeIndex === 0 &&
-      !isEmptyListItemAtBlockStart(context, situation)
+      !isEmptyBlockExitingToParagraph(context, situation)
     ) {
       return null
     }
