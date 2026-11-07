@@ -196,7 +196,7 @@ export function Editor() {
 | Numbered list item   | 🚧 **In Progress** | Numbered list item block with inline content with variants (lower or upper alpha, lower or upper roman)         |
 | Checkbox list item   | ✅ **Done**        | Checkbox list item with block inline content                                                                    |
 | Toggle list item     | 📆 **Planned**     | Toggle list item block with inline content                                                                      |
-| Code                 | 📆 **Planned**     | Safe code block rendering code with inline content                                                              |
+| Code                 | 🚧 **In Progress** | Safe code block rendering code with inline content                                                              |
 | File                 | 📆 **Planned**     | File block with no inline content for rendering files                                                           |
 | Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
 | Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
