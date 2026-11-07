@@ -623,6 +623,16 @@ describe('Dactylo blocks', () => {
 })
 
 describe('Dactylo markdown and autolink', () => {
+  test('markdown converts "> " into a quote', () => {
+    const editor = makeEditor()
+    editor.selection.commands.focus()
+    typeText(editor, '>')
+    typeText(editor, ' ')
+
+    expect(firstInlineBlock(editor.getContext()).__type).toBe('quote')
+    expect(blockTexts(editor.getContext())).toEqual([''])
+  })
+
   test('markdown converts "- " into a bullet list item', () => {
     const editor = makeEditor()
     editor.selection.commands.focus()
@@ -647,6 +657,18 @@ describe('Dactylo markdown and autolink', () => {
       expect(block.checked).toBe(false)
     }
     expect(blockTexts(editor.getContext())).toEqual([''])
+  })
+
+  test('disabled markdown leaves the quote trigger characters in the paragraph', () => {
+    const editor = makeEditor({
+      config: { editor: { markdown: { enabled: false } } },
+    })
+    editor.selection.commands.focus()
+    typeText(editor, '>')
+    typeText(editor, ' ')
+
+    expect(firstInlineBlock(editor.getContext()).__type).toBe('paragraph')
+    expect(blockTexts(editor.getContext())).toEqual(['> '])
   })
 
   test('disabled markdown leaves the trigger characters in the paragraph', () => {

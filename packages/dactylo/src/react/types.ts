@@ -6,6 +6,7 @@ import type {
   DividerBlock,
   HeadingBlock,
   ParagraphBlock,
+  QuoteBlock,
 } from '../internals/blocks'
 import type {
   InlineNode,
@@ -63,6 +64,15 @@ export interface ComposerParagraphBlockProps extends React.HTMLAttributes<HTMLDi
   block: ParagraphBlock
 
   /** At which index the paragraph block is rendered inside `<Composer.Editable />`. */
+  indexOfRendering: number
+}
+
+/** Props for declaring a quote block component. */
+export interface ComposerQuoteBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** The quote block to render. */
+  block: QuoteBlock
+
+  /** At which index the quote block is rendered inside `<Composer.Editable />`. */
   indexOfRendering: number
 }
 

@@ -87,6 +87,14 @@ export const BLOCK_CONTENT_EDITABLE_DATA_NAME =
 /** {@link ParagraphBlock} attribute name. */
 export const PARAGRAPH_BLOCK_ATTR_NAME = 'dactylo-paragraph-block'
 
+/** {@link QuoteBlock} attribute name. */
+export const QUOTE_BLOCK_ATTR_NAME = 'dactylo-quote-block'
+/** {@link QuoteBlock} marker attribute name. */
+export const QUOTE_BLOCK_MARKER_ATTR_NAME = 'dactylo-quote-block-marker'
+/** {@link QuoteBlock} marker border attribute name. */
+export const QUOTE_BLOCK_MARKER_BORDER_ATTR_NAME =
+  'dactylo-quote-block-marker-border'
+
 /** {@link DividerBlock} attribute name. */
 export const DIVIDER_BLOCK_ATTR_NAME = 'dactylo-divider-block'
 /** Divider separator attribute name. */
@@ -197,6 +205,18 @@ export const ATX_MARKDOWN_HEADING_WITH_TRIGGER_SPACE_PATTERN =
  * ```
  */
 export const BULLET_LIST_ITEM_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN = /^- $/u
+
+/**
+ * Quote block markdown shortcut with trigger pattern.
+ * Matched after the user types {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
+ *
+ * @example
+ * ```txt
+ * User type: ><space>
+ * Node text: "> "
+ * ```
+ */
+export const QUOTE_BLOCK_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN = /^> $/u
 
 /**
  * Checkbox list item markdown shortcut with trigger pattern.

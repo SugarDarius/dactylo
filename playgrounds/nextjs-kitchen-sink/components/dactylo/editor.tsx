@@ -13,6 +13,7 @@ import {
   useMark,
   useMarks,
   useParagraphs,
+  useQuotes,
   useSetEditable,
 } from '@sugardarius/dactylo/react'
 import {
@@ -35,6 +36,7 @@ import {
   PencilOff,
   Pilcrow,
   Plus,
+  Quote,
   Redo2,
   SquareCheck,
   Strikethrough,
@@ -142,6 +144,7 @@ export function Toolbar() {
   const { insert: insertDivider } = useDividers()
   const { insert: insertBulletListItem } = useBulletLists()
   const { insert: insertCheckboxListItem } = useCheckboxLists()
+  const { insert: insertQuote } = useQuotes()
 
   const { toggle } = useMarks()
 
@@ -302,6 +305,10 @@ export function Toolbar() {
                   <Pilcrow className='size-3.5' />
                   Paragraph
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertQuote()}>
+                  <Quote className='size-3.5' />
+                  Quote
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => insertHeading(1)}>
                   <Heading1 className='size-3.5' />
                   Heading 1
@@ -447,6 +454,27 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             // paragraph block
             '**:[[dactylo-paragraph-block]]:flex **:[[dactylo-paragraph-block]]:flex-col',
             '**:[[dactylo-paragraph-block]]:px-1.5',
+
+            // quote block
+            '**:[[dactylo-quote-block]]:flex **:[[dactylo-quote-block]]:flex-col',
+            '**:[[dactylo-quote-block]]:px-1.5',
+
+            '[&_[dactylo-quote-block]_[dactylo-block-content]]:flex',
+            '[&_[dactylo-quote-block]_[dactylo-block-content]]:flex-row',
+            '[&_[dactylo-quote-block]_[dactylo-block-content]]:items-stretch',
+            '[&_[dactylo-quote-block]_[dactylo-block-content]]:gap-2',
+            '[&_[dactylo-quote-block]_[dactylo-block-content]]:min-w-0',
+            '[&_[dactylo-quote-block]_[dactylo-block-content]]:italic',
+            '[&_[dactylo-quote-block]_[dactylo-block-content]]:text-muted-foreground',
+
+            '**:[[dactylo-quote-block-marker]]:flex',
+            '**:[[dactylo-quote-block-marker]]:shrink-0',
+            '**:[[dactylo-quote-block-marker]]:items-stretch',
+
+            '**:[[dactylo-quote-block-marker-border]]:w-0.5',
+            '**:[[dactylo-quote-block-marker-border]]:self-stretch',
+            '**:[[dactylo-quote-block-marker-border]]:rounded-full',
+            '**:[[dactylo-quote-block-marker-border]]:bg-border',
 
             // bullet list item block
             '**:[[dactylo-bullet-list-item-block]]:flex **:[[dactylo-bullet-list-item-block]]:flex-row',

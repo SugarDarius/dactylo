@@ -6,6 +6,7 @@ import {
   isDividerBlock,
   isHeadingBlock,
   isParagraphBlock,
+  isQuoteBlock,
 } from '../../src/internals/blocks'
 import type { Block, BlockWithInlineContent } from '../../src/internals/blocks'
 import { DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT } from '../../src/internals/constants'
@@ -46,7 +47,7 @@ type SerializedBlock =
       readonly content: readonly SerializedInline[]
       readonly id: Block['id']
       readonly level?: number
-      readonly type: 'heading' | 'paragraph' | 'bullet_list_item'
+      readonly type: 'heading' | 'paragraph' | 'quote' | 'bullet_list_item'
     }
   | {
       readonly checked: boolean
@@ -117,6 +118,14 @@ function serializeBlock(block: Block): SerializedBlock {
       content: block.content.map(serializeInline),
       id: block.id,
       type: 'paragraph',
+    }
+  }
+
+  if (isQuoteBlock(block)) {
+    return {
+      content: block.content.map(serializeInline),
+      id: block.id,
+      type: 'quote',
     }
   }
 

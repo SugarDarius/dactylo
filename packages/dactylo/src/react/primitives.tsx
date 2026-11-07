@@ -36,6 +36,9 @@ import {
   NODE_ATTR_NAME,
   NODE_ID_DATA_NAME,
   PARAGRAPH_BLOCK_ATTR_NAME,
+  QUOTE_BLOCK_ATTR_NAME,
+  QUOTE_BLOCK_MARKER_ATTR_NAME,
+  QUOTE_BLOCK_MARKER_BORDER_ATTR_NAME,
   ROOT_ATTR_NAME,
   TEXT_NODE_ATTR_NAME,
 } from '../internals/constants'
@@ -65,6 +68,7 @@ import {
   COMPOSER_LINE_BREAK_NODE_NAME,
   COMPOSER_LINK_NODE_NAME,
   COMPOSER_PARAGRAPH_BLOCK_NAME,
+  COMPOSER_QUOTE_BLOCK_NAME,
   COMPOSER_ROOT_NAME,
   COMPOSER_TEXT_NODE_NAME,
 } from './internals/constants'
@@ -86,6 +90,7 @@ import type {
   ComposerLineBreakNodeProps,
   ComposerLinkNodeProps,
   ComposerParagraphBlockProps,
+  ComposerQuoteBlockProps,
   ComposerRootProps,
   ComposerTextNodeProps,
 } from './types'
@@ -298,6 +303,62 @@ const ComposerParagraphBlock = forwardRef<
   )
 })
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
+
+/** Adds a {@link QuoteBlock} to the composer. */
+const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
+  ({ block, indexOfRendering, ...props }, forwardedRef) => {
+    const { quote } = useEditorConfig()
+    const { canEdit, editableId, withActiveSelection, isEmpty } =
+      useEditableBlock(block.id)
+
+    const isActive = canEdit && withActiveSelection
+
+    return (
+      <div
+        {...props}
+        ref={forwardedRef}
+        {...{
+          [BLOCK_ATTR_NAME]: '',
+          [BLOCK_ID_DATA_NAME]: block.id,
+          [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
+          [QUOTE_BLOCK_ATTR_NAME]: '',
+        }}
+        data-active={isActive ?? undefined}
+        aria-roledescription='quote-block'
+      >
+        <div
+          id={editableId}
+          role={canEdit ? 'textbox' : undefined}
+          aria-roledescription='quote-block-editable'
+          aria-multiline={canEdit ? 'true' : undefined}
+          contentEditable={canEdit ? 'true' : undefined}
+          suppressContentEditableWarning
+          data-active={isActive ?? undefined}
+          data-empty={isEmpty ?? undefined}
+          {...{
+            [BLOCK_CONTENT_ATTR_NAME]: '',
+            [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
+            [BLOCK_PLACEHOLDER_ATTR_NAME]: quote.placeholder,
+          }}
+          style={{ ...EDITABLE_OUTLINE_STYLE }}
+        >
+          <div
+            contentEditable={false}
+            aria-roledescription='quote-block-marker'
+            {...{ [QUOTE_BLOCK_MARKER_ATTR_NAME]: '' }}
+          >
+            <div
+              aria-roledescription='quote-block-marker-border'
+              {...{ [QUOTE_BLOCK_MARKER_BORDER_ATTR_NAME]: '' }}
+            />
+          </div>
+          <ComposerInlineContent content={block.content} />
+        </div>
+      </div>
+    )
+  },
+)
+ComposerQuoteBlock.displayName = COMPOSER_QUOTE_BLOCK_NAME
 
 /** Primitive heading components for the composer. */
 const ComposerHeadingsPrimitive = COMPOSER_HEADING_LEVELS.reduce(
@@ -559,6 +620,9 @@ const ComposerBlock = memo<ComposerBlockProps>(({ blockId, ...props }) => {
     case 'paragraph': {
       return <ComposerParagraphBlock key={block.id} {...props} block={block} />
     }
+    case 'quote': {
+      return <ComposerQuoteBlock key={block.id} {...props} block={block} />
+    }
     case 'heading': {
       return <ComposerHeadingBlock key={block.id} {...props} block={block} />
     }
@@ -681,6 +745,7 @@ export {
   ComposerRoot as Root,
   ComposerEditable as Editable,
   ComposerParagraphBlock as ParagraphBlock,
+  ComposerQuoteBlock as QuoteBlock,
   ComposerHeadingBlock as HeadingBlock,
   ComposerBulletListItemBlock as BulletListItemBlock,
   ComposerCheckboxListItemBlock as CheckboxListItemBlock,

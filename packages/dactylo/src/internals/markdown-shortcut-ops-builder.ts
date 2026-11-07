@@ -7,6 +7,7 @@ import {
   isBulletListItemBlock,
   isCheckboxListItemBlock,
   isHeadingBlock,
+  isQuoteBlock,
 } from './blocks'
 import type { BlockWithInlineContent, HeadingBlock } from './blocks'
 import { warn } from './console'
@@ -27,6 +28,7 @@ import {
   MARKDOWN_LINK_SHORTCUT_PATTERN,
   MARKDOWN_MARK_SHORTCUT_REQUIRED_CHAR_BEFORE_OPEN_DELIMITER,
   MARKDOWN_STRIKETHROUGH_MARK_SHORTCUT_CLOSING_DELIMITERS,
+  QUOTE_BLOCK_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN,
   STRIKETHROUGH_MARKDOWN_TILDE_SHORTCUT_PATTERN,
 } from './constants'
 import {
@@ -125,6 +127,11 @@ export function parseAtxHeadingShortcutLevel(
 /** Whether the node text is a horizontal rule markdown shortcut. */
 export function isMarkdownDividerShortcut(nodeText: string): boolean {
   return HORIZONTAL_RULE_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN.test(nodeText)
+}
+
+/** Whether the node text is a quote block markdown shortcut. */
+export function isMarkdownQuoteShortcut(nodeText: string): boolean {
+  return QUOTE_BLOCK_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN.test(nodeText)
 }
 
 /** Whether the node text is a bullet list item markdown shortcut. */
@@ -640,6 +647,75 @@ const rules: MarkdownShortcutOpsRule[] = [
 
       const level = parseAtxHeadingShortcutLevel(node.text)
       return level !== null
+    },
+  },
+  {
+    /**
+     * 💡 Cursor is at the end of a {@link BlockWithInlineContent} whose entire first
+     *    text node is `>`, and the typed character is
+     *    {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
+     * 🎯 Mutate the paragraph into a {@link QuoteBlock} and strip `> `.
+     */
+    build: ({ context, situation, input }): Operation[] | null => {
+      if (
+        situation.kind !== 'cursor-selection' ||
+        input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
+      ) {
+        return null
+      }
+
+      const { block, node } = situation
+      if (!isMarkdownQuoteShortcut(node.text)) {
+        return null
+      }
+
+      const ops: Operation[] = [
+        {
+          __type: 'mutate_block_type',
+          blockId: block.id,
+          snapshot: block,
+          spec: { kind: 'to_quote' },
+        },
+        {
+          __type: 'delete_text',
+          blockId: block.id,
+          length: node.text.length,
+          nodeId: node.id,
+          offset: 0,
+          snapshot: { text: node.text },
+        },
+        {
+          __type: 'set_selection',
+          next: createCursor({ blockId: block.id, nodeId: node.id, offset: 0 }),
+          prev: context.selection,
+        },
+      ]
+
+      return ops
+    },
+    name: 'cursor/quote-block/inline-detector-trigger-character',
+    when: ({ situation, input }): boolean => {
+      if (
+        situation.kind !== 'cursor-selection' ||
+        input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
+      ) {
+        return false
+      }
+
+      const { block, node, at } = situation
+      if (at.offset !== node.text.length) {
+        return false
+      }
+
+      if (!isBlockWithInlineContent(block) || isQuoteBlock(block)) {
+        return false
+      }
+
+      if (!isSingleLeadingTextNodeForMarkdownShortcut(block, node)) {
+        return false
+      }
+
+      return isMarkdownQuoteShortcut(node.text)
     },
   },
   {
