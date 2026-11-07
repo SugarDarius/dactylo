@@ -1,4 +1,11 @@
-import { useEffect, useId, useMemo, useRef, useSyncExternalStore } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from 'react'
 
 import type {
   Dactylo,
@@ -806,14 +813,23 @@ export function useCheckboxLists() {
  */
 export function useIsBlockEmpty(blockId: BlockId): boolean {
   const { editor } = useComposer()
-  const block = useBlock(blockId)
 
-  /**
-   * Block-scoped UI may still re-render once after
-   * undo/delete before React unmounts the block.
-   * To avoid state rendering treat missing blocks as empty instead of throwing
-   */
-  return block !== null && editor.blocks.tools.isWithEmptyInlineContent(blockId)
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useCallback(() => {
+    /**
+     * Block-scoped UI may still re-render once after
+     * undo/delete before React unmounts the block.
+     * To avoid state rendering treat missing blocks as empty instead of throwing
+     */
+    const block = editor.getContext().state.blocks.get(blockId)
+    if (block === undefined) {
+      return true
+    }
+
+    return editor.blocks.tools.isWithEmptyInlineContent(blockId)
+  }, [blockId, editor])
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
 // --- History ------─────────────────────────────────────────-------
