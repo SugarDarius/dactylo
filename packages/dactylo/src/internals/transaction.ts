@@ -21,7 +21,6 @@ import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
 import type { Selection } from './selection'
 import type { Metadata } from './types'
-import { warnHistoryInputType } from './warnings'
 
 /** The source of a transaction. */
 export type TransactionSource =
@@ -851,10 +850,17 @@ export class TransactionPipeline {
 
     // @todo: handle composition input types
     switch (inputType) {
-      /** Not handled input types bucket. */
+      /**
+       * Not handled input types bucket as we're consuming explicitly
+       * input types like `insertText`, `insertReplacementText`, `insertFromPaste`, `deleteByCut`, `deleteContentBackward`
+       * and we prevent the default browser behavior as we want full control over DOM tree with UI libraries.
+       */
       case 'historyUndo':
       case 'historyRedo': {
-        warnHistoryInputType(inputType)
+        warnOnceIf(
+          this.#debug,
+          `\`${inputType}\` input type is not handled by Dactylo. Please use \`Dactylo.composer.commands.sendKeydownEvent(event)\` instead.`,
+        )
 
         return false
       }
