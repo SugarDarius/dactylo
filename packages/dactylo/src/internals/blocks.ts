@@ -76,7 +76,7 @@ export interface HeadingBlock extends IBlockWithInlineContext {
   readonly level: 1 | 2 | 3 | 4 | 5 | 6
 }
 
-/** Block representing a paragraph -- default block type. */
+/** Block representing a paragraph → default block type. */
 export interface ParagraphBlock extends IBlockWithInlineContext {
   readonly __type: 'paragraph'
 }
