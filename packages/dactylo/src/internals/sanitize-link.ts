@@ -1,5 +1,8 @@
 import { URL_SCHEME_PREFIX_PATTERN } from './constants'
-import { DISALLOWED_CONTROL_PATTERN, NUL_PATTERN } from './sanitize-text'
+import { sanitizeText } from './sanitize-text'
+
+/** TAB, LF, and CR — kept by {@link sanitizeText}, but not valid in an href. */
+export const HREF_LINE_WHITESPACE_PATTERN = /[\t\n\r]/gu
 
 /** Detect dangerous schemes before/alongside href. */
 export function isHrefWithBlockedScheme(href: string): boolean {
@@ -38,14 +41,13 @@ export const ALLOWED_SCHEMES = new Set<string>([
 
 /**
  * Sanitizes a link `href` for storage on {@link LinkNode} by:
- * - Trimming whitespace and strips NUL / C0 controls.
+ * - Trimming whitespace, running {@link sanitizeText}, then stripping TAB / LF / CR.
  * - Blocking executable or file URLs (`javascript:`, `data:`, `vbscript:`, `file:`).
  *   → Returning an empty url instead.
- * - Not allowing relative URLs (`//`, `./`, `../`).
+ * - Not allowing relative URLs (`/`, `//`, `#`, `./`, `../`).
  *   → Returning an empty url instead.
  * - Parsing absolute URLs with `URL`, allowlists scheme, strips `username` / `password` on http(s).
  * - Prefixing scheme-less hosts (`google.com`, `www.google.com`) with `https://`.
- * - Normalizing protocol-relative `//host/…` to `https://host/…`.
  *
  * Returns the canonical href string, or an empty string if the href is not valid.
  */
@@ -55,8 +57,8 @@ export function sanitizeLinkHref(href: string): string {
     return ''
   }
 
-  watched = watched.replaceAll(NUL_PATTERN, '')
-  watched = watched.replaceAll(DISALLOWED_CONTROL_PATTERN, '')
+  watched = sanitizeText(watched)
+  watched = watched.replaceAll(HREF_LINE_WHITESPACE_PATTERN, '')
 
   watched = watched.trim()
   if (watched.length <= 0) {

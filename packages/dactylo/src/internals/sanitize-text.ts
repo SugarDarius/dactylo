@@ -5,10 +5,19 @@ export const NUL_PATTERN = /\u0000/gu
 /** Pattern for the BOM character. */
 export const BOM_PATTERN = /\uFEFF/gu
 
-/** C0 controls except TAB, LF, CR (allowed in plain text). */
+/**
+ * C0/C1 controls except TAB, LF, CR (allowed in plain text), plus line and
+ * paragraph separators (U+2028, U+2029).
+ */
 export const DISALLOWED_CONTROL_PATTERN =
   // oxlint-disable-next-line no-control-regex require-unicode-regexp
-  /[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g
+  /[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u2028\u2029]/g
+
+/** Zero-width space. Collides with DOM paint caret mapping. */
+export const ZWSP_PATTERN = /\u200B/gu
+
+/** Language/tag characters used to hide payloads (U+E0001, U+E0020–U+E007F). */
+export const UNICODE_TAG_PATTERN = /[\u{E0001}\u{E0020}-\u{E007F}]/gu
 
 /** Bidirectional control characters. */
 export const BIDI_CONTROL_PATTERN =
@@ -22,12 +31,15 @@ export const BIDI_CONTROL_PATTERN =
  * or UX, and normalizes Unicode:
  *  - Removes the NUL (U+0000) character that breaks JS strings, DOM sync, and storage.
  *  - Removes the BOM (U+FEFF) character anywhere in the text.
- *  - Removes C0 controls except TAB, LF, CR (allowed in plain text).
- *  - Matches bidirectional control characters and isolates (not normal Arabic/Hebrew letters).
+ *  - Removes C0/C1 controls except TAB, LF, CR (allowed in plain text).
+ *  - Removes line and paragraph separators (U+2028, U+2029).
+ *  - Removes zero-width space (U+200B), which collides with DOM paint caret mapping.
+ *  - Removes Unicode tag characters (U+E0001, U+E0020–U+E007F).
+ *  - Removes bidirectional control characters and isolates (not normal Arabic/Hebrew letters).
  *    @see https://unicode.org/reports/tr9/#Explicit_Directional_Embeddings
  *
  * Applies an NFC normalization to the text for consistent storage and comparison.
- * Surrogate pairs and ZWJ sequences (emoji) are preserved.
+ * Surrogate pairs, ZWJ sequences (emoji), and ZWNJ are preserved.
  */
 export function sanitizeText(text: string): string {
   let final = text
@@ -36,6 +48,8 @@ export function sanitizeText(text: string): string {
   final = final.replaceAll(BOM_PATTERN, '')
 
   final = final.replaceAll(DISALLOWED_CONTROL_PATTERN, '')
+  final = final.replaceAll(ZWSP_PATTERN, '')
+  final = final.replaceAll(UNICODE_TAG_PATTERN, '')
   final = final.replaceAll(BIDI_CONTROL_PATTERN, '')
   final = final.normalize('NFC')
 

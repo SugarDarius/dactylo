@@ -27,6 +27,9 @@ describe('sanitizeLinkHref', () => {
     expect(sanitizeLinkHref('https://user:pass@example.com/secret')).toBe(
       'https://example.com/secret',
     )
+    expect(sanitizeLinkHref('https://example.com@evil.com')).toBe(
+      'https://evil.com/',
+    )
   })
 
   test('prefixes https for scheme-less www and bare domains', () => {
@@ -47,9 +50,30 @@ describe('sanitizeLinkHref', () => {
     expect(sanitizeLinkHref('#hash')).toBe('')
     expect(sanitizeLinkHref('./next')).toBe('')
     expect(sanitizeLinkHref('../up')).toBe('')
+    expect(sanitizeLinkHref('//evil.com')).toBe('')
     expect(sanitizeLinkHref('ftp://example.com')).toBe('')
+    expect(sanitizeLinkHref('blob:https://example.com/abc')).toBe('')
+    expect(sanitizeLinkHref('view-source:https://example.com')).toBe('')
     expect(sanitizeLinkHref('https://')).toBe('')
     expect(sanitizeLinkHref('https://javascript:alert(1)')).toBe('')
+  })
+
+  test('rejects obfuscated executable schemes', () => {
+    // oxlint-disable-next-line no-script-url
+    expect(sanitizeLinkHref('java\nscript:alert(1)')).toBe('')
+    expect(sanitizeLinkHref('javascript\t:alert(1)')).toBe('')
+    expect(sanitizeLinkHref('JAVA SCRIPT:alert(1)')).toBe('')
+    expect(sanitizeLinkHref('\\javascript:alert(1)')).toBe('')
+  })
+
+  test('does not keep bidi or ZWSP in a stored href', () => {
+    const withZwsp = sanitizeLinkHref('https://exa\u200Bmple.com')
+    expect(withZwsp).toBe('https://example.com/')
+    expect(withZwsp).not.toContain('\u200B')
+
+    const withBidi = sanitizeLinkHref('https://example.com/\u202Epath')
+    expect(withBidi).toBe('https://example.com/path')
+    expect(withBidi).not.toContain('\u202E')
   })
 })
 
@@ -68,6 +92,7 @@ describe('isRelativeUrl', () => {
     expect(isRelativeUrl('#top')).toBe(true)
     expect(isRelativeUrl('./a')).toBe(true)
     expect(isRelativeUrl('../a')).toBe(true)
+    expect(isRelativeUrl('//evil.com')).toBe(true)
     expect(isRelativeUrl('google.com')).toBe(false)
   })
 })
