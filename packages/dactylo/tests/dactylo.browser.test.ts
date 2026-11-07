@@ -151,6 +151,36 @@ describe('Dactylo selection', () => {
     expect(editor.selection.tools.isFocused()).toBe(false)
   })
 
+  test('focus after trailing divider places the caret in the last inline block', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    editor.blocks.commands.insertDivider()
+    typeText(editor, 'World')
+    editor.blocks.commands.insertDivider()
+
+    const trailingParagraphId = editor.getContext().state.blockOrderById.at(-1)
+    if (!trailingParagraphId) {
+      throw new Error('Expected a trailing paragraph after divider insert')
+    }
+    editor.blocks.commands.delete(trailingParagraphId)
+
+    const { state } = editor.getContext()
+    const types = state.blockOrderById.map(
+      (id) => state.blocks.get(id)?.__type ?? null,
+    )
+    expect(types).toEqual(['paragraph', 'divider', 'paragraph', 'divider'])
+
+    const world = nthInlineBlock(editor.getContext(), 2)
+    editor.selection.commands.blur()
+    editor.selection.commands.focus()
+
+    expect(requireCursor(editor.getContext())).toMatchObject({
+      blockId: world.id,
+      offset: 5,
+    })
+  })
+
   test('Escape via sendKeydown clears the selection', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()

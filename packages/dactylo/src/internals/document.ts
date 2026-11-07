@@ -588,18 +588,25 @@ export function normalizeRange(
 }
 
 /**
- * Creates a collapsed cursor at the end of the last block in document order.
- * Returns `null` on when the document has no blocks. However, this case should never
- * happen based on the design and the current invariants implemented.
+ * Creates a collapsed cursor at the end of the last block that can hold a
+ * caret (inline content). Trailing dividers are skipped.
+ * Returns `null` when the document has no blocks, or no inline block.
  */
 export function createCursorAtDocumentEnd(
   state: DocumentState,
 ): CursorSelection | null {
-  const lastBlockId = state.blockOrderById.at(-1)
+  const lastBlockId = state.blockOrderById[state.blockOrderById.length - 1]
   if (!lastBlockId) {
     return null
   }
 
-  const block = getBlockWithInlineContent(state, lastBlockId)
+  const lastBlock = getBlock(state, lastBlockId)
+  const block = isBlockWithInlineContent(lastBlock)
+    ? lastBlock
+    : resolvePrevInlineBlock(state, lastBlockId)
+  if (!block) {
+    return null
+  }
+
   return cursorAtBlockEnd(block.id, block)
 }
