@@ -14,6 +14,14 @@ export default defineConfig({
           name: { color: 'blue', label: 'dactylo/browser' },
         },
       },
+      {
+        extends: true,
+        test: {
+          environment: 'node',
+          include: ['tests/**/*.perf.test.ts'],
+          name: { color: 'green', label: 'dactylo/perf' },
+        },
+      },
     ],
   },
 })

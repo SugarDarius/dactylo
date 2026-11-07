@@ -67,6 +67,34 @@ TransactionPipeline  ──►  applyOps  ──►  new EditorContext
 editor.getContext() / subscribe  ──►  UI re-renders blocks and caret
 ```
 
+## Performance
+
+Performance is a design constraint: a keystroke patches one block, does not re-parse the document, and does not clone unrelated nodes.
+
+Patterns the suite documents and enforces:
+
+- **Structural sharing.** Updating one block clones the `Map` and sets that entry; other blocks keep the same object identity. `blockOrderById` is rebuilt only on insert, delete, or move.
+- **Coalesced text nodes.** Continuous typing in a paragraph stays on one `TextNode` (until a mark boundary).
+- **Fractional indexing.** Block insert is one `after()` / `between()` call; keys stay short under repeated append.
+- **Operation-based history.** Undo stores ops and inverses, not document snapshots.
+
+CPU targets:
+
+- 10k `insert_text` ops via `applyOp` < 200ms
+- 10k `after()` calls < 50ms
+- 10k `between()` calls < 100ms
+
+Memory budgets for a 10k-character document in 50 blocks (always on, 2× design ceilings):
+
+- Blocks Map < 50 KB (design ~25 KB)
+- Text content: 10 000 chars; UTF-16 payload < 24 KB
+- Node overhead < 20 KB (design ~10 KB)
+- History with 100 entries < 80 KB (design ~40 KB)
+
+```sh
+pnpm --filter @sugardarius/dactylo test        # unit + structural + local CPU gates
+```
+
 ## Packages
 
 | Import                       | What it is               |
