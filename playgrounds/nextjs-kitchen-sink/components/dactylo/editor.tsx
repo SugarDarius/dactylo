@@ -456,16 +456,10 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '**:[[dactylo-paragraph-block]]:px-1.5',
 
             // quote block
-            '**:[[dactylo-quote-block]]:flex **:[[dactylo-quote-block]]:flex-col',
+            '**:[[dactylo-quote-block]]:flex **:[[dactylo-quote-block]]:flex-row',
+            '**:[[dactylo-quote-block]]:items-stretch',
+            '**:[[dactylo-quote-block]]:gap-2',
             '**:[[dactylo-quote-block]]:px-1.5',
-
-            '[&_[dactylo-quote-block]_[dactylo-block-content]]:flex',
-            '[&_[dactylo-quote-block]_[dactylo-block-content]]:flex-row',
-            '[&_[dactylo-quote-block]_[dactylo-block-content]]:items-stretch',
-            '[&_[dactylo-quote-block]_[dactylo-block-content]]:gap-2',
-            '[&_[dactylo-quote-block]_[dactylo-block-content]]:min-w-0',
-            '[&_[dactylo-quote-block]_[dactylo-block-content]]:italic',
-            '[&_[dactylo-quote-block]_[dactylo-block-content]]:text-muted-foreground',
 
             '**:[[dactylo-quote-block-marker]]:flex',
             '**:[[dactylo-quote-block-marker]]:shrink-0',
@@ -475,6 +469,10 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '**:[[dactylo-quote-block-marker-border]]:self-stretch',
             '**:[[dactylo-quote-block-marker-border]]:rounded-full',
             '**:[[dactylo-quote-block-marker-border]]:bg-border',
+
+            '[&_[dactylo-quote-block]_[dactylo-block-content]]:min-w-0',
+            '[&_[dactylo-quote-block]_[dactylo-block-content]]:flex-1',
+            '[&_[dactylo-quote-block]_[dactylo-block-content]]:text-muted-foreground',
 
             // bullet list item block
             '**:[[dactylo-bullet-list-item-block]]:flex **:[[dactylo-bullet-list-item-block]]:flex-row',

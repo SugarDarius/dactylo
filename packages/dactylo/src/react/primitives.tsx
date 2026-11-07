@@ -327,6 +327,16 @@ const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
         aria-roledescription='quote-block'
       >
         <div
+          contentEditable={false}
+          aria-roledescription='quote-block-marker'
+          {...{ [QUOTE_BLOCK_MARKER_ATTR_NAME]: '' }}
+        >
+          <div
+            aria-roledescription='quote-block-marker-border'
+            {...{ [QUOTE_BLOCK_MARKER_BORDER_ATTR_NAME]: '' }}
+          />
+        </div>
+        <div
           id={editableId}
           role={canEdit ? 'textbox' : undefined}
           aria-roledescription='quote-block-editable'
@@ -342,16 +352,6 @@ const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
           }}
           style={{ ...EDITABLE_OUTLINE_STYLE }}
         >
-          <div
-            contentEditable={false}
-            aria-roledescription='quote-block-marker'
-            {...{ [QUOTE_BLOCK_MARKER_ATTR_NAME]: '' }}
-          >
-            <div
-              aria-roledescription='quote-block-marker-border'
-              {...{ [QUOTE_BLOCK_MARKER_BORDER_ATTR_NAME]: '' }}
-            />
-          </div>
           <ComposerInlineContent content={block.content} />
         </div>
       </div>
