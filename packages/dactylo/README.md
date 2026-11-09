@@ -221,11 +221,11 @@ export function Editor() {
 | Divider              | ✅ **Done**        | Block for UI rendering - no inline content                                                                      |
 | Quote                | ✅ **Done**        | Quote block with inline content only (a variant of `ParagraphBlock` but with a left border )                    |
 | Bullet list item     | ✅ **Done**        | Bullet list item block with inline content                                                                      |
-| Numbered list item   | 🚧 **In Progress** | Numbered list item block with inline content with variants (lower or upper alpha, lower or upper roman)         |
+| Numbered list item   | ✅ **Done**        | Numbered list item block with inline content with variants (lower or upper alpha, lower or upper roman)         |
 | Checkbox list item   | ✅ **Done**        | Checkbox list item with block inline content                                                                    |
 | Toggle list item     | 📆 **Planned**     | Toggle list item block with inline content                                                                      |
 | Code                 | 🚧 **In Progress** | Safe code block rendering code with inline content                                                              |
-| File                 | 📆 **Planned**     | File block with no inline content for rendering files                                                           |
+| File                 | 🚧 **In Progress** | File block with no inline content for rendering files                                                           |
 | Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
 | Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
 | Callout              | 📆 **Planned**     | Callout parent block with icon + sub blocks                                                                     |
