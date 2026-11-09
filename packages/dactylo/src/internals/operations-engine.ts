@@ -5,6 +5,7 @@ import {
   createCheckboxListItemBlock,
   createDividerBlock,
   createHeadingBlock,
+  createNumberedListItemBlock,
   createParagraphBlock,
   createParagraphBlockAfter,
   createQuoteBlock,
@@ -13,11 +14,12 @@ import {
   isCheckboxListItemBlock,
   isDividerBlock,
   isHeadingBlock,
+  isNumberedListItemBlock,
   isParagraphBlock,
   isQuoteBlock,
   touchBlock,
 } from './blocks'
-import type { BlockId, HeadingBlock } from './blocks'
+import type { BlockId, HeadingBlock, NumberedListItemBlock } from './blocks'
 import type { TextPlainData } from './clipboard'
 import { warn, warnIf, warnOnceIf } from './console'
 import { DeleteContentOpsBuilder } from './delete-content-ops-builder'
@@ -480,6 +482,33 @@ export class OperationsEngine {
 
         return { label: 'insert-bullet-list-item', ops }
       }
+      case 'numbered_list_item': {
+        const numberedListItem = createNumberedListItemBlock({
+          content: [insertedText],
+          metadata: spec.metadata,
+          posKey,
+          variant: spec.variant,
+        })
+
+        const ops: Operation[] = [
+          {
+            __type: 'insert_block',
+            afterBlockId,
+            block: numberedListItem,
+          },
+          {
+            __type: 'set_selection',
+            next: createCursor({
+              blockId: numberedListItem.id,
+              nodeId: insertedText.id,
+              offset: 0,
+            }),
+            prev: selection,
+          },
+        ]
+
+        return { label: 'insert-numbered-list-item', ops }
+      }
       case 'checkbox_list_item': {
         const checkboxListItem = createCheckboxListItemBlock({
           checked: spec.checked,
@@ -598,6 +627,20 @@ export class OperationsEngine {
     return this.#buildInsertBlockOps(
       context,
       { metadata, type: 'bullet_list_item' },
+      pos,
+    )
+  }
+
+  /** Builds operations to insert a {@link NumberedListItemBlock}. */
+  buildInsertNumberedListItemBlockOps(
+    context: EditorContext,
+    variant?: NumberedListItemBlock['variant'],
+    pos?: InsertOrMoveBlockPosition,
+    metadata?: Metadata,
+  ): BuilderOpsIntent | null {
+    return this.#buildInsertBlockOps(
+      context,
+      { metadata, type: 'numbered_list_item', variant },
       pos,
     )
   }
@@ -737,6 +780,31 @@ export class OperationsEngine {
 
         return { label: 'patch-bullet-list-item', ops }
       }
+      case 'numbered_list_item': {
+        if (!isNumberedListItemBlock(source)) {
+          warnIf(
+            this.#debug,
+            `Cannot patch numbered list item block ${blockId} because source type is ${source.__type}`,
+            'OperationsEngine/buildPatchBlockOps',
+          )
+          return null
+        }
+
+        const ops: Operation[] = [
+          {
+            __type: 'update_block',
+            patch: touchBlock({
+              ...source,
+              content: spec.content ?? source.content,
+              metadata: spec.metadata ?? source.metadata,
+              variant: spec.variant ?? source.variant,
+            }),
+            snapshot: source,
+          },
+        ]
+
+        return { label: 'patch-numbered-list-item', ops }
+      }
       case 'checkbox_list_item': {
         if (!isCheckboxListItemBlock(source)) {
           warnIf(
@@ -840,6 +908,22 @@ export class OperationsEngine {
     return this.#buildPatchBlockOps(context, blockId, {
       ...opts,
       type: 'bullet_list_item',
+    })
+  }
+
+  /** Builds operations to patch a {@link NumberedListItemBlock}. */
+  buildPatchNumberedListItemBlockOps(
+    context: EditorContext,
+    blockId: BlockId,
+    opts?: {
+      variant?: NumberedListItemBlock['variant']
+      content?: InlineNode[]
+      metadata?: Metadata
+    },
+  ): BuilderOpsIntent | null {
+    return this.#buildPatchBlockOps(context, blockId, {
+      ...opts,
+      type: 'numbered_list_item',
     })
   }
 

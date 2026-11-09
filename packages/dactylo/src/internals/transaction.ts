@@ -1,4 +1,4 @@
-import type { BlockId, HeadingBlock } from './blocks'
+import type { BlockId, HeadingBlock, NumberedListItemBlock } from './blocks'
 import { readTransferredData } from './clipboard'
 import { warn, warnOnceIf } from './console'
 import {
@@ -1402,6 +1402,36 @@ export class TransactionPipeline {
     })
   }
 
+  /** Inserts a {@link NumberedListItemBlock} at the given document position. */
+  insertNumberedListItemBlock(
+    opts: {
+      /** Where to insert the numbered list item block. */
+      pos?: InsertOrMoveBlockPosition
+      /** Variant to use in order to display item marker. */
+      variant?: NumberedListItemBlock['variant']
+      /** Metadata to associate with the numbered list item block. */
+      metadata?: Metadata
+    },
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildInsertNumberedListItemBlockOps(
+      this.#context,
+      opts.variant,
+      opts.pos,
+      opts.metadata,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
   /** Inserts a {@link CheckboxListItemBlock} at the given document position. */
   insertCheckboxListItemBlock(
     opts: {
@@ -1462,7 +1492,7 @@ export class TransactionPipeline {
   /** Patches a {@link ParagraphBlock} by ID with the given options. */
   patchParagraphBlock(
     blockId: BlockId,
-    opts: { content?: InlineNode[]; metadata?: Metadata } | undefined,
+    opts: { content?: InlineNode[]; metadata?: Metadata },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
     const intent = this.#operationsEngine.buildPatchParagraphBlockOps(
@@ -1485,7 +1515,7 @@ export class TransactionPipeline {
   /** Patches a {@link QuoteBlock} by ID with the given options. */
   patchQuoteBlock(
     blockId: BlockId,
-    opts: { content?: InlineNode[]; metadata?: Metadata } | undefined,
+    opts: { content?: InlineNode[]; metadata?: Metadata },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
     const intent = this.#operationsEngine.buildPatchQuoteBlockOps(
@@ -1508,13 +1538,11 @@ export class TransactionPipeline {
   /** Patches a {@link HeadingBlock} by ID with the given options. */
   patchHeadingBlock(
     blockId: BlockId,
-    opts:
-      | {
-          level?: HeadingBlock['level']
-          content?: InlineNode[]
-          metadata?: Metadata
-        }
-      | undefined,
+    opts: {
+      level?: HeadingBlock['level']
+      content?: InlineNode[]
+      metadata?: Metadata
+    },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
     const intent = this.#operationsEngine.buildPatchHeadingBlockOps(
@@ -1537,7 +1565,7 @@ export class TransactionPipeline {
   /** Patches a {@link BulletListItemBlock} by ID with the given options. */
   patchBulletListItemBlock(
     blockId: BlockId,
-    opts: { content?: InlineNode[]; metadata?: Metadata } | undefined,
+    opts: { content?: InlineNode[]; metadata?: Metadata },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
     const intent = this.#operationsEngine.buildPatchBulletListItemBlockOps(
@@ -1557,16 +1585,41 @@ export class TransactionPipeline {
     })
   }
 
+  /** Patches a {@link NumberedListItemBlock} by ID with the given options. */
+  patchNumberedListItemBlock(
+    blockId: BlockId,
+    opts: {
+      variant?: NumberedListItemBlock['variant']
+      content?: InlineNode[]
+      metadata?: Metadata
+    },
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    const intent = this.#operationsEngine.buildPatchNumberedListItemBlockOps(
+      this.#context,
+      blockId,
+      opts,
+    )
+    if (intent === null) {
+      return
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
+      pushToHistory: true,
+      source,
+    })
+  }
+
   /** Patches a {@link CheckboxListItemBlock} by ID with the given options. */
   patchCheckboxListItemBlock(
     blockId: BlockId,
-    opts:
-      | {
-          checked?: boolean
-          content?: InlineNode[]
-          metadata?: Metadata
-        }
-      | undefined,
+    opts: {
+      checked?: boolean
+      content?: InlineNode[]
+      metadata?: Metadata
+    },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
     const intent = this.#operationsEngine.buildPatchCheckboxListItemBlockOps(
@@ -1589,7 +1642,7 @@ export class TransactionPipeline {
   /** Patches a {@link DividerBlock} by ID with the given options. */
   patchDividerBlock(
     blockId: BlockId,
-    opts: { metadata?: Metadata } | undefined,
+    opts: { metadata?: Metadata },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
     const intent = this.#operationsEngine.buildPatchDividerBlockOps(

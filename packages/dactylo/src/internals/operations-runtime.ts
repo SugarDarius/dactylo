@@ -2,6 +2,7 @@ import {
   createBulletListItemBlock,
   createCheckboxListItemBlock,
   createHeadingBlock,
+  createNumberedListItemBlock,
   createParagraphBlock,
   createQuoteBlock,
   findNodeInBlockWithInlineContent,
@@ -731,6 +732,23 @@ export function applyMutateBlockTypeOp(
         ),
       )
     }
+    case 'to_numbered_list_item': {
+      const next = createNumberedListItemBlock({
+        content: [...prev.content],
+        metadata: op.dropMetadata ? undefined : prev.metadata,
+        parentId: prev.parentId,
+        posKey: prev.posKey,
+        variant: op.spec.variant,
+      })
+
+      return withDocumentState(
+        context,
+        putBlock(
+          context.state,
+          touchBlock({ ...next, createdAt: prev.createdAt, id: prev.id }),
+        ),
+      )
+    }
     case 'to_checkbox_list_item': {
       const next = createCheckboxListItemBlock({
         checked: op.spec.checked,
@@ -1051,6 +1069,18 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
             snapshot: op.snapshot,
             spec: {
               kind: 'to_bullet_list_item',
+            },
+          }
+        }
+        case 'numbered_list_item': {
+          return {
+            __type: 'mutate_block_type',
+            blockId: op.blockId,
+            dropMetadata: op.dropMetadata,
+            snapshot: op.snapshot,
+            spec: {
+              kind: 'to_numbered_list_item',
+              variant: op.snapshot.variant,
             },
           }
         }

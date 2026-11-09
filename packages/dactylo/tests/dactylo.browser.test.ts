@@ -20,6 +20,7 @@ import {
   DEFAULT_MARKDOWN_SHORTCUTS_ENABLED,
   DEFAULT_MENTION_CHARACTER,
   DEFAULT_MENTIONS_ENABLED,
+  DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
   DEFAULT_QUOTE_PLACEHOLDER,
 } from '../src/internals/constants'
@@ -84,6 +85,7 @@ describe('Dactylo construction', () => {
         character: DEFAULT_MENTION_CHARACTER,
         enabled: DEFAULT_MENTIONS_ENABLED,
       },
+      numberedList: { placeholder: DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER },
       paragraph: { placeholder: 'Notes…' },
       quote: { placeholder: DEFAULT_QUOTE_PLACEHOLDER },
     })
@@ -101,6 +103,7 @@ describe('Dactylo construction', () => {
           locales: 'fr-FR',
           markdown: { enabled: false },
           mentions: { character: '#', enabled: false },
+          numberedList: { placeholder: 'Numero' },
           paragraph: { placeholder: 'Start here' },
           quote: { placeholder: 'Quote' },
         },
@@ -117,6 +120,7 @@ describe('Dactylo construction', () => {
       locales: 'fr-FR',
       markdown: { enabled: false },
       mentions: { character: '#', enabled: false },
+      numberedList: { placeholder: 'Numero' },
       paragraph: { placeholder: 'Start here' },
       quote: { placeholder: 'Quote' },
     })

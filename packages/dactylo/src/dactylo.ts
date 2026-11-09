@@ -1,4 +1,8 @@
-import type { BlockId, HeadingBlock } from './internals/blocks'
+import type {
+  BlockId,
+  HeadingBlock,
+  NumberedListItemBlock,
+} from './internals/blocks'
 import { error, warnOnceIf } from './internals/console'
 import {
   DEFAULT_AUTOLINK_ENABLED,
@@ -205,6 +209,7 @@ export type DactyloCommand =
   | 'blocks/insert-quote'
   | 'blocks/insert-heading'
   | 'blocks/insert-bullet-list-item'
+  | 'blocks/insert-numbered-list-item'
   | 'blocks/insert-checkbox-list-item'
   | 'blocks/insert-divider'
   | 'blocks/duplicate'
@@ -214,6 +219,7 @@ export type DactyloCommand =
   | 'blocks/patch-quote'
   | 'blocks/patch-heading'
   | 'blocks/patch-bullet-list-item'
+  | 'blocks/patch-numbered-list-item'
   | 'blocks/patch-checkbox-list-item'
   | 'blocks/patch-divider'
 
@@ -754,6 +760,29 @@ export interface DactyloBlocksCommands {
   ) => void
 
   /**
+   * Inserts a {@link NumberedListItemBlock} at the given position with metadata.
+   * By defaults it inserts after the current selection.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.insertNumberedListItem()
+   * editor.blocks.commands.insertNumberedListItem({ pos: 'end' })
+   * editor.blocks.commands.insertNumberedListItem({}, 'ai-agent')
+   * ```
+   */
+  readonly insertNumberedListItem: (
+    opts?: {
+      /** Where to insert the {@link NumberedListItemBlock}. */
+      pos?: InsertOrMoveBlockPosition
+      /** Variant to use in order to display item marker. */
+      variant: NumberedListItemBlock['variant']
+      /** Metadata to associate with the numbered list item block. */
+      metadata?: Metadata
+    },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
    * Inserts a {@link CheckboxListItemBlock} at the given position with metadata.
    * By defaults it inserts after the current selection.
    *
@@ -902,6 +931,25 @@ export interface DactyloBlocksCommands {
   readonly patchBulletListItem: (
     blockId: BlockId,
     opts: { content?: InlineNode[]; metadata?: Metadata },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+
+  /**
+   * Patches a {@link NumberedListItemBlock} in place with the given options.
+   *
+   * @example
+   * ```ts
+   * editor.blocks.commands.patchNumberedListItem(blockId, { variant: 'alpha' })
+   * editor.blocks.commands.patchNumberedListItem(blockId, { variant: 'alpha' }, 'ai-agent')
+   * ```
+   */
+  readonly patchNumberedListItem: (
+    blockId: BlockId,
+    opts: {
+      variant?: NumberedListItemBlock['variant']
+      content?: InlineNode[]
+      metadata?: Metadata
+    },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 
@@ -1942,6 +1990,7 @@ export class Dactylo {
             noop,
             { payload: { source } },
           ),
+
         /**
          * Inserts a {@link DividerBlock} at the given position with metadata.
          * By defaults it inserts after the current selection.
@@ -1977,6 +2026,25 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'blocks/insert-heading',
             () => this.#pipeline.insertHeadingBlock(level, opts, source),
+            noop,
+            { payload: { source } },
+          ),
+
+        /**
+         * Inserts a {@link NumberedListItemBlock} at the given position with metadata.
+         * By defaults it inserts after the current selection.
+         */
+        insertNumberedListItem: (
+          opts: {
+            pos?: InsertOrMoveBlockPosition
+            variant?: NumberedListItemBlock['variant']
+            metadata?: Metadata
+          } = {},
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/insert-numbered-list-item',
+            () => this.#pipeline.insertNumberedListItemBlock(opts, source),
             noop,
             { payload: { source } },
           ),
@@ -2088,6 +2156,24 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'blocks/patch-heading',
             () => this.#pipeline.patchHeadingBlock(blockId, opts, source),
+            noop,
+            { payload: { blockId, source } },
+          ),
+
+        /** Patches a {@link NumberedListItemBlock} in place with the given options. */
+        patchNumberedListItem: (
+          blockId: BlockId,
+          opts: {
+            variant?: NumberedListItemBlock['variant']
+            content?: InlineNode[]
+            metadata?: Metadata
+          },
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/patch-numbered-list-item',
+            () =>
+              this.#pipeline.patchNumberedListItemBlock(blockId, opts, source),
             noop,
             { payload: { blockId, source } },
           ),

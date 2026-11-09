@@ -21,6 +21,7 @@ import type {
   BlockId,
   BlockWithInlineContent,
   HeadingBlock,
+  NumberedListItemBlock,
 } from './blocks'
 import type { Marks } from './marks'
 import type { InlineNode, NodeId } from './nodes'
@@ -162,6 +163,11 @@ export interface MutateBlockTypeOp {
     | { kind: 'to_paragraph' }
     | { kind: 'to_quote' }
     | { kind: 'to_bullet_list_item' }
+    | {
+        kind: 'to_numbered_list_item'
+        /** Variant to use in order to display item marker. */
+        variant: NumberedListItemBlock['variant']
+      }
     | {
         kind: 'to_checkbox_list_item'
         /** Whether the item is checked. */

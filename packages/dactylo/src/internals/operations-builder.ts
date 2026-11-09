@@ -1,5 +1,10 @@
 import { findNodeInBlockWithInlineContent } from './blocks'
-import type { BlockId, BlockWithInlineContent, HeadingBlock } from './blocks'
+import type {
+  BlockId,
+  BlockWithInlineContent,
+  HeadingBlock,
+  NumberedListItemBlock,
+} from './blocks'
 import { getBlock } from './document'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
@@ -148,6 +153,15 @@ export type InsertBlockSpec = Relax<
       readonly metadata?: Metadata
     }
   | {
+      readonly type: 'numbered_list_item'
+
+      /** Variant to use in order to display item marker. */
+      readonly variant?: NumberedListItemBlock['variant']
+
+      /** Metadata to attach to the {@link NumberedListItemBlock}. */
+      readonly metadata?: Metadata
+    }
+  | {
       readonly type: 'checkbox_list_item'
 
       /** Whether the item is checked. */
@@ -194,6 +208,15 @@ export type PatchBlockSpec = {
       readonly type: 'bullet_list_item'
 
       /** {@link BulletListItemBlock}'s content. */
+      readonly content?: InlineNode[]
+    }
+  | {
+      readonly type: 'numbered_list_item'
+
+      /** {@link NumberedListItemBlock}'s variant. */
+      readonly variant?: NumberedListItemBlock['variant']
+
+      /** {@link NumberedListItemBlock}'s content. */
       readonly content?: InlineNode[]
     }
   | {
