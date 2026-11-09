@@ -59,7 +59,7 @@
   },
   "scripts": {
     "dev": "tsdown --watch",
-    "build": "tsdown",
+    "build": "tsdown --minify",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
