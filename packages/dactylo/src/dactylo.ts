@@ -775,7 +775,7 @@ export interface DactyloBlocksCommands {
       /** Where to insert the {@link NumberedListItemBlock}. */
       pos?: InsertOrMoveBlockPosition
       /** Variant to use in order to display item marker. */
-      variant: NumberedListItemBlock['variant']
+      variant?: NumberedListItemBlock['variant']
       /** Metadata to associate with the numbered list item block. */
       metadata?: Metadata
     },

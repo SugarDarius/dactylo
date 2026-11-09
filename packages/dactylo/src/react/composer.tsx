@@ -15,7 +15,12 @@ import type {
   DactyloStaticConfig,
   DactyloToolEvent,
 } from '../dactylo'
-import type { Block, BlockId, HeadingBlock } from '../internals/blocks'
+import type {
+  Block,
+  BlockId,
+  HeadingBlock,
+  NumberedListItemBlock,
+} from '../internals/blocks'
 import {
   EDITABLE_NODE_BOLD_MARK_DATA_NAME,
   EDITABLE_NODE_CODE_MARK_DATA_NAME,
@@ -757,6 +762,48 @@ export function useBulletLists() {
     ) =>
       editor.blocks.commands.patchBulletListItem(
         bulletListItemBlockId,
+        opts,
+        source,
+      ),
+  )
+
+  return {
+    duplicate,
+    insert,
+    isEmpty,
+    move,
+    patch,
+    remove,
+  } as const
+}
+
+export function useNumberedLists() {
+  const { editor } = useComposer()
+  const { isEmpty, duplicate, move, remove } = useBlocks()
+
+  const insert = useStableCallback(
+    (
+      opts?: {
+        pos?: InsertOrMoveBlockPosition
+        variant?: NumberedListItemBlock['variant']
+        metadata?: Metadata
+      },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.insertNumberedListItem(opts, source),
+  )
+
+  const patch = useStableCallback(
+    (
+      numberedListItemBlockId: BlockId,
+      opts: {
+        variant?: NumberedListItemBlock['variant']
+        content?: InlineNode[]
+        metadata?: Metadata
+      },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) =>
+      editor.blocks.commands.patchNumberedListItem(
+        numberedListItemBlockId,
         opts,
         source,
       ),
