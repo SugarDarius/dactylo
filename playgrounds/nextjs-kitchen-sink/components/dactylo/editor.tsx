@@ -520,11 +520,10 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             '**:[[dactylo-numbered-list-item-marker]]:flex-col',
             '**:[[dactylo-numbered-list-item-marker]]:justify-center',
             '**:[[dactylo-numbered-list-item-marker]]:items-center',
-            '**:[[dactylo-numbered-list-item-marker]]:p-1.5',
+            '**:[[dactylo-numbered-list-item-marker]]:p-1',
 
             '**:[[dactylo-numbered-list-item-marker-index]]:shrink-0',
             '**:[[dactylo-numbered-list-item-marker-index]]:select-none',
-            '**:[[dactylo-numbered-list-item-marker-index]]:tabular-nums',
 
             '[&_[dactylo-numbered-list-item-block]_[dactylo-block-content]]:min-w-0',
             '[&_[dactylo-numbered-list-item-block]_[dactylo-block-content]]:flex-1',

@@ -6,7 +6,7 @@ import type {
 } from '../../internals/blocks'
 import { ROMAN_TABLE } from '../../internals/constants'
 
-/** 1 → `i`, 4 → `iv`, 9 → `ix`. */
+/** Converts a 1-based index to a lowercase roman numeral (`1` → `i`, `4` → `iv`). */
 export function toRomanIndex(n: number): string {
   let value = n
   let result = ''
@@ -19,7 +19,7 @@ export function toRomanIndex(n: number): string {
   return result
 }
 
-/** 1 → `a`, 26 → `z`, 27 → `aa`. */
+/** Converts a 1-based index to a lowercase alphabetic label (`1` → `a`, `27` → `aa`). */
 export function toAlphaIndex(n: number): string {
   let value = n
   let result = ''
@@ -32,8 +32,12 @@ export function toAlphaIndex(n: number): string {
 }
 
 /**
- * Formats the marker index for a numbered list item
- * based on the variant set in the block.
+ * Turns a 1-based position in a numbered-list run into the marker glyph
+ * for a {@link NumberedListItemBlock} variant.
+ *
+ * `default` → `1.` · `alpha` → `a.` · `roman` → `i.`
+ *
+ * The index is the item's place in its run, not its index in the document.
  */
 export function formatMarkerIndex(
   index: number,
@@ -52,6 +56,21 @@ export function formatMarkerIndex(
   }
 }
 
+/**
+ * Builds the marker glyph for every {@link NumberedListItemBlock} in document order.
+ *
+ * A run is consecutive numbered list items that share the same `variant`.
+ * The counter resets when the next block is missing, is not a numbered list
+ * item, or uses a different variant.
+ *
+ * @example
+ * ```txt
+ * default, default, roman, paragraph, default
+ * 1.       2.       i.                 1.
+ * ```
+ *
+ * Markers are derived from `order` — they are not stored on the block.
+ */
 export function computeMarkerIndexes(
   order: readonly BlockId[],
   blocks: ReadonlyMap<BlockId, Block>,
