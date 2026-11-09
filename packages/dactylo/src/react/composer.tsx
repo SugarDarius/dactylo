@@ -53,6 +53,7 @@ import {
   useStableValue,
   useSyncExternalStoreWithSelector,
 } from './internals/hooks'
+import { computeMarkerIndexes } from './internals/number-lists'
 import type { ComposerContext } from './types'
 
 // --- Composer Context ─────────────────────────────────────────----
@@ -229,6 +230,16 @@ export function useBlock(blockId: BlockId): Block | null {
   return useEditorContextStore(
     ({ state }) => state.blocks.get(blockId) ?? null,
     shallow,
+  )
+}
+
+/**
+ * Returns the marker indexes for the numbered list items.
+ * @private
+ */
+export function useNumberedListItemMarkerIndexes(): Map<BlockId, string> {
+  return useEditorContextStore(({ state }) =>
+    computeMarkerIndexes(state.blockOrderById, state.blocks),
   )
 }
 
@@ -827,6 +838,22 @@ export function useNumberedLists() {
     patch,
     remove,
   } as const
+}
+
+/**
+ * Returns the marker index for a numbered list item.
+ *
+ * @example
+ * ```tsx
+ * const markerIndex = useNumberedListItemMarkerIndex(blockId)
+ * console.log(markerIndex) // '1.' | 'i.' | 'a.'
+ * ```
+ */
+export function useNumberedListItemMarkerIndex(
+  blockId: BlockId,
+): string | null {
+  const indexes = useNumberedListItemMarkerIndexes()
+  return indexes.get(blockId) ?? null
 }
 
 /**

@@ -300,7 +300,7 @@ export function Toolbar() {
               />
               <TooltipContent>Insert</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent className='w-40' align='start'>
+            <DropdownMenuContent className='w-48' align='start'>
               <DropdownMenuGroup>
                 <DropdownMenuLabel>Basic Blocks</DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => insertParagraph()}>
@@ -350,6 +350,20 @@ export function Toolbar() {
                 <DropdownMenuItem onClick={() => insertNumberedListItem()}>
                   <ListOrdered className='size-3.5' />
                   Numbered List
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => insertNumberedListItem({ variant: 'alpha' })}
+                >
+                  <ListOrdered className='size-3.5' />
+                  Numbered List{' '}
+                  <span className='text-muted-foreground text-xs'>(alpha)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => insertNumberedListItem({ variant: 'roman' })}
+                >
+                  <ListOrdered className='size-3.5' />
+                  Numbered List{' '}
+                  <span className='text-muted-foreground text-xs'>(roman)</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => insertCheckboxListItem()}>
                   <SquareCheck className='size-3.5' />

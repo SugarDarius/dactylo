@@ -57,6 +57,7 @@ import {
   useEditableNode,
   useEditorConfig,
   useFocus,
+  useNumberedListItemMarkerIndex,
 } from './composer'
 import {
   COMPOSER_BLOCK_NAME,
@@ -506,6 +507,8 @@ const ComposerNumberedListItemBlock = forwardRef<
   const { numberedList } = useEditorConfig()
   const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block.id)
 
+  const markerIndex = useNumberedListItemMarkerIndex(block.id)
+
   return (
     <div
       {...props}
@@ -529,7 +532,7 @@ const ComposerNumberedListItemBlock = forwardRef<
           aria-roledescription='numbered-list-item-marker-index'
           {...{ [NUMBERED_LIST_ITEM_MARKER_INDEX_ATTR_NAME]: '' }}
         >
-          1.
+          {markerIndex}
         </div>
       </div>
       <div
