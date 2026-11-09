@@ -12,6 +12,7 @@ import {
   DEFAULT_MARKDOWN_SHORTCUTS_ENABLED,
   DEFAULT_MENTION_CHARACTER,
   DEFAULT_MENTIONS_ENABLED,
+  DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER,
   DEFAULT_PARAGRAPH_PLACEHOLDER,
   DEFAULT_QUOTE_PLACEHOLDER,
 } from './internals/constants'
@@ -125,6 +126,12 @@ export interface DactyloStaticConfig {
   /** Configuration for bulleted lists. */
   readonly bulletedList: {
     /** Placeholder text when a bullet list item is created or empty. */
+    readonly placeholder: string
+  }
+
+  /** Configuration for numbered lists. */
+  readonly numberedList: {
+    /** Placeholder text when a numbered list item is created or empty. */
     readonly placeholder: string
   }
 
@@ -1034,6 +1041,15 @@ export interface DactyloConfigOptions {
       readonly placeholder?: string
     }
 
+    /** Configuration for numbered lists. */
+    readonly numberedList?: {
+      /**
+       * Placeholder text when a numbered list item is created or empty.
+       * Defaults to {@link DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER}.
+       */
+      readonly placeholder?: string
+    }
+
     /** Configuration for checkbox lists. */
     readonly checkboxList?: {
       /**
@@ -1187,6 +1203,11 @@ export class Dactylo {
           DEFAULT_MENTION_CHARACTER,
         enabled:
           options.config?.editor?.mentions?.enabled ?? DEFAULT_MENTIONS_ENABLED,
+      },
+      numberedList: {
+        placeholder:
+          options.config?.editor?.numberedList?.placeholder ??
+          DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER,
       },
       paragraph: {
         placeholder:

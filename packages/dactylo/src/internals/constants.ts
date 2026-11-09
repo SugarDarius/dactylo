@@ -13,6 +13,9 @@ export const DEFAULT_HEADING_PLACEHOLDER = `Heading ${HEADING_LEVEL_REPLACER}`
 /** Default placeholder text for empty {@link BulletListItemBlock}. */
 export const DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER = 'List'
 
+/** Default placeholder text for empty {@link NumberedListItemBlock}. */
+export const DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER = 'Item'
+
 /** Default placeholder text for empty {@link CheckboxListItemBlock}. */
 export const DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER = 'Task'
 
