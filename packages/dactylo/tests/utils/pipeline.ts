@@ -59,6 +59,7 @@ type SerializedBlock =
   | {
       readonly content: readonly SerializedInline[]
       readonly id: Block['id']
+      readonly markerNumbering: string
       readonly type: 'numbered_list_item'
       readonly variant: 'default' | 'alpha' | 'roman'
     }
@@ -157,6 +158,7 @@ function serializeBlock(block: Block): SerializedBlock {
     return {
       content: block.content.map(serializeInline),
       id: block.id,
+      markerNumbering: block.markerNumbering,
       type: 'numbered_list_item',
       variant: block.variant,
     }

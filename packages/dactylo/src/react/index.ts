@@ -24,7 +24,6 @@ export {
   useIsSelectedBlock,
   useMark,
   useMarks,
-  useNumberedListItemMarkerIndex,
   useNumberedLists,
   useParagraphs,
   useQuotes,

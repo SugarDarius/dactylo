@@ -33,6 +33,7 @@ import {
   buildDeleteRangeCrossBlockIntent,
   buildDeleteRangeWithinBlockIntent,
   buildError,
+  buildReindexAfterRemovedNumberedItemOps,
   OperationsBuilder,
   rangeCollapsedError,
   resolvesMergeBlocksUndoFields,
@@ -195,18 +196,21 @@ export const cursorRules: DeleteContentOpsRule[] = [
       }
 
       const { block, at } = situation
-      return withTrailingSelectionOp(
-        [
-          {
-            __type: 'mutate_block_type',
-            blockId: block.id,
-            snapshot: block,
-            spec: { kind: 'to_paragraph' },
-          },
-        ],
-        createCursor(at),
-        context.selection,
-      )
+      const ops: Operation[] = [
+        {
+          __type: 'mutate_block_type',
+          blockId: block.id,
+          snapshot: block,
+          spec: { kind: 'to_paragraph' },
+        },
+      ]
+      if (isNumberedListItemBlock(block)) {
+        ops.push(
+          ...buildReindexAfterRemovedNumberedItemOps(context.state, block),
+        )
+      }
+
+      return withTrailingSelectionOp(ops, createCursor(at), context.selection)
     },
     name: 'cursor/delete-content/at-block-start/empty-block-to-paragraph',
     when: ({ context, situation }): boolean => {
@@ -259,16 +263,23 @@ export const cursorRules: DeleteContentOpsRule[] = [
         const afterBlockId =
           currentIdx > 9 ? (state.blockOrderById[currentIdx - 1] ?? null) : null
 
+        const deleteOps: Operation[] = [
+          ...ops,
+          {
+            __type: 'delete_block',
+            afterBlockId,
+            blockId: block.id,
+            snapshot: block,
+          },
+        ]
+        if (isNumberedListItemBlock(block)) {
+          deleteOps.push(
+            ...buildReindexAfterRemovedNumberedItemOps(state, block),
+          )
+        }
+
         return withTrailingSelectionOp(
-          [
-            ...ops,
-            {
-              __type: 'delete_block',
-              afterBlockId,
-              blockId: block.id,
-              snapshot: block,
-            },
-          ],
+          deleteOps,
           cursorAtBlockEnd(targetBlock.id, targetBlock),
           context.selection,
         )
@@ -301,19 +312,24 @@ export const cursorRules: DeleteContentOpsRule[] = [
         strippedTarget,
       )
 
+      const mergeOps: Operation[] = [
+        ...ops,
+        {
+          __type: 'merge_blocks',
+          mergedTailSnapshot: [...stripped.sourceContent],
+          sourceBlockId: block.id,
+          sourceSnapshot: strippedSource,
+          splitAtNodeId,
+          splitAtOffset,
+          targetBlockId: targetBlock.id,
+        },
+      ]
+      if (isNumberedListItemBlock(block)) {
+        mergeOps.push(...buildReindexAfterRemovedNumberedItemOps(state, block))
+      }
+
       return withTrailingSelectionOp(
-        [
-          ...ops,
-          {
-            __type: 'merge_blocks',
-            mergedTailSnapshot: [...stripped.sourceContent],
-            sourceBlockId: block.id,
-            sourceSnapshot: strippedSource,
-            splitAtNodeId,
-            splitAtOffset,
-            targetBlockId: targetBlock.id,
-          },
-        ],
+        mergeOps,
         createCursor({
           blockId: targetBlock.id,
           nodeId: splitAtNodeId,

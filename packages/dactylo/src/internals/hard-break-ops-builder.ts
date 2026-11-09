@@ -26,12 +26,15 @@ import {
   isInlineNodeWithEditableText,
 } from './nodes'
 import type { InlineNode, InlineNodeWithEditableText } from './nodes'
+import { nextMarkerNumbering } from './numbered-list-marker'
 import type { Operation } from './operations'
 import {
   buildDeleteRangeCrossBlockIntent,
   buildDeleteRangeWithinBlockIntent,
   buildDeleteTextRunIntent,
   buildError,
+  buildReindexAfterRemovedNumberedItemOps,
+  buildReindexNumberedListSuffixOps,
   computeSplitTailSnapshot,
   OperationsBuilder,
   rangeCollapsedError,
@@ -146,6 +149,10 @@ export function createBlockAfterHardBreak(
   if (isNumberedListItemBlock(source)) {
     return createNumberedListItemBlock({
       content,
+      markerNumbering: nextMarkerNumbering(
+        source.markerNumbering,
+        source.variant,
+      ),
       metadata,
       parentId: source.parentId,
       posKey,
@@ -185,16 +192,21 @@ export function buildHardBreakBlockOpsAtCaret(
       isQuoteBlock(block)) &&
     isInlineContentWithoutVisibleText(block.content)
   ) {
+    const ops: Operation[] = [
+      {
+        __type: 'mutate_block_type',
+        blockId: block.id,
+        snapshot: block,
+        spec: { kind: 'to_paragraph' },
+      },
+    ]
+    if (isNumberedListItemBlock(block)) {
+      ops.push(...buildReindexAfterRemovedNumberedItemOps(state, block))
+    }
+
     return {
       next: createCursor(at),
-      ops: [
-        {
-          __type: 'mutate_block_type',
-          blockId: block.id,
-          snapshot: block,
-          spec: { kind: 'to_paragraph' },
-        },
-      ],
+      ops,
     }
   }
 
@@ -241,6 +253,19 @@ export function buildHardBreakBlockOpsAtCaret(
       block: insertedBlock,
     })
 
+    if (
+      isNumberedListItemBlock(block) &&
+      isNumberedListItemBlock(insertedBlock)
+    ) {
+      ops.push(
+        ...buildReindexNumberedListSuffixOps(state, block.id, {
+          kind: 'continue',
+          markerNumbering: insertedBlock.markerNumbering,
+          variant: block.variant,
+        }),
+      )
+    }
+
     return { next, ops }
   }
 
@@ -271,19 +296,31 @@ export function buildHardBreakBlockOpsAtCaret(
     )
   }
 
-  return {
-    next,
-    ops: [
-      {
-        __type: 'split_block',
-        atNodeId: at.nodeId,
-        atOffset: at.offset,
-        blockId: block.id,
-        newBlock: insertedBlock,
-        tailSnapshot,
-      },
-    ],
+  const ops: Operation[] = [
+    {
+      __type: 'split_block',
+      atNodeId: at.nodeId,
+      atOffset: at.offset,
+      blockId: block.id,
+      newBlock: insertedBlock,
+      tailSnapshot,
+    },
+  ]
+
+  if (
+    isNumberedListItemBlock(block) &&
+    isNumberedListItemBlock(insertedBlock)
+  ) {
+    ops.push(
+      ...buildReindexNumberedListSuffixOps(state, block.id, {
+        kind: 'continue',
+        markerNumbering: insertedBlock.markerNumbering,
+        variant: block.variant,
+      }),
+    )
   }
+
+  return { next, ops }
 }
 
 /** Rules for cursor selection. */

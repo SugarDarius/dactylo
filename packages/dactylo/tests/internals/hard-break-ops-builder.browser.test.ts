@@ -361,6 +361,7 @@ describe('TransactionPipeline hard break', () => {
     expect(successor.__type).toBe('numbered_list_item')
     if (successor.__type === 'numbered_list_item') {
       expect(successor.variant).toBe('default')
+      expect(successor.markerNumbering).toBe('2.')
     }
     assertUndoRedo(pipeline, before)
   })

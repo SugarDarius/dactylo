@@ -110,6 +110,9 @@ export interface NumberedListItemBlock extends IBlockWithInlineContext {
    * ```
    */
   readonly variant: 'default' | 'alpha' | 'roman'
+
+  /** Marker numbering for this item (`1.`, `a.`, `ii.`). */
+  readonly markerNumbering: string
 }
 
 /** Block representing a checkbox list item. */
@@ -277,17 +280,24 @@ export function createNumberedListItemBlock(opts: {
   posKey: PosKey
   parentId?: BlockId | null
   variant?: 'default' | 'alpha' | 'roman'
+  markerNumbering?: string
 }): NumberedListItemBlock {
+  const variant = opts.variant ?? 'default'
+  const markerNumbering =
+    opts.markerNumbering ??
+    (variant === 'alpha' ? 'a.' : variant === 'roman' ? 'i.' : '1.')
+
   return {
     __type: 'numbered_list_item',
     content: opts.content,
     createdAt: new Date(),
     id: generateBlockId(),
+    markerNumbering,
     metadata: opts.metadata ?? {},
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
-    variant: opts.variant ?? 'default',
+    variant,
   }
 }
 
@@ -423,6 +433,7 @@ export function cloneBlock(source: Block, posKey: PosKey): Block {
     case 'numbered_list_item': {
       return createNumberedListItemBlock({
         content: cloneBlockInlineContent(source.content),
+        markerNumbering: source.markerNumbering,
         metadata: source.metadata,
         parentId: source.parentId,
         posKey,

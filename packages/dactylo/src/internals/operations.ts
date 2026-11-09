@@ -167,6 +167,8 @@ export interface MutateBlockTypeOp {
         kind: 'to_numbered_list_item'
         /** Variant to use in order to display item marker. */
         variant: NumberedListItemBlock['variant']
+        /** Marker numbering for this item (`1.`, `a.`, `ii.`). */
+        markerNumbering: string
       }
     | {
         kind: 'to_checkbox_list_item'

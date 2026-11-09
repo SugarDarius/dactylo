@@ -31,6 +31,7 @@ import {
   getBlockWithInlineContent,
   isBlockWithInlineContentEmpty,
   isMoveBlockNoOp,
+  markerNumberingForInsert,
   resolveInsertAfterBlockId,
 } from './document'
 import type { EditorContext } from './editor-context'
@@ -43,8 +44,17 @@ import type { MarkKey } from './marks'
 import { MarksOpsBuilder } from './marks-ops-builder'
 import { createTextNode } from './nodes'
 import type { InlineNode } from './nodes'
+import {
+  formatMarkerNumbering,
+  markerNumberingAfterNeighbor,
+  parseMarkerNumbering,
+} from './numbered-list-marker'
 import type { Operation } from './operations'
-import { buildError } from './operations-builder'
+import {
+  buildError,
+  buildReindexAfterRemovedNumberedItemOps,
+  buildReindexNumberedListSuffixOps,
+} from './operations-builder'
 import type {
   BuilderOpsIntent,
   InsertBlockSpec,
@@ -483,11 +493,17 @@ export class OperationsEngine {
         return { label: 'insert-bullet-list-item', ops }
       }
       case 'numbered_list_item': {
+        const variant = spec.variant ?? 'default'
         const numberedListItem = createNumberedListItemBlock({
           content: [insertedText],
+          markerNumbering: markerNumberingForInsert(
+            state,
+            afterBlockId,
+            variant,
+          ),
           metadata: spec.metadata,
           posKey,
-          variant: spec.variant,
+          variant,
         })
 
         const ops: Operation[] = [
@@ -496,6 +512,11 @@ export class OperationsEngine {
             afterBlockId,
             block: numberedListItem,
           },
+          ...buildReindexNumberedListSuffixOps(state, afterBlockId, {
+            kind: 'continue',
+            markerNumbering: numberedListItem.markerNumbering,
+            variant,
+          }),
           {
             __type: 'set_selection',
             next: createCursor({
@@ -790,18 +811,41 @@ export class OperationsEngine {
           return null
         }
 
+        const variant = spec.variant ?? source.variant
+        const ordinal =
+          parseMarkerNumbering(source.markerNumbering, source.variant) ?? 1
+        const markerNumbering =
+          variant === source.variant
+            ? source.markerNumbering
+            : formatMarkerNumbering(ordinal, variant)
+
         const ops: Operation[] = [
           {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
               content: spec.content ?? source.content,
+              markerNumbering,
               metadata: spec.metadata ?? source.metadata,
-              variant: spec.variant ?? source.variant,
+              variant,
             }),
             snapshot: source,
           },
         ]
+
+        if (variant !== source.variant) {
+          ops.push(
+            ...buildReindexNumberedListSuffixOps(context.state, source.id, {
+              kind: 'continue',
+              markerNumbering,
+              variant,
+            }),
+            ...buildReindexNumberedListSuffixOps(context.state, source.id, {
+              kind: 'restart',
+              variant: source.variant,
+            }),
+          )
+        }
 
         return { label: 'patch-numbered-list-item', ops }
       }
@@ -968,7 +1012,13 @@ export class OperationsEngine {
     const posKey = computeInsertBlockPosKey(state, pos)
     const afterBlockId = resolveInsertAfterBlockId(state, pos)
 
-    const clone = cloneBlock(source, posKey)
+    let clone = cloneBlock(source, posKey)
+    if (isNumberedListItemBlock(source) && isNumberedListItemBlock(clone)) {
+      clone = {
+        ...clone,
+        markerNumbering: markerNumberingAfterNeighbor(source, source.variant),
+      }
+    }
 
     const ops: Operation[] = [
       {
@@ -977,6 +1027,16 @@ export class OperationsEngine {
         block: clone,
       },
     ]
+
+    if (isNumberedListItemBlock(clone)) {
+      ops.push(
+        ...buildReindexNumberedListSuffixOps(state, source.id, {
+          kind: 'continue',
+          markerNumbering: clone.markerNumbering,
+          variant: clone.variant,
+        }),
+      )
+    }
 
     /**
      * Invariant UX:
@@ -1069,6 +1129,13 @@ export class OperationsEngine {
         blockId,
         snapshot: block,
       },
+    ]
+
+    if (isNumberedListItemBlock(block)) {
+      ops.push(...buildReindexAfterRemovedNumberedItemOps(state, block))
+    }
+
+    ops.push(
       /**
        * Invariant UX:
        * Assuming after a block deletion we can't predict where
@@ -1079,7 +1146,7 @@ export class OperationsEngine {
         next: null,
         prev: selection,
       },
-    ]
+    )
 
     return { label: 'delete', ops }
   }

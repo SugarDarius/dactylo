@@ -735,6 +735,7 @@ export function applyMutateBlockTypeOp(
     case 'to_numbered_list_item': {
       const next = createNumberedListItemBlock({
         content: [...prev.content],
+        markerNumbering: op.spec.markerNumbering,
         metadata: op.dropMetadata ? undefined : prev.metadata,
         parentId: prev.parentId,
         posKey: prev.posKey,
@@ -1080,6 +1081,7 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
             snapshot: op.snapshot,
             spec: {
               kind: 'to_numbered_list_item',
+              markerNumbering: op.snapshot.markerNumbering,
               variant: op.snapshot.variant,
             },
           }

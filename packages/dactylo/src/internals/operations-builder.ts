@@ -1,4 +1,8 @@
-import { findNodeInBlockWithInlineContent } from './blocks'
+import {
+  findNodeInBlockWithInlineContent,
+  isNumberedListItemBlock,
+  touchBlock,
+} from './blocks'
 import type {
   BlockId,
   BlockWithInlineContent,
@@ -6,6 +10,7 @@ import type {
   NumberedListItemBlock,
 } from './blocks'
 import { getBlock } from './document'
+import type { DocumentState } from './document'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import { createBaseMarks, isMarksEqual } from './marks'
@@ -29,7 +34,11 @@ import type {
   NodeId,
   TextNode,
 } from './nodes'
-import type { Operation } from './operations'
+import {
+  defaultMarkerNumbering,
+  nextMarkerNumbering,
+} from './numbered-list-marker'
+import type { Operation, UpdateBlockOp } from './operations'
 import type { RangeSelection, Selection, TextCursor } from './selection'
 import type { Metadata, Relax } from './types'
 import { assertNever } from './utils'
@@ -1508,4 +1517,127 @@ export function buildPartialMarkRangeOps(
     marked: { from: 0, nodeId: node.id, to: middleLen },
     ops,
   }
+}
+
+/**
+ * Builds `update_block` ops so numbered items after `fromExclusiveBlockId`
+ * stay consecutive in the same variant run.
+ *
+ * `fromExclusiveBlockId` is the block immediately before the suffix
+ * (`null` = from the start of the document).
+ *
+ * - `continue` — increment from the given marker while the variant matches.
+ * - `keep-start` — first numbered item keeps its marker; later same-variant items increment.
+ * - `restart` — first matching-variant item becomes `1.` / `a.` / `i.`; later items increment.
+ */
+export function buildReindexNumberedListSuffixOps(
+  state: DocumentState,
+  fromExclusiveBlockId: BlockId | null,
+  seed:
+    | {
+        kind: 'continue'
+        markerNumbering: string
+        variant: NumberedListItemBlock['variant']
+      }
+    | { kind: 'keep-start' }
+    | {
+        kind: 'restart'
+        variant: NumberedListItemBlock['variant']
+      },
+): UpdateBlockOp[] {
+  const order = state.blockOrderById
+  const start =
+    fromExclusiveBlockId === null ? -1 : order.indexOf(fromExclusiveBlockId)
+  if (fromExclusiveBlockId !== null && start === -1) {
+    return []
+  }
+
+  const ops: UpdateBlockOp[] = []
+  let previous: string | null =
+    seed.kind === 'continue' ? seed.markerNumbering : null
+  let variant: NumberedListItemBlock['variant'] | null =
+    seed.kind === 'keep-start' ? null : seed.variant
+
+  for (let i = start + 1; i < order.length; i += 1) {
+    const blockId = order[i]
+    if (blockId === undefined) {
+      break
+    }
+    const block = state.blocks.get(blockId)
+    if (block === undefined || !isNumberedListItemBlock(block)) {
+      break
+    }
+
+    const { markerNumbering, variant: blockVariant } = block
+
+    if (seed.kind === 'keep-start') {
+      if (variant === null) {
+        variant = blockVariant
+        previous = markerNumbering
+        continue
+      }
+      if (blockVariant !== variant || previous === null) {
+        break
+      }
+      const next = nextMarkerNumbering(previous, variant)
+      if (next !== markerNumbering) {
+        ops.push({
+          __type: 'update_block',
+          patch: touchBlock({ ...block, markerNumbering: next }),
+          snapshot: block,
+        })
+      }
+      previous = next
+      continue
+    }
+
+    if (variant === null || blockVariant !== variant) {
+      break
+    }
+
+    const next =
+      previous === null
+        ? defaultMarkerNumbering(variant)
+        : nextMarkerNumbering(previous, variant)
+    if (next !== markerNumbering) {
+      ops.push({
+        __type: 'update_block',
+        patch: touchBlock({ ...block, markerNumbering: next }),
+        snapshot: block,
+      })
+    }
+    previous = next
+  }
+
+  return ops
+}
+
+/**
+ * Reindexes the run after a numbered item that left the list
+ * (delete, merge, or mutate to paragraph).
+ */
+export function buildReindexAfterRemovedNumberedItemOps(
+  state: DocumentState,
+  removed: NumberedListItemBlock,
+): UpdateBlockOp[] {
+  const order = state.blockOrderById
+  const idx = order.indexOf(removed.id)
+  const prevId = idx > 0 ? (order[idx - 1] ?? null) : null
+  const prev = prevId === null ? undefined : state.blocks.get(prevId)
+
+  if (
+    prev &&
+    isNumberedListItemBlock(prev) &&
+    prev.variant === removed.variant
+  ) {
+    return buildReindexNumberedListSuffixOps(state, removed.id, {
+      kind: 'continue',
+      markerNumbering: prev.markerNumbering,
+      variant: prev.variant,
+    })
+  }
+
+  return buildReindexNumberedListSuffixOps(state, removed.id, {
+    kind: 'keep-start',
+  })
 }

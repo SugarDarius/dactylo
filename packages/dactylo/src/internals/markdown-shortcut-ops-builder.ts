@@ -7,9 +7,14 @@ import {
   isBulletListItemBlock,
   isCheckboxListItemBlock,
   isHeadingBlock,
+  isNumberedListItemBlock,
   isQuoteBlock,
 } from './blocks'
-import type { BlockWithInlineContent, HeadingBlock } from './blocks'
+import type {
+  BlockWithInlineContent,
+  HeadingBlock,
+  NumberedListItemBlock,
+} from './blocks'
 import { warn } from './console'
 import {
   ATX_MARKDOWN_HEADING_WITH_TRIGGER_SPACE_PATTERN,
@@ -28,7 +33,11 @@ import {
   MARKDOWN_LINK_SHORTCUT_PATTERN,
   MARKDOWN_MARK_SHORTCUT_REQUIRED_CHAR_BEFORE_OPEN_DELIMITER,
   MARKDOWN_STRIKETHROUGH_MARK_SHORTCUT_CLOSING_DELIMITERS,
+  NUMBERED_LIST_ITEM_MARKDOWN_SHORTCUT_TOKEN_PATTERN,
+  NUMBERED_LIST_ITEM_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN,
   QUOTE_BLOCK_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN,
+  ROMAN_NUMERAL_TOKEN_PATTERN,
+  ROMAN_SINGLE_LETTER,
   STRIKETHROUGH_MARKDOWN_TILDE_SHORTCUT_PATTERN,
 } from './constants'
 import {
@@ -47,10 +56,12 @@ import {
   isTextNode,
 } from './nodes'
 import type { InlineNodeWithEditableText } from './nodes'
+import { parseRomanIndex } from './numbered-list-marker'
 import type { Operation } from './operations'
 import {
   buildError,
   buildPartialMarkRangeOps,
+  buildReindexNumberedListSuffixOps,
   OperationsBuilder,
   withTrailingSelectionOp,
 } from './operations-builder'
@@ -137,6 +148,57 @@ export function isMarkdownQuoteShortcut(nodeText: string): boolean {
 /** Whether the node text is a bullet list item markdown shortcut. */
 export function isMarkdownBulletListItemShortcut(nodeText: string): boolean {
   return BULLET_LIST_ITEM_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN.test(nodeText)
+}
+
+/**
+ * Parses a leading markdown numbered-list prefix including the trigger space
+ * (`2. `, `a. `, `ii. `).
+ *
+ * `i.` / `v.` / `x.` and longer roman tokens are roman; other single letters
+ * are alpha; digits are default.
+ */
+export function parseNumberedListMarkdownShortcut(nodeText: string): {
+  readonly markerNumbering: string
+  readonly variant: NumberedListItemBlock['variant']
+} | null {
+  const match =
+    NUMBERED_LIST_ITEM_MARKDOWN_SHORTCUT_TOKEN_PATTERN.exec(nodeText)
+  const token = match?.groups?.token
+  if (token === undefined) {
+    return null
+  }
+
+  if (/^\d+$/u.test(token)) {
+    const n = Number(token)
+    if (n <= 0) {
+      return null
+    }
+    return { markerNumbering: `${token}.`, variant: 'default' }
+  }
+
+  if (ROMAN_NUMERAL_TOKEN_PATTERN.test(token)) {
+    const roman = parseRomanIndex(token)
+    if (
+      roman !== null &&
+      (token.length > 1 || ROMAN_SINGLE_LETTER.has(token))
+    ) {
+      return { markerNumbering: `${token}.`, variant: 'roman' }
+    }
+  }
+
+  if (/^[a-z]$/u.test(token)) {
+    return { markerNumbering: `${token}.`, variant: 'alpha' }
+  }
+
+  return null
+}
+
+/** Whether the node text is a numbered list item markdown shortcut. */
+export function isMarkdownNumberedListItemShortcut(nodeText: string): boolean {
+  return (
+    NUMBERED_LIST_ITEM_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN.test(nodeText) &&
+    parseNumberedListMarkdownShortcut(nodeText) !== null
+  )
 }
 
 /** Whether the node text is a checkbox list item markdown shortcut. */
@@ -785,6 +847,86 @@ const rules: MarkdownShortcutOpsRule[] = [
       }
 
       return isMarkdownBulletListItemShortcut(node.text)
+    },
+  },
+  {
+    /**
+     * 💡 Cursor is at the end of a {@link BlockWithInlineContent} whose entire first
+     *    text node is `2.`, `a.`, or `ii.`, and the typed character is
+     *    {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
+     * 🎯 Mutate the block into a {@link NumberedListItemBlock} with that marker
+     *    and strip the prefix.
+     */
+    build: ({ context, situation, input }): Operation[] | null => {
+      if (
+        situation.kind !== 'cursor-selection' ||
+        input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
+      ) {
+        return null
+      }
+
+      const { block, node } = situation
+      const parsed = parseNumberedListMarkdownShortcut(node.text)
+      if (parsed === null) {
+        return null
+      }
+
+      const ops: Operation[] = [
+        {
+          __type: 'mutate_block_type',
+          blockId: block.id,
+          snapshot: block,
+          spec: {
+            kind: 'to_numbered_list_item',
+            markerNumbering: parsed.markerNumbering,
+            variant: parsed.variant,
+          },
+        },
+        {
+          __type: 'delete_text',
+          blockId: block.id,
+          length: node.text.length,
+          nodeId: node.id,
+          offset: 0,
+          snapshot: { text: node.text },
+        },
+        ...buildReindexNumberedListSuffixOps(context.state, block.id, {
+          kind: 'continue',
+          markerNumbering: parsed.markerNumbering,
+          variant: parsed.variant,
+        }),
+        {
+          __type: 'set_selection',
+          next: createCursor({ blockId: block.id, nodeId: node.id, offset: 0 }),
+          prev: context.selection,
+        },
+      ]
+
+      return ops
+    },
+    name: 'cursor/numbered-list-item/inline-detector-trigger-character',
+    when: ({ situation, input }): boolean => {
+      if (
+        situation.kind !== 'cursor-selection' ||
+        input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
+      ) {
+        return false
+      }
+
+      const { block, node, at } = situation
+      if (at.offset !== node.text.length) {
+        return false
+      }
+
+      if (!isBlockWithInlineContent(block) || isNumberedListItemBlock(block)) {
+        return false
+      }
+
+      if (!isSingleLeadingTextNodeForMarkdownShortcut(block, node)) {
+        return false
+      }
+
+      return isMarkdownNumberedListItemShortcut(node.text)
     },
   },
   {

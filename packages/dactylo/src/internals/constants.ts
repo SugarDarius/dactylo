@@ -239,6 +239,28 @@ export const ATX_MARKDOWN_HEADING_WITH_TRIGGER_SPACE_PATTERN =
 export const BULLET_LIST_ITEM_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN = /^- $/u
 
 /**
+ * Numbered list item markdown shortcut with trigger pattern.
+ * Matched after the user types {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
+ *
+ * Digits (`1. `), a single letter (`a. `), or a roman numeral (`ii. `).
+ *
+ * @example
+ * ```txt
+ * User type: 2.<space>
+ * Node text: "2. "
+ * ```
+ */
+export const NUMBERED_LIST_ITEM_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN =
+  /^(?:\d+|[a-z]+)\. $/u
+
+/**
+ * Captures the token before `. ` in a numbered-list markdown shortcut
+ * (`2. ` → `2`, `ii. ` → `ii`).
+ */
+export const NUMBERED_LIST_ITEM_MARKDOWN_SHORTCUT_TOKEN_PATTERN =
+  /^(?<token>.+)\. $/u
+
+/**
  * Quote block markdown shortcut with trigger pattern.
  * Matched after the user types {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
  *
@@ -410,6 +432,12 @@ export const MARKDOWN_LINK_SHORTCUT_CLOSING_DELIMITERS = [')']
  * satisfies CommonMark-style “left-flanking” typing UX (`Hello **there**`).
  */
 export const MARKDOWN_MARK_SHORTCUT_REQUIRED_CHAR_BEFORE_OPEN_DELIMITER = /\s/u
+
+/** Single-letter tokens that are roman, not alpha (`i.`, `v.`, `x.`). */
+export const ROMAN_SINGLE_LETTER = new Set(['i', 'v', 'x'])
+
+/** Lowercase roman numeral token (`i`, `iv`, `xii`). */
+export const ROMAN_NUMERAL_TOKEN_PATTERN = /^[ivxlcdm]+$/u
 
 /** Roman numeral table. */
 export const ROMAN_TABLE = [

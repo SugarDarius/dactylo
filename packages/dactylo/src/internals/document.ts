@@ -3,9 +3,18 @@ import {
   isBlockWithInlineContent,
   sortBlockOrder,
 } from './blocks'
-import type { Block, BlockId, BlockWithInlineContent } from './blocks'
+import type {
+  Block,
+  BlockId,
+  BlockWithInlineContent,
+  NumberedListItemBlock,
+} from './blocks'
 import { DactyloError } from './errors'
 import { createTextNode, isInlineContentEmpty } from './nodes'
+import {
+  defaultMarkerNumbering,
+  markerNumberingAfterNeighbor,
+} from './numbered-list-marker'
 import type { InsertOrMoveBlockPosition } from './operations-builder'
 import {
   after,
@@ -330,6 +339,18 @@ export function resolveInsertAfterBlockId(
       assertNever(pos, { hint: 'DocumentState/#resolveInsertAfterBlockId' })
     }
   }
+}
+
+/** Marker for a block inserted after `afterBlockId` (`null` = start of document). */
+export function markerNumberingForInsert(
+  state: DocumentState,
+  afterBlockId: BlockId | null,
+  variant: NumberedListItemBlock['variant'],
+): string {
+  if (afterBlockId === null) {
+    return defaultMarkerNumbering(variant)
+  }
+  return markerNumberingAfterNeighbor(state.blocks.get(afterBlockId), variant)
 }
 
 /**
