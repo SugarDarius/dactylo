@@ -377,13 +377,17 @@ export function resolveNextInlineBlock(
   state: DocumentState,
   blockId: BlockId,
 ): BlockWithInlineContent | null {
-  let { next } = getBlockNeighbors(state, blockId)
-  while (next) {
-    const block = getBlock(state, next)
+  const { next: firstNext } = getBlockNeighbors(state, blockId)
+  let nextBlockId = firstNext
+
+  while (nextBlockId) {
+    const block = getBlock(state, nextBlockId)
     if (isBlockWithInlineContent(block)) {
       return block
     }
-    ;({ next } = getBlockNeighbors(state, next))
+
+    const { next } = getBlockNeighbors(state, nextBlockId)
+    nextBlockId = next
   }
   return null
 }
@@ -393,13 +397,17 @@ export function resolvePrevInlineBlock(
   state: DocumentState,
   blockId: BlockId,
 ): BlockWithInlineContent | null {
-  let { prev } = getBlockNeighbors(state, blockId)
-  while (prev) {
-    const block = getBlock(state, prev)
+  const { prev: firstPrev } = getBlockNeighbors(state, blockId)
+  let prevBlockId = firstPrev
+
+  while (prevBlockId) {
+    const block = getBlock(state, prevBlockId)
     if (isBlockWithInlineContent(block)) {
       return block
     }
-    ;({ prev } = getBlockNeighbors(state, prev))
+
+    const { prev } = getBlockNeighbors(state, prevBlockId)
+    prevBlockId = prev
   }
   return null
 }
