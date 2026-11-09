@@ -20,6 +20,7 @@ import type {
   HeadingBlock,
   NumberedListItemBlock,
 } from '../internals/blocks'
+import { warn } from '../internals/console'
 import {
   EDITABLE_NODE_BOLD_MARK_DATA_NAME,
   EDITABLE_NODE_CODE_MARK_DATA_NAME,
@@ -853,7 +854,17 @@ export function useNumberedListItemMarkerIndex(
   blockId: BlockId,
 ): string | null {
   const indexes = useNumberedListItemMarkerIndexes()
-  return indexes.get(blockId) ?? null
+  const index = indexes.get(blockId)
+
+  if (index === undefined) {
+    warn(`No marker index found for block ${blockId}`, {
+      hint: 'React/useNumberedListItemMarkerIndex',
+    })
+
+    return null
+  }
+
+  return index
 }
 
 /**
