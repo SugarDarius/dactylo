@@ -39,6 +39,7 @@ import {
   NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME,
   NUMBERED_LIST_ITEM_MARKER_ATTR_NAME,
   NUMBERED_LIST_ITEM_MARKER_INDEX_ATTR_NAME,
+  NUMBERED_LIST_ITEM_VARIANT_DATA_NAME,
   PARAGRAPH_BLOCK_ATTR_NAME,
   QUOTE_BLOCK_ATTR_NAME,
   QUOTE_BLOCK_MARKER_ATTR_NAME,
@@ -514,6 +515,7 @@ const ComposerNumberedListItemBlock = forwardRef<
         [BLOCK_ID_DATA_NAME]: block.id,
         [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
         [NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME]: '',
+        [NUMBERED_LIST_ITEM_VARIANT_DATA_NAME]: block.variant,
       }}
       data-active={isActive ?? undefined}
       aria-roledescription='numbered-list-item-block'

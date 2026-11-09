@@ -123,6 +123,9 @@ export const BULLET_LIST_ITEM_MARKER_DOT_ATTR_NAME =
 /** {@link NumberedListItemBlock} attribute name. */
 export const NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME =
   'dactylo-numbered-list-item-block'
+/** Numbered list item variant data name. */
+export const NUMBERED_LIST_ITEM_VARIANT_DATA_NAME =
+  'data-dactylo-numbered-list-item-variant'
 /** Numbered list item marker attribute name. */
 export const NUMBERED_LIST_ITEM_MARKER_ATTR_NAME =
   'dactylo-numbered-list-item-marker'
