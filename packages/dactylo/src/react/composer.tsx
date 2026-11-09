@@ -1145,11 +1145,13 @@ export function useEditableBlock(blockId: BlockId) {
   const withActiveSelection = useIsSelectedBlock(blockId)
   const isEmpty = useIsBlockEmpty(blockId)
 
+  const isActive = canEdit && withActiveSelection
+
   return {
     canEdit,
     editableId,
+    isActive,
     isEmpty,
-    withActiveSelection,
   } as const
 }
 

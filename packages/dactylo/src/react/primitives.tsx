@@ -36,6 +36,9 @@ import {
   LINK_NODE_CLICKABLE_ATTR_NAME,
   NODE_ATTR_NAME,
   NODE_ID_DATA_NAME,
+  NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME,
+  NUMBERED_LIST_ITEM_MARKER_ATTR_NAME,
+  NUMBERED_LIST_ITEM_MARKER_IDX_ATTR_NAME,
   PARAGRAPH_BLOCK_ATTR_NAME,
   QUOTE_BLOCK_ATTR_NAME,
   QUOTE_BLOCK_MARKER_ATTR_NAME,
@@ -68,6 +71,7 @@ import {
   COMPOSER_HEADING_TAGS,
   COMPOSER_LINE_BREAK_NODE_NAME,
   COMPOSER_LINK_NODE_NAME,
+  COMPOSER_NUMBERED_LIST_ITEM_BLOCK_NAME,
   COMPOSER_PARAGRAPH_BLOCK_NAME,
   COMPOSER_QUOTE_BLOCK_NAME,
   COMPOSER_ROOT_NAME,
@@ -90,6 +94,7 @@ import type {
   ComposerInlineContentProps,
   ComposerLineBreakNodeProps,
   ComposerLinkNodeProps,
+  ComposerNumberedListItemBlockProps,
   ComposerParagraphBlockProps,
   ComposerQuoteBlockProps,
   ComposerRootProps,
@@ -269,10 +274,7 @@ const ComposerParagraphBlock = forwardRef<
   ComposerParagraphBlockProps
 >(({ block, indexOfRendering, ...props }, forwardedRef) => {
   const { paragraph } = useEditorConfig()
-  const { canEdit, editableId, withActiveSelection, isEmpty } =
-    useEditableBlock(block.id)
-
-  const isActive = canEdit && withActiveSelection
+  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block.id)
 
   return (
     <div
@@ -314,10 +316,9 @@ ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
   ({ block, indexOfRendering, ...props }, forwardedRef) => {
     const { quote } = useEditorConfig()
-    const { canEdit, editableId, withActiveSelection, isEmpty } =
-      useEditableBlock(block.id)
-
-    const isActive = canEdit && withActiveSelection
+    const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(
+      block.id,
+    )
 
     return (
       <div
@@ -393,8 +394,7 @@ const ComposerHeadingBlock = forwardRef<
   ComposerHeadingBlockProps
 >(({ block, indexOfRendering, ...props }, forwardedRef) => {
   const { heading } = useEditorConfig()
-  const { canEdit, editableId, withActiveSelection, isEmpty } =
-    useEditableBlock(block.id)
+  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block.id)
 
   const Heading = ComposerHeadingsPrimitive[block.level]
   const placeholder = useMemo(
@@ -405,8 +405,6 @@ const ComposerHeadingBlock = forwardRef<
       ),
     [block.level, heading.placeholder],
   )
-
-  const isActive = canEdit && withActiveSelection
 
   return (
     <div
@@ -451,10 +449,7 @@ const ComposerBulletListItemBlock = forwardRef<
   ComposerBulletListItemBlockProps
 >(({ block, indexOfRendering, ...props }, forwardedRef) => {
   const { bulletedList } = useEditorConfig()
-  const { canEdit, editableId, withActiveSelection, isEmpty } =
-    useEditableBlock(block.id)
-
-  const isActive = canEdit && withActiveSelection
+  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block.id)
 
   return (
     <div
@@ -502,14 +497,69 @@ const ComposerBulletListItemBlock = forwardRef<
 })
 ComposerBulletListItemBlock.displayName = COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME
 
+/** Adds a {@link NumberedListItemBlock} to the composer. */
+const ComposerNumberedListItemBlock = forwardRef<
+  HTMLDivElement,
+  ComposerNumberedListItemBlockProps
+>(({ block, indexOfRendering, ...props }, forwardedRef) => {
+  const { numberedList } = useEditorConfig()
+  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block.id)
+
+  return (
+    <div
+      {...props}
+      ref={forwardedRef}
+      {...{
+        [BLOCK_ATTR_NAME]: '',
+        [BLOCK_ID_DATA_NAME]: block.id,
+        [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
+        [NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME]: '',
+      }}
+      data-active={isActive ?? undefined}
+      aria-roledescription='numbered-list-item-block'
+    >
+      <div
+        contentEditable={false}
+        aria-roledescription='numbered-list-item-marker'
+        {...{ [NUMBERED_LIST_ITEM_MARKER_ATTR_NAME]: '' }}
+      >
+        <div
+          aria-roledescription='numbered-list-item-marker-number'
+          {...{ [NUMBERED_LIST_ITEM_MARKER_IDX_ATTR_NAME]: '' }}
+        >
+          1.
+        </div>
+      </div>
+      <div
+        id={editableId}
+        aria-roledescription='bullet-list-item-block-editable'
+        aria-multiline={canEdit ? 'true' : undefined}
+        contentEditable={canEdit ? 'true' : undefined}
+        suppressContentEditableWarning
+        data-active={isActive ?? undefined}
+        data-empty={isEmpty ?? undefined}
+        {...{
+          [BLOCK_CONTENT_ATTR_NAME]: '',
+          [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
+          [BLOCK_PLACEHOLDER_ATTR_NAME]: numberedList.placeholder,
+        }}
+        style={{ ...EDITABLE_OUTLINE_STYLE }}
+      >
+        <ComposerInlineContent content={block.content} />
+      </div>
+    </div>
+  )
+})
+ComposerNumberedListItemBlock.displayName =
+  COMPOSER_NUMBERED_LIST_ITEM_BLOCK_NAME
+
 /** Adds a {@link CheckboxListItemBlock} to the composer. */
 const ComposerCheckboxListItemBlock = forwardRef<
   HTMLDivElement,
   ComposerCheckboxListItemBlockProps
 >(({ block, indexOfRendering, onCheckedChange, ...props }, forwardedRef) => {
   const { checkboxList } = useEditorConfig()
-  const { canEdit, editableId, withActiveSelection, isEmpty } =
-    useEditableBlock(block.id)
+  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block.id)
   const { patch } = useCheckboxLists()
 
   const handleClick = useStableCallback(
@@ -523,8 +573,6 @@ const ComposerCheckboxListItemBlock = forwardRef<
       onCheckedChange?.(checked)
     },
   )
-
-  const isActive = canEdit && withActiveSelection
 
   return (
     <div
@@ -635,6 +683,15 @@ const ComposerBlock = memo<ComposerBlockProps>(({ blockId, ...props }) => {
     case 'bullet_list_item': {
       return (
         <ComposerBulletListItemBlock key={block.id} {...props} block={block} />
+      )
+    }
+    case 'numbered_list_item': {
+      return (
+        <ComposerNumberedListItemBlock
+          key={block.id}
+          {...props}
+          block={block}
+        />
       )
     }
     case 'checkbox_list_item': {
@@ -754,6 +811,7 @@ export {
   ComposerQuoteBlock as QuoteBlock,
   ComposerHeadingBlock as HeadingBlock,
   ComposerBulletListItemBlock as BulletListItemBlock,
+  ComposerNumberedListItemBlock as NumberedListItemBlock,
   ComposerCheckboxListItemBlock as CheckboxListItemBlock,
   ComposerDividerBlock as DividerBlock,
   ComposerTextNode as TextNode,

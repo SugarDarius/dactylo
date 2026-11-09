@@ -12,6 +12,7 @@ import {
   useHistory,
   useMark,
   useMarks,
+  useNumberedLists,
   useParagraphs,
   useQuotes,
   useSetEditable,
@@ -143,6 +144,7 @@ export function Toolbar() {
   const { insert: insertHeading } = useHeadings()
   const { insert: insertDivider } = useDividers()
   const { insert: insertBulletListItem } = useBulletLists()
+  const { insert: insertNumberedListItem } = useNumberedLists()
   const { insert: insertCheckboxListItem } = useCheckboxLists()
   const { insert: insertQuote } = useQuotes()
 
@@ -345,7 +347,7 @@ export function Toolbar() {
                   <List className='size-3.5' />
                   Bulleted List
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled>
+                <DropdownMenuItem onClick={() => insertNumberedListItem()}>
                   <ListOrdered className='size-3.5' />
                   Numbered List
                 </DropdownMenuItem>
@@ -493,6 +495,25 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
 
             '[&_[dactylo-bullet-list-item-block]_[dactylo-block-content]]:min-w-0',
             '[&_[dactylo-bullet-list-item-block]_[dactylo-block-content]]:flex-1',
+
+            // numbered list item block
+            '**:[[dactylo-numbered-list-item-block]]:flex **:[[dactylo-numbered-list-item-block]]:flex-row',
+            '**:[[dactylo-numbered-list-item-block]]:items-center',
+            '**:[[dactylo-numbered-list-item-block]]:gap-2',
+            '**:[[dactylo-numbered-list-item-block]]:px-1.5',
+
+            '**:[[dactylo-numbered-list-item-marker]]:flex',
+            '**:[[dactylo-numbered-list-item-marker]]:flex-col',
+            '**:[[dactylo-numbered-list-item-marker]]:justify-center',
+            '**:[[dactylo-numbered-list-item-marker]]:items-center',
+            '**:[[dactylo-numbered-list-item-marker]]:p-1.5',
+
+            '**:[[dactylo-numbered-list-item-marker-idx]]:shrink-0',
+            '**:[[dactylo-numbered-list-item-marker-idx]]:select-none',
+            '**:[[dactylo-numbered-list-item-marker-idx]]:tabular-nums',
+
+            '[&_[dactylo-numbered-list-item-block]_[dactylo-block-content]]:min-w-0',
+            '[&_[dactylo-numbered-list-item-block]_[dactylo-block-content]]:flex-1',
 
             // checkbox list item block
             '**:[[dactylo-checkbox-list-item-block]]:flex **:[[dactylo-checkbox-list-item-block]]:flex-row',

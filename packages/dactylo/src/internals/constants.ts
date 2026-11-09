@@ -120,6 +120,16 @@ export const BULLET_LIST_ITEM_MARKER_ATTR_NAME =
 export const BULLET_LIST_ITEM_MARKER_DOT_ATTR_NAME =
   'dactylo-bullet-list-item-marker-dot'
 
+/** {@link NumberedListItemBlock} attribute name. */
+export const NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME =
+  'dactylo-numbered-list-item-block'
+/** Numbered list item marker attribute name. */
+export const NUMBERED_LIST_ITEM_MARKER_ATTR_NAME =
+  'dactylo-numbered-list-item-marker'
+/** Numbered list item marker number attribute name. */
+export const NUMBERED_LIST_ITEM_MARKER_IDX_ATTR_NAME =
+  'dactylo-numbered-list-item-marker-idx'
+
 /** {@link CheckboxListItemBlock} attribute name. */
 export const CHECKBOX_LIST_ITEM_BLOCK_ATTR_NAME =
   'dactylo-checkbox-list-item-block'

@@ -1,35 +1,35 @@
 import type { HeadingBlock } from '../../internals/blocks'
 
-/** The name of the composer root component. */
+/** Root component name. */
 export const COMPOSER_ROOT_NAME = 'Composer.Root'
 
-/** The name of the composer editable component. */
+/** Editable component name. */
 export const COMPOSER_EDITABLE_NAME = 'Composer.Editable'
 
-/** The name of the composer blocks component. */
+/** Blocks component name. */
 export const COMPOSER_BLOCKS_NAME = 'Composer.Blocks'
 
-/** The name of the composer block component. */
+/** Block component name. */
 export const COMPOSER_BLOCK_NAME = 'Composer.Block'
 
-/** The name of the composer paragraph block component. */
+/** Paragraph block component name. */
 export const COMPOSER_PARAGRAPH_BLOCK_NAME = 'Composer.ParagraphBlock'
 
-/** The name of the composer quote block component. */
+/** Quote block component name. */
 export const COMPOSER_QUOTE_BLOCK_NAME = 'Composer.QuoteBlock'
 
-/** The name of the composer divider block component. */
+/** Divider block component name. */
 export const COMPOSER_DIVIDER_BLOCK_NAME = 'Composer.DividerBlock'
 
-/** The name of the composer heading block component. */
+/** Heading block component name. */
 export const COMPOSER_HEADING_BLOCK_NAME = 'Composer.HeadingBlock'
 
-/** The levels of the composer heading blocks. */
+/** Levels of the heading blocks. */
 export const COMPOSER_HEADING_LEVELS: HeadingBlock['level'][] = [
   1, 2, 3, 4, 5, 6,
 ]
 
-/** Heading tags for the composer heading blocks. */
+/** Heading tags for the heading blocks. */
 export const COMPOSER_HEADING_TAGS: Record<
   HeadingBlock['level'],
   `h${HeadingBlock['level']}`
@@ -42,23 +42,27 @@ export const COMPOSER_HEADING_TAGS: Record<
   6: 'h6',
 }
 
-/** The name of the composer heading component. */
+/** Heading component name. */
 export const COMPOSER_HEADING_NAME = (level: HeadingBlock['level']) =>
   `Composer.Heading${level}`
 
-/** The name of the composer bullet list item block component. */
+/** Bullet list item block component name. */
 export const COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME =
   'Composer.BulletListItemBlock'
 
-/** The name of the composer checkbox list item block component. */
+/** Numbered list item block component name. */
+export const COMPOSER_NUMBERED_LIST_ITEM_BLOCK_NAME =
+  'Composer.NumberedListItemBlock'
+
+/** Checkbox list item block component name. */
 export const COMPOSER_CHECKBOX_LIST_ITEM_BLOCK_NAME =
   'Composer.CheckboxListItemBlock'
 
-/** The name of the composer text node component. */
+/** Text node component name. */
 export const COMPOSER_TEXT_NODE_NAME = 'Composer.TextNode'
 
-/** The name of the composer link node component. */
+/** Link node component name. */
 export const COMPOSER_LINK_NODE_NAME = 'Composer.LinkNode'
 
-/** The name of the composer line break node component. */
+/** Line break node component name. */
 export const COMPOSER_LINE_BREAK_NODE_NAME = 'Composer.LineBreakNode'

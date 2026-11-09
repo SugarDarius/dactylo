@@ -5,6 +5,7 @@ import type {
   CheckboxListItemBlock,
   DividerBlock,
   HeadingBlock,
+  NumberedListItemBlock,
   ParagraphBlock,
   QuoteBlock,
 } from '../internals/blocks'
@@ -91,6 +92,15 @@ export interface ComposerBulletListItemBlockProps extends React.HTMLAttributes<H
   block: BulletListItemBlock
 
   /** At which index the bullet list item block is rendered inside `<Composer.Editable />`. */
+  indexOfRendering: number
+}
+
+/** Props for declaring a numbered list item block component. */
+export interface ComposerNumberedListItemBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** The numbered list item block to render. */
+  block: NumberedListItemBlock
+
+  /** At which index the numbered list item block is rendered inside `<Composer.Editable />`. */
   indexOfRendering: number
 }
 
