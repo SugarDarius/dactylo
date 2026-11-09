@@ -1,6 +1,7 @@
 import {
   createParagraphBlock,
   isBlockWithInlineContent,
+  isNumberedListItemBlock,
   sortBlockOrder,
 } from './blocks'
 import type {
@@ -351,6 +352,39 @@ export function resolveMarkerNumberingForInsert(
     return getDefaultMarkerNumbering(variant)
   }
   return markerNumberingAfterNeighbor(state.blocks.get(afterBlockId), variant)
+}
+
+/**
+ * Whether the consecutive same-variant numbered-list run starting at
+ * `fromIndex` includes `blockId`.
+ *
+ * Stops at the first non-numbered block or variant change.
+ */
+export function isNumberedListRunContainingBlock(
+  state: DocumentState,
+  fromIndex: number,
+  blockId: BlockId,
+  variant: NumberedListItemBlock['variant'],
+): boolean {
+  const order = state.blockOrderById
+  for (let i = fromIndex; i < order.length; i += 1) {
+    const id = order[i]
+    if (id === undefined) {
+      return false
+    }
+    const block = state.blocks.get(id)
+    if (
+      block === undefined ||
+      !isNumberedListItemBlock(block) ||
+      block.variant !== variant
+    ) {
+      return false
+    }
+    if (block.id === blockId) {
+      return true
+    }
+  }
+  return false
 }
 
 /**

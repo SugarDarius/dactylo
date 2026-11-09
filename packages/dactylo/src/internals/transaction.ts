@@ -1689,18 +1689,32 @@ export class TransactionPipeline {
     pos: InsertOrMoveBlockPosition,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): void {
-    const intent = this.#operationsEngine.buildMoveBlockOps(
+    const moveIntent = this.#operationsEngine.buildMoveBlockOps(
       this.#context,
       blockId,
       pos,
     )
-    if (intent === null) {
+    if (moveIntent === null) {
       return
     }
 
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
+    this.#commit(moveIntent.ops, {
+      label: transactionPolicyLabel('blocks', moveIntent.label),
+      pushToHistory: true,
+      source,
+    })
+
+    const reindexIntent =
+      this.#operationsEngine.buildReindexNumberedListAfterMoveOps(
+        this.#context,
+        blockId,
+      )
+    if (reindexIntent === null) {
+      return
+    }
+
+    this.#commit(reindexIntent.ops, {
+      label: transactionPolicyLabel('blocks', reindexIntent.label),
       pushToHistory: true,
       source,
     })

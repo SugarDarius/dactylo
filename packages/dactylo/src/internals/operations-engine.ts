@@ -53,6 +53,7 @@ import type { Operation } from './operations'
 import {
   buildError,
   buildReindexAfterRemovedNumberedItemOps,
+  buildReindexNumberedListRunsOps,
   buildReindexNumberedListSuffixOps,
 } from './operations-builder'
 import type {
@@ -1089,6 +1090,22 @@ export class OperationsEngine {
     ]
 
     return { label: 'move', ops }
+  }
+
+  /**
+   * Builds operations to reindex numbered-list markers after a move.
+   * `context` must already reflect the post-move document.
+   */
+  buildReindexNumberedListAfterMoveOps(
+    context: EditorContext,
+    movedBlockId: BlockId,
+  ): BuilderOpsIntent | null {
+    const ops = buildReindexNumberedListRunsOps(context.state, movedBlockId)
+    if (ops.length === 0) {
+      return null
+    }
+
+    return { label: 'reindex-numbered-list-markers', ops }
   }
 
   /** Builds operations to delete a {@link Block} by ID. */

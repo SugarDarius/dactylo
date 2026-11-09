@@ -47,6 +47,16 @@ function replaceDocWithNumbered(
   return pipeline
 }
 
+function threeNumbered() {
+  const pipeline = replaceDocWithNumbered()
+  typeText(pipeline, 'A')
+  hardBreak(pipeline)
+  typeText(pipeline, 'B')
+  hardBreak(pipeline)
+  typeText(pipeline, 'C')
+  return pipeline
+}
+
 describe('numbered list markerNumbering', () => {
   test('insert assigns 1. then 2. and shifts a middle insert', () => {
     const pipeline = replaceDocWithNumbered()
@@ -182,6 +192,178 @@ describe('numbered list markerNumbering', () => {
     expect(requireNumbered(nthInlineBlock(pipeline.context, 2))).toMatchObject({
       markerNumbering: '1.',
       variant: 'default',
+    })
+  })
+
+  test('move last to start of 1. 2. 3. stays 1. 2. 3.', () => {
+    const pipeline = threeNumbered()
+    pipeline.moveBlock(
+      nthInlineBlock(pipeline.context, 2).id,
+      { type: 'start' },
+      'user',
+    )
+
+    expect(markers(pipeline)).toEqual(['1.', '2.', '3.'])
+  })
+
+  test('move first to end of 1. 2. 3. stays 1. 2. 3.', () => {
+    const pipeline = threeNumbered()
+    pipeline.moveBlock(
+      nthInlineBlock(pipeline.context, 0).id,
+      { type: 'end' },
+      'user',
+    )
+
+    expect(markers(pipeline)).toEqual(['1.', '2.', '3.'])
+  })
+
+  test('undo of a numbered move restores markers then position', () => {
+    const pipeline = threeNumbered()
+    const [firstId, middleId, lastId] = pipeline.context.state.blockOrderById
+    if (!(firstId && middleId && lastId)) {
+      throw new Error('Expected three numbered items')
+    }
+    const before = snapshot(pipeline.context)
+
+    pipeline.moveBlock(lastId, { type: 'start' }, 'user')
+    const after = snapshot(pipeline.context)
+
+    expect(pipeline.context.state.blockOrderById).toEqual([
+      lastId,
+      firstId,
+      middleId,
+    ])
+    expect(markers(pipeline)).toEqual(['1.', '2.', '3.'])
+
+    pipeline.undo()
+    expect(pipeline.context.state.blockOrderById).toEqual([
+      lastId,
+      firstId,
+      middleId,
+    ])
+    expect(markers(pipeline)).toEqual(['3.', '1.', '2.'])
+
+    pipeline.undo()
+    expect(snapshot(pipeline.context)).toEqual(before)
+
+    pipeline.redo()
+    expect(pipeline.context.state.blockOrderById).toEqual([
+      lastId,
+      firstId,
+      middleId,
+    ])
+    expect(markers(pipeline)).toEqual(['3.', '1.', '2.'])
+
+    pipeline.redo()
+    expect(snapshot(pipeline.context)).toEqual(after)
+  })
+
+  test('move middle item after a paragraph compactifies the leftover run', () => {
+    const pipeline = threeNumbered()
+    pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
+    pipeline.moveBlock(
+      nthInlineBlock(pipeline.context, 1).id,
+      {
+        blockId: nthInlineBlock(pipeline.context, 3).id,
+        type: 'after',
+      },
+      'user',
+    )
+
+    expect(nthInlineBlock(pipeline.context, 2).__type).toBe('paragraph')
+    expect(markers(pipeline)).toEqual(['1.', '2.', '', '1.'])
+  })
+
+  test('moving a 2.-started first item away leaves 3. as the start', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '2.')
+    typeText(pipeline, ' ')
+    typeText(pipeline, 'A')
+    hardBreak(pipeline)
+    typeText(pipeline, 'B')
+    hardBreak(pipeline)
+    typeText(pipeline, 'C')
+    expect(markers(pipeline)).toEqual(['2.', '3.', '4.'])
+
+    pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
+    pipeline.moveBlock(
+      nthInlineBlock(pipeline.context, 0).id,
+      {
+        blockId: nthInlineBlock(pipeline.context, 3).id,
+        type: 'after',
+      },
+      'user',
+    )
+
+    expect(markers(pipeline)).toEqual(['3.', '4.', '', '1.'])
+  })
+
+  test('moving a paragraph into 1. 2. 3. splits with keep-start', () => {
+    const pipeline = threeNumbered()
+    pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
+    pipeline.moveBlock(
+      nthInlineBlock(pipeline.context, 3).id,
+      {
+        blockId: nthInlineBlock(pipeline.context, 0).id,
+        type: 'after',
+      },
+      'user',
+    )
+
+    expect(nthInlineBlock(pipeline.context, 1).__type).toBe('paragraph')
+    expect(markers(pipeline)).toEqual(['1.', '', '2.', '3.'])
+  })
+
+  test('moving a paragraph out of a split list joins to 1. 2. 3.', () => {
+    const pipeline = threeNumbered()
+    pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
+    const paragraphId = nthInlineBlock(pipeline.context, 3).id
+    pipeline.moveBlock(
+      paragraphId,
+      {
+        blockId: nthInlineBlock(pipeline.context, 0).id,
+        type: 'after',
+      },
+      'user',
+    )
+    expect(markers(pipeline)).toEqual(['1.', '', '2.', '3.'])
+
+    pipeline.moveBlock(paragraphId, { type: 'end' }, 'user')
+    expect(markers(pipeline)).toEqual(['1.', '2.', '3.', ''])
+  })
+
+  test('moving a default item after a roman item starts a new 1. run', () => {
+    const pipeline = replaceDocWithNumbered('roman')
+    typeText(pipeline, 'A')
+    hardBreak(pipeline)
+    typeText(pipeline, 'B')
+    pipeline.insertNumberedListItemBlock(
+      { pos: { type: 'end' }, variant: 'default' },
+      'user',
+    )
+    expect(markers(pipeline)).toEqual(['i.', 'ii.', '1.'])
+
+    pipeline.moveBlock(
+      nthInlineBlock(pipeline.context, 2).id,
+      {
+        blockId: nthInlineBlock(pipeline.context, 0).id,
+        type: 'after',
+      },
+      'user',
+    )
+
+    expect(requireNumbered(nthInlineBlock(pipeline.context, 0))).toMatchObject({
+      markerNumbering: 'i.',
+      variant: 'roman',
+    })
+    expect(requireNumbered(nthInlineBlock(pipeline.context, 1))).toMatchObject({
+      markerNumbering: '1.',
+      variant: 'default',
+    })
+    expect(requireNumbered(nthInlineBlock(pipeline.context, 2))).toMatchObject({
+      markerNumbering: 'ii.',
+      variant: 'roman',
     })
   })
 

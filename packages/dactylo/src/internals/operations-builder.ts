@@ -9,7 +9,7 @@ import type {
   HeadingBlock,
   NumberedListItemBlock,
 } from './blocks'
-import { getBlock } from './document'
+import { getBlock, isNumberedListRunContainingBlock } from './document'
 import type { DocumentState } from './document'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
@@ -37,6 +37,7 @@ import type {
 import {
   getDefaultMarkerNumbering,
   getMarkerNumbering,
+  parseMarkerNumbering,
 } from './numbered-list-marker'
 import type { Operation, UpdateBlockOp } from './operations'
 import type { RangeSelection, Selection, TextCursor } from './selection'
@@ -1640,4 +1641,79 @@ export function buildReindexAfterRemovedNumberedItemOps(
   return buildReindexNumberedListSuffixOps(state, removed.id, {
     kind: 'keep-start',
   })
+}
+
+/**
+ * Builds `update_block` ops so numbered-list runs in the current document
+ * order stay consecutive after a move of `movedBlockId`.
+ *
+ * `state.blockOrderById` must already be the post-move order.
+ *
+ * - Same-variant successor: increment from the previous desired marker.
+ * - New run start that is the moved numbered item: `1.` / `a.` / `i.`.
+ * - New run that still contains the moved item: keep the old run's start marker.
+ * - Other new run starts: keep the stored marker.
+ */
+export function buildReindexNumberedListRunsOps(
+  state: DocumentState,
+  movedBlockId: BlockId,
+): UpdateBlockOp[] {
+  const order = state.blockOrderById
+  const moved = state.blocks.get(movedBlockId)
+  const ops: UpdateBlockOp[] = []
+  let previous: {
+    markerNumbering: string
+    variant: NumberedListItemBlock['variant']
+  } | null = null
+
+  for (let i = 0; i < order.length; i += 1) {
+    const blockId = order[i]
+    if (blockId === undefined) {
+      break
+    }
+    const block = state.blocks.get(blockId)
+    if (block === undefined || !isNumberedListItemBlock(block)) {
+      previous = null
+      continue
+    }
+
+    const { markerNumbering, variant } = block
+    let desired: string
+    if (previous !== null && previous.variant === variant) {
+      desired = getMarkerNumbering(previous.markerNumbering, variant)
+    } else if (block.id === movedBlockId) {
+      desired = getDefaultMarkerNumbering(variant)
+    } else if (
+      moved !== undefined &&
+      isNumberedListItemBlock(moved) &&
+      moved.variant === variant &&
+      isNumberedListRunContainingBlock(state, i, movedBlockId, variant)
+    ) {
+      const movedOrdinal = parseMarkerNumbering(
+        moved.markerNumbering,
+        moved.variant,
+      )
+      const startOrdinal = parseMarkerNumbering(markerNumbering, variant)
+      desired =
+        movedOrdinal !== null &&
+        startOrdinal !== null &&
+        movedOrdinal < startOrdinal
+          ? moved.markerNumbering
+          : markerNumbering
+    } else {
+      desired = markerNumbering
+    }
+
+    if (desired !== markerNumbering) {
+      ops.push({
+        __type: 'update_block',
+        patch: touchBlock({ ...block, markerNumbering: desired }),
+        snapshot: block,
+      })
+    }
+
+    previous = { markerNumbering: desired, variant }
+  }
+
+  return ops
 }
