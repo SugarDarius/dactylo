@@ -79,15 +79,15 @@ export function formatMarkerNumbering(
   }
 }
 
-/** Default first-item glyph for a variant (`1.` / `a.` / `i.`). */
-export function defaultMarkerNumbering(
+/** Gets the default first-item marker numbering for a variant (`1.` / `a.` / `i.`). */
+export function getDefaultMarkerNumbering(
   variant: NumberedListItemBlock['variant'],
 ): string {
   return formatMarkerNumbering(1, variant)
 }
 
 /**
- * Reads the 1-based ordinal from a stored marker glyph (`2.` → `2`).
+ * Reads the 1-based ordinal from a stored marker numbering (`2.` → `2`).
  * Returns `null` when the glyph does not match `variant`.
  */
 export function parseMarkerNumbering(
@@ -119,7 +119,7 @@ export function parseMarkerNumbering(
 }
 
 /** Next glyph in the same variant (`2.` → `3.`, `iv.` → `v.`). */
-export function nextMarkerNumbering(
+export function getMarkerNumbering(
   markerNumbering: string,
   variant: NumberedListItemBlock['variant'],
 ): string {
@@ -136,7 +136,7 @@ export function markerNumberingAfterNeighbor(
   variant: NumberedListItemBlock['variant'],
 ): string {
   if (prev && isNumberedListItemBlock(prev) && prev.variant === variant) {
-    return nextMarkerNumbering(prev.markerNumbering, variant)
+    return getMarkerNumbering(prev.markerNumbering, variant)
   }
-  return defaultMarkerNumbering(variant)
+  return getDefaultMarkerNumbering(variant)
 }

@@ -35,8 +35,8 @@ import type {
   TextNode,
 } from './nodes'
 import {
-  defaultMarkerNumbering,
-  nextMarkerNumbering,
+  getDefaultMarkerNumbering,
+  getMarkerNumbering,
 } from './numbered-list-marker'
 import type { Operation, UpdateBlockOp } from './operations'
 import type { RangeSelection, Selection, TextCursor } from './selection'
@@ -1579,7 +1579,7 @@ export function buildReindexNumberedListSuffixOps(
       if (blockVariant !== variant || previous === null) {
         break
       }
-      const next = nextMarkerNumbering(previous, variant)
+      const next = getMarkerNumbering(previous, variant)
       if (next !== markerNumbering) {
         ops.push({
           __type: 'update_block',
@@ -1597,8 +1597,8 @@ export function buildReindexNumberedListSuffixOps(
 
     const next =
       previous === null
-        ? defaultMarkerNumbering(variant)
-        : nextMarkerNumbering(previous, variant)
+        ? getDefaultMarkerNumbering(variant)
+        : getMarkerNumbering(previous, variant)
     if (next !== markerNumbering) {
       ops.push({
         __type: 'update_block',

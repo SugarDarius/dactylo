@@ -10,10 +10,10 @@ import type { DocumentState } from '../../src/internals/document'
 import { parseNumberedListMarkdownShortcut } from '../../src/internals/markdown-shortcut-ops-builder'
 import { createTextNode } from '../../src/internals/nodes'
 import {
-  defaultMarkerNumbering,
   formatMarkerNumbering,
+  getDefaultMarkerNumbering,
+  getMarkerNumbering,
   markerNumberingAfterNeighbor,
-  nextMarkerNumbering,
   parseMarkerNumbering,
   toAlphaIndex,
   toRomanIndex,
@@ -79,14 +79,14 @@ describe('toRomanIndex / toAlphaIndex', () => {
   })
 })
 
-describe('parseMarkerNumbering / nextMarkerNumbering', () => {
+describe('parseMarkerNumbering / getMarkerNumbering', () => {
   test('round-trips ordinals and increments', () => {
     expect(parseMarkerNumbering('2.', 'default')).toBe(2)
     expect(parseMarkerNumbering('aa.', 'alpha')).toBe(27)
     expect(parseMarkerNumbering('iv.', 'roman')).toBe(4)
-    expect(nextMarkerNumbering('2.', 'default')).toBe('3.')
-    expect(nextMarkerNumbering('z.', 'alpha')).toBe('aa.')
-    expect(nextMarkerNumbering('iv.', 'roman')).toBe('v.')
+    expect(getMarkerNumbering('2.', 'default')).toBe('3.')
+    expect(getMarkerNumbering('z.', 'alpha')).toBe('aa.')
+    expect(getMarkerNumbering('iv.', 'roman')).toBe('v.')
   })
 })
 
@@ -97,7 +97,7 @@ describe('markerNumberingAfterNeighbor', () => {
     expect(markerNumberingAfterNeighbor(prev, 'roman')).toBe('i.')
     expect(markerNumberingAfterNeighbor(paragraph(), 'default')).toBe('1.')
     expect(markerNumberingAfterNeighbor(null, 'alpha')).toBe('a.')
-    expect(defaultMarkerNumbering('roman')).toBe('i.')
+    expect(getDefaultMarkerNumbering('roman')).toBe('i.')
   })
 })
 

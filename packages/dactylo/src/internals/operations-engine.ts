@@ -31,8 +31,8 @@ import {
   getBlockWithInlineContent,
   isBlockWithInlineContentEmpty,
   isMoveBlockNoOp,
-  markerNumberingForInsert,
   resolveInsertAfterBlockId,
+  resolveMarkerNumberingForInsert,
 } from './document'
 import type { EditorContext } from './editor-context'
 import { ExitCodeMarkOpsBuilder } from './exit-code-mark-ops-builder'
@@ -496,7 +496,7 @@ export class OperationsEngine {
         const variant = spec.variant ?? 'default'
         const numberedListItem = createNumberedListItemBlock({
           content: [insertedText],
-          markerNumbering: markerNumberingForInsert(
+          markerNumbering: resolveMarkerNumberingForInsert(
             state,
             afterBlockId,
             variant,

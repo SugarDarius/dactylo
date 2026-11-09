@@ -12,7 +12,7 @@ import type {
 import { DactyloError } from './errors'
 import { createTextNode, isInlineContentEmpty } from './nodes'
 import {
-  defaultMarkerNumbering,
+  getDefaultMarkerNumbering,
   markerNumberingAfterNeighbor,
 } from './numbered-list-marker'
 import type { InsertOrMoveBlockPosition } from './operations-builder'
@@ -341,14 +341,14 @@ export function resolveInsertAfterBlockId(
   }
 }
 
-/** Marker for a block inserted after `afterBlockId` (`null` = start of document). */
-export function markerNumberingForInsert(
+/** Resolves the marker numbering for a block inserted after `afterBlockId` (`null` = start of document). */
+export function resolveMarkerNumberingForInsert(
   state: DocumentState,
   afterBlockId: BlockId | null,
   variant: NumberedListItemBlock['variant'],
 ): string {
   if (afterBlockId === null) {
-    return defaultMarkerNumbering(variant)
+    return getDefaultMarkerNumbering(variant)
   }
   return markerNumberingAfterNeighbor(state.blocks.get(afterBlockId), variant)
 }

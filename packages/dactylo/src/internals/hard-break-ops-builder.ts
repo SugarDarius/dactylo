@@ -26,7 +26,7 @@ import {
   isInlineNodeWithEditableText,
 } from './nodes'
 import type { InlineNode, InlineNodeWithEditableText } from './nodes'
-import { nextMarkerNumbering } from './numbered-list-marker'
+import { getMarkerNumbering } from './numbered-list-marker'
 import type { Operation } from './operations'
 import {
   buildDeleteRangeCrossBlockIntent,
@@ -149,7 +149,7 @@ export function createBlockAfterHardBreak(
   if (isNumberedListItemBlock(source)) {
     return createNumberedListItemBlock({
       content,
-      markerNumbering: nextMarkerNumbering(
+      markerNumbering: getMarkerNumbering(
         source.markerNumbering,
         source.variant,
       ),
