@@ -17,7 +17,7 @@ Every mutation goes through one **`TransactionPipeline`**. **`Dactylo`** is a th
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                      EditorContext                           │
-│  state (DocumentState)  │  selection                             │
+│  state (DocumentState)  │  selection                         │
 └──────────────────────────────────────────────────────────────┘
          ▲                           │
          │                           ▼
