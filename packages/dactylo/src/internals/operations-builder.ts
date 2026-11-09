@@ -1639,7 +1639,8 @@ export function buildReindexAfterRemovedNumberedItemOps(
   }
 
   return buildReindexNumberedListSuffixOps(state, removed.id, {
-    kind: 'keep-start',
+    kind: 'restart',
+    variant: removed.variant,
   })
 }
 

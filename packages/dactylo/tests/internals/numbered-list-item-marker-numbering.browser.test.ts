@@ -4,6 +4,7 @@ import type { DactyloBlocksCommands } from '../../src/dactylo'
 import { isNumberedListItemBlock } from '../../src/internals/blocks'
 import type { NumberedListItemBlock } from '../../src/internals/blocks'
 import {
+  assertUndoRedo,
   deleteBackward,
   firstInlineBlock,
   focus,
@@ -153,7 +154,7 @@ describe('numbered list markerNumbering', () => {
     expect(markers(pipeline)).toEqual(['1.', '2.'])
   })
 
-  test('deleting a 2.-started first item leaves the next item as the start', () => {
+  test('deleting a 2.-started first item restarts the leftover run at 1.', () => {
     const pipeline = makePipeline({ markdown: true })
     focus(pipeline)
     typeText(pipeline, '2.')
@@ -164,7 +165,57 @@ describe('numbered list markerNumbering', () => {
     expect(markers(pipeline)).toEqual(['2.', '3.'])
 
     pipeline.deleteBlock(nthInlineBlock(pipeline.context, 0).id, 'user')
-    expect(markers(pipeline)).toEqual(['3.'])
+    expect(markers(pipeline)).toEqual(['1.'])
+  })
+
+  test('Backspace on an empty first alpha item restarts the leftover run at a.', () => {
+    const pipeline = replaceDocWithNumbered('alpha')
+    typeText(pipeline, 'A')
+    hardBreak(pipeline)
+    typeText(pipeline, 'B')
+    setCursor(pipeline, {
+      ...startOfBlock(nthInlineBlock(pipeline.context, 0)),
+      offset: 1,
+    })
+    deleteBackward(pipeline)
+    const before = snapshot(pipeline.context)
+    deleteBackward(pipeline)
+
+    expect(nthInlineBlock(pipeline.context, 0).__type).toBe('paragraph')
+    expect(markers(pipeline)).toEqual(['', 'a.'])
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Backspace on an empty first default item restarts the leftover run at 1.', () => {
+    const pipeline = replaceDocWithNumbered()
+    typeText(pipeline, 'A')
+    hardBreak(pipeline)
+    typeText(pipeline, 'B')
+    setCursor(pipeline, {
+      ...startOfBlock(nthInlineBlock(pipeline.context, 0)),
+      offset: 1,
+    })
+    deleteBackward(pipeline)
+    deleteBackward(pipeline)
+
+    expect(nthInlineBlock(pipeline.context, 0).__type).toBe('paragraph')
+    expect(markers(pipeline)).toEqual(['', '1.'])
+  })
+
+  test('Enter on an empty first item restarts the leftover run at 1.', () => {
+    const pipeline = replaceDocWithNumbered()
+    typeText(pipeline, 'A')
+    hardBreak(pipeline)
+    typeText(pipeline, 'B')
+    setCursor(pipeline, {
+      ...startOfBlock(nthInlineBlock(pipeline.context, 0)),
+      offset: 1,
+    })
+    deleteBackward(pipeline)
+    hardBreak(pipeline)
+
+    expect(nthInlineBlock(pipeline.context, 0).__type).toBe('paragraph')
+    expect(markers(pipeline)).toEqual(['', '1.'])
   })
 
   test('patch variant reformats the ordinal and restarts the old-variant suffix', () => {
