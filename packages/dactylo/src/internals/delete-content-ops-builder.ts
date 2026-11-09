@@ -2,6 +2,7 @@ import {
   findNodeInBlockWithInlineContent,
   isBulletListItemBlock,
   isCheckboxListItemBlock,
+  isNumberedListItemBlock,
   isQuoteBlock,
 } from './blocks'
 import type { BlockWithInlineContent } from './blocks'
@@ -170,6 +171,7 @@ export function isEmptyBlockExitingToParagraph(
   return (
     (isBulletListItemBlock(block) ||
       isCheckboxListItemBlock(block) ||
+      isNumberedListItemBlock(block) ||
       isQuoteBlock(block)) &&
     isInlineContentWithoutVisibleText(block.content)
   )
@@ -181,7 +183,8 @@ export const cursorRules: DeleteContentOpsRule[] = [
     /**
      * 💡 Situation:
      * - Cursor is at the start of an empty {@link BulletListItemBlock},
-     *   {@link CheckboxListItemBlock}, or {@link QuoteBlock}.
+     *   {@link CheckboxListItemBlock}, {@link NumberedListItemBlock}, or
+     *   {@link QuoteBlock}.
      *
      * 🎯 Operations:
      * - Mutate the block into a {@link ParagraphBlock} in place.
@@ -1066,9 +1069,10 @@ export class DeleteContentOpsBuilder extends OperationsBuilder<
      * deletes nothing. We are not at "delete the character before the cursor" (→ offset - 1),
      * because we already took the block-start branch and there is no previous block to join with.
      *
-     * Empty {@link BulletListItemBlock}, {@link CheckboxListItemBlock}, or
-     * {@link QuoteBlock} is the exception: Backspace exits the block by mutating
-     * it into a paragraph, including when it is the first block.
+     * Empty {@link BulletListItemBlock}, {@link CheckboxListItemBlock},
+     * {@link NumberedListItemBlock}, or {@link QuoteBlock} is the exception:
+     * Backspace exits the block by mutating it into a paragraph, including when
+     * it is the first block.
      */
     if (
       isCursorKind &&

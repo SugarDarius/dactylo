@@ -1,10 +1,12 @@
 import {
   createBulletListItemBlock,
   createCheckboxListItemBlock,
+  createNumberedListItemBlock,
   createParagraphBlock,
   findNodeInBlockWithInlineContent,
   isBulletListItemBlock,
   isCheckboxListItemBlock,
+  isNumberedListItemBlock,
   isQuoteBlock,
 } from './blocks'
 import type { BlockWithInlineContent } from './blocks'
@@ -141,6 +143,16 @@ export function createBlockAfterHardBreak(
     })
   }
 
+  if (isNumberedListItemBlock(source)) {
+    return createNumberedListItemBlock({
+      content,
+      metadata,
+      parentId: source.parentId,
+      posKey,
+      variant: source.variant,
+    })
+  }
+
   return createParagraphBlock({
     content,
     metadata,
@@ -153,8 +165,9 @@ export function createBlockAfterHardBreak(
  * Builds block-level hard-break operations at a caret inside one block.
  *
  * Mirrors cursor situation rules:
- * - Empty {@link BulletListItemBlock}, {@link CheckboxListItemBlock}, or
- *   {@link QuoteBlock} → `mutate_block_type` to paragraph, caret stays.
+ * - Empty {@link BulletListItemBlock}, {@link CheckboxListItemBlock},
+ *   {@link NumberedListItemBlock}, or {@link QuoteBlock} → `mutate_block_type`
+ *   to paragraph, caret stays.
  * - At block end → `insert_block` with an unmarked empty successor (list item
  *   stays a list item; otherwise a paragraph), caret at new block start.
  * - Otherwise → `split_block` at the caret, caret at the tail block start.
@@ -168,6 +181,7 @@ export function buildHardBreakBlockOpsAtCaret(
   if (
     (isBulletListItemBlock(block) ||
       isCheckboxListItemBlock(block) ||
+      isNumberedListItemBlock(block) ||
       isQuoteBlock(block)) &&
     isInlineContentWithoutVisibleText(block.content)
   ) {

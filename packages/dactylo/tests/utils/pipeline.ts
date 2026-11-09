@@ -5,6 +5,7 @@ import {
   isCheckboxListItemBlock,
   isDividerBlock,
   isHeadingBlock,
+  isNumberedListItemBlock,
   isParagraphBlock,
   isQuoteBlock,
 } from '../../src/internals/blocks'
@@ -54,6 +55,12 @@ type SerializedBlock =
       readonly content: readonly SerializedInline[]
       readonly id: Block['id']
       readonly type: 'checkbox_list_item'
+    }
+  | {
+      readonly content: readonly SerializedInline[]
+      readonly id: Block['id']
+      readonly type: 'numbered_list_item'
+      readonly variant: 'default' | 'alpha' | 'roman'
     }
 
 type SerializedInline = {
@@ -143,6 +150,15 @@ function serializeBlock(block: Block): SerializedBlock {
       content: block.content.map(serializeInline),
       id: block.id,
       type: 'checkbox_list_item',
+    }
+  }
+
+  if (isNumberedListItemBlock(block)) {
+    return {
+      content: block.content.map(serializeInline),
+      id: block.id,
+      type: 'numbered_list_item',
+      variant: block.variant,
     }
   }
 

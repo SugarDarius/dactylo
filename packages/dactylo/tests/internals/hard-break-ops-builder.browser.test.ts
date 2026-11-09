@@ -339,6 +339,93 @@ describe('TransactionPipeline hard break', () => {
     assertUndoRedo(pipeline, before)
   })
 
+  test('Enter at the end of a numbered list item inserts another item and undo/redo round-trip', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    const leftoverId = firstInlineBlock(pipeline.context).id
+    pipeline.insertNumberedListItemBlock({ pos: { type: 'start' } }, 'user')
+    pipeline.deleteBlock(leftoverId, 'user')
+    focus(pipeline)
+    typeText(pipeline, 'Hello')
+    const before = snapshot(pipeline.context)
+
+    hardBreak(pipeline)
+
+    expect(blockTexts(pipeline.context)).toEqual(['Hello', ''])
+    expect(
+      pipeline.context.state.blockOrderById.map(
+        (id) => pipeline.context.state.blocks.get(id)?.__type,
+      ),
+    ).toEqual(['numbered_list_item', 'numbered_list_item'])
+    const successor = nthInlineBlock(pipeline.context, 1)
+    expect(successor.__type).toBe('numbered_list_item')
+    if (successor.__type === 'numbered_list_item') {
+      expect(successor.variant).toBe('default')
+    }
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Enter in the middle of a numbered list item splits it and undo/redo round-trip', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    const leftoverId = firstInlineBlock(pipeline.context).id
+    pipeline.insertNumberedListItemBlock({ pos: { type: 'start' } }, 'user')
+    pipeline.deleteBlock(leftoverId, 'user')
+    focus(pipeline)
+    typeText(pipeline, 'Hello')
+    const cursor = requireCursor(pipeline.context)
+    setCursor(pipeline, { ...cursor, offset: 2 })
+    const before = snapshot(pipeline.context)
+
+    hardBreak(pipeline)
+
+    expect(blockTexts(pipeline.context)).toEqual(['He', 'llo'])
+    expect(
+      pipeline.context.state.blockOrderById.map(
+        (id) => pipeline.context.state.blocks.get(id)?.__type,
+      ),
+    ).toEqual(['numbered_list_item', 'numbered_list_item'])
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Enter on an empty numbered list item mutates it to a paragraph and undo/redo round-trip', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    const leftoverId = firstInlineBlock(pipeline.context).id
+    pipeline.insertNumberedListItemBlock({ pos: { type: 'start' } }, 'user')
+    pipeline.deleteBlock(leftoverId, 'user')
+    focus(pipeline)
+    const itemId = firstInlineBlock(pipeline.context).id
+    const before = snapshot(pipeline.context)
+
+    hardBreak(pipeline)
+
+    const block = firstInlineBlock(pipeline.context)
+    expect(block.id).toBe(itemId)
+    expect(block.__type).toBe('paragraph')
+    expect(pipeline.context.state.blockOrderById).toHaveLength(1)
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('Enter on a whitespace-only numbered list item mutates it to a paragraph', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    const leftoverId = firstInlineBlock(pipeline.context).id
+    pipeline.insertNumberedListItemBlock({ pos: { type: 'start' } }, 'user')
+    pipeline.deleteBlock(leftoverId, 'user')
+    focus(pipeline)
+    typeText(pipeline, ' ')
+    const itemId = firstInlineBlock(pipeline.context).id
+
+    hardBreak(pipeline)
+
+    const block = firstInlineBlock(pipeline.context)
+    expect(block.id).toBe(itemId)
+    expect(block.__type).toBe('paragraph')
+    expect(blockTexts(pipeline.context)).toEqual([' '])
+    expect(pipeline.context.state.blockOrderById).toHaveLength(1)
+  })
+
   test('Enter at the end of a quote inserts a paragraph and undo/redo round-trip', () => {
     const pipeline = makePipeline({ markdown: true })
     focus(pipeline)
