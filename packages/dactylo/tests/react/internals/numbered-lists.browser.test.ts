@@ -13,7 +13,7 @@ import {
   formatMarkerIndex,
   toAlphaIndex,
   toRomanIndex,
-} from '../../../src/react/internals/number-lists'
+} from '../../../src/react/internals/numbered-lists'
 
 const posKey = makeInitialPosition()
 const emptyContent = [createTextNode({ text: '' })]

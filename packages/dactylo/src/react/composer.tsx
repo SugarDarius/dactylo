@@ -54,7 +54,7 @@ import {
   useStableValue,
   useSyncExternalStoreWithSelector,
 } from './internals/hooks'
-import { computeMarkerIndexes } from './internals/number-lists'
+import { computeMarkerIndexes } from './internals/numbered-lists'
 import type { ComposerContext } from './types'
 
 // --- Composer Context ─────────────────────────────────────────----
