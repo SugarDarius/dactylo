@@ -82,6 +82,48 @@ describe('TransactionPipeline markdown shortcuts', () => {
     expect(snapshot(pipeline.context)).toEqual(converted)
   })
 
+  test('checked checkbox list item on [x] space converts the paragraph; undo restores the trigger; redo converts again', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '[x]')
+    typeText(pipeline, ' ')
+
+    const block = firstInlineBlock(pipeline.context)
+    expect(block.__type).toBe('checkbox_list_item')
+    if (block.__type === 'checkbox_list_item') {
+      expect(block.checked).toBe(true)
+    }
+    expect(blockTexts(pipeline.context)).toEqual([''])
+
+    const converted = snapshot(pipeline.context)
+    pipeline.undo()
+    expect(firstInlineBlock(pipeline.context).__type).toBe('paragraph')
+    expect(blockTexts(pipeline.context)).toEqual(['[x] '])
+    pipeline.redo()
+    expect(snapshot(pipeline.context)).toEqual(converted)
+  })
+
+  test('checked checkbox list item on [X] space converts the paragraph; undo restores the trigger; redo converts again', () => {
+    const pipeline = makePipeline({ markdown: true })
+    focus(pipeline)
+    typeText(pipeline, '[X]')
+    typeText(pipeline, ' ')
+
+    const block = firstInlineBlock(pipeline.context)
+    expect(block.__type).toBe('checkbox_list_item')
+    if (block.__type === 'checkbox_list_item') {
+      expect(block.checked).toBe(true)
+    }
+    expect(blockTexts(pipeline.context)).toEqual([''])
+
+    const converted = snapshot(pipeline.context)
+    pipeline.undo()
+    expect(firstInlineBlock(pipeline.context).__type).toBe('paragraph')
+    expect(blockTexts(pipeline.context)).toEqual(['[X] '])
+    pipeline.redo()
+    expect(snapshot(pipeline.context)).toEqual(converted)
+  })
+
   test('ATX heading on space converts the paragraph; undo restores the trigger; redo converts again', () => {
     const pipeline = makePipeline({ markdown: true })
     focus(pipeline)

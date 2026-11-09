@@ -276,14 +276,20 @@ export const QUOTE_BLOCK_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN = /^> $/u
  * Checkbox list item markdown shortcut with trigger pattern.
  * Matched after the user types {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
  *
+ * Empty `[]` is unchecked; `[x]` / `[X]` is checked.
+ *
  * @example
  * ```txt
  * User type: []<space>
  * Node text: "[] "
+ * User type: [x]<space>
+ * Node text: "[x] "
+ * User type: [X]<space>
+ * Node text: "[X] "
  * ```
  */
 export const CHECKBOX_LIST_ITEM_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN =
-  /^\[\] $/u
+  /^\[(?<marker>x|X)?\] $/u
 
 /**
  * Horizontal rule markdown shortcut with trigger pattern.

@@ -21,6 +21,7 @@ import {
   BadgeCheck,
   Bold,
   ChevronDown,
+  Code,
   CodeXml,
   Heading1,
   Heading2,
@@ -368,6 +369,14 @@ export function Toolbar() {
                 <DropdownMenuItem onClick={() => insertCheckboxListItem()}>
                   <SquareCheck className='size-3.5' />
                   Checkbox List
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Advanced</DropdownMenuLabel>
+                <DropdownMenuItem disabled>
+                  <Code className='size-3.5' />
+                  Code
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>

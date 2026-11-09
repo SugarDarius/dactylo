@@ -712,6 +712,20 @@ describe('Dactylo markdown and autolink', () => {
     expect(blockTexts(editor.getContext())).toEqual([''])
   })
 
+  test('markdown converts "[x] " into a checked checkbox list item', () => {
+    const editor = makeEditor()
+    editor.selection.commands.focus()
+    typeText(editor, '[x]')
+    typeText(editor, ' ')
+
+    const block = firstInlineBlock(editor.getContext())
+    expect(block.__type).toBe('checkbox_list_item')
+    if (block.__type === 'checkbox_list_item') {
+      expect(block.checked).toBe(true)
+    }
+    expect(blockTexts(editor.getContext())).toEqual([''])
+  })
+
   test('disabled markdown leaves the quote trigger characters in the paragraph', () => {
     const editor = makeEditor({
       config: { editor: { markdown: { enabled: false } } },

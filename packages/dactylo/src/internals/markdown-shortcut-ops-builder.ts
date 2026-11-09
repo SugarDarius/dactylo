@@ -201,11 +201,27 @@ export function isMarkdownNumberedListItemShortcut(nodeText: string): boolean {
   )
 }
 
+/**
+ * Parses a leading markdown checkbox-list prefix including the trigger space
+ * (`[] `, `[x] `, `[X] `).
+ *
+ * Empty `[]` is unchecked; `[x]` / `[X]` is checked.
+ */
+export function parseMarkdownCheckboxListItemShortcut(nodeText: string): {
+  readonly checked: boolean
+} | null {
+  const match =
+    CHECKBOX_LIST_ITEM_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN.exec(nodeText)
+  if (!match) {
+    return null
+  }
+
+  return { checked: match.groups?.marker !== undefined }
+}
+
 /** Whether the node text is a checkbox list item markdown shortcut. */
 export function isMarkdownCheckboxListItemShortcut(nodeText: string): boolean {
-  return CHECKBOX_LIST_ITEM_MARKDOWN_SHORTCUT_WITH_TRIGGER_PATTERN.test(
-    nodeText,
-  )
+  return parseMarkdownCheckboxListItemShortcut(nodeText) !== null
 }
 
 /**
@@ -932,9 +948,10 @@ const rules: MarkdownShortcutOpsRule[] = [
   {
     /**
      * 💡 Cursor is at the end of a {@link BlockWithInlineContent} whose entire first
-     *    text node is `[]`, and the typed character is
+     *    text node is `[]`, `[x]`, or `[X]`, and the typed character is
      *    {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
-     * 🎯 Mutate the paragraph into a {@link CheckboxListItemBlock} and strip `[] `.
+     * 🎯 Mutate the paragraph into a {@link CheckboxListItemBlock} (`[x]` / `[X]`
+     *    checked) and strip the trigger prefix.
      */
     build: ({ context, situation, input }): Operation[] | null => {
       if (
@@ -945,7 +962,8 @@ const rules: MarkdownShortcutOpsRule[] = [
       }
 
       const { block, node } = situation
-      if (!isMarkdownCheckboxListItemShortcut(node.text)) {
+      const parsed = parseMarkdownCheckboxListItemShortcut(node.text)
+      if (parsed === null) {
         return null
       }
 
@@ -954,7 +972,7 @@ const rules: MarkdownShortcutOpsRule[] = [
           __type: 'mutate_block_type',
           blockId: block.id,
           snapshot: block,
-          spec: { kind: 'to_checkbox_list_item' },
+          spec: { checked: parsed.checked, kind: 'to_checkbox_list_item' },
         },
         {
           __type: 'delete_text',
