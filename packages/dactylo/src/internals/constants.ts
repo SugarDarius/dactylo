@@ -127,8 +127,8 @@ export const NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME =
 export const NUMBERED_LIST_ITEM_MARKER_ATTR_NAME =
   'dactylo-numbered-list-item-marker'
 /** Numbered list item marker number attribute name. */
-export const NUMBERED_LIST_ITEM_MARKER_IDX_ATTR_NAME =
-  'dactylo-numbered-list-item-marker-idx'
+export const NUMBERED_LIST_ITEM_MARKER_INDEX_ATTR_NAME =
+  'dactylo-numbered-list-item-marker-index'
 
 /** {@link CheckboxListItemBlock} attribute name. */
 export const CHECKBOX_LIST_ITEM_BLOCK_ATTR_NAME =
