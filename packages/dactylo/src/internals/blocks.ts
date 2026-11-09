@@ -90,6 +90,28 @@ export interface BulletListItemBlock extends IBlockWithInlineContext {
   readonly __type: 'bullet_list_item'
 }
 
+/** Blocks representing a numbered list item. */
+export interface NumberedListItemBlock extends IBlockWithInlineContext {
+  readonly __type: 'numbered_list_item'
+
+  /**
+   * Variant to use in order to display item marker.
+   * @example
+   * ```tsx
+   * → default:
+   *  1.
+   *  2.
+   * → alpha:
+   *  a.
+   *  b.
+   * → roman:
+   *  i.
+   *  ii.
+   * ```
+   */
+  readonly variant: 'default' | 'alpha' | 'roman'
+}
+
 /** Block representing a checkbox list item. */
 export interface CheckboxListItemBlock extends IBlockWithInlineContext {
   readonly __type: 'checkbox_list_item'
@@ -109,6 +131,7 @@ export type Block =
   | ParagraphBlock
   | QuoteBlock
   | BulletListItemBlock
+  | NumberedListItemBlock
   | CheckboxListItemBlock
   | DividerBlock
 
@@ -118,6 +141,7 @@ export type BlockWithInlineContent =
   | ParagraphBlock
   | QuoteBlock
   | BulletListItemBlock
+  | NumberedListItemBlock
   | CheckboxListItemBlock
 
 /** Discriminated union of block types.. */
@@ -246,6 +270,34 @@ export function isBulletListItemBlock(
   return block.__type === 'bullet_list_item'
 }
 
+/** Creates a {@link NumberedListItemBlock}. */
+export function createNumberedListItemBlock(opts: {
+  content: InlineNode[]
+  metadata?: Metadata
+  posKey: PosKey
+  parentId?: BlockId | null
+  variant?: 'default' | 'alpha' | 'roman'
+}): NumberedListItemBlock {
+  return {
+    __type: 'numbered_list_item',
+    content: opts.content,
+    createdAt: new Date(),
+    id: generateBlockId(),
+    metadata: opts.metadata ?? {},
+    parentId: opts.parentId ?? null,
+    posKey: opts.posKey,
+    updatedAt: null,
+    variant: opts.variant ?? 'default',
+  }
+}
+
+/** Whether the blocks is a {@link NumberedListItemBlock}. */
+export function isNumberedListItemBlock(
+  block: Block,
+): block is NumberedListItemBlock {
+  return block.__type === 'numbered_list_item'
+}
+
 /** Creates a {@link CheckboxListItemBlock}. */
 export function createCheckboxListItemBlock(opts: {
   content: InlineNode[]
@@ -305,6 +357,7 @@ export function isBlockWithInlineContent(
     isParagraphBlock(block) ||
     isQuoteBlock(block) ||
     isBulletListItemBlock(block) ||
+    isNumberedListItemBlock(block) ||
     isCheckboxListItemBlock(block)
   )
 }
@@ -365,6 +418,15 @@ export function cloneBlock(source: Block, posKey: PosKey): Block {
         metadata: source.metadata,
         parentId: source.parentId,
         posKey,
+      })
+    }
+    case 'numbered_list_item': {
+      return createNumberedListItemBlock({
+        content: cloneBlockInlineContent(source.content),
+        metadata: source.metadata,
+        parentId: source.parentId,
+        posKey,
+        variant: source.variant,
       })
     }
     case 'checkbox_list_item': {
