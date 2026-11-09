@@ -57,6 +57,21 @@ export function formatMarkerIndex(
 }
 
 /**
+ * Cache for allowing a faster lookup of marker indexes
+ * for a given blocks snapshot and order.
+ *
+ * It avoids to walk per item and fall in a
+ * O(K*n) or O(n^2) complexity.
+ */
+const markerIndexesCache = new WeakMap<
+  ReadonlyMap<BlockId, Block>,
+  {
+    readonly order: readonly BlockId[]
+    readonly indexes: Map<BlockId, string>
+  }
+>()
+
+/**
  * Builds the marker glyph for every {@link NumberedListItemBlock} in document order.
  *
  * A run is consecutive numbered list items that share the same `variant`.
@@ -75,6 +90,13 @@ export function computeMarkerIndexes(
   order: readonly BlockId[],
   blocks: ReadonlyMap<BlockId, Block>,
 ): Map<BlockId, string> {
+  /** 1️⃣ First look up inside the cache. */
+  const cached = markerIndexesCache.get(blocks)
+  if (cached && cached.order === order) {
+    return cached.indexes
+  }
+
+  /** 2️⃣ If not found, compute the indexes. */
   const indexes = new Map<BlockId, string>()
 
   let run = 0
@@ -99,5 +121,6 @@ export function computeMarkerIndexes(
     indexes.set(block.id, formatMarkerIndex(run, variant))
   }
 
+  markerIndexesCache.set(blocks, { indexes, order })
   return indexes
 }

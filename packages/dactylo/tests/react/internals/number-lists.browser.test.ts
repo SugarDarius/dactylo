@@ -134,4 +134,13 @@ describe('computeMarkerIndexes', () => {
     expect(indexes.has(missing.id)).toBe(false)
     expect(indexes.get(next.id)).toBe('1.')
   })
+
+  test('reuses the same map for the same blocks snapshot and order', () => {
+    const a = numbered('default')
+    const order = [a.id]
+    const blocks = new Map<BlockId, Block>([[a.id, a]])
+    expect(computeMarkerIndexes(order, blocks)).toBe(
+      computeMarkerIndexes(order, blocks),
+    )
+  })
 })
