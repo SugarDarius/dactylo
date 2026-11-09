@@ -8,7 +8,6 @@ import {
 } from 'react'
 
 import type {
-  Dactylo,
   DactyloCommandEvent,
   DactyloEditableEvent,
   DactyloErrorEvent,
@@ -54,14 +53,9 @@ import {
   useStableValue,
   useSyncExternalStoreWithSelector,
 } from './internals/hooks'
+import type { ComposerContext } from './types'
 
 // --- Composer Context ─────────────────────────────────────────----
-
-/** Main Dactylo context. */
-export interface ComposerContext {
-  /** The {@link Dactylo} editor instance. */
-  editor: Dactylo
-}
 
 export const { Provider: ComposerProvider, useContext: useComposer } =
   createSafeContext<ComposerContext>({

@@ -1,4 +1,4 @@
-import type { DactyloOptions } from '../dactylo'
+import type { Dactylo, DactyloOptions } from '../dactylo'
 import type {
   BlockId,
   BulletListItemBlock,
@@ -15,6 +15,14 @@ import type {
   LinkNode,
   TextNode,
 } from '../internals/nodes'
+
+// --- Composer Context ──────────────────────────────────────-------
+
+/** Main Composer context. */
+export interface ComposerContext {
+  /** The {@link Dactylo} editor instance. */
+  editor: Dactylo
+}
 
 // --- Composer.Root ─────────────────────────────────────────-------
 

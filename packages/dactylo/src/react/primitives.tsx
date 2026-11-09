@@ -57,7 +57,6 @@ import {
   useEditorConfig,
   useFocus,
 } from './composer'
-import type { ComposerContext } from './composer'
 import {
   COMPOSER_BLOCK_NAME,
   COMPOSER_BLOCKS_NAME,
@@ -88,6 +87,7 @@ import type {
   ComposerBlockProps,
   ComposerBulletListItemBlockProps,
   ComposerCheckboxListItemBlockProps,
+  ComposerContext,
   ComposerDividerBlockProps,
   ComposerEditableProps,
   ComposerHeadingBlockProps,
