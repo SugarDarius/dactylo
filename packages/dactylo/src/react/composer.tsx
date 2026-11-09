@@ -771,6 +771,22 @@ export function useBulletLists() {
   } as const
 }
 
+/**
+ * Returns numbered list queries and commands.
+ * Extends from {@link useBlocks}.
+ *
+ * @example
+ * ```tsx
+ * const { insert, patch } = useNumberedLists()
+ *
+ * insertNumberedListItem()
+ * insertNumberedListItem({ pos: { type: 'end' } })
+ * insertNumberedListItem({}, 'ai-agent')
+ *
+ * patch(blockId, { variant: '1' })
+ * patch(blockId, {}, 'ai-agent')
+ * ```
+ */
 export function useNumberedLists() {
   const { editor } = useComposer()
   const { isEmpty, duplicate, move, remove } = useBlocks()
