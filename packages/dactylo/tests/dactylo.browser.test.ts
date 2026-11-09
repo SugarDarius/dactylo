@@ -6,7 +6,9 @@ import {
   isBulletListItemBlock,
   isCheckboxListItemBlock,
   isHeadingBlock,
+  isNumberedListItemBlock,
   isParagraphBlock,
+  isQuoteBlock,
 } from '../src/internals/blocks'
 import {
   DEFAULT_AUTOLINK_ENABLED,
@@ -490,6 +492,42 @@ describe('Dactylo blocks', () => {
     expect(editor.blocks.tools.isWithEmptyInlineContent(heading.id)).toBe(true)
   })
 
+  test('insertQuote adds a quote after the current paragraph', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    editor.blocks.commands.insertQuote()
+
+    const context = editor.getContext()
+    expect(context.state.blockOrderById).toHaveLength(2)
+    expect(isParagraphBlock(nthInlineBlock(context, 0))).toBe(true)
+    const quote = nthInlineBlock(context, 1)
+    expect(isQuoteBlock(quote)).toBe(true)
+    expect(blockTexts(context)).toEqual(['Hello', ''])
+    expect(editor.blocks.tools.isWithEmptyInlineContent(quote.id)).toBe(true)
+  })
+
+  test('insertNumberedListItem adds a numbered item after the current paragraph', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    editor.blocks.commands.insertNumberedListItem()
+
+    const context = editor.getContext()
+    expect(context.state.blockOrderById).toHaveLength(2)
+    expect(isParagraphBlock(nthInlineBlock(context, 0))).toBe(true)
+    const item = nthInlineBlock(context, 1)
+    expect(isNumberedListItemBlock(item)).toBe(true)
+    if (isNumberedListItemBlock(item)) {
+      expect(item.variant).toBe('default')
+      expect(item.markerNumbering).toBe('1.')
+    }
+    expect(blockTexts(context)).toEqual(['Hello', ''])
+    expect(editor.blocks.tools.isWithEmptyInlineContent(item.id)).toBe(true)
+  })
+
   test('inserts a list item, divider, and trailing paragraph', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
@@ -673,6 +711,72 @@ describe('Dactylo blocks', () => {
       expect(patched.content).toEqual(content)
     }
   })
+
+  test('patchParagraph sets metadata', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    const paragraphId = firstInlineBlock(editor.getContext()).id
+
+    editor.blocks.commands.patchParagraph(paragraphId, { metadata: { a: 1 } })
+
+    const patched = firstInlineBlock(editor.getContext())
+    expect(patched.id).toBe(paragraphId)
+    expect(isParagraphBlock(patched)).toBe(true)
+    expect(patched.metadata).toEqual({ a: 1 })
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+  })
+
+  test('patchQuote sets metadata', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    editor.blocks.commands.insertQuote()
+    const quote = nthInlineBlock(editor.getContext(), 1)
+
+    editor.blocks.commands.patchQuote(quote.id, { metadata: { a: 1 } })
+
+    const patched = nthInlineBlock(editor.getContext(), 1)
+    expect(patched.id).toBe(quote.id)
+    expect(isQuoteBlock(patched)).toBe(true)
+    expect(patched.metadata).toEqual({ a: 1 })
+  })
+
+  test('patchBulletListItem sets metadata', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    editor.blocks.commands.insertBulletListItem()
+    const item = nthInlineBlock(editor.getContext(), 1)
+
+    editor.blocks.commands.patchBulletListItem(item.id, {
+      metadata: { a: 1 },
+    })
+
+    const patched = nthInlineBlock(editor.getContext(), 1)
+    expect(patched.id).toBe(item.id)
+    expect(isBulletListItemBlock(patched)).toBe(true)
+    expect(patched.metadata).toEqual({ a: 1 })
+  })
+
+  test('patchNumberedListItem changes variant only', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    editor.blocks.commands.insertNumberedListItem()
+
+    const item = nthInlineBlock(editor.getContext(), 1)
+    expect(isNumberedListItemBlock(item)).toBe(true)
+    const { content } = item
+
+    editor.blocks.commands.patchNumberedListItem(item.id, { variant: 'alpha' })
+
+    const patched = nthInlineBlock(editor.getContext(), 1)
+    expect(patched.id).toBe(item.id)
+    expect(isNumberedListItemBlock(patched)).toBe(true)
+    if (isNumberedListItemBlock(patched)) {
+      expect(patched.variant).toBe('alpha')
+      expect(patched.markerNumbering).toBe('a.')
+      expect(patched.content).toEqual(content)
+    }
+  })
 })
 
 describe('Dactylo markdown and autolink', () => {
@@ -726,6 +830,49 @@ describe('Dactylo markdown and autolink', () => {
     expect(blockTexts(editor.getContext())).toEqual([''])
   })
 
+  test('markdown converts "1. " into a numbered list item', () => {
+    const editor = makeEditor()
+    editor.selection.commands.focus()
+    typeText(editor, '1.')
+    typeText(editor, ' ')
+
+    const block = firstInlineBlock(editor.getContext())
+    expect(block.__type).toBe('numbered_list_item')
+    if (isNumberedListItemBlock(block)) {
+      expect(block.variant).toBe('default')
+      expect(block.markerNumbering).toBe('1.')
+    }
+    expect(blockTexts(editor.getContext())).toEqual([''])
+  })
+
+  test('markdown converts "# " into a heading', () => {
+    const editor = makeEditor()
+    editor.selection.commands.focus()
+    typeText(editor, '#')
+    typeText(editor, ' ')
+
+    const block = firstInlineBlock(editor.getContext())
+    expect(block.__type).toBe('heading')
+    if (isHeadingBlock(block)) {
+      expect(block.level).toBe(1)
+    }
+    expect(blockTexts(editor.getContext())).toEqual([''])
+  })
+
+  test('markdown converts "--- " into a divider', () => {
+    const editor = makeEditor()
+    editor.selection.commands.focus()
+    typeText(editor, '---')
+    typeText(editor, ' ')
+
+    const { state } = editor.getContext()
+    const types = state.blockOrderById.map(
+      (id) => state.blocks.get(id)?.__type ?? null,
+    )
+    expect(types).toEqual(['divider', 'paragraph'])
+    expect(blockTexts(editor.getContext())).toEqual(['', ''])
+  })
+
   test('disabled markdown leaves the quote trigger characters in the paragraph', () => {
     const editor = makeEditor({
       config: { editor: { markdown: { enabled: false } } },
@@ -760,6 +907,42 @@ describe('Dactylo markdown and autolink', () => {
 
     expect(firstInlineBlock(editor.getContext()).__type).toBe('paragraph')
     expect(blockTexts(editor.getContext())).toEqual(['[] '])
+  })
+
+  test('disabled markdown leaves the numbered list trigger characters in the paragraph', () => {
+    const editor = makeEditor({
+      config: { editor: { markdown: { enabled: false } } },
+    })
+    editor.selection.commands.focus()
+    typeText(editor, '1.')
+    typeText(editor, ' ')
+
+    expect(firstInlineBlock(editor.getContext()).__type).toBe('paragraph')
+    expect(blockTexts(editor.getContext())).toEqual(['1. '])
+  })
+
+  test('disabled markdown leaves the heading trigger characters in the paragraph', () => {
+    const editor = makeEditor({
+      config: { editor: { markdown: { enabled: false } } },
+    })
+    editor.selection.commands.focus()
+    typeText(editor, '#')
+    typeText(editor, ' ')
+
+    expect(firstInlineBlock(editor.getContext()).__type).toBe('paragraph')
+    expect(blockTexts(editor.getContext())).toEqual(['# '])
+  })
+
+  test('disabled markdown leaves the divider trigger characters in the paragraph', () => {
+    const editor = makeEditor({
+      config: { editor: { markdown: { enabled: false } } },
+    })
+    editor.selection.commands.focus()
+    typeText(editor, '---')
+    typeText(editor, ' ')
+
+    expect(firstInlineBlock(editor.getContext()).__type).toBe('paragraph')
+    expect(blockTexts(editor.getContext())).toEqual(['--- '])
   })
 
   test('autolink converts a URL followed by a space into a link node', () => {
