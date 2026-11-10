@@ -73,10 +73,10 @@ export type {
   RangeSelection,
   Selection,
 } from './internals/selection'
+export { shallow } from './internals/shallow'
 export type {
   Transaction,
   TransactionPipelineOptions,
   TransactionSource,
 } from './internals/transaction'
 export type { TypingBurstOptions } from './internals/typing'
-export { shallow } from './internals/utils'

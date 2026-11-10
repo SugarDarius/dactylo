@@ -41,9 +41,10 @@ import type {
   RangeSelection,
   Selection,
 } from '../internals/selection'
+import { shallow } from '../internals/shallow'
 import type { Transaction, TransactionSource } from '../internals/transaction'
 import type { Metadata } from '../internals/types'
-import { noop, shallow } from '../internals/utils'
+import { noop } from '../internals/utils'
 import { COMPOSER_ROOT_NAME } from './internals/constants'
 import { createSafeContext } from './internals/context'
 import { findLinkAnchorFromEventTarget, openLink } from './internals/dom'
