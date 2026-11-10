@@ -17,6 +17,7 @@ import type {
 import type {
   Block,
   BlockId,
+  BlockWithInlineContent,
   HeadingBlock,
   NumberedListItemBlock,
 } from '../internals/blocks'
@@ -1148,13 +1149,13 @@ export function useEditable() {
  *
  * @private
  */
-export function useEditableBlock(blockId: BlockId) {
+export function useEditableBlock(block: BlockWithInlineContent) {
   const editableId = useId()
 
   const canEdit = useCanEdit()
 
-  const withActiveSelection = useIsSelectedBlock(blockId)
-  const isEmpty = useIsBlockEmpty(blockId)
+  const withActiveSelection = useIsSelectedBlock(block.id)
+  const isEmpty = useIsBlockEmpty(block.id)
 
   const isActive = canEdit && withActiveSelection
 

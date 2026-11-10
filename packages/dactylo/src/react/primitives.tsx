@@ -275,7 +275,7 @@ const ComposerParagraphBlock = forwardRef<
   ComposerParagraphBlockProps
 >(({ block, indexOfRendering, ...props }, forwardedRef) => {
   const { paragraph } = useEditorConfig()
-  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block.id)
+  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
 
   return (
     <div
@@ -317,9 +317,7 @@ ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
   ({ block, indexOfRendering, ...props }, forwardedRef) => {
     const { quote } = useEditorConfig()
-    const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(
-      block.id,
-    )
+    const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
 
     return (
       <div
@@ -395,7 +393,7 @@ const ComposerHeadingBlock = forwardRef<
   ComposerHeadingBlockProps
 >(({ block, indexOfRendering, ...props }, forwardedRef) => {
   const { heading } = useEditorConfig()
-  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block.id)
+  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
 
   const Heading = ComposerHeadingsPrimitive[block.level]
   const placeholder = useMemo(
@@ -450,7 +448,7 @@ const ComposerBulletListItemBlock = forwardRef<
   ComposerBulletListItemBlockProps
 >(({ block, indexOfRendering, ...props }, forwardedRef) => {
   const { bulletedList } = useEditorConfig()
-  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block.id)
+  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
 
   return (
     <div
@@ -504,7 +502,7 @@ const ComposerNumberedListItemBlock = forwardRef<
   ComposerNumberedListItemBlockProps
 >(({ block, indexOfRendering, ...props }, forwardedRef) => {
   const { numberedList } = useEditorConfig()
-  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block.id)
+  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
 
   return (
     <div
@@ -561,7 +559,7 @@ const ComposerCheckboxListItemBlock = forwardRef<
   ComposerCheckboxListItemBlockProps
 >(({ block, indexOfRendering, onCheckedChange, ...props }, forwardedRef) => {
   const { checkboxList } = useEditorConfig()
-  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block.id)
+  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
   const { patch } = useCheckboxLists()
 
   const handleClick = useStableCallback(
