@@ -10,7 +10,7 @@ catalog:
   '@arethetypeswrong/core': ^0.18.5
   '@types/node': ^26.6.6
   happy-dom: ^21.0.4
-  oxfmt: ^0.77.0
+  oxfmt: ^0.78.0
   oxlint: ^1.91.0
   publint: ^0.3.25
   syncpack: ^15.3.3
