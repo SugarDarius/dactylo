@@ -8,12 +8,7 @@
  * oo give better mutation performances while staying memory-conscious.
  */
 
-import type {
-  LineBreakNodeMetadata,
-  LinkNodeMetadata,
-  MentionNodeMetadata,
-  TextNodeMetadata,
-} from './augmentation'
+import type { LBNM, LNM, MNM, TNM } from './augmentation'
 import { createBaseMarks, isMarksEqual } from './marks'
 import type { Marks } from './marks'
 import { generateRandomId } from './random-id'
@@ -51,7 +46,7 @@ export interface INode<M extends Metadata = Metadata> {
 }
 
 /** Node representing a text -- default node type. */
-export interface TextNode extends INode<TextNodeMetadata> {
+export interface TextNode extends INode<TNM> {
   readonly __type: 'text'
 
   /** Text content of the node. */
@@ -62,7 +57,7 @@ export interface TextNode extends INode<TextNodeMetadata> {
 }
 
 /** Node representing a link. */
-export interface LinkNode extends INode<LinkNodeMetadata> {
+export interface LinkNode extends INode<LNM> {
   readonly __type: 'link'
 
   /** URL of the link. */
@@ -82,7 +77,7 @@ export interface LinkNode extends INode<LinkNodeMetadata> {
 }
 
 /** Node representing a mention. */
-export interface MentionNode extends INode<MentionNodeMetadata> {
+export interface MentionNode extends INode<MNM> {
   readonly __type: 'mention'
 
   /** Structural data of the artefact representing the mention. */
@@ -98,7 +93,7 @@ export interface MentionNode extends INode<MentionNodeMetadata> {
 }
 
 /** Node representing a like break (soft break, shift+enter) inside a block. */
-export interface LineBreakNode extends INode<LineBreakNodeMetadata> {
+export interface LineBreakNode extends INode<LBNM> {
   readonly __type: 'line_break'
 }
 
@@ -119,7 +114,7 @@ export function generateNodeId(): NodeId {
  */
 export function createTextNode(opts: {
   text: string
-  metadata?: TextNodeMetadata
+  metadata?: TNM
   marks?: Marks
 }): TextNode {
   return {
@@ -127,7 +122,7 @@ export function createTextNode(opts: {
     createdAt: new Date(),
     id: generateNodeId(),
     marks: opts.marks ?? createBaseMarks(),
-    metadata: (opts.metadata ?? {}) as TextNodeMetadata,
+    metadata: (opts.metadata ?? {}) as TNM,
     text: sanitizeText(opts.text),
     updatedAt: null,
   }
@@ -143,14 +138,14 @@ export function isTextNode<N extends InlineNode>(
 /** Creates a {@link LineBreakNode}.  */
 export function createLineBreakNode(
   opts: {
-    metadata?: LineBreakNodeMetadata
+    metadata?: LBNM
   } = {},
 ): LineBreakNode {
   return {
     __type: 'line_break',
     createdAt: new Date(),
     id: generateNodeId(),
-    metadata: (opts.metadata ?? {}) as LineBreakNodeMetadata,
+    metadata: (opts.metadata ?? {}) as LBNM,
     updatedAt: null,
   }
 }
@@ -170,7 +165,7 @@ export function createLinkNode(opts: {
     href: string
     title: string
   }
-  metadata?: LinkNodeMetadata
+  metadata?: LNM
   text: string
   marks?: Marks
 }): LinkNode {
@@ -179,7 +174,7 @@ export function createLinkNode(opts: {
     createdAt: new Date(),
     id: generateNodeId(),
     marks: opts.marks ?? createBaseMarks(),
-    metadata: (opts.metadata ?? {}) as LinkNodeMetadata,
+    metadata: (opts.metadata ?? {}) as LNM,
     text: sanitizeText(opts.text),
     updatedAt: null,
     url: {

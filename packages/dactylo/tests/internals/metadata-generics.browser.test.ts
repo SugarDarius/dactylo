@@ -1,12 +1,7 @@
 import { describe, expectTypeOf, test } from 'vitest'
 
 import { Dactylo } from '../../src/dactylo'
-import type {
-  HeadingBlockMetadata,
-  Metadata,
-  ParagraphBlockMetadata,
-  TextNodeMetadata,
-} from '../../src/index'
+import type { HBM, Metadata, PBM, TNM } from '../../src/index'
 import { isParagraphBlock } from '../../src/internals/blocks'
 import type { ParagraphBlock } from '../../src/internals/blocks'
 import { createTextNode, isTextNode } from '../../src/internals/nodes'
@@ -15,11 +10,9 @@ import type { TextNode } from '../../src/internals/nodes'
 describe('metadata aliases', () => {
   test('default block and node metadata is the open Metadata bag', () => {
     expectTypeOf<ParagraphBlock['metadata']>().toEqualTypeOf<Metadata>()
-    expectTypeOf<
-      ParagraphBlock['metadata']
-    >().toEqualTypeOf<ParagraphBlockMetadata>()
+    expectTypeOf<ParagraphBlock['metadata']>().toEqualTypeOf<PBM>()
     expectTypeOf<TextNode['metadata']>().toEqualTypeOf<Metadata>()
-    expectTypeOf<TextNode['metadata']>().toEqualTypeOf<TextNodeMetadata>()
+    expectTypeOf<TextNode['metadata']>().toEqualTypeOf<TNM>()
   })
 
   test('block commands use the per-type metadata aliases', () => {
@@ -27,23 +20,19 @@ describe('metadata aliases', () => {
 
     expectTypeOf(editor.blocks.commands.insertParagraph)
       .parameter(0)
-      .toExtend<
-        { pos?: unknown; metadata?: ParagraphBlockMetadata } | undefined
-      >()
+      .toExtend<{ pos?: unknown; metadata?: PBM } | undefined>()
     expectTypeOf(editor.blocks.commands.patchParagraph).parameter(1).toExtend<{
       content?: unknown
-      metadata?: ParagraphBlockMetadata
+      metadata?: PBM
     }>()
 
     expectTypeOf(editor.blocks.commands.insertHeading)
       .parameter(1)
-      .toExtend<
-        { pos?: unknown; metadata?: HeadingBlockMetadata } | undefined
-      >()
+      .toExtend<{ pos?: unknown; metadata?: HBM } | undefined>()
     expectTypeOf(editor.blocks.commands.patchHeading).parameter(1).toExtend<{
       level?: unknown
       content?: unknown
-      metadata?: HeadingBlockMetadata
+      metadata?: HBM
     }>()
 
     expectTypeOf(editor.blocks.commands.insertQuote)
@@ -54,22 +43,22 @@ describe('metadata aliases', () => {
       .toExtend<{ metadata?: Metadata }>()
   })
 
-  test('getContext plus isParagraphBlock uses ParagraphBlockMetadata', () => {
+  test('getContext plus isParagraphBlock uses PBM', () => {
     const editor = new Dactylo()
     const block = editor.getContext().state.blocks.values().next().value
 
     if (block && isParagraphBlock(block)) {
-      expectTypeOf(block.metadata).toEqualTypeOf<ParagraphBlockMetadata>()
+      expectTypeOf(block.metadata).toEqualTypeOf<PBM>()
     }
   })
 
-  test('createTextNode plus isTextNode uses TextNodeMetadata', () => {
+  test('createTextNode plus isTextNode uses TNM', () => {
     const node = createTextNode({ text: 'hi' })
 
-    expectTypeOf(node.metadata).toEqualTypeOf<TextNodeMetadata>()
+    expectTypeOf(node.metadata).toEqualTypeOf<TNM>()
 
     if (isTextNode(node)) {
-      expectTypeOf(node.metadata).toEqualTypeOf<TextNodeMetadata>()
+      expectTypeOf(node.metadata).toEqualTypeOf<TNM>()
     }
   })
 

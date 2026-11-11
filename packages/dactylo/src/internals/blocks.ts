@@ -9,15 +9,7 @@
  * @todo supports parents/nested blocks
  */
 
-import type {
-  BulletListItemBlockMetadata,
-  CheckboxListItemBlockMetadata,
-  DividerBlockMetadata,
-  HeadingBlockMetadata,
-  NumberedListItemBlockMetadata,
-  ParagraphBlockMetadata,
-  QuoteBlockMetadata,
-} from './augmentation'
+import type { BBM, CBM, DBM, HBM, NBM, PBM, QBM } from './augmentation'
 import { DactyloError } from './errors'
 import { cloneInlineNode } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
@@ -79,7 +71,7 @@ export interface IBlockWithInlineContext<
 }
 
 /** Block representing a heading with markdown level (1-6). */
-export interface HeadingBlock extends IBlockWithInlineContext<HeadingBlockMetadata> {
+export interface HeadingBlock extends IBlockWithInlineContext<HBM> {
   readonly __type: 'heading'
 
   /** Level of the heading. */
@@ -87,22 +79,22 @@ export interface HeadingBlock extends IBlockWithInlineContext<HeadingBlockMetada
 }
 
 /** Block representing a paragraph → default block type. */
-export interface ParagraphBlock extends IBlockWithInlineContext<ParagraphBlockMetadata> {
+export interface ParagraphBlock extends IBlockWithInlineContext<PBM> {
   readonly __type: 'paragraph'
 }
 
 /** Block representing a quote. */
-export interface QuoteBlock extends IBlockWithInlineContext<QuoteBlockMetadata> {
+export interface QuoteBlock extends IBlockWithInlineContext<QBM> {
   readonly __type: 'quote'
 }
 
 /** Block representing a bullet list item. */
-export interface BulletListItemBlock extends IBlockWithInlineContext<BulletListItemBlockMetadata> {
+export interface BulletListItemBlock extends IBlockWithInlineContext<BBM> {
   readonly __type: 'bullet_list_item'
 }
 
 /** Blocks representing a numbered list item. */
-export interface NumberedListItemBlock extends IBlockWithInlineContext<NumberedListItemBlockMetadata> {
+export interface NumberedListItemBlock extends IBlockWithInlineContext<NBM> {
   readonly __type: 'numbered_list_item'
 
   /**
@@ -127,7 +119,7 @@ export interface NumberedListItemBlock extends IBlockWithInlineContext<NumberedL
 }
 
 /** Block representing a checkbox list item. */
-export interface CheckboxListItemBlock extends IBlockWithInlineContext<CheckboxListItemBlockMetadata> {
+export interface CheckboxListItemBlock extends IBlockWithInlineContext<CBM> {
   readonly __type: 'checkbox_list_item'
 
   /** Whether the item is checked. */
@@ -135,7 +127,7 @@ export interface CheckboxListItemBlock extends IBlockWithInlineContext<CheckboxL
 }
 
 /** Block representing a divider. */
-export interface DividerBlock extends IBlock<DividerBlockMetadata> {
+export interface DividerBlock extends IBlock<DBM> {
   readonly __type: 'divider'
 }
 
@@ -169,7 +161,7 @@ export function generateBlockId(): BlockId {
 /** Creates a {@link ParagraphBlock}. */
 export function createParagraphBlock(opts: {
   content: InlineNode[]
-  metadata?: ParagraphBlockMetadata
+  metadata?: PBM
   posKey: PosKey
   parentId?: BlockId | null
 }): ParagraphBlock {
@@ -178,7 +170,7 @@ export function createParagraphBlock(opts: {
     content: opts.content,
     createdAt: new Date(),
     id: generateBlockId(),
-    metadata: (opts.metadata ?? {}) as ParagraphBlockMetadata,
+    metadata: (opts.metadata ?? {}) as PBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -199,7 +191,7 @@ export function isParagraphBlock<B extends Block>(
 export function createParagraphBlockAfter(
   afterBlock: Block,
   content: InlineNode[],
-  metadata?: ParagraphBlockMetadata,
+  metadata?: PBM,
 ): ParagraphBlock {
   const posKey = after(afterBlock.posKey)
   return createParagraphBlock({
@@ -213,7 +205,7 @@ export function createParagraphBlockAfter(
 /** Creates a {@link QuoteBlock}. */
 export function createQuoteBlock(opts: {
   content: InlineNode[]
-  metadata?: QuoteBlockMetadata
+  metadata?: QBM
   posKey: PosKey
   parentId?: BlockId | null
 }): QuoteBlock {
@@ -222,7 +214,7 @@ export function createQuoteBlock(opts: {
     content: opts.content,
     createdAt: new Date(),
     id: generateBlockId(),
-    metadata: (opts.metadata ?? {}) as QuoteBlockMetadata,
+    metadata: (opts.metadata ?? {}) as QBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -240,7 +232,7 @@ export function isQuoteBlock<B extends Block>(
 export function createHeadingBlock(opts: {
   level: 1 | 2 | 3 | 4 | 5 | 6
   content: InlineNode[]
-  metadata?: HeadingBlockMetadata
+  metadata?: HBM
   posKey: PosKey
   parentId?: BlockId | null
 }): HeadingBlock {
@@ -250,7 +242,7 @@ export function createHeadingBlock(opts: {
     createdAt: new Date(),
     id: generateBlockId(),
     level: opts.level,
-    metadata: (opts.metadata ?? {}) as HeadingBlockMetadata,
+    metadata: (opts.metadata ?? {}) as HBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -267,7 +259,7 @@ export function isHeadingBlock<B extends Block>(
 /** Creates a {@link BulletListItemBlock}. */
 export function createBulletListItemBlock(opts: {
   content: InlineNode[]
-  metadata?: BulletListItemBlockMetadata
+  metadata?: BBM
   posKey: PosKey
   parentId?: BlockId | null
 }): BulletListItemBlock {
@@ -276,7 +268,7 @@ export function createBulletListItemBlock(opts: {
     content: opts.content,
     createdAt: new Date(),
     id: generateBlockId(),
-    metadata: (opts.metadata ?? {}) as BulletListItemBlockMetadata,
+    metadata: (opts.metadata ?? {}) as BBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -293,7 +285,7 @@ export function isBulletListItemBlock<B extends Block>(
 /** Creates a {@link NumberedListItemBlock}. */
 export function createNumberedListItemBlock(opts: {
   content: InlineNode[]
-  metadata?: NumberedListItemBlockMetadata
+  metadata?: NBM
   posKey: PosKey
   parentId?: BlockId | null
   variant?: 'default' | 'alpha' | 'roman'
@@ -310,7 +302,7 @@ export function createNumberedListItemBlock(opts: {
     createdAt: new Date(),
     id: generateBlockId(),
     markerNumbering,
-    metadata: (opts.metadata ?? {}) as NumberedListItemBlockMetadata,
+    metadata: (opts.metadata ?? {}) as NBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -328,7 +320,7 @@ export function isNumberedListItemBlock<B extends Block>(
 /** Creates a {@link CheckboxListItemBlock}. */
 export function createCheckboxListItemBlock(opts: {
   content: InlineNode[]
-  metadata?: CheckboxListItemBlockMetadata
+  metadata?: CBM
   posKey: PosKey
   parentId?: BlockId | null
   checked?: boolean
@@ -339,7 +331,7 @@ export function createCheckboxListItemBlock(opts: {
     content: opts.content,
     createdAt: new Date(),
     id: generateBlockId(),
-    metadata: (opts.metadata ?? {}) as CheckboxListItemBlockMetadata,
+    metadata: (opts.metadata ?? {}) as CBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -355,7 +347,7 @@ export function isCheckboxListItemBlock<B extends Block>(
 
 /** Creates a {@link DividerBlock}. */
 export function createDividerBlock(opts: {
-  metadata?: DividerBlockMetadata
+  metadata?: DBM
   posKey: PosKey
   parentId?: BlockId | null
 }): DividerBlock {
@@ -363,7 +355,7 @@ export function createDividerBlock(opts: {
     __type: 'divider',
     createdAt: new Date(),
     id: generateBlockId(),
-    metadata: (opts.metadata ?? {}) as DividerBlockMetadata,
+    metadata: (opts.metadata ?? {}) as DBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,

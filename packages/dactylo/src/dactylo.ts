@@ -1,11 +1,11 @@
 import type {
-  BulletListItemBlockMetadata,
-  CheckboxListItemBlockMetadata,
-  DividerBlockMetadata,
-  HeadingBlockMetadata,
-  NumberedListItemBlockMetadata,
-  ParagraphBlockMetadata,
-  QuoteBlockMetadata,
+  BBM,
+  CBM,
+  DBM,
+  HBM,
+  NBM,
+  PBM,
+  QBM,
 } from './internals/augmentation'
 import type {
   BlockId,
@@ -694,7 +694,7 @@ export interface DactyloBlocksCommands {
       pos?: InsertOrMoveBlockPosition
 
       /** Metadata to associate with the {@link ParagraphBlock}. */
-      metadata?: ParagraphBlockMetadata
+      metadata?: PBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -716,7 +716,7 @@ export interface DactyloBlocksCommands {
       pos?: InsertOrMoveBlockPosition
 
       /** Metadata to associate with the {@link QuoteBlock}. */
-      metadata?: QuoteBlockMetadata
+      metadata?: QBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -741,7 +741,7 @@ export interface DactyloBlocksCommands {
       pos?: InsertOrMoveBlockPosition
 
       /** Metadata to associate with the {@link HeadingBlock}. */
-      metadata?: HeadingBlockMetadata
+      metadata?: HBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -763,7 +763,7 @@ export interface DactyloBlocksCommands {
       pos?: InsertOrMoveBlockPosition
 
       /** Metadata to associate with the {@link BulletListItemBlock}. */
-      metadata?: BulletListItemBlockMetadata
+      metadata?: BBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -786,7 +786,7 @@ export interface DactyloBlocksCommands {
       /** Variant to use in order to display item marker. */
       variant?: NumberedListItemBlock['variant']
       /** Metadata to associate with the numbered list item block. */
-      metadata?: NumberedListItemBlockMetadata
+      metadata?: NBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -811,7 +811,7 @@ export interface DactyloBlocksCommands {
       pos?: InsertOrMoveBlockPosition
 
       /** Metadata to associate with the {@link CheckboxListItemBlock}. */
-      metadata?: CheckboxListItemBlockMetadata
+      metadata?: CBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -833,7 +833,7 @@ export interface DactyloBlocksCommands {
       pos?: InsertOrMoveBlockPosition
 
       /** Metadata to associate with the {@link DividerBlock}. */
-      metadata?: DividerBlockMetadata
+      metadata?: DBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -892,7 +892,7 @@ export interface DactyloBlocksCommands {
    */
   readonly patchParagraph: (
     blockId: BlockId,
-    opts: { content?: InlineNode[]; metadata?: ParagraphBlockMetadata },
+    opts: { content?: InlineNode[]; metadata?: PBM },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 
@@ -906,7 +906,7 @@ export interface DactyloBlocksCommands {
    */
   readonly patchQuote: (
     blockId: BlockId,
-    opts: { content?: InlineNode[]; metadata?: QuoteBlockMetadata },
+    opts: { content?: InlineNode[]; metadata?: QBM },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 
@@ -924,7 +924,7 @@ export interface DactyloBlocksCommands {
     opts: {
       level?: HeadingBlock['level']
       content?: InlineNode[]
-      metadata?: HeadingBlockMetadata
+      metadata?: HBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -939,7 +939,7 @@ export interface DactyloBlocksCommands {
    */
   readonly patchBulletListItem: (
     blockId: BlockId,
-    opts: { content?: InlineNode[]; metadata?: BulletListItemBlockMetadata },
+    opts: { content?: InlineNode[]; metadata?: BBM },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 
@@ -957,7 +957,7 @@ export interface DactyloBlocksCommands {
     opts: {
       variant?: NumberedListItemBlock['variant']
       content?: InlineNode[]
-      metadata?: NumberedListItemBlockMetadata
+      metadata?: NBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -976,7 +976,7 @@ export interface DactyloBlocksCommands {
     opts: {
       checked?: boolean
       content?: InlineNode[]
-      metadata?: CheckboxListItemBlockMetadata
+      metadata?: CBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
@@ -991,7 +991,7 @@ export interface DactyloBlocksCommands {
    */
   readonly patchDivider: (
     blockId: BlockId,
-    opts: { metadata?: DividerBlockMetadata },
+    opts: { metadata?: DBM },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 }
@@ -1956,7 +1956,7 @@ export class Dactylo {
         insertBulletListItem: (
           opts: {
             pos?: InsertOrMoveBlockPosition
-            metadata?: BulletListItemBlockMetadata
+            metadata?: BBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
@@ -1976,7 +1976,7 @@ export class Dactylo {
             /** Whether the item is checked. */
             checked?: boolean
             pos?: InsertOrMoveBlockPosition
-            metadata?: CheckboxListItemBlockMetadata
+            metadata?: CBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
@@ -1994,7 +1994,7 @@ export class Dactylo {
         insertDivider: (
           opts: {
             pos?: InsertOrMoveBlockPosition
-            metadata?: DividerBlockMetadata
+            metadata?: DBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
@@ -2015,7 +2015,7 @@ export class Dactylo {
 
           opts: {
             pos?: InsertOrMoveBlockPosition
-            metadata?: HeadingBlockMetadata
+            metadata?: HBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
@@ -2034,7 +2034,7 @@ export class Dactylo {
           opts: {
             pos?: InsertOrMoveBlockPosition
             variant?: NumberedListItemBlock['variant']
-            metadata?: NumberedListItemBlockMetadata
+            metadata?: NBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
@@ -2052,7 +2052,7 @@ export class Dactylo {
         insertParagraph: (
           opts: {
             pos?: InsertOrMoveBlockPosition
-            metadata?: ParagraphBlockMetadata
+            metadata?: PBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
@@ -2070,7 +2070,7 @@ export class Dactylo {
         insertQuote: (
           opts: {
             pos?: InsertOrMoveBlockPosition
-            metadata?: QuoteBlockMetadata
+            metadata?: QBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
@@ -2099,7 +2099,7 @@ export class Dactylo {
           blockId: BlockId,
           opts: {
             content?: InlineNode[]
-            metadata?: BulletListItemBlockMetadata
+            metadata?: BBM
           },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
@@ -2117,7 +2117,7 @@ export class Dactylo {
           opts: {
             checked?: boolean
             content?: InlineNode[]
-            metadata?: CheckboxListItemBlockMetadata
+            metadata?: CBM
           },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
@@ -2132,7 +2132,7 @@ export class Dactylo {
         /** Patches a {@link DividerBlock} in place with the given options. */
         patchDivider: (
           blockId: BlockId,
-          opts: { metadata?: DividerBlockMetadata },
+          opts: { metadata?: DBM },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
           this.#safeExecuteCommand(
@@ -2148,7 +2148,7 @@ export class Dactylo {
           opts: {
             level?: HeadingBlock['level']
             content?: InlineNode[]
-            metadata?: HeadingBlockMetadata
+            metadata?: HBM
           },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
@@ -2165,7 +2165,7 @@ export class Dactylo {
           opts: {
             variant?: NumberedListItemBlock['variant']
             content?: InlineNode[]
-            metadata?: NumberedListItemBlockMetadata
+            metadata?: NBM
           },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
@@ -2182,7 +2182,7 @@ export class Dactylo {
           blockId: BlockId,
           opts: {
             content?: InlineNode[]
-            metadata?: ParagraphBlockMetadata
+            metadata?: PBM
           },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
@@ -2198,7 +2198,7 @@ export class Dactylo {
           blockId: BlockId,
           opts: {
             content?: InlineNode[]
-            metadata?: QuoteBlockMetadata
+            metadata?: QBM
           },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>

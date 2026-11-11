@@ -6,7 +6,7 @@
  * Declaration merging is the zero-generic DX: `new Dactylo()` picks up
  * `DactyloTypes` through the `*Metadata` aliases. Concrete blocks, nodes,
  * factories, and commands close on those aliases (`ParagraphBlock extends
- * IBlockWithInlineContext<ParagraphBlockMetadata>`, `metadata?: ParagraphBlockMetadata`).
+ * IBlockWithInlineContext<PBM>`, `metadata?: PBM`).
  *
  * How a missing key falls back:
  * `DactyloTypes` is empty, so `keyof DactyloTypes` is `never`. Each extendable
@@ -95,77 +95,77 @@ export type GetOverride<
 > = GetOverrideOrErrorValue<K, DefaultType, MakeErrorString<K, Reason>>
 
 /** Extended type for {@link ParagraphBlock}'s `metadata` */
-export type ParagraphBlockMetadata = GetOverride<
+export type PBM = GetOverride<
   'ParagraphBlockMetadata',
   Metadata,
   'is not a valid `Metadata` value'
 >
 
 /** Extended type for {@link HeadingBlock}'s `metadata` */
-export type HeadingBlockMetadata = GetOverride<
+export type HBM = GetOverride<
   'HeadingBlockMetadata',
   Metadata,
   'is not a valid `Metadata` value'
 >
 
 /** Extended type for {@link QuoteBlock}'s `metadata` */
-export type QuoteBlockMetadata = GetOverride<
+export type QBM = GetOverride<
   'QuoteBlockMetadata',
   Metadata,
   'is not a valid `Metadata` value'
 >
 
 /** Extended type for {@link BulletListItemBlock}'s `metadata` */
-export type BulletListItemBlockMetadata = GetOverride<
+export type BBM = GetOverride<
   'BulletListItemBlockMetadata',
   Metadata,
   'is not a valid `Metadata` value'
 >
 
 /** Extended type for {@link NumberedListItemBlock}'s `metadata` */
-export type NumberedListItemBlockMetadata = GetOverride<
+export type NBM = GetOverride<
   'NumberedListItemBlockMetadata',
   Metadata,
   'is not a valid `Metadata` value'
 >
 
 /** Extended type for {@link CheckboxListItemBlock}'s `metadata` */
-export type CheckboxListItemBlockMetadata = GetOverride<
+export type CBM = GetOverride<
   'CheckboxListItemBlockMetadata',
   Metadata,
   'is not a valid `Metadata` value'
 >
 
 /** Extended type for {@link DividerBlock}'s `metadata` */
-export type DividerBlockMetadata = GetOverride<
+export type DBM = GetOverride<
   'DividerBlockMetadata',
   Metadata,
   'is not a valid `Metadata` value'
 >
 
 /** Extended type for {@link TextNode}'s `metadata` */
-export type TextNodeMetadata = GetOverride<
+export type TNM = GetOverride<
   'TextNodeMetadata',
   Metadata,
   'is not a valid `Metadata` value'
 >
 
 /** Extended type for {@link LinkNode}'s `metadata` */
-export type LinkNodeMetadata = GetOverride<
+export type LNM = GetOverride<
   'LinkNodeMetadata',
   Metadata,
   'is not a valid `Metadata` value'
 >
 
 /** Extended type for {@link LineBreakNode}'s `metadata` */
-export type LineBreakNodeMetadata = GetOverride<
+export type LBNM = GetOverride<
   'LineBreakNodeMetadata',
   Metadata,
   'is not a valid `Metadata` value'
 >
 
 /** Extended type for {@link MentionNode}'s `metadata` */
-export type MentionNodeMetadata = GetOverride<
+export type MNM = GetOverride<
   'MentionNodeMetadata',
   Metadata,
   'is not a valid `Metadata` value'

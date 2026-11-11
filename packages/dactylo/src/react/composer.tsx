@@ -15,13 +15,13 @@ import type {
   DactyloToolEvent,
 } from '../dactylo'
 import type {
-  BulletListItemBlockMetadata,
-  CheckboxListItemBlockMetadata,
-  DividerBlockMetadata,
-  HeadingBlockMetadata,
-  NumberedListItemBlockMetadata,
-  ParagraphBlockMetadata,
-  QuoteBlockMetadata,
+  BBM,
+  CBM,
+  DBM,
+  HBM,
+  NBM,
+  PBM,
+  QBM,
 } from '../internals/augmentation'
 import type {
   Block,
@@ -571,7 +571,7 @@ export function useParagraphs() {
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
-        metadata?: ParagraphBlockMetadata
+        metadata?: PBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertParagraph(opts, source),
@@ -580,7 +580,7 @@ export function useParagraphs() {
   const patch = useStableCallback(
     (
       paragraphBlockId: BlockId,
-      opts: { content?: InlineNode[]; metadata?: ParagraphBlockMetadata },
+      opts: { content?: InlineNode[]; metadata?: PBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.patchParagraph(paragraphBlockId, opts, source),
   )
@@ -618,7 +618,7 @@ export function useQuotes() {
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
-        metadata?: QuoteBlockMetadata
+        metadata?: QBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertQuote(opts, source),
@@ -627,7 +627,7 @@ export function useQuotes() {
   const patch = useStableCallback(
     (
       quoteBlockId: BlockId,
-      opts: { content?: InlineNode[]; metadata?: QuoteBlockMetadata },
+      opts: { content?: InlineNode[]; metadata?: QBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.patchQuote(quoteBlockId, opts, source),
   )
@@ -667,7 +667,7 @@ export function useHeadings() {
       level: HeadingBlock['level'],
       opts?: {
         pos?: InsertOrMoveBlockPosition
-        metadata?: HeadingBlockMetadata
+        metadata?: HBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertHeading(level, opts, source),
@@ -679,7 +679,7 @@ export function useHeadings() {
       opts: {
         level?: HeadingBlock['level']
         content?: InlineNode[]
-        metadata?: HeadingBlockMetadata
+        metadata?: HBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.patchHeading(headingBlockId, opts, source),
@@ -719,7 +719,7 @@ export function useDividers() {
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
-        metadata?: DividerBlockMetadata
+        metadata?: DBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertDivider(opts, source),
@@ -728,7 +728,7 @@ export function useDividers() {
   const patch = useStableCallback(
     (
       dividerBlockId: BlockId,
-      opts: { metadata?: DividerBlockMetadata },
+      opts: { metadata?: DBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.patchDivider(dividerBlockId, opts, source),
   )
@@ -767,7 +767,7 @@ export function useBulletLists() {
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
-        metadata?: BulletListItemBlockMetadata
+        metadata?: BBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertBulletListItem(opts, source),
@@ -776,7 +776,7 @@ export function useBulletLists() {
   const patch = useStableCallback(
     (
       bulletListItemBlockId: BlockId,
-      opts: { content?: InlineNode[]; metadata?: BulletListItemBlockMetadata },
+      opts: { content?: InlineNode[]; metadata?: BBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
       editor.blocks.commands.patchBulletListItem(
@@ -821,7 +821,7 @@ export function useNumberedLists() {
       opts?: {
         pos?: InsertOrMoveBlockPosition
         variant?: NumberedListItemBlock['variant']
-        metadata?: NumberedListItemBlockMetadata
+        metadata?: NBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertNumberedListItem(opts, source),
@@ -833,7 +833,7 @@ export function useNumberedLists() {
       opts: {
         variant?: NumberedListItemBlock['variant']
         content?: InlineNode[]
-        metadata?: NumberedListItemBlockMetadata
+        metadata?: NBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
@@ -878,7 +878,7 @@ export function useCheckboxLists() {
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
-        metadata?: CheckboxListItemBlockMetadata
+        metadata?: CBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.insertCheckboxListItem(opts, source),
@@ -890,7 +890,7 @@ export function useCheckboxLists() {
       opts: {
         checked?: boolean
         content?: InlineNode[]
-        metadata?: CheckboxListItemBlockMetadata
+        metadata?: CBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>

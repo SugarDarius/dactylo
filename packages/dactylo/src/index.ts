@@ -27,17 +27,17 @@ export type {
 } from './dactylo'
 export { Dactylo } from './dactylo'
 export type {
-  BulletListItemBlockMetadata,
-  CheckboxListItemBlockMetadata,
-  DividerBlockMetadata,
-  HeadingBlockMetadata,
-  NumberedListItemBlockMetadata,
-  LineBreakNodeMetadata,
-  LinkNodeMetadata,
-  MentionNodeMetadata,
-  ParagraphBlockMetadata,
-  QuoteBlockMetadata,
-  TextNodeMetadata,
+  BBM,
+  CBM,
+  DBM,
+  HBM,
+  NBM,
+  LBNM,
+  LNM,
+  MNM,
+  PBM,
+  QBM,
+  TNM,
 } from './internals/augmentation'
 export type {
   BulletListItemBlock,
