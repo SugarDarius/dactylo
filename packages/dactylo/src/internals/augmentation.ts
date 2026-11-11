@@ -37,7 +37,7 @@
  * }
  * ```
  */
-import type { AllOptionalKeys, Metadata } from './types'
+import type { Metadata } from './types'
 
 declare global {
   /**
@@ -80,9 +80,7 @@ export type GetOverrideOrErrorValue<
   ? unknown extends DactyloTypes[K]
     ? DefaultType
     : DactyloTypes[K] extends DefaultType
-      ? AllOptionalKeys<DactyloTypes[K]> extends true
-        ? DactyloTypes[K]
-        : MakeErrorString<K, 'must only declare optional keys'>
+      ? DactyloTypes[K]
       : ErrorType
   : DefaultType
 /**
