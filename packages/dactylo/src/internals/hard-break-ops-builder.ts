@@ -126,12 +126,11 @@ export function createBlockAfterHardBreak(
   source: BlockWithInlineContent,
   content: InlineNode[],
   posKey: ReturnType<typeof computeInsertBlockPosKey>,
-  metadata?: BlockWithInlineContent['metadata'],
 ): BlockWithInlineContent {
   if (isBulletListItemBlock(source)) {
     return createBulletListItemBlock({
       content,
-      metadata,
+      metadata: source.metadata,
       parentId: source.parentId,
       posKey,
     })
@@ -140,7 +139,7 @@ export function createBlockAfterHardBreak(
   if (isCheckboxListItemBlock(source)) {
     return createCheckboxListItemBlock({
       content,
-      metadata,
+      metadata: source.metadata,
       parentId: source.parentId,
       posKey,
     })
@@ -153,7 +152,7 @@ export function createBlockAfterHardBreak(
         source.markerNumbering,
         source.variant,
       ),
-      metadata,
+      metadata: source.metadata,
       parentId: source.parentId,
       posKey,
       variant: source.variant,
@@ -162,7 +161,7 @@ export function createBlockAfterHardBreak(
 
   return createParagraphBlock({
     content,
-    metadata,
+    metadata: source.metadata,
     parentId: source.parentId,
     posKey,
   })
@@ -282,12 +281,7 @@ export function buildHardBreakBlockOpsAtCaret(
     { index: found.index, node },
     at.offset,
   )
-  const insertedBlock = createBlockAfterHardBreak(
-    block,
-    tailSnapshot,
-    posKey,
-    block.metadata,
-  )
+  const insertedBlock = createBlockAfterHardBreak(block, tailSnapshot, posKey)
   const next = cursorAtBlockStart(insertedBlock.id, insertedBlock)
   if (!next) {
     buildError(
