@@ -8,6 +8,12 @@
  * oo give better mutation performances while staying memory-conscious.
  */
 
+import type {
+  LineBreakNodeMetadata,
+  LinkNodeMetadata,
+  MentionNodeMetadata,
+  TextNodeMetadata,
+} from './augmentation'
 import { createBaseMarks, isMarksEqual } from './marks'
 import type { Marks } from './marks'
 import { generateRandomId } from './random-id'
@@ -27,7 +33,7 @@ import { assertNever } from './utils'
 export type NodeId = Brand<`nd_${string}`, 'NodeId'>
 
 /** Base interface to implement by all existing nodes in Dactylo. */
-export interface INode {
+export interface INode<M extends Metadata = Metadata> {
   /** Unique identifier for the node. */
   readonly id: NodeId
 
@@ -41,11 +47,11 @@ export interface INode {
    * Custom metadata defined by developers.
    * Useful to store data inside a node to use outside Dactylo itself.
    */
-  readonly metadata: Metadata
+  readonly metadata: M
 }
 
 /** Node representing a text -- default node type. */
-export interface TextNode extends INode {
+export interface TextNode extends INode<TextNodeMetadata> {
   readonly __type: 'text'
 
   /** Text content of the node. */
@@ -56,7 +62,7 @@ export interface TextNode extends INode {
 }
 
 /** Node representing a link. */
-export interface LinkNode extends INode {
+export interface LinkNode extends INode<LinkNodeMetadata> {
   readonly __type: 'link'
 
   /** URL of the link. */
@@ -76,7 +82,7 @@ export interface LinkNode extends INode {
 }
 
 /** Node representing a mention. */
-export interface MentionNode extends INode {
+export interface MentionNode extends INode<MentionNodeMetadata> {
   readonly __type: 'mention'
 
   /** Structural data of the artefact representing the mention. */
@@ -92,12 +98,12 @@ export interface MentionNode extends INode {
 }
 
 /** Node representing a like break (soft break, shift+enter) inside a block. */
-export interface LineBreakNode extends INode {
+export interface LineBreakNode extends INode<LineBreakNodeMetadata> {
   readonly __type: 'line_break'
 }
 
 /** Discriminated union of inline nodes supported by {@link Dactylo} */
-export type InlineNode = TextNode | LinkNode | MentionNode | LineBreakNode
+export type InlineNode = TextNode | LinkNode | LineBreakNode | MentionNode
 
 /** Allowed nodes with editable text.*/
 export type InlineNodeWithEditableText = TextNode | LinkNode
@@ -113,7 +119,7 @@ export function generateNodeId(): NodeId {
  */
 export function createTextNode(opts: {
   text: string
-  metadata?: Metadata
+  metadata?: TextNodeMetadata
   marks?: Marks
 }): TextNode {
   return {
@@ -121,34 +127,38 @@ export function createTextNode(opts: {
     createdAt: new Date(),
     id: generateNodeId(),
     marks: opts.marks ?? createBaseMarks(),
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata ?? {}) as TextNodeMetadata,
     text: sanitizeText(opts.text),
     updatedAt: null,
   }
 }
 
 /** Whether the node is a text node. */
-export function isTextNode(node: InlineNode): node is TextNode {
+export function isTextNode<N extends InlineNode>(
+  node: N,
+): node is Extract<N, { readonly __type: 'text' }> {
   return node.__type === 'text'
 }
 
 /** Creates a {@link LineBreakNode}.  */
 export function createLineBreakNode(
   opts: {
-    metadata?: Metadata
+    metadata?: LineBreakNodeMetadata
   } = {},
 ): LineBreakNode {
   return {
     __type: 'line_break',
     createdAt: new Date(),
     id: generateNodeId(),
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata ?? {}) as LineBreakNodeMetadata,
     updatedAt: null,
   }
 }
 
 /** Whether the node is a line break node. */
-export function isLineBreakNode(node: InlineNode): node is LineBreakNode {
+export function isLineBreakNode<N extends InlineNode>(
+  node: N,
+): node is Extract<N, { readonly __type: 'line_break' }> {
   return node.__type === 'line_break'
 }
 
@@ -160,7 +170,7 @@ export function createLinkNode(opts: {
     href: string
     title: string
   }
-  metadata?: Metadata
+  metadata?: LinkNodeMetadata
   text: string
   marks?: Marks
 }): LinkNode {
@@ -169,7 +179,7 @@ export function createLinkNode(opts: {
     createdAt: new Date(),
     id: generateNodeId(),
     marks: opts.marks ?? createBaseMarks(),
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata ?? {}) as LinkNodeMetadata,
     text: sanitizeText(opts.text),
     updatedAt: null,
     url: {
@@ -180,24 +190,28 @@ export function createLinkNode(opts: {
 }
 
 /** Whether the node is a link node. */
-export function isLinkNode(node: InlineNode): node is LinkNode {
+export function isLinkNode<N extends InlineNode>(
+  node: N,
+): node is Extract<N, { readonly __type: 'link' }> {
   return node.__type === 'link'
 }
 
 /** Whether the node is a mention node. */
-export function isMentionNode(node: InlineNode): node is MentionNode {
+export function isMentionNode<N extends InlineNode>(
+  node: N,
+): node is Extract<N, { readonly __type: 'mention' }> {
   return node.__type === 'mention'
 }
 
 /** Whether the node is an editable text node or a link node. */
-export function isInlineNodeWithEditableText(
-  node: InlineNode,
-): node is InlineNodeWithEditableText {
+export function isInlineNodeWithEditableText<N extends InlineNode>(
+  node: N,
+): node is Extract<N, InlineNodeWithEditableText> {
   return isTextNode(node) || isLinkNode(node)
 }
 
 /** Clones an inline node by copying properties and creating a new identity. */
-export function cloneInlineNode(node: InlineNode): InlineNode {
+export function cloneInlineNode<N extends InlineNode>(node: N): N {
   return {
     ...node,
     createdAt: new Date(),
@@ -286,7 +300,7 @@ export function createFromInlineWithEditableText(
 }
 
 /** Returns a shallow copy of an inline node with a fresh `updatedAt` timestamp. */
-export function touchInlineNode(node: InlineNode): InlineNode {
+export function touchInlineNode<N extends InlineNode>(node: N): N {
   return { ...node, updatedAt: new Date() }
 }
 

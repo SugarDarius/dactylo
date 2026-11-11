@@ -9,6 +9,15 @@
  * @todo supports parents/nested blocks
  */
 
+import type {
+  BulletListItemBlockMetadata,
+  CheckboxListItemBlockMetadata,
+  DividerBlockMetadata,
+  HeadingBlockMetadata,
+  NumberedListItemBlockMetadata,
+  ParagraphBlockMetadata,
+  QuoteBlockMetadata,
+} from './augmentation'
 import { DactyloError } from './errors'
 import { cloneInlineNode } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
@@ -29,7 +38,7 @@ import { assertNever } from './utils'
 export type BlockId = Brand<`bl_${string}`, 'BlockId'>
 
 /** Base interface to implement by all existing blocks in Dactylo. */
-export interface IBlock {
+export interface IBlock<M extends Metadata = Metadata> {
   /** Unique identifier for the block. */
   readonly id: BlockId
 
@@ -54,11 +63,13 @@ export interface IBlock {
    * Custom metadata defined by developers.
    * Useful to store data inside a block to use outside Dactylo itself.
    */
-  readonly metadata: Metadata
+  readonly metadata: M
 }
 
 /** Base interface for blocks with inline content. */
-export interface IBlockWithInlineContext extends IBlock {
+export interface IBlockWithInlineContext<
+  M extends Metadata = Metadata,
+> extends IBlock<M> {
   /**
    * Inline content tree for the block.
    * By design, this array is kept lightweight as an inline sequence
@@ -68,7 +79,7 @@ export interface IBlockWithInlineContext extends IBlock {
 }
 
 /** Block representing a heading with markdown level (1-6). */
-export interface HeadingBlock extends IBlockWithInlineContext {
+export interface HeadingBlock extends IBlockWithInlineContext<HeadingBlockMetadata> {
   readonly __type: 'heading'
 
   /** Level of the heading. */
@@ -76,22 +87,22 @@ export interface HeadingBlock extends IBlockWithInlineContext {
 }
 
 /** Block representing a paragraph → default block type. */
-export interface ParagraphBlock extends IBlockWithInlineContext {
+export interface ParagraphBlock extends IBlockWithInlineContext<ParagraphBlockMetadata> {
   readonly __type: 'paragraph'
 }
 
 /** Block representing a quote. */
-export interface QuoteBlock extends IBlockWithInlineContext {
+export interface QuoteBlock extends IBlockWithInlineContext<QuoteBlockMetadata> {
   readonly __type: 'quote'
 }
 
 /** Block representing a bullet list item. */
-export interface BulletListItemBlock extends IBlockWithInlineContext {
+export interface BulletListItemBlock extends IBlockWithInlineContext<BulletListItemBlockMetadata> {
   readonly __type: 'bullet_list_item'
 }
 
 /** Blocks representing a numbered list item. */
-export interface NumberedListItemBlock extends IBlockWithInlineContext {
+export interface NumberedListItemBlock extends IBlockWithInlineContext<NumberedListItemBlockMetadata> {
   readonly __type: 'numbered_list_item'
 
   /**
@@ -116,7 +127,7 @@ export interface NumberedListItemBlock extends IBlockWithInlineContext {
 }
 
 /** Block representing a checkbox list item. */
-export interface CheckboxListItemBlock extends IBlockWithInlineContext {
+export interface CheckboxListItemBlock extends IBlockWithInlineContext<CheckboxListItemBlockMetadata> {
   readonly __type: 'checkbox_list_item'
 
   /** Whether the item is checked. */
@@ -124,7 +135,7 @@ export interface CheckboxListItemBlock extends IBlockWithInlineContext {
 }
 
 /** Block representing a divider. */
-export interface DividerBlock extends IBlock {
+export interface DividerBlock extends IBlock<DividerBlockMetadata> {
   readonly __type: 'divider'
 }
 
@@ -158,7 +169,7 @@ export function generateBlockId(): BlockId {
 /** Creates a {@link ParagraphBlock}. */
 export function createParagraphBlock(opts: {
   content: InlineNode[]
-  metadata?: Metadata
+  metadata?: ParagraphBlockMetadata
   posKey: PosKey
   parentId?: BlockId | null
 }): ParagraphBlock {
@@ -167,7 +178,7 @@ export function createParagraphBlock(opts: {
     content: opts.content,
     createdAt: new Date(),
     id: generateBlockId(),
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata ?? {}) as ParagraphBlockMetadata,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -175,7 +186,9 @@ export function createParagraphBlock(opts: {
 }
 
 /** Whether the block is a {@link ParagraphBlock}. */
-export function isParagraphBlock(block: Block): block is ParagraphBlock {
+export function isParagraphBlock<B extends Block>(
+  block: B,
+): block is Extract<B, { readonly __type: 'paragraph' }> {
   return block.__type === 'paragraph'
 }
 
@@ -186,7 +199,7 @@ export function isParagraphBlock(block: Block): block is ParagraphBlock {
 export function createParagraphBlockAfter(
   afterBlock: Block,
   content: InlineNode[],
-  metadata?: Metadata,
+  metadata?: ParagraphBlockMetadata,
 ): ParagraphBlock {
   const posKey = after(afterBlock.posKey)
   return createParagraphBlock({
@@ -200,7 +213,7 @@ export function createParagraphBlockAfter(
 /** Creates a {@link QuoteBlock}. */
 export function createQuoteBlock(opts: {
   content: InlineNode[]
-  metadata?: Metadata
+  metadata?: QuoteBlockMetadata
   posKey: PosKey
   parentId?: BlockId | null
 }): QuoteBlock {
@@ -209,7 +222,7 @@ export function createQuoteBlock(opts: {
     content: opts.content,
     createdAt: new Date(),
     id: generateBlockId(),
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata ?? {}) as QuoteBlockMetadata,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -217,7 +230,9 @@ export function createQuoteBlock(opts: {
 }
 
 /** Whether the block is a {@link QuoteBlock}. */
-export function isQuoteBlock(block: Block): block is QuoteBlock {
+export function isQuoteBlock<B extends Block>(
+  block: B,
+): block is Extract<B, { readonly __type: 'quote' }> {
   return block.__type === 'quote'
 }
 
@@ -225,7 +240,7 @@ export function isQuoteBlock(block: Block): block is QuoteBlock {
 export function createHeadingBlock(opts: {
   level: 1 | 2 | 3 | 4 | 5 | 6
   content: InlineNode[]
-  metadata?: Metadata
+  metadata?: HeadingBlockMetadata
   posKey: PosKey
   parentId?: BlockId | null
 }): HeadingBlock {
@@ -235,7 +250,7 @@ export function createHeadingBlock(opts: {
     createdAt: new Date(),
     id: generateBlockId(),
     level: opts.level,
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata ?? {}) as HeadingBlockMetadata,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -243,14 +258,16 @@ export function createHeadingBlock(opts: {
 }
 
 /** Whether the block is a {@link HeadingBlock}. */
-export function isHeadingBlock(block: Block): block is HeadingBlock {
+export function isHeadingBlock<B extends Block>(
+  block: B,
+): block is Extract<B, { readonly __type: 'heading' }> {
   return block.__type === 'heading'
 }
 
 /** Creates a {@link BulletListItemBlock}. */
 export function createBulletListItemBlock(opts: {
   content: InlineNode[]
-  metadata?: Metadata
+  metadata?: BulletListItemBlockMetadata
   posKey: PosKey
   parentId?: BlockId | null
 }): BulletListItemBlock {
@@ -259,7 +276,7 @@ export function createBulletListItemBlock(opts: {
     content: opts.content,
     createdAt: new Date(),
     id: generateBlockId(),
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata ?? {}) as BulletListItemBlockMetadata,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -267,16 +284,16 @@ export function createBulletListItemBlock(opts: {
 }
 
 /** Whether the block is a {@link BulletListItemBlock}. */
-export function isBulletListItemBlock(
-  block: Block,
-): block is BulletListItemBlock {
+export function isBulletListItemBlock<B extends Block>(
+  block: B,
+): block is Extract<B, { readonly __type: 'bullet_list_item' }> {
   return block.__type === 'bullet_list_item'
 }
 
 /** Creates a {@link NumberedListItemBlock}. */
 export function createNumberedListItemBlock(opts: {
   content: InlineNode[]
-  metadata?: Metadata
+  metadata?: NumberedListItemBlockMetadata
   posKey: PosKey
   parentId?: BlockId | null
   variant?: 'default' | 'alpha' | 'roman'
@@ -293,7 +310,7 @@ export function createNumberedListItemBlock(opts: {
     createdAt: new Date(),
     id: generateBlockId(),
     markerNumbering,
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata ?? {}) as NumberedListItemBlockMetadata,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -302,16 +319,16 @@ export function createNumberedListItemBlock(opts: {
 }
 
 /** Whether the blocks is a {@link NumberedListItemBlock}. */
-export function isNumberedListItemBlock(
-  block: Block,
-): block is NumberedListItemBlock {
+export function isNumberedListItemBlock<B extends Block>(
+  block: B,
+): block is Extract<B, { readonly __type: 'numbered_list_item' }> {
   return block.__type === 'numbered_list_item'
 }
 
 /** Creates a {@link CheckboxListItemBlock}. */
 export function createCheckboxListItemBlock(opts: {
   content: InlineNode[]
-  metadata?: Metadata
+  metadata?: CheckboxListItemBlockMetadata
   posKey: PosKey
   parentId?: BlockId | null
   checked?: boolean
@@ -322,7 +339,7 @@ export function createCheckboxListItemBlock(opts: {
     content: opts.content,
     createdAt: new Date(),
     id: generateBlockId(),
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata ?? {}) as CheckboxListItemBlockMetadata,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -330,15 +347,15 @@ export function createCheckboxListItemBlock(opts: {
 }
 
 /** Whether the block is a {@link CheckboxListItemBlock}. */
-export function isCheckboxListItemBlock(
-  block: Block,
-): block is CheckboxListItemBlock {
+export function isCheckboxListItemBlock<B extends Block>(
+  block: B,
+): block is Extract<B, { readonly __type: 'checkbox_list_item' }> {
   return block.__type === 'checkbox_list_item'
 }
 
 /** Creates a {@link DividerBlock}. */
 export function createDividerBlock(opts: {
-  metadata?: Metadata
+  metadata?: DividerBlockMetadata
   posKey: PosKey
   parentId?: BlockId | null
 }): DividerBlock {
@@ -346,7 +363,7 @@ export function createDividerBlock(opts: {
     __type: 'divider',
     createdAt: new Date(),
     id: generateBlockId(),
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata ?? {}) as DividerBlockMetadata,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
     updatedAt: null,
@@ -354,14 +371,16 @@ export function createDividerBlock(opts: {
 }
 
 /** Whether the block is a {@link DividerBlock}. */
-export function isDividerBlock(block: Block): block is DividerBlock {
+export function isDividerBlock<B extends Block>(
+  block: B,
+): block is Extract<B, { readonly __type: 'divider' }> {
   return block.__type === 'divider'
 }
 
 /** Whether the block is allowed to have inline content. */
-export function isBlockWithInlineContent(
-  block: Block,
-): block is BlockWithInlineContent {
+export function isBlockWithInlineContent<B extends Block>(
+  block: B,
+): block is Extract<B, BlockWithInlineContent> {
   return (
     isHeadingBlock(block) ||
     isParagraphBlock(block) ||
@@ -373,7 +392,7 @@ export function isBlockWithInlineContent(
 }
 
 /** Returns a shallow copy of a block with a fresh `updatedAt` timestamp. */
-export function touchBlock(block: Block): Block {
+export function touchBlock<B extends Block>(block: B): B {
   return { ...block, updatedAt: new Date() }
 }
 

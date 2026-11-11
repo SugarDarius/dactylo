@@ -91,4 +91,5 @@ export type {
   TransactionPipelineOptions,
   TransactionSource,
 } from './internals/transaction'
+export type { Metadata } from './internals/types'
 export type { TypingBurstOptions } from './internals/typing'

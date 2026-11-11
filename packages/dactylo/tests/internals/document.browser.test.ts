@@ -11,7 +11,7 @@ import {
   putBlocks,
 } from '../../src/internals/document'
 import type { DocumentState } from '../../src/internals/document'
-import { createTextNode } from '../../src/internals/nodes'
+import { createTextNode, isTextNode } from '../../src/internals/nodes'
 import { after } from '../../src/internals/position'
 
 function firstParagraph(state: DocumentState): ParagraphBlock {
@@ -43,7 +43,10 @@ describe('putBlock', () => {
 
     expect(next.blockOrderById).toBe(state.blockOrderById)
     expect(next.blocks).not.toBe(state.blocks)
-    expect(firstParagraph(state).content[0]?.text).toBe('')
+    const [firstNode] = firstParagraph(state).content
+    expect(
+      firstNode && isTextNode(firstNode) ? firstNode.text : undefined,
+    ).toBe('')
   })
 
   test('inserts a block and keeps existing ones', () => {
@@ -96,7 +99,10 @@ describe('putBlocks', () => {
       third.id,
       extra.id,
     ])
-    expect(firstParagraph(next).content[0]?.text).toBe('A!')
+    const [patchedNode] = firstParagraph(next).content
+    expect(
+      patchedNode && isTextNode(patchedNode) ? patchedNode.text : undefined,
+    ).toBe('A!')
   })
 
   test('keeps blockOrderById when every posKey is unchanged', () => {

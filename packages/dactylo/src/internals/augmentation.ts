@@ -3,9 +3,10 @@
  * Dactylo adopts the same declaration-merging system used by Liveblocks 🚀
  * 👉🏻 https://github.com/liveblocks/liveblocks/blob/main/packages/liveblocks-core/src/globals/augmentation.ts
  *
- * The rationale behind this choice is to provide a seamless DX for developers
- * to extend the Dactylo types without having to deal with generics or runtime codecs
- * through {@link Dactylo}, {@link TransactionPipeline}, …
+ * Declaration merging is the zero-generic DX: `new Dactylo()` picks up
+ * `DactyloTypes` through the `*Metadata` aliases. Concrete blocks, nodes,
+ * factories, and commands close on those aliases (`ParagraphBlock extends
+ * IBlockWithInlineContext<ParagraphBlockMetadata>`, `metadata?: ParagraphBlockMetadata`).
  *
  * How a missing key falls back:
  * `DactyloTypes` is empty, so `keyof DactyloTypes` is `never`. Each extendable
