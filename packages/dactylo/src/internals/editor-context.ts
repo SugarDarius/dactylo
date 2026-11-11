@@ -22,6 +22,7 @@ import type { Selection } from './selection'
  * on every mutation.
  *
  * What lives where:
+ * ```md
  * ┌────────────────────────────────────────────────────────────────---─┐
  * │                        EditorContext                               │
  * |  ┌─────────────────────---┐  ┌──────────────────────────────────┐  │
@@ -35,6 +36,7 @@ import type { Selection } from './selection'
  *         ▼                              ▼
  *  toMarkdown(), exports,         caret render, keydown handlers(),
  *  AI reads blocks                copy/paste, onSelectionChanged
+ * ```
  *
  * Why {@link Selection} is a first-class field (not external)?
  *
@@ -60,7 +62,7 @@ import type { Selection } from './selection'
  * current node's marks; hard/soft break copies them onto the continuation.
  *
  * How {@link EditorContext} connects to the rest of Dactylo:
- * ```
+ * ```md
  * User presses "A"
  *        |
  *        ▼

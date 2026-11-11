@@ -418,9 +418,11 @@ export interface TransactionPipelineMarkdownConfig {
  * Transaction pipeline
  *
  * The pipeline enforces ordering:
+ * ```md
  * Transaction { ops, policy } → validateOps → applyOps → commitEffects
  *                                 ↓ fail
  *                         reject (state unchanged)
+ * ```
  *
  * Commit effects (side effects, not pure):
  *  1. Push to history stack (unless we don't want too)
@@ -437,6 +439,7 @@ export interface TransactionPipelineMarkdownConfig {
  *  2. {@link Transaction} bundles operations with metadata: {@link TransactionPolicy}
  *  3. {@link EditorContext} as the before/after snapshot
  *
+ * ```md
  * ┌─────────────────────────────────────────────────────────────────────────┐
  * │                           Transaction                                   │
  * │  ┌─────────────────────────────┐   ┌─────────────────────────────────┐  │
@@ -448,6 +451,7 @@ export interface TransactionPipelineMarkdownConfig {
  *          ▼                                        ▼
  *    EditorContext ──────────────-----------------------► EditorContext
  *       (prev)                                               (next)
+ * ```
  *
  * | Type                | Mutable?      | Serialized to disk?   | Role                             |
  * |---------------------|---------------|-----------------------|----------------------------------|
@@ -817,7 +821,7 @@ export class TransactionPipeline {
    *  2. Typing commands (text, line break, paragraph, heading, etc.)
    *  3. Not handled input types (historyUndo, historyRedo, …)
    *
-   * ```
+   * ```md
    * Input → context → operations
    * InputEvent
    *      |
@@ -832,6 +836,7 @@ export class TransactionPipeline {
    *      |
    *      ▼
    * EventSources.context.notify(context)
+   * ```
    *
    * By design, recognized intents are prevented by default.
    *
@@ -1094,7 +1099,7 @@ export class TransactionPipeline {
    * - `context`
    * - `history`
    *
-   * ```
+   * ```md
    * Keydown → context → operations
    * KeyboardEvent
    *      |

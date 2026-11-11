@@ -1156,13 +1156,14 @@ export interface DactyloOptions {
  *  4. Uniform input paths: keyboard, Ai edits, imports, all produce transactions
  *
  * Pipeline stages:
+ * ```md
  * ┌─────────────┐   ┌──────────────┐   ┌───────────┐   ┌────────────┐   ┌──────────-----------┐
  * │   Source    │ → │ Build Tx     │ → │ Validate  │ → │ Apply      │ → │ Commit Side Effects │
  * │ (input/AI)  │   │ (ops batch)  │   │ (schema)  │   │ (pure)     │   │ (history/events)    │
  * └─────────────┘   └──────────────┘   └───────────┘   └────────────┘   └──────────-----------┘
  *                                          ↓ fail
  *                              Reject (state unchanged) + error
- *
+ *```
  * @example
  * ```ts
  * import { Dactylo } from '@sugardarius/dactylo'

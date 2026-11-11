@@ -45,6 +45,7 @@ import { assertNever } from './utils'
  * It's not not the markdown string on disk, nor the React UI and nor the cursor position.
  * It's the authoritative source of truth (data) that all of of thins are derived from.
  *
+ * ```md
  * ┌─────────────────────────────────────────────────────────┐
  * │  DocumentState ← The source of truth (in-memory/RAM)    │
  * └─────────────────────────────────────────────────────────┘
@@ -59,6 +60,7 @@ import { assertNever } from './utils'
  *       ▼                    ▼                    ▼
  *   toMarkdown()          React UI            AI getSummary()
  *   (export string)     (renders blocks)      (reads blocks)
+ *```
  *
  * When the user types a character, Dactylo does not edit a string at all.
  * Instead it:

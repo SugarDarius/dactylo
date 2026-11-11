@@ -585,7 +585,7 @@ export function resolvesRemainingInlineNodesAfterInBlockRange(
  *  3. Target’s last inline node is not text (line break, link, mentions, ...)
  *
  * Mental model (`Backspace merge`):
- * ```
+ * ```md
  * Before:
  *    Target:  [ ... , T_last(text:"abc") ]
  *    Source:  [ S_first(text:"def"), ... ]
