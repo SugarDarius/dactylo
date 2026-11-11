@@ -95,21 +95,17 @@ describe('Dactylo construction', () => {
 
   test('applies config.editor overrides', () => {
     const editor = makeEditor({
-      config: {
-        editor: {
-          autolink: { enabled: false },
-          bulletedList: { placeholder: 'Item' },
-          heading: { placeholder: 'Title' },
-          inlineCommandTrigger: { character: '!', enabled: false },
-          link: { openOnClick: false },
-          locales: 'fr-FR',
-          markdown: { enabled: false },
-          mentions: { character: '#', enabled: false },
-          numberedList: { placeholder: 'Numero' },
-          paragraph: { placeholder: 'Start here' },
-          quote: { placeholder: 'Quote' },
-        },
-      },
+      autolink: { enabled: false },
+      bulletedList: { placeholder: 'Item' },
+      heading: { placeholder: 'Title' },
+      inlineCommandTrigger: { character: '!', enabled: false },
+      link: { openOnClick: false },
+      locales: 'fr-FR',
+      markdown: { enabled: false },
+      mentions: { character: '#', enabled: false },
+      numberedList: { placeholder: 'Numero' },
+      paragraph: { placeholder: 'Start here' },
+      quote: { placeholder: 'Quote' },
     })
 
     expect(editor.config).toEqual({
@@ -875,7 +871,7 @@ describe('Dactylo markdown and autolink', () => {
 
   test('disabled markdown leaves the quote trigger characters in the paragraph', () => {
     const editor = makeEditor({
-      config: { editor: { markdown: { enabled: false } } },
+      markdown: { enabled: false },
     })
     editor.selection.commands.focus()
     typeText(editor, '>')
@@ -887,7 +883,7 @@ describe('Dactylo markdown and autolink', () => {
 
   test('disabled markdown leaves the trigger characters in the paragraph', () => {
     const editor = makeEditor({
-      config: { editor: { markdown: { enabled: false } } },
+      markdown: { enabled: false },
     })
     editor.selection.commands.focus()
     typeText(editor, '-')
@@ -899,7 +895,7 @@ describe('Dactylo markdown and autolink', () => {
 
   test('disabled markdown leaves the checkbox trigger characters in the paragraph', () => {
     const editor = makeEditor({
-      config: { editor: { markdown: { enabled: false } } },
+      markdown: { enabled: false },
     })
     editor.selection.commands.focus()
     typeText(editor, '[]')
@@ -911,7 +907,7 @@ describe('Dactylo markdown and autolink', () => {
 
   test('disabled markdown leaves the numbered list trigger characters in the paragraph', () => {
     const editor = makeEditor({
-      config: { editor: { markdown: { enabled: false } } },
+      markdown: { enabled: false },
     })
     editor.selection.commands.focus()
     typeText(editor, '1.')
@@ -923,7 +919,7 @@ describe('Dactylo markdown and autolink', () => {
 
   test('disabled markdown leaves the heading trigger characters in the paragraph', () => {
     const editor = makeEditor({
-      config: { editor: { markdown: { enabled: false } } },
+      markdown: { enabled: false },
     })
     editor.selection.commands.focus()
     typeText(editor, '#')
@@ -935,7 +931,7 @@ describe('Dactylo markdown and autolink', () => {
 
   test('disabled markdown leaves the divider trigger characters in the paragraph', () => {
     const editor = makeEditor({
-      config: { editor: { markdown: { enabled: false } } },
+      markdown: { enabled: false },
     })
     editor.selection.commands.focus()
     typeText(editor, '---')
@@ -947,7 +943,7 @@ describe('Dactylo markdown and autolink', () => {
 
   test('autolink converts a URL followed by a space into a link node', () => {
     const editor = makeEditor({
-      config: { editor: { markdown: { enabled: false } } },
+      markdown: { enabled: false },
     })
     editor.selection.commands.focus()
     typeText(editor, 'https://example.com')
@@ -964,9 +960,8 @@ describe('Dactylo markdown and autolink', () => {
 
   test('disabled autolink leaves the URL as plain text', () => {
     const editor = makeEditor({
-      config: {
-        editor: { autolink: { enabled: false }, markdown: { enabled: false } },
-      },
+      autolink: { enabled: false },
+      markdown: { enabled: false },
     })
     editor.selection.commands.focus()
     typeText(editor, 'https://example.com')

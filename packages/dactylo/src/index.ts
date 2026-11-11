@@ -6,7 +6,6 @@ export type {
   DactyloCommandEvent,
   DactyloComposerApi,
   DactyloComposerCommands,
-  DactyloConfigOptions,
   DactyloDomApi,
   DactyloDomCommands,
   DactyloEditableEvent,

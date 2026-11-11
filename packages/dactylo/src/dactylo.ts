@@ -989,132 +989,144 @@ export type DactyloBlocksApi = DactyloAspectApi<
   DactyloBlocksCommands
 >
 
-/** Config options to use for the internal components and delegates of the editor. */
-export interface DactyloConfigOptions {
-  /** Configuration for the editor */
-  readonly editor?: {
-    /** Configuration for markdown shortcuts. */
-    readonly markdown?: {
-      /**
-       * Whether to enable markdown shortcuts.
-       * Defaults to `true`
-       */
-      readonly enabled?: boolean
-    }
+/** Options for constructing a {@link Dactylo} instance. */
+export interface DactyloOptions {
+  /**
+   * Whether to enable debug mode.
+   * Defaults to `false`
+   */
+  readonly debug?: boolean
 
-    /** Configuration for mentions. */
-    readonly mentions?: {
-      /**
-       * Whether to enable mentions.
-       * Defaults to `true`
-       */
-      readonly enabled?: boolean
+  /**
+   * Whether the editor is editable.
+   * Defaults to `true`
+   */
+  readonly editable?: boolean
 
-      /**
-       * The character to trigger a mention.
-       * Defaults to `@`
-       */
-      readonly character?: string
-    }
+  /** Alias for {@link DactyloConfigOptions.editor.paragraph.placeholder}. */
+  readonly placeholder?: string
 
-    /** Configuration for inline command trigger. */
-    readonly inlineCommandTrigger?: {
-      /**
-       * Whether to enable inline command trigger.
-       * Defaults to `true`
-       */
-      readonly enabled?: boolean
+  /**
+   * The locales to use for writing text.
+   * Defaults to `en-US`
+   */
+  readonly locales?: Intl.LocalesArgument
 
-      /**
-       * The character to trigger an inline command.
-       * Defaults to `/`
-       */
-      readonly character?: string
-    }
+  /** Configuration for autolink detection. */
+  readonly autolink?: {
+    /**
+     * Whether to enable autolink detection.
+     * Defaults to `true`
+     */
+    readonly enabled?: boolean
+  }
+
+  /** Configuration for markdown shortcuts. */
+  readonly markdown?: {
+    /**
+     * Whether to enable markdown shortcuts.
+     * Defaults to `true`
+     */
+    readonly enabled?: boolean
+  }
+
+  /** Configuration for mentions. */
+  readonly mentions?: {
+    /**
+     * Whether to enable mentions.
+     * Defaults to `true`
+     */
+    readonly enabled?: boolean
 
     /**
-     * The locales to use for writing text.
-     * Defaults to `en-US`
+     * The character to trigger a mention.
+     * Defaults to `@`
      */
-    readonly locales?: Intl.LocalesArgument
+    readonly character?: string
+  }
 
-    /** Configuration for autolink detection. */
-    readonly autolink?: {
-      /**
-       * Whether to enable autolink detection.
-       * Defaults to `true`
-       */
-      readonly enabled?: boolean
-    }
+  /** Configuration for inline command trigger. */
+  readonly inlineCommandTrigger?: {
+    /**
+     * Whether to enable inline command trigger.
+     * Defaults to `true`
+     */
+    readonly enabled?: boolean
 
-    /** Configuration for paragraphs. */
-    readonly paragraph?: {
-      /**
-       * Placeholder text when an empty paragraph is created or empty.
-       * Defaults to placeholder option in {@link DactyloOptions} if set
-       * or defaults to {@link DEFAULT_PARAGRAPH_PLACEHOLDER}.
-       */
-      readonly placeholder?: string
-    }
+    /**
+     * The character to trigger an inline command.
+     * Defaults to `/`
+     */
+    readonly character?: string
+  }
 
-    /** Configuration for quotes. */
-    readonly quote?: {
-      /**
-       * Placeholder text when an empty quote is created or empty.
-       * Defaults to placeholder option in {@link DactyloOptions} if set
-       * or defaults to {@link DEFAULT_QUOTE_PLACEHOLDER}.
-       */
-      readonly placeholder?: string
-    }
+  /** Configuration for paragraphs. */
+  readonly paragraph?: {
+    /**
+     * Placeholder text when an empty paragraph is created or empty.
+     * Defaults to placeholder option in {@link DactyloOptions} if set
+     * or defaults to {@link DEFAULT_PARAGRAPH_PLACEHOLDER}.
+     */
+    readonly placeholder?: string
+  }
 
-    /** Configuration for headings. */
-    readonly heading?: {
-      /**
-       * Placeholder text when a heading is created or empty.
-       * Defaults to {@link DEFAULT_HEADING_PLACEHOLDER} with level.
-       * @example
-       * ```txt
-       * Heading 1
-       * ```
-       */
-      readonly placeholder?: string
-    }
+  /** Configuration for quotes. */
+  readonly quote?: {
+    /**
+     * Placeholder text when an empty quote is created or empty.
+     * Defaults to placeholder option in {@link DactyloOptions} if set
+     * or defaults to {@link DEFAULT_QUOTE_PLACEHOLDER}.
+     */
+    readonly placeholder?: string
+  }
 
-    /** Configuration for bulleted lists. */
-    readonly bulletedList?: {
-      /**
-       * Placeholder text when a bulleted list is created or empty.
-       * Defaults to {@link DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER}.
-       */
-      readonly placeholder?: string
-    }
+  /** Configuration for headings. */
+  readonly heading?: {
+    /**
+     * Placeholder text when a heading is created or empty.
+     * Defaults to {@link DEFAULT_HEADING_PLACEHOLDER} with level.
+     * @example
+     * ```txt
+     * Heading 1
+     * ```
+     */
+    readonly placeholder?: string
+  }
 
-    /** Configuration for numbered lists. */
-    readonly numberedList?: {
-      /**
-       * Placeholder text when a numbered list item is created or empty.
-       * Defaults to {@link DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER}.
-       */
-      readonly placeholder?: string
-    }
+  /** Configuration for bulleted lists. */
+  readonly bulletedList?: {
+    /**
+     * Placeholder text when a bulleted list is created or empty.
+     * Defaults to {@link DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER}.
+     */
+    readonly placeholder?: string
+  }
 
-    /** Configuration for checkbox lists. */
-    readonly checkboxList?: {
-      /**
-       * Placeholder text when a checkbox list is created or empty.
-       * Defaults to {@link DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER}.
-       */
-      readonly placeholder?: string
-    }
+  /** Configuration for numbered lists. */
+  readonly numberedList?: {
+    /**
+     * Placeholder text when a numbered list item is created or empty.
+     * Defaults to {@link DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER}.
+     */
+    readonly placeholder?: string
+  }
 
-    /** Configuration for links. */
-    readonly link?: {
-      /**
-       * Whether to open links on click when the editor is editable.
-       * Defaults to `true`
-       */
-      readonly openOnClick?: boolean
-    }
+  /** Configuration for checkbox lists. */
+  readonly checkboxList?: {
+    /**
+     * Placeholder text when a checkbox list is created or empty.
+     * Defaults to {@link DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER}.
+     */
+    readonly placeholder?: string
+  }
+
+  /** Configuration for links. */
+  readonly link?: {
+    /**
+     * Whether to open links on click when the editor is editable.
+     * Defaults to `true`
+     */
+    readonly openOnClick?: boolean
   }
 
   /** Configuration for the transaction pipeline */
@@ -1128,27 +1140,6 @@ export interface DactyloConfigOptions {
     /** Configuration for the history of the transaction pipeline */
     readonly history?: HistoryStackOptions
   }
-}
-
-/** Options for constructing a {@link Dactylo} instance. */
-export interface DactyloOptions {
-  /** Alias for {@link DactyloConfigOptions.editor.paragraph.placeholder}. */
-  readonly placeholder?: string
-
-  /**
-   * Whether the editor is editable.
-   * Defaults to `true`
-   */
-  readonly editable?: boolean
-
-  /** Config options to use for the internal components and delegates of the editor. */
-  readonly config?: DactyloConfigOptions
-
-  /**
-   * Whether to enable debug mode.
-   * Defaults to `false`
-   */
-  readonly debug?: boolean
 }
 
 /**
@@ -1204,81 +1195,72 @@ export class Dactylo {
     this.#editable = options.editable ?? true
     this.#debug = options.debug ?? false
 
-    const locales = options.config?.editor?.locales ?? DEFAULT_LOCALES
+    const locales = options.locales ?? DEFAULT_LOCALES
 
     this.#config = {
       autolink: {
-        enabled:
-          options.config?.editor?.autolink?.enabled ?? DEFAULT_AUTOLINK_ENABLED,
+        enabled: options.autolink?.enabled ?? DEFAULT_AUTOLINK_ENABLED,
       },
       bulletedList: {
         placeholder:
-          options.config?.editor?.bulletedList?.placeholder ??
+          options.bulletedList?.placeholder ??
           DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
       },
       checkboxList: {
         placeholder:
-          options.config?.editor?.checkboxList?.placeholder ??
+          options.checkboxList?.placeholder ??
           DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
       },
       heading: {
         placeholder:
-          options.config?.editor?.heading?.placeholder ??
-          DEFAULT_HEADING_PLACEHOLDER,
+          options.heading?.placeholder ?? DEFAULT_HEADING_PLACEHOLDER,
       },
       inlineCommandTrigger: {
         character:
-          options.config?.editor?.inlineCommandTrigger?.character ??
+          options.inlineCommandTrigger?.character ??
           DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
         enabled:
-          options.config?.editor?.inlineCommandTrigger?.enabled ??
+          options.inlineCommandTrigger?.enabled ??
           DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
       },
       link: {
         openOnClick:
-          options.config?.editor?.link?.openOnClick ??
-          DEFAULT_LINK_OPEN_ON_CLICK_ENABLED,
+          options.link?.openOnClick ?? DEFAULT_LINK_OPEN_ON_CLICK_ENABLED,
       },
       locales,
       markdown: {
         enabled:
-          options.config?.editor?.markdown?.enabled ??
-          DEFAULT_MARKDOWN_SHORTCUTS_ENABLED,
+          options.markdown?.enabled ?? DEFAULT_MARKDOWN_SHORTCUTS_ENABLED,
       },
       mentions: {
-        character:
-          options.config?.editor?.mentions?.character ??
-          DEFAULT_MENTION_CHARACTER,
-        enabled:
-          options.config?.editor?.mentions?.enabled ?? DEFAULT_MENTIONS_ENABLED,
+        character: options.mentions?.character ?? DEFAULT_MENTION_CHARACTER,
+        enabled: options.mentions?.enabled ?? DEFAULT_MENTIONS_ENABLED,
       },
       numberedList: {
         placeholder:
-          options.config?.editor?.numberedList?.placeholder ??
+          options.numberedList?.placeholder ??
           DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER,
       },
       paragraph: {
         placeholder:
           options.placeholder ??
-          options.config?.editor?.paragraph?.placeholder ??
+          options.paragraph?.placeholder ??
           DEFAULT_PARAGRAPH_PLACEHOLDER,
       },
       quote: {
-        placeholder:
-          options.config?.editor?.quote?.placeholder ??
-          DEFAULT_QUOTE_PLACEHOLDER,
+        placeholder: options.quote?.placeholder ?? DEFAULT_QUOTE_PLACEHOLDER,
       },
     }
     this.#pipeline = new TransactionPipeline({
       autolink: {
         enabled: this.#config.autolink.enabled,
       },
-      batch: options.config?.pipeline?.batch,
+      batch: options.pipeline?.batch,
       debug: this.#debug,
       engine: {
         locales,
       },
-      history: options.config?.pipeline?.history,
+      history: options.pipeline?.history,
       inlineCommandTrigger: {
         character: this.#config.inlineCommandTrigger.character,
         enabled: this.#config.inlineCommandTrigger.enabled,

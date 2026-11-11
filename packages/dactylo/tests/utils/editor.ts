@@ -11,17 +11,7 @@ export function makeEditor(options: DactyloOptions = {}): Dactylo {
  * Tests that need a shortcut or link conversion should use {@link makeEditor}.
  */
 export function makeTypingEditor(options: DactyloOptions = {}): Dactylo {
-  return makeEditor({
-    ...options,
-    config: {
-      ...options.config,
-      editor: {
-        autolink: { enabled: false },
-        markdown: { enabled: false },
-        ...options.config?.editor,
-      },
-    },
-  })
+  return makeEditor(options)
 }
 
 function inputEvent(

@@ -126,10 +126,21 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
     {
       children,
       clientOnly = false,
-      editable = true,
       debug = false,
+      editable = true,
       placeholder,
-      config,
+      locales,
+      autolink,
+      mentions,
+      inlineCommandTrigger,
+      paragraph,
+      quote,
+      heading,
+      bulletedList,
+      numberedList,
+      checkboxList,
+      link,
+      pipeline,
       ...props
     },
     forwardedRef,
@@ -137,7 +148,23 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
     const isMounted = useIsMounted()
     const ctx = useStableValue<ComposerContext>({
       /** Dactylo editor instance. */
-      editor: new Dactylo({ config, debug, editable, placeholder }),
+      editor: new Dactylo({
+        autolink,
+        bulletedList,
+        checkboxList,
+        debug,
+        editable,
+        heading,
+        inlineCommandTrigger,
+        link,
+        locales,
+        mentions,
+        numberedList,
+        paragraph,
+        pipeline,
+        placeholder,
+        quote,
+      }),
     })
 
     useDebugValue(ctx)
