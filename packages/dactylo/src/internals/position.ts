@@ -16,10 +16,10 @@
  * Base96 is a numeral system made up of the 95 printable ASCII characters,
  * starting at the space character ` ` and ending at tilde `~`.
  *
- * ```text
- * !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
- * ^                                                                                             ^
- * lowest digit (0)                                                                           highest digit (94)
+ * ```txt
+ *       !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
+ *       ^                                                                                            ^
+ * lowest digit (0)                                                                            highest digit (94)
  * ```
  *
  * Conceptually each key encodes a fractional number `0 < n < 1` in base96 (like `"31007"` → `0.31007`):

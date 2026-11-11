@@ -28,6 +28,19 @@ export type {
 } from './dactylo'
 export { Dactylo } from './dactylo'
 export type {
+  BulletListItemBlockMetadata,
+  CheckboxListItemBlockMetadata,
+  DividerBlockMetadata,
+  HeadingBlockMetadata,
+  NumberedListItemBlockMetadata,
+  LineBreakNodeMetadata,
+  LinkNodeMetadata,
+  MentionNodeMetadata,
+  ParagraphBlockMetadata,
+  QuoteBlockMetadata,
+  TextNodeMetadata,
+} from './internals/augmentation'
+export type {
   BulletListItemBlock,
   Block,
   BlockId,

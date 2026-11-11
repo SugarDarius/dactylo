@@ -53,6 +53,9 @@ export type Autocomplete<U extends T, T = string> =
   | U
   | (T & Record<never, never>)
 
+/** Helper type to check if all keys of a type are optional */
+export type AllOptionalKeys<T> = Partial<T> extends T ? true : false
+
 /** Metadata type to store custom data */
 export type Metadata = Record<
   string,
