@@ -1030,9 +1030,11 @@ describe('Dactylo markdown and autolink', () => {
 
 describe('Dactylo initial metadata', () => {
   const initials = {
+    bulletedList: { initialMetadata: { k: 'b' } },
     divider: { initialMetadata: { k: 'd' } },
     heading: { initialMetadata: { k: 'h' } },
     lineBreak: { initialMetadata: { k: 'lb' } },
+    link: { initialMetadata: { k: 'l' } },
     paragraph: { initialMetadata: { k: 'p' } },
     text: { initialMetadata: { k: 't' } },
   }
@@ -1122,6 +1124,77 @@ describe('Dactylo initial metadata', () => {
 
     expect(lineBreak?.metadata).toEqual({ k: 'lb' })
     expect(emptyText?.metadata).toEqual({ k: 't' })
+  })
+
+  test('insertHeading uses heading initial metadata', () => {
+    const editor = makeEditor(initials)
+    editor.selection.commands.focus()
+
+    editor.blocks.commands.insertHeading(1)
+
+    const heading = nthInlineBlock(editor.getContext(), 1)
+    expect(isHeadingBlock(heading)).toBe(true)
+    expect(heading.metadata).toEqual({ k: 'h' })
+    expect(firstInlineBlock(editor.getContext()).metadata).toEqual({ k: 'p' })
+  })
+
+  test('Enter at the end of a paragraph copies the source bag', () => {
+    const editor = makeEditor(initials)
+    editor.selection.commands.focus()
+    const paragraphId = firstInlineBlock(editor.getContext()).id
+
+    editor.blocks.commands.patchParagraph(paragraphId, {
+      metadata: { k: 'patched' },
+    })
+    typeText(editor, 'Hello')
+    hardBreak(editor)
+
+    const source = nthInlineBlock(editor.getContext(), 0)
+    const successor = nthInlineBlock(editor.getContext(), 1)
+    expect(isParagraphBlock(source)).toBe(true)
+    expect(source.metadata).toEqual({ k: 'patched' })
+    expect(isParagraphBlock(successor)).toBe(true)
+    expect(successor.metadata).toEqual({ k: 'patched' })
+  })
+
+  test('Enter at the end of a list item copies the source bag', () => {
+    const editor = makeEditor(initials)
+    editor.selection.commands.focus()
+    typeText(editor, '-')
+    typeText(editor, ' ')
+
+    const item = firstInlineBlock(editor.getContext())
+    expect(isBulletListItemBlock(item)).toBe(true)
+
+    editor.blocks.commands.patchBulletListItem(item.id, {
+      metadata: { k: 'item' },
+    })
+    typeText(editor, 'Hello')
+    hardBreak(editor)
+
+    const source = nthInlineBlock(editor.getContext(), 0)
+    const successor = nthInlineBlock(editor.getContext(), 1)
+    expect(isBulletListItemBlock(source)).toBe(true)
+    expect(source.metadata).toEqual({ k: 'item' })
+    expect(isBulletListItemBlock(successor)).toBe(true)
+    expect(successor.metadata).toEqual({ k: 'item' })
+  })
+
+  test('autolink stamps link initial metadata, not the text bag', () => {
+    const editor = makeEditor({
+      ...initials,
+      markdown: { enabled: false },
+    })
+    editor.selection.commands.focus()
+    typeText(editor, 'https://example.com')
+    typeText(editor, ' ')
+
+    const link = firstInlineBlock(editor.getContext()).content.find(isLinkNode)
+    expect(link).toBeDefined()
+    if (!link || !isLinkNode(link)) {
+      throw new Error('Expected a link node')
+    }
+    expect(link.metadata).toEqual({ k: 'l' })
   })
 })
 
