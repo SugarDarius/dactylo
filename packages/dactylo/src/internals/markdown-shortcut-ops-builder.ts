@@ -686,9 +686,12 @@ const rules: MarkdownShortcutOpsRule[] = [
         {
           __type: 'mutate_block_type',
           blockId: block.id,
-          metadata: resources.initialMetadata.heading,
           snapshot: block,
-          spec: { kind: 'to_heading', level },
+          spec: {
+            kind: 'to_heading',
+            level,
+            metadata: resources.initialMetadata.heading,
+          },
         },
         {
           __type: 'delete_text',
@@ -757,9 +760,8 @@ const rules: MarkdownShortcutOpsRule[] = [
         {
           __type: 'mutate_block_type',
           blockId: block.id,
-          metadata: resources.initialMetadata.quote,
           snapshot: block,
-          spec: { kind: 'to_quote' },
+          spec: { kind: 'to_quote', metadata: resources.initialMetadata.quote },
         },
         {
           __type: 'delete_text',
@@ -827,9 +829,11 @@ const rules: MarkdownShortcutOpsRule[] = [
         {
           __type: 'mutate_block_type',
           blockId: block.id,
-          metadata: resources.initialMetadata.bulletedList,
           snapshot: block,
-          spec: { kind: 'to_bullet_list_item' },
+          spec: {
+            kind: 'to_bullet_list_item',
+            metadata: resources.initialMetadata.bulletedList,
+          },
         },
         {
           __type: 'delete_text',
@@ -899,11 +903,11 @@ const rules: MarkdownShortcutOpsRule[] = [
         {
           __type: 'mutate_block_type',
           blockId: block.id,
-          metadata: resources.initialMetadata.numberedList,
           snapshot: block,
           spec: {
             kind: 'to_numbered_list_item',
             markerNumbering: parsed.markerNumbering,
+            metadata: resources.initialMetadata.numberedList,
             variant: parsed.variant,
           },
         },
@@ -980,9 +984,12 @@ const rules: MarkdownShortcutOpsRule[] = [
         {
           __type: 'mutate_block_type',
           blockId: block.id,
-          metadata: resources.initialMetadata.checkboxList,
           snapshot: block,
-          spec: { checked: parsed.checked, kind: 'to_checkbox_list_item' },
+          spec: {
+            checked: parsed.checked,
+            kind: 'to_checkbox_list_item',
+            metadata: resources.initialMetadata.checkboxList,
+          },
         },
         {
           __type: 'delete_text',

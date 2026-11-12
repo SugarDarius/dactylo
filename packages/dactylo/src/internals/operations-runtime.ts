@@ -671,7 +671,7 @@ export function applyMutateBlockTypeOp(
       const next = createHeadingBlock({
         content: [...prev.content],
         level: op.spec.level,
-        metadata: op.metadata,
+        metadata: op.spec.metadata,
         parentId: prev.parentId,
         posKey: prev.posKey,
       })
@@ -687,7 +687,7 @@ export function applyMutateBlockTypeOp(
     case 'to_paragraph': {
       const next = createParagraphBlock({
         content: [...prev.content],
-        metadata: op.metadata,
+        metadata: op.spec.metadata,
         parentId: prev.parentId,
         posKey: prev.posKey,
       })
@@ -703,7 +703,7 @@ export function applyMutateBlockTypeOp(
     case 'to_quote': {
       const next = createQuoteBlock({
         content: [...prev.content],
-        metadata: op.metadata,
+        metadata: op.spec.metadata,
         parentId: prev.parentId,
         posKey: prev.posKey,
       })
@@ -719,7 +719,7 @@ export function applyMutateBlockTypeOp(
     case 'to_bullet_list_item': {
       const next = createBulletListItemBlock({
         content: [...prev.content],
-        metadata: op.metadata,
+        metadata: op.spec.metadata,
         parentId: prev.parentId,
         posKey: prev.posKey,
       })
@@ -736,7 +736,7 @@ export function applyMutateBlockTypeOp(
       const next = createNumberedListItemBlock({
         content: [...prev.content],
         markerNumbering: op.spec.markerNumbering,
-        metadata: op.metadata,
+        metadata: op.spec.metadata,
         parentId: prev.parentId,
         posKey: prev.posKey,
         variant: op.spec.variant,
@@ -754,7 +754,7 @@ export function applyMutateBlockTypeOp(
       const next = createCheckboxListItemBlock({
         checked: op.spec.checked,
         content: [...prev.content],
-        metadata: op.metadata,
+        metadata: op.spec.metadata,
         parentId: prev.parentId,
         posKey: prev.posKey,
       })
@@ -1054,11 +1054,11 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
           return {
             __type: 'mutate_block_type',
             blockId: op.blockId,
-            metadata: op.snapshot.metadata,
             snapshot: op.snapshot,
             spec: {
               kind: 'to_heading',
               level: op.snapshot.level,
+              metadata: op.snapshot.metadata,
             },
           }
         }
@@ -1066,10 +1066,10 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
           return {
             __type: 'mutate_block_type',
             blockId: op.blockId,
-            metadata: op.snapshot.metadata,
             snapshot: op.snapshot,
             spec: {
               kind: 'to_bullet_list_item',
+              metadata: op.snapshot.metadata,
             },
           }
         }
@@ -1077,11 +1077,11 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
           return {
             __type: 'mutate_block_type',
             blockId: op.blockId,
-            metadata: op.snapshot.metadata,
             snapshot: op.snapshot,
             spec: {
               kind: 'to_numbered_list_item',
               markerNumbering: op.snapshot.markerNumbering,
+              metadata: op.snapshot.metadata,
               variant: op.snapshot.variant,
             },
           }
@@ -1090,11 +1090,11 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
           return {
             __type: 'mutate_block_type',
             blockId: op.blockId,
-            metadata: op.snapshot.metadata,
             snapshot: op.snapshot,
             spec: {
               checked: op.snapshot.checked,
               kind: 'to_checkbox_list_item',
+              metadata: op.snapshot.metadata,
             },
           }
         }
@@ -1102,10 +1102,10 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
           return {
             __type: 'mutate_block_type',
             blockId: op.blockId,
-            metadata: op.snapshot.metadata,
             snapshot: op.snapshot,
             spec: {
               kind: 'to_paragraph',
+              metadata: op.snapshot.metadata,
             },
           }
         }
@@ -1113,9 +1113,8 @@ export function invertOp(context: EditorContext, op: Operation): Operation {
           return {
             __type: 'mutate_block_type',
             blockId: op.blockId,
-            metadata: op.snapshot.metadata,
             snapshot: op.snapshot,
-            spec: { kind: 'to_quote' },
+            spec: { kind: 'to_quote', metadata: op.snapshot.metadata },
           }
         }
         default: {

@@ -207,9 +207,11 @@ export const cursorRules: DeleteContentOpsRule[] = [
         {
           __type: 'mutate_block_type',
           blockId: block.id,
-          metadata: resources.initialMetadata.paragraph,
           snapshot: block,
-          spec: { kind: 'to_paragraph' },
+          spec: {
+            kind: 'to_paragraph',
+            metadata: resources.initialMetadata.paragraph,
+          },
         },
       ]
       if (isNumberedListItemBlock(block)) {

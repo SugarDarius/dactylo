@@ -16,6 +16,7 @@
  * | Small        | Prefer minimal fields for memory and efficiency      |
  */
 
+import type { BBM, CBM, HBM, NBM, PBM, QBM } from './augmentation'
 import type {
   Block,
   BlockId,
@@ -27,7 +28,6 @@ import type { Marks } from './marks'
 import type { InlineNode, NodeId } from './nodes'
 import type { PosKey } from './position'
 import type { Selection } from './selection'
-import type { Metadata } from './types'
 
 /** Inserts a block at the given position (fractional index). */
 export interface InsertBlockOp {
@@ -151,30 +151,79 @@ export interface MutateBlockTypeOp {
   /** Snapshot of the block with inline content before the mutation. */
   readonly snapshot: BlockWithInlineContent
 
-  /** Metadata applied to the block after the type mutation. */
-  readonly metadata: Metadata
-
   /** Describes the mutation to apply. */
   readonly spec:
     | {
-        kind: 'to_heading'
+        readonly kind: 'to_heading'
+
         /** Level of the heading. */
-        level: HeadingBlock['level']
+        readonly level: HeadingBlock['level']
+
+        /**
+         * New metadata applied to the block after the type mutation.
+         * Defaults to initial metadata for {@link HeadingBlock} with
+         * the given augmented type {@link HBM}.
+         */
+        readonly metadata: HBM
       }
-    | { kind: 'to_paragraph' }
-    | { kind: 'to_quote' }
-    | { kind: 'to_bullet_list_item' }
     | {
-        kind: 'to_numbered_list_item'
+        kind: 'to_paragraph'
+
+        /**
+         * New metadata applied to the block after the type mutation.
+         * Defaults to initial metadata for {@link ParagraphBlock} with
+         * the given augmented type {@link PBM}.
+         */
+        readonly metadata: PBM
+      }
+    | {
+        readonly kind: 'to_quote'
+
+        /**
+         * New metadata applied to the block after the type mutation.
+         * Defaults to initial metadata for {@link QuoteBlock} with
+         * the given augmented type {@link QBM}.
+         */
+        readonly metadata: QBM
+      }
+    | {
+        readonly kind: 'to_bullet_list_item'
+
+        /**
+         * New metadata applied to the block after the type mutation.
+         * Defaults to initial metadata for {@link BulletListItemBlock} with
+         * the given augmented type {@link BBM}.
+         */
+        readonly metadata: BBM
+      }
+    | {
+        readonly kind: 'to_numbered_list_item'
+
         /** Variant to use in order to display item marker. */
-        variant: NumberedListItemBlock['variant']
+        readonly variant: NumberedListItemBlock['variant']
+
         /** Marker numbering for this item (`1.`, `a.`, `ii.`). */
-        markerNumbering: string
+        readonly markerNumbering: string
+
+        /**
+         * New metadata applied to the block after the type mutation.
+         * Defaults to initial metadata for {@link NumberedListItemBlock} with
+         * the given augmented type {@link NBM}.
+         */
+        readonly metadata: NBM
       }
     | {
-        kind: 'to_checkbox_list_item'
+        readonly kind: 'to_checkbox_list_item'
+
         /** Whether the item is checked. */
-        checked?: boolean
+        readonly checked?: boolean
+
+        /**
+         * New metadata applied to the block after the type mutation.
+         * Defaults to initial metadata for {@link CheckboxListItemBlock} with
+         * the given augmented type {@link CBM}.
+         */
+        readonly metadata: CBM
       }
 }
 
