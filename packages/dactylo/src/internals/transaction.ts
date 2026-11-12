@@ -1578,14 +1578,15 @@ export class TransactionPipeline {
     blockId: BlockId,
     opts: { content?: InlineNode[]; metadata?: Metadata },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
+  ): boolean {
     const intent = this.#operationsEngine.buildPatchParagraphBlockOps(
       this.#context,
       blockId,
       opts,
     )
+
     if (intent === null) {
-      return
+      return false
     }
 
     const { ops, label } = intent
@@ -1594,6 +1595,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return true
   }
 
   /** Patches a {@link QuoteBlock} by ID with the given options. */
@@ -1601,14 +1604,15 @@ export class TransactionPipeline {
     blockId: BlockId,
     opts: { content?: InlineNode[]; metadata?: Metadata },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
+  ): boolean {
     const intent = this.#operationsEngine.buildPatchQuoteBlockOps(
       this.#context,
       blockId,
       opts,
     )
+
     if (intent === null) {
-      return
+      return false
     }
 
     const { ops, label } = intent
@@ -1617,6 +1621,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return true
   }
 
   /** Patches a {@link HeadingBlock} by ID with the given options. */
@@ -1628,14 +1634,15 @@ export class TransactionPipeline {
       metadata?: Metadata
     },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
+  ): boolean {
     const intent = this.#operationsEngine.buildPatchHeadingBlockOps(
       this.#context,
       blockId,
       opts,
     )
+
     if (intent === null) {
-      return
+      return false
     }
 
     const { ops, label } = intent
@@ -1644,6 +1651,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return true
   }
 
   /** Patches a {@link BulletListItemBlock} by ID with the given options. */
@@ -1651,14 +1660,15 @@ export class TransactionPipeline {
     blockId: BlockId,
     opts: { content?: InlineNode[]; metadata?: Metadata },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
+  ): boolean {
     const intent = this.#operationsEngine.buildPatchBulletListItemBlockOps(
       this.#context,
       blockId,
       opts,
     )
+
     if (intent === null) {
-      return
+      return false
     }
 
     const { ops, label } = intent
@@ -1667,6 +1677,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return true
   }
 
   /** Patches a {@link NumberedListItemBlock} by ID with the given options. */
@@ -1678,14 +1690,15 @@ export class TransactionPipeline {
       metadata?: Metadata
     },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
+  ): boolean {
     const intent = this.#operationsEngine.buildPatchNumberedListItemBlockOps(
       this.#context,
       blockId,
       opts,
     )
+
     if (intent === null) {
-      return
+      return false
     }
 
     const { ops, label } = intent
@@ -1694,6 +1707,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return true
   }
 
   /** Patches a {@link CheckboxListItemBlock} by ID with the given options. */
@@ -1750,13 +1765,14 @@ export class TransactionPipeline {
   duplicateBlock(
     blockId: BlockId,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
+  ): boolean {
     const intent = this.#operationsEngine.buildDuplicateBlockOps(
       this.#context,
       blockId,
     )
+
     if (intent === null) {
-      return
+      return false
     }
 
     const { ops, label } = intent
@@ -1765,6 +1781,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return true
   }
 
   /** Moves a {@link Block} by ID to a new document position. */
@@ -1772,14 +1790,15 @@ export class TransactionPipeline {
     blockId: BlockId,
     pos: InsertOrMoveBlockPosition,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
+  ): boolean {
     const moveIntent = this.#operationsEngine.buildMoveBlockOps(
       this.#context,
       blockId,
       pos,
     )
+
     if (moveIntent === null) {
-      return
+      return false
     }
 
     this.#commit(moveIntent.ops, {
@@ -1793,8 +1812,9 @@ export class TransactionPipeline {
         this.#context,
         blockId,
       )
+
     if (reindexIntent === null) {
-      return
+      return true
     }
 
     this.#commit(reindexIntent.ops, {
@@ -1802,19 +1822,22 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return true
   }
 
   /** Removes a {@link Block} by ID. */
   deleteBlock(
     blockId: BlockId,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
+  ): boolean {
     const intent = this.#operationsEngine.buildDeleteBlockOps(
       this.#context,
       blockId,
     )
+
     if (intent === null) {
-      return
+      return false
     }
 
     const { ops, label } = intent
@@ -1823,5 +1846,7 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return true
   }
 }

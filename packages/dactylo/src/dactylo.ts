@@ -946,20 +946,22 @@ export interface DactyloBlocksCommands {
 
   /**
    * Deletes a {@link Block} from the document state by ID.
+   * Returns a boolean indicating whether the delete command was successful.
    *
    * @example
    * ```ts
-   * editor.blocks.commands.delete(blockId)
-   * editor.blocks.commands.delete(blockId, 'ai-agent')
+   * const deleted = editor.blocks.commands.delete(blockId)
+   * const deleted = editor.blocks.commands.delete(blockId, 'ai-agent')
    * ```
    */
   readonly delete: (
     blockId: BlockId,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => boolean
 
   /**
    * Duplicates a {@link Block} by ID.
+   * Returns a boolean indicating whether the duplicate command was successful.
    *
    * @example
    * ```ts
@@ -970,59 +972,64 @@ export interface DactyloBlocksCommands {
   readonly duplicate: (
     blockId: BlockId,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => boolean
 
   /**
    * Moves a {@link Block} by ID to a new document position.
+   * Returns a boolean indicating whether the move command was successful.
    *
    * @example
    * ```ts
-   * editor.blocks.commands.move(blockId, { type: 'after', blockId: targetId })
-   * editor.blocks.commands.move(blockId, { type: 'start' }, 'ai-agent')
+   * const moved = editor.blocks.commands.move(blockId, { type: 'after', blockId: targetId })
+   * const moved = editor.blocks.commands.move(blockId, { type: 'start' }, 'ai-agent')
    * ```
    */
   readonly move: (
     blockId: BlockId,
     pos: InsertOrMoveBlockPosition,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => boolean
 
   /**
    * Patches a {@link ParagraphBlock} in place with the given options.
+   * Returns a boolean indicating whether the patch command was successful.
    *
    * @example
    * ```ts
-   * editor.blocks.commands.patchParagraph(blockId, { metadata: { fontColor: 'purple' } })
-   * editor.blocks.commands.patchParagraph(blockId, { content }, 'ai-agent')
+   * const patched = editor.blocks.commands.patchParagraph(blockId, { metadata: { fontColor: 'purple' } })
+   * const patched = editor.blocks.commands.patchParagraph(blockId, { content }, 'ai-agent')
    * ```
    */
   readonly patchParagraph: (
     blockId: BlockId,
     opts: { content?: InlineNode[]; metadata?: PBM },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => boolean
 
   /**
    * Patches a {@link QuoteBlock} in place with the given options.
+   * Returns a boolean indicating whether the patch command was successful.
    *
    * @example
    * ```ts
-   * editor.blocks.commands.patchQuote(blockId, { content }, 'ai-agent')
+   * const patched = editor.blocks.commands.patchQuote(blockId, { content })
+   * const patched = editor.blocks.commands.patchQuote(blockId, { content }, 'ai-agent')
    * ```
    */
   readonly patchQuote: (
     blockId: BlockId,
     opts: { content?: InlineNode[]; metadata?: QBM },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => boolean
 
   /**
    * Patches a {@link HeadingBlock} in place with the given options.
+   * Returns a boolean indicating whether the patch command was successful.
    *
    * @example
    * ```ts
-   * editor.blocks.commands.patchHeading(blockId, { level: 3 })
-   * editor.blocks.commands.patchHeading(blockId, { level: 2 }, 'ai-agent')
+   * const patched = editor.blocks.commands.patchHeading(blockId, { level: 3 })
+   * const patched = editor.blocks.commands.patchHeading(blockId, { level: 2 }, 'ai-agent')
    * ```
    */
   readonly patchHeading: (
@@ -1033,29 +1040,32 @@ export interface DactyloBlocksCommands {
       metadata?: HBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => boolean
 
   /**
    * Patches a {@link BulletListItemBlock} in place with the given options.
+   * Returns a boolean indicating whether the patch command was successful.
    *
    * @example
    * ```ts
-   * editor.blocks.commands.patchBulletListItem(blockId, { metadata: { source: 'import' } })
+   * const patched = editor.blocks.commands.patchBulletListItem(blockId, { metadata: { source: 'import' } })
+   * const patched = editor.blocks.commands.patchBulletListItem(blockId, { metadata: { source: 'import' } }, 'ai-agent')
    * ```
    */
   readonly patchBulletListItem: (
     blockId: BlockId,
     opts: { content?: InlineNode[]; metadata?: BBM },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => boolean
 
   /**
    * Patches a {@link NumberedListItemBlock} in place with the given options.
+   * Returns a boolean indicating whether the patch command was successful.
    *
    * @example
    * ```ts
-   * editor.blocks.commands.patchNumberedListItem(blockId, { variant: 'alpha' })
-   * editor.blocks.commands.patchNumberedListItem(blockId, { variant: 'alpha' }, 'ai-agent')
+   * const patched = editor.blocks.commands.patchNumberedListItem(blockId, { variant: 'alpha' })
+   * const patched = editor.blocks.commands.patchNumberedListItem(blockId, { variant: 'alpha' }, 'ai-agent')
    * ```
    */
   readonly patchNumberedListItem: (
@@ -1066,15 +1076,16 @@ export interface DactyloBlocksCommands {
       metadata?: NBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => boolean
 
   /**
    * Patches a {@link CheckboxListItemBlock} in place with the given options.
+   * Returns a boolean indicating whether the patch command was successful.
    *
    * @example
    * ```ts
-   * editor.blocks.commands.patchCheckboxListItem(blockId, { checked: true })
-   * editor.blocks.commands.patchCheckboxListItem(blockId, { checked: true }, 'ai-agent')
+   * const patched = editor.blocks.commands.patchCheckboxListItem(blockId, { checked: true })
+   * const patched = editor.blocks.commands.patchCheckboxListItem(blockId, { checked: true }, 'ai-agent')
    * ```
    */
   readonly patchCheckboxListItem: (
@@ -1089,10 +1100,12 @@ export interface DactyloBlocksCommands {
 
   /**
    * Patches a {@link DividerBlock} in place with the given options.
+   * Returns a boolean indicating whether the patch command was successful.
    *
    * @example
    * ```ts
-   * editor.blocks.commands.patchDivider(blockId, { metadata: { source: 'import' } })
+   * const patched = editor.blocks.commands.patchDivider(blockId, { metadata: { source: 'import' } })
+   * const patched = editor.blocks.commands.patchDivider(blockId, { metadata: { source: 'import' } }, 'ai-agent')
    * ```
    */
   readonly patchDivider: (
@@ -2113,7 +2126,10 @@ export class Dactylo {
   get blocks(): DactyloBlocksApi {
     return {
       commands: {
-        /** Deletes a {@link Block} from the document state by ID. */
+        /**
+         * Deletes a {@link Block} from the document state by ID.
+         * Returns a boolean indicating whether the patch command was successful.
+         */
         delete: (
           blockId: BlockId,
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
@@ -2121,11 +2137,14 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'blocks/delete',
             () => this.#pipeline.deleteBlock(blockId, source),
-            noop,
+            negate,
             { payload: { blockId, source } },
           ),
 
-        /** Duplicates a {@link Block} by ID. */
+        /**
+         * Duplicates a {@link Block} by ID.
+         * Returns a boolean indicating whether the patch command was successful.
+         */
         duplicate: (
           blockId: BlockId,
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
@@ -2133,7 +2152,7 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'blocks/duplicate',
             () => this.#pipeline.duplicateBlock(blockId, source),
-            noop,
+            negate,
             { payload: { blockId, source } },
           ),
 
@@ -2346,7 +2365,10 @@ export class Dactylo {
             { payload: { source } },
           ),
 
-        /** Moves a {@link Block} by ID to a new document position.  */
+        /**
+         * Moves a {@link Block} by ID to a new document position.
+         * Returns a boolean indicating whether the patch command was successful.
+         */
         move: (
           blockId: BlockId,
           pos: InsertOrMoveBlockPosition,
@@ -2355,11 +2377,14 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'blocks/move',
             () => this.#pipeline.moveBlock(blockId, pos, source),
-            noop,
+            negate,
             { payload: { blockId, pos, source } },
           ),
 
-        /** Patches a {@link BulletListItemBlock} in place with the given options. */
+        /**
+         * Patches a {@link BulletListItemBlock} in place with the given options.
+         * Returns a boolean indicating whether the patch command was successful.
+         */
         patchBulletListItem: (
           blockId: BlockId,
           opts: {
@@ -2372,11 +2397,14 @@ export class Dactylo {
             'blocks/patch-bullet-list-item',
             () =>
               this.#pipeline.patchBulletListItemBlock(blockId, opts, source),
-            noop,
+            negate,
             { payload: { blockId, source } },
           ),
 
-        /** Patches a {@link CheckboxListItemBlock} in place with the given options. */
+        /**
+         * Patches a {@link CheckboxListItemBlock} in place with the given options.
+         * Returns a boolean indicating whether the patch command was successful.
+         */
         patchCheckboxListItem: (
           blockId: BlockId,
           opts: {
@@ -2390,11 +2418,14 @@ export class Dactylo {
             'blocks/patch-checkbox-list-item',
             () =>
               this.#pipeline.patchCheckboxListItemBlock(blockId, opts, source),
-            noop,
+            negate,
             { payload: { blockId, source } },
           ),
 
-        /** Patches a {@link DividerBlock} in place with the given options. */
+        /**
+         * Patches a {@link DividerBlock} in place with the given options.
+         * Returns a boolean indicating whether the patch command was successful.
+         */
         patchDivider: (
           blockId: BlockId,
           opts: { metadata?: DBM },
@@ -2403,11 +2434,14 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'blocks/patch-divider',
             () => this.#pipeline.patchDividerBlock(blockId, opts, source),
-            noop,
+            negate,
             { payload: { blockId, source } },
           ),
 
-        /** Patches a {@link HeadingBlock} in place with the given options. */
+        /**
+         * Patches a {@link HeadingBlock} in place with the given options.
+         * Returns a boolean indicating whether the patch command was successful.
+         */
         patchHeading: (
           blockId: BlockId,
           opts: {
@@ -2420,11 +2454,14 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'blocks/patch-heading',
             () => this.#pipeline.patchHeadingBlock(blockId, opts, source),
-            noop,
+            negate,
             { payload: { blockId, source } },
           ),
 
-        /** Patches a {@link NumberedListItemBlock} in place with the given options. */
+        /**
+         * Patches a {@link NumberedListItemBlock} in place with the given options.
+         * Returns a boolean indicating whether the patch command was successful.
+         */
         patchNumberedListItem: (
           blockId: BlockId,
           opts: {
@@ -2438,11 +2475,14 @@ export class Dactylo {
             'blocks/patch-numbered-list-item',
             () =>
               this.#pipeline.patchNumberedListItemBlock(blockId, opts, source),
-            noop,
+            negate,
             { payload: { blockId, source } },
           ),
 
-        /** Patches a {@link ParagraphBlock} in place with the given options. */
+        /**
+         * Patches a {@link ParagraphBlock} in place with the given options.
+         * Returns a boolean indicating whether the patch command was successful.
+         */
         patchParagraph: (
           blockId: BlockId,
           opts: {
@@ -2454,11 +2494,14 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'blocks/patch-paragraph',
             () => this.#pipeline.patchParagraphBlock(blockId, opts, source),
-            noop,
+            negate,
             { payload: { blockId, source } },
           ),
 
-        /** Patches a {@link QuoteBlock} in place with the given options. */
+        /**
+         * Patches a {@link QuoteBlock} in place with the given options.
+         * Returns a boolean indicating whether the patch command was successful.
+         */
         patchQuote: (
           blockId: BlockId,
           opts: {
@@ -2470,7 +2513,7 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'blocks/patch-quote',
             () => this.#pipeline.patchQuoteBlock(blockId, opts, source),
-            noop,
+            negate,
             { payload: { blockId, source } },
           ),
       },

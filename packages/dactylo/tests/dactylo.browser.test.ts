@@ -637,11 +637,11 @@ describe('Dactylo blocks', () => {
     editor.blocks.commands.insertHeading(1)
 
     const paragraphId = nthInlineBlock(editor.getContext(), 0).id
-    editor.blocks.commands.duplicate(paragraphId)
+    expect(editor.blocks.commands.duplicate(paragraphId)).toBe(true)
 
     expect(blockTexts(editor.getContext())).toEqual(['Hello', 'Hello', ''])
 
-    editor.blocks.commands.move(paragraphId, { type: 'end' })
+    expect(editor.blocks.commands.move(paragraphId, { type: 'end' })).toBe(true)
 
     expect(blockTexts(editor.getContext())).toEqual(['Hello', '', 'Hello'])
     expect(nthInlineBlock(editor.getContext(), 2).id).toBe(paragraphId)
@@ -652,7 +652,7 @@ describe('Dactylo blocks', () => {
     const emptyId = firstInlineBlock(editor.getContext()).id
     const before = snapshot(editor.getContext())
 
-    editor.blocks.commands.delete(emptyId)
+    expect(editor.blocks.commands.delete(emptyId)).toBe(false)
     expect(snapshot(editor.getContext())).toEqual(before)
 
     editor.selection.commands.focus()
@@ -660,7 +660,7 @@ describe('Dactylo blocks', () => {
     editor.blocks.commands.insertHeading(2)
     const headingId = nthInlineBlock(editor.getContext(), 1).id
 
-    editor.blocks.commands.delete(headingId)
+    expect(editor.blocks.commands.delete(headingId)).toBe(true)
 
     expect(editor.getContext().state.blockOrderById).toHaveLength(1)
     expect(blockTexts(editor.getContext())).toEqual(['Hello'])
@@ -771,7 +771,9 @@ describe('Dactylo blocks', () => {
     expect(isHeadingBlock(heading)).toBe(true)
     const { content } = heading
 
-    editor.blocks.commands.patchHeading(heading.id, { level: 3 })
+    expect(editor.blocks.commands.patchHeading(heading.id, { level: 3 })).toBe(
+      true,
+    )
 
     const patched = nthInlineBlock(editor.getContext(), 1)
     expect(patched.id).toBe(heading.id)
@@ -788,7 +790,11 @@ describe('Dactylo blocks', () => {
     typeText(editor, 'Hello')
     const paragraphId = firstInlineBlock(editor.getContext()).id
 
-    editor.blocks.commands.patchParagraph(paragraphId, { metadata: { a: 1 } })
+    expect(
+      editor.blocks.commands.patchParagraph(paragraphId, {
+        metadata: { a: 1 },
+      }),
+    ).toBe(true)
 
     const patched = firstInlineBlock(editor.getContext())
     expect(patched.id).toBe(paragraphId)
@@ -803,7 +809,9 @@ describe('Dactylo blocks', () => {
     editor.blocks.commands.insertQuote()
     const quote = nthInlineBlock(editor.getContext(), 1)
 
-    editor.blocks.commands.patchQuote(quote.id, { metadata: { a: 1 } })
+    expect(
+      editor.blocks.commands.patchQuote(quote.id, { metadata: { a: 1 } }),
+    ).toBe(true)
 
     const patched = nthInlineBlock(editor.getContext(), 1)
     expect(patched.id).toBe(quote.id)
@@ -817,9 +825,11 @@ describe('Dactylo blocks', () => {
     editor.blocks.commands.insertBulletListItem()
     const item = nthInlineBlock(editor.getContext(), 1)
 
-    editor.blocks.commands.patchBulletListItem(item.id, {
-      metadata: { a: 1 },
-    })
+    expect(
+      editor.blocks.commands.patchBulletListItem(item.id, {
+        metadata: { a: 1 },
+      }),
+    ).toBe(true)
 
     const patched = nthInlineBlock(editor.getContext(), 1)
     expect(patched.id).toBe(item.id)
@@ -836,7 +846,11 @@ describe('Dactylo blocks', () => {
     expect(isNumberedListItemBlock(item)).toBe(true)
     const { content } = item
 
-    editor.blocks.commands.patchNumberedListItem(item.id, { variant: 'alpha' })
+    expect(
+      editor.blocks.commands.patchNumberedListItem(item.id, {
+        variant: 'alpha',
+      }),
+    ).toBe(true)
 
     const patched = nthInlineBlock(editor.getContext(), 1)
     expect(patched.id).toBe(item.id)
@@ -1246,6 +1260,7 @@ describe('Dactylo read-only mode', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
+    const paragraphId = firstInlineBlock(editor.getContext()).id
     editor.setEditable(false)
     const before = snapshot(editor.getContext())
 
@@ -1259,6 +1274,32 @@ describe('Dactylo read-only mode', () => {
     expect(editor.blocks.commands.insertNumberedListItem()).toBeNull()
     expect(editor.blocks.commands.insertCheckboxListItem()).toBeNull()
     expect(editor.blocks.commands.insertDivider()).toBeNull()
+    expect(editor.blocks.commands.delete(paragraphId)).toBe(false)
+    expect(editor.blocks.commands.duplicate(paragraphId)).toBe(false)
+    expect(editor.blocks.commands.move(paragraphId, { type: 'end' })).toBe(
+      false,
+    )
+    expect(
+      editor.blocks.commands.patchParagraph(paragraphId, {
+        metadata: { a: 1 },
+      }),
+    ).toBe(false)
+    expect(
+      editor.blocks.commands.patchQuote(paragraphId, { metadata: { a: 1 } }),
+    ).toBe(false)
+    expect(editor.blocks.commands.patchHeading(paragraphId, { level: 2 })).toBe(
+      false,
+    )
+    expect(
+      editor.blocks.commands.patchBulletListItem(paragraphId, {
+        metadata: { a: 1 },
+      }),
+    ).toBe(false)
+    expect(
+      editor.blocks.commands.patchNumberedListItem(paragraphId, {
+        variant: 'alpha',
+      }),
+    ).toBe(false)
 
     expect(snapshot(editor.getContext())).toEqual(before)
     expect(editor.history.tools.canUndo()).toBe(false)

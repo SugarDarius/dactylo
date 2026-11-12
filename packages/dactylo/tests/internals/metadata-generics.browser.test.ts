@@ -36,6 +36,14 @@ describe('metadata aliases', () => {
       content?: unknown
       metadata?: PBM
     }>()
+    expectTypeOf(editor.blocks.commands.delete).returns.toEqualTypeOf<boolean>()
+    expectTypeOf(
+      editor.blocks.commands.duplicate,
+    ).returns.toEqualTypeOf<boolean>()
+    expectTypeOf(editor.blocks.commands.move).returns.toEqualTypeOf<boolean>()
+    expectTypeOf(
+      editor.blocks.commands.patchParagraph,
+    ).returns.toEqualTypeOf<boolean>()
 
     expectTypeOf(editor.blocks.commands.insertHeading)
       .parameter(1)
@@ -48,6 +56,9 @@ describe('metadata aliases', () => {
       content?: unknown
       metadata?: HBM
     }>()
+    expectTypeOf(
+      editor.blocks.commands.patchHeading,
+    ).returns.toEqualTypeOf<boolean>()
 
     expectTypeOf(editor.blocks.commands.insertQuote)
       .parameter(0)
@@ -67,6 +78,15 @@ describe('metadata aliases', () => {
     expectTypeOf(
       editor.blocks.commands.insertDivider,
     ).returns.toEqualTypeOf<BlockId | null>()
+    expectTypeOf(
+      editor.blocks.commands.patchQuote,
+    ).returns.toEqualTypeOf<boolean>()
+    expectTypeOf(
+      editor.blocks.commands.patchBulletListItem,
+    ).returns.toEqualTypeOf<boolean>()
+    expectTypeOf(
+      editor.blocks.commands.patchNumberedListItem,
+    ).returns.toEqualTypeOf<boolean>()
     expectTypeOf(editor.blocks.commands.patchDivider)
       .parameter(1)
       .toExtend<{ metadata?: Metadata }>()

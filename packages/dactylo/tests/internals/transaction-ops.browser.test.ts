@@ -136,10 +136,22 @@ describe('TransactionPipeline block commands', () => {
     }
     const before = snapshot(pipeline.context)
 
-    pipeline.deleteBlock(extraId, 'user')
+    expect(pipeline.deleteBlock(extraId, 'user')).toBe(true)
 
     expect(pipeline.context.state.blockOrderById).not.toContain(extraId)
     assertUndoRedo(pipeline, before)
+  })
+
+  test('deleteBlock returns false for the first empty block', () => {
+    const pipeline = makePipeline({ markdown: false })
+    const [emptyId] = pipeline.context.state.blockOrderById
+    if (!emptyId) {
+      throw new Error('Expected the initial empty paragraph')
+    }
+    const before = snapshot(pipeline.context)
+
+    expect(pipeline.deleteBlock(emptyId, 'user')).toBe(false)
+    expect(snapshot(pipeline.context)).toEqual(before)
   })
 
   test('duplicateBlock and undo/redo round-trip', () => {
@@ -156,7 +168,7 @@ describe('TransactionPipeline block commands', () => {
 
     const before = snapshot(pipeline.context)
 
-    pipeline.duplicateBlock(sourceId, 'user')
+    expect(pipeline.duplicateBlock(sourceId, 'user')).toBe(true)
 
     const order = pipeline.context.state.blockOrderById
     // oxlint-disable-next-line prefer-destructuring
@@ -184,7 +196,9 @@ describe('TransactionPipeline block commands', () => {
 
     const before = snapshot(pipeline.context)
 
-    pipeline.moveBlock(firstId, { blockId: middleId, type: 'after' }, 'user')
+    expect(
+      pipeline.moveBlock(firstId, { blockId: middleId, type: 'after' }, 'user'),
+    ).toBe(true)
 
     expect(pipeline.context.state.blockOrderById).toEqual([
       middleId,
@@ -215,7 +229,9 @@ describe('TransactionPipeline block commands', () => {
       throw new Error('Expected three blocks')
     }
 
-    pipeline.moveBlock(lastId, { blockId: firstId, type: 'before' }, 'user')
+    expect(
+      pipeline.moveBlock(lastId, { blockId: firstId, type: 'before' }, 'user'),
+    ).toBe(true)
 
     expect(pipeline.context.state.blockOrderById).toEqual([
       lastId,
@@ -234,7 +250,7 @@ describe('TransactionPipeline block commands', () => {
       throw new Error('Expected three blocks')
     }
 
-    pipeline.moveBlock(lastId, { type: 'start' }, 'user')
+    expect(pipeline.moveBlock(lastId, { type: 'start' }, 'user')).toBe(true)
 
     expect(pipeline.context.state.blockOrderById).toEqual([
       lastId,
@@ -243,7 +259,7 @@ describe('TransactionPipeline block commands', () => {
     ])
     expect(blockTexts(pipeline.context)).toEqual(['C', 'A', 'B'])
 
-    pipeline.moveBlock(lastId, { type: 'end' }, 'user')
+    expect(pipeline.moveBlock(lastId, { type: 'end' }, 'user')).toBe(true)
 
     expect(pipeline.context.state.blockOrderById).toEqual([
       firstId,
@@ -268,12 +284,20 @@ describe('TransactionPipeline block commands', () => {
     const canUndoBefore = pipeline.canUndo()
     const orderBefore = pipeline.context.state.blockOrderById
 
-    pipeline.moveBlock(firstId, { type: 'start' }, 'user')
-    pipeline.moveBlock(lastId, { type: 'end' }, 'user')
-    pipeline.moveBlock(middleId, { blockId: firstId, type: 'after' }, 'user')
-    pipeline.moveBlock(middleId, { blockId: lastId, type: 'before' }, 'user')
-    pipeline.moveBlock(firstId, { blockId: firstId, type: 'after' }, 'user')
-    pipeline.moveBlock(firstId, { blockId: firstId, type: 'before' }, 'user')
+    expect(pipeline.moveBlock(firstId, { type: 'start' }, 'user')).toBe(false)
+    expect(pipeline.moveBlock(lastId, { type: 'end' }, 'user')).toBe(false)
+    expect(
+      pipeline.moveBlock(middleId, { blockId: firstId, type: 'after' }, 'user'),
+    ).toBe(false)
+    expect(
+      pipeline.moveBlock(middleId, { blockId: lastId, type: 'before' }, 'user'),
+    ).toBe(false)
+    expect(
+      pipeline.moveBlock(firstId, { blockId: firstId, type: 'after' }, 'user'),
+    ).toBe(false)
+    expect(
+      pipeline.moveBlock(firstId, { blockId: firstId, type: 'before' }, 'user'),
+    ).toBe(false)
 
     expect(pipeline.context.state.blockOrderById).toEqual(orderBefore)
     expect(
@@ -295,7 +319,7 @@ describe('TransactionPipeline block commands', () => {
 
     expect(requireCursor(pipeline.context).blockId).toBe(lastId)
 
-    pipeline.moveBlock(lastId, { type: 'start' }, 'user')
+    expect(pipeline.moveBlock(lastId, { type: 'start' }, 'user')).toBe(true)
 
     expect(pipeline.context.state.blockOrderById).toEqual([
       lastId,
@@ -311,6 +335,99 @@ describe('TransactionPipeline block commands', () => {
     expect(() =>
       pipeline.moveBlock('bl_unknown' as BlockId, { type: 'end' }, 'user'),
     ).toThrow()
+  })
+
+  test('patch block commands return true when applied', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'Hello')
+
+    const [paragraphId] = pipeline.context.state.blockOrderById
+    if (!paragraphId) {
+      throw new Error('Expected the initial paragraph')
+    }
+
+    expect(
+      pipeline.patchParagraphBlock(paragraphId, { metadata: { a: 1 } }, 'user'),
+    ).toBe(true)
+    expect(pipeline.context.state.blocks.get(paragraphId)?.metadata).toEqual({
+      a: 1,
+    })
+
+    const quoteId = pipeline.insertQuoteBlock({}, 'user')
+    const headingId = pipeline.insertHeadingBlock(1, {}, 'user')
+    const bulletId = pipeline.insertBulletListItemBlock({}, 'user')
+    const numberedId = pipeline.insertNumberedListItemBlock({}, 'user')
+    if (!(quoteId && headingId && bulletId && numberedId)) {
+      throw new Error('Expected inserted blocks to patch')
+    }
+
+    expect(
+      pipeline.patchQuoteBlock(quoteId, { metadata: { a: 1 } }, 'user'),
+    ).toBe(true)
+    expect(pipeline.patchHeadingBlock(headingId, { level: 3 }, 'user')).toBe(
+      true,
+    )
+    expect(
+      pipeline.patchBulletListItemBlock(
+        bulletId,
+        { metadata: { a: 1 } },
+        'user',
+      ),
+    ).toBe(true)
+    expect(
+      pipeline.patchNumberedListItemBlock(
+        numberedId,
+        { variant: 'alpha' },
+        'user',
+      ),
+    ).toBe(true)
+
+    expect(pipeline.context.state.blocks.get(quoteId)?.metadata).toEqual({
+      a: 1,
+    })
+    expect(pipeline.context.state.blocks.get(headingId)).toMatchObject({
+      level: 3,
+    })
+    expect(pipeline.context.state.blocks.get(bulletId)?.metadata).toEqual({
+      a: 1,
+    })
+    expect(pipeline.context.state.blocks.get(numberedId)).toMatchObject({
+      variant: 'alpha',
+    })
+  })
+
+  test('patch block commands return false when the block type does not match', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'Hello')
+
+    const [paragraphId] = pipeline.context.state.blockOrderById
+    if (!paragraphId) {
+      throw new Error('Expected the initial paragraph')
+    }
+    const before = snapshot(pipeline.context)
+
+    expect(pipeline.patchQuoteBlock(paragraphId, {}, 'user')).toBe(false)
+    expect(pipeline.patchHeadingBlock(paragraphId, { level: 2 }, 'user')).toBe(
+      false,
+    )
+    expect(pipeline.patchBulletListItemBlock(paragraphId, {}, 'user')).toBe(
+      false,
+    )
+    expect(pipeline.patchNumberedListItemBlock(paragraphId, {}, 'user')).toBe(
+      false,
+    )
+    expect(snapshot(pipeline.context)).toEqual(before)
+
+    const headingId = pipeline.insertHeadingBlock(1, {}, 'user')
+    if (!headingId) {
+      throw new Error('Expected an inserted heading')
+    }
+    const afterInsert = snapshot(pipeline.context)
+
+    expect(pipeline.patchParagraphBlock(headingId, {}, 'user')).toBe(false)
+    expect(snapshot(pipeline.context)).toEqual(afterInsert)
   })
 })
 
