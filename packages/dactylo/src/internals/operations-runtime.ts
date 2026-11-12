@@ -644,12 +644,15 @@ export function applyMergeBlocksOp(
     source.content,
   )
 
-  // @todo: add a policy config to merge blocks metadata
-  const mergedMetadata = { ...target.metadata, ...source.metadata }
+  /**
+   * Invariant UX:
+   * When merging blocks, the metadata from the `source` block
+   * are ignored in favor of the `target` block metadata:
+   *[target_metadata] > [source_metadata]
+   */
   const updatedTarget = touchBlock({
     ...target,
     content: mergedContent,
-    metadata: mergedMetadata,
   })
 
   let state = putBlock(context.state, updatedTarget)
