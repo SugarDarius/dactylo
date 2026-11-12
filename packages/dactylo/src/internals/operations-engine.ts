@@ -376,12 +376,28 @@ export class OperationsEngine {
 
   // --- Blocks operations ─────────────────────────────────────────---
 
+  /**
+   * Builds operations to reindex numbered-list markers after a move.
+   * `context` must already reflect the post-move document.
+   */
+  buildReindexNumberedListAfterMoveOps(
+    context: EditorContext,
+    movedBlockId: BlockId,
+  ): BuilderOpsIntent | null {
+    const ops = buildReindexNumberedListRunsOps(context.state, movedBlockId)
+    if (ops.length === 0) {
+      return null
+    }
+
+    return { label: 'reindex-numbered-list-markers', ops }
+  }
+
   /** Builds operations to insert a {@link Block} according to the given specification and position. */
   #buildInsertBlockOps(
     context: EditorContext,
     spec: InsertBlockSpec,
     pos?: InsertOrMoveBlockPosition,
-  ): BuilderOpsIntent | null {
+  ): [BuilderOpsIntent, BlockId] | null {
     const { state, selection } = context
 
     /** Do not insert if `pos` isn't given or selection is not active. */
@@ -437,7 +453,7 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'insert-paragraph', ops }
+        return [{ label: 'insert-paragraph', ops }, paragraph.id]
       }
       case 'quote': {
         const quote = createQuoteBlock({
@@ -463,7 +479,7 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'insert-quote', ops }
+        return [{ label: 'insert-quote', ops }, quote.id]
       }
       case 'heading': {
         const heading = createHeadingBlock({
@@ -490,7 +506,7 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'insert-heading', ops }
+        return [{ label: 'insert-heading', ops }, heading.id]
       }
       case 'bullet_list_item': {
         const bulletListItem = createBulletListItemBlock({
@@ -516,7 +532,7 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'insert-bullet-list-item', ops }
+        return [{ label: 'insert-bullet-list-item', ops }, bulletListItem.id]
       }
       case 'numbered_list_item': {
         const variant = spec.variant ?? 'default'
@@ -554,7 +570,10 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'insert-numbered-list-item', ops }
+        return [
+          { label: 'insert-numbered-list-item', ops },
+          numberedListItem.id,
+        ]
       }
       case 'checkbox_list_item': {
         const checkboxListItem = createCheckboxListItemBlock({
@@ -581,7 +600,10 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'insert-checkbox-list-item', ops }
+        return [
+          { label: 'insert-checkbox-list-item', ops },
+          checkboxListItem.id,
+        ]
       }
       case 'divider': {
         const divider = createDividerBlock({
@@ -625,7 +647,7 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'insert-divider', ops }
+        return [{ label: 'insert-divider', ops }, divider.id]
       }
       default: {
         assertNever(type, { hint: 'OperationsEngine/buildInsertBlockOps' })
@@ -638,7 +660,7 @@ export class OperationsEngine {
     context: EditorContext,
     pos?: InsertOrMoveBlockPosition,
     metadata?: Metadata,
-  ): BuilderOpsIntent | null {
+  ): [BuilderOpsIntent, BlockId] | null {
     return this.#buildInsertBlockOps(
       context,
       { metadata, type: 'paragraph' },
@@ -651,7 +673,7 @@ export class OperationsEngine {
     context: EditorContext,
     pos?: InsertOrMoveBlockPosition,
     metadata?: Metadata,
-  ): BuilderOpsIntent | null {
+  ): [BuilderOpsIntent, BlockId] | null {
     return this.#buildInsertBlockOps(context, { metadata, type: 'quote' }, pos)
   }
 
@@ -661,7 +683,7 @@ export class OperationsEngine {
     level: HeadingBlock['level'],
     pos?: InsertOrMoveBlockPosition,
     metadata?: Metadata,
-  ): BuilderOpsIntent | null {
+  ): [BuilderOpsIntent, BlockId] | null {
     return this.#buildInsertBlockOps(
       context,
       { level, metadata, type: 'heading' },
@@ -674,7 +696,7 @@ export class OperationsEngine {
     context: EditorContext,
     pos?: InsertOrMoveBlockPosition,
     metadata?: Metadata,
-  ): BuilderOpsIntent | null {
+  ): [BuilderOpsIntent, BlockId] | null {
     return this.#buildInsertBlockOps(
       context,
       { metadata, type: 'bullet_list_item' },
@@ -688,7 +710,7 @@ export class OperationsEngine {
     variant?: NumberedListItemBlock['variant'],
     pos?: InsertOrMoveBlockPosition,
     metadata?: Metadata,
-  ): BuilderOpsIntent | null {
+  ): [BuilderOpsIntent, BlockId] | null {
     return this.#buildInsertBlockOps(
       context,
       { metadata, type: 'numbered_list_item', variant },
@@ -702,7 +724,7 @@ export class OperationsEngine {
     checked?: boolean,
     pos?: InsertOrMoveBlockPosition,
     metadata?: Metadata,
-  ): BuilderOpsIntent | null {
+  ): [BuilderOpsIntent, BlockId] | null {
     return this.#buildInsertBlockOps(
       context,
       { checked, metadata, type: 'checkbox_list_item' },
@@ -715,7 +737,7 @@ export class OperationsEngine {
     context: EditorContext,
     pos?: InsertOrMoveBlockPosition,
     metadata?: Metadata,
-  ): BuilderOpsIntent | null {
+  ): [BuilderOpsIntent, BlockId] | null {
     return this.#buildInsertBlockOps(
       context,
       { metadata, type: 'divider' },
@@ -1119,22 +1141,6 @@ export class OperationsEngine {
     ]
 
     return { label: 'move', ops }
-  }
-
-  /**
-   * Builds operations to reindex numbered-list markers after a move.
-   * `context` must already reflect the post-move document.
-   */
-  buildReindexNumberedListAfterMoveOps(
-    context: EditorContext,
-    movedBlockId: BlockId,
-  ): BuilderOpsIntent | null {
-    const ops = buildReindexNumberedListRunsOps(context.state, movedBlockId)
-    if (ops.length === 0) {
-      return null
-    }
-
-    return { label: 'reindex-numbered-list-markers', ops }
   }
 
   /** Builds operations to delete a {@link Block} by ID. */

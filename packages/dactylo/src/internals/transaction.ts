@@ -1349,15 +1349,18 @@ export class TransactionPipeline {
       metadata?: Metadata
     },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
-    const intent = this.#operationsEngine.buildInsertParagraphBlockOps(
+  ): BlockId | null {
+    const tuple = this.#operationsEngine.buildInsertParagraphBlockOps(
       this.#context,
       opts.pos,
       opts.metadata,
     )
-    if (intent === null) {
-      return
+
+    if (tuple === null) {
+      return null
     }
+
+    const [intent, blockId] = tuple
 
     const { ops, label } = intent
     this.#commit(ops, {
@@ -1365,6 +1368,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return blockId
   }
 
   /** Inserts a {@link QuoteBlock} at the given document position. */
@@ -1376,15 +1381,18 @@ export class TransactionPipeline {
       metadata?: Metadata
     },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
-    const intent = this.#operationsEngine.buildInsertQuoteBlockOps(
+  ): BlockId | null {
+    const tuple = this.#operationsEngine.buildInsertQuoteBlockOps(
       this.#context,
       opts.pos,
       opts.metadata,
     )
-    if (intent === null) {
-      return
+
+    if (tuple === null) {
+      return null
     }
+
+    const [intent, blockId] = tuple
 
     const { ops, label } = intent
     this.#commit(ops, {
@@ -1392,6 +1400,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return blockId
   }
 
   /** Inserts a {@link HeadingBlock} at the given document position. */
@@ -1405,16 +1415,19 @@ export class TransactionPipeline {
       metadata?: Metadata
     },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
-    const intent = this.#operationsEngine.buildInsertHeadingBlockOps(
+  ): BlockId | null {
+    const tuple = this.#operationsEngine.buildInsertHeadingBlockOps(
       this.#context,
       level,
       opts.pos,
       opts.metadata,
     )
-    if (intent === null) {
-      return
+
+    if (tuple === null) {
+      return null
     }
+
+    const [intent, blockId] = tuple
 
     const { ops, label } = intent
     this.#commit(ops, {
@@ -1422,6 +1435,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return blockId
   }
 
   /** Inserts a {@link BulletListItemBlock} at the given document position. */
@@ -1433,15 +1448,18 @@ export class TransactionPipeline {
       metadata?: Metadata
     },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
-    const intent = this.#operationsEngine.buildInsertBulletListItemBlockOps(
+  ): BlockId | null {
+    const tuple = this.#operationsEngine.buildInsertBulletListItemBlockOps(
       this.#context,
       opts.pos,
       opts.metadata,
     )
-    if (intent === null) {
-      return
+
+    if (tuple === null) {
+      return null
     }
+
+    const [intent, blockId] = tuple
 
     const { ops, label } = intent
     this.#commit(ops, {
@@ -1449,6 +1467,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return blockId
   }
 
   /** Inserts a {@link NumberedListItemBlock} at the given document position. */
@@ -1462,16 +1482,19 @@ export class TransactionPipeline {
       metadata?: Metadata
     },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
-    const intent = this.#operationsEngine.buildInsertNumberedListItemBlockOps(
+  ): BlockId | null {
+    const tuple = this.#operationsEngine.buildInsertNumberedListItemBlockOps(
       this.#context,
       opts.variant,
       opts.pos,
       opts.metadata,
     )
-    if (intent === null) {
-      return
+
+    if (tuple === null) {
+      return null
     }
+
+    const [intent, blockId] = tuple
 
     const { ops, label } = intent
     this.#commit(ops, {
@@ -1479,6 +1502,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return blockId
   }
 
   /** Inserts a {@link CheckboxListItemBlock} at the given document position. */
@@ -1492,16 +1517,19 @@ export class TransactionPipeline {
       metadata?: Metadata
     },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
-    const intent = this.#operationsEngine.buildInsertCheckboxListItemBlockOps(
+  ): BlockId | null {
+    const tuple = this.#operationsEngine.buildInsertCheckboxListItemBlockOps(
       this.#context,
       opts.checked,
       opts.pos,
       opts.metadata,
     )
-    if (intent === null) {
-      return
+
+    if (tuple === null) {
+      return null
     }
+
+    const [intent, blockId] = tuple
 
     const { ops, label } = intent
     this.#commit(ops, {
@@ -1509,6 +1537,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return blockId
   }
 
   /** Inserts a {@link DividerBlock} at the given document position. */
@@ -1520,15 +1550,18 @@ export class TransactionPipeline {
       metadata?: Metadata
     },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
-    const intent = this.#operationsEngine.buildInsertDividerBlockOps(
+  ): BlockId | null {
+    const tuple = this.#operationsEngine.buildInsertDividerBlockOps(
       this.#context,
       opts.pos,
       opts.metadata,
     )
-    if (intent === null) {
-      return
+
+    if (tuple === null) {
+      return null
     }
+
+    const [intent, blockId] = tuple
 
     const { ops, label } = intent
     this.#commit(ops, {
@@ -1536,6 +1569,8 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    return blockId
   }
 
   /** Patches a {@link ParagraphBlock} by ID with the given options. */

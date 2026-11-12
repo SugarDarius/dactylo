@@ -63,7 +63,7 @@ import type {
   Relax,
   WithUnless,
 } from './internals/types'
-import { canUseDOM, negate, noop } from './internals/utils'
+import { canUseDOM, negate, noop, nullish } from './internals/utils'
 
 /** Api to interact with one aspect of the editor. */
 export interface DactyloAspectApi<T extends object, C extends object> {
@@ -765,11 +765,15 @@ export interface DactyloBlocksCommands {
    * Inserts a {@link ParagraphBlock} at the given position with metadata.
    * By defaults it inserts after the current selection.
    *
+   * Returns the {@link BlockId} of the inserted block on success,
+   * or `null` if no ops were applied.
+   *
    * @example
    * ```ts
-   * editor.blocks.commands.insertParagraph()
-   * editor.blocks.commands.insertParagraph({ pos: 'end' })
-   * editor.blocks.commands.insertParagraph({}, 'ai-agent')
+   * const blockId = editor.blocks.commands.insertParagraph()
+   * const blockId = editor.blocks.commands.insertParagraph({ pos: 'end' })
+   * const blockId = editor.blocks.commands.insertParagraph({}, 'ai-agent')
+   * const blockId = editor.blocks.commands.insertParagraph({}, 'ai-agent')
    * ```
    */
   readonly insertParagraph: (
@@ -781,17 +785,20 @@ export interface DactyloBlocksCommands {
       metadata?: PBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => BlockId | null
 
   /**
    * Inserts a {@link QuoteBlock} at the given position with metadata.
    * By defaults it inserts after the current selection.
    *
+   * Returns the {@link BlockId} of the inserted block on success,
+   * or `null` if no ops were applied.
+   *
    * @example
    * ```ts
-   * editor.blocks.commands.insertQuote()
-   * editor.blocks.commands.insertQuote({ pos: 'end' })
-   * editor.blocks.commands.insertQuote({}, 'ai-agent')
+   * const blockId = editor.blocks.commands.insertQuote()
+   * const blockId = editor.blocks.commands.insertQuote({ pos: 'end' })
+   * const blockId = editor.blocks.commands.insertQuote({}, 'ai-agent')
    * ```
    */
   readonly insertQuote: (
@@ -803,17 +810,20 @@ export interface DactyloBlocksCommands {
       metadata?: QBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => BlockId | null
 
   /**
    * Inserts a {@link HeadingBlock} at the given position with metadata.
    * By defaults it inserts after the current selection.
    *
+   * Returns the {@link BlockId} of the inserted block on success,
+   * or `null` if no ops were applied.
+   *
    * @example
    * ```ts
-   * editor.blocks.commands.insertHeading(1)
-   * editor.blocks.commands.insertHeading(2, { pos: 'end' })
-   * editor.blocks.commands.insertHeading(3, {}, 'ai-agent')
+   * const blockId = editor.blocks.commands.insertHeading(1)
+   * const blockId = editor.blocks.commands.insertHeading(2, { pos: 'end' })
+   * const blockId = editor.blocks.commands.insertHeading(3, {}, 'ai-agent')
    * ```
    */
   readonly insertHeading: (
@@ -828,17 +838,20 @@ export interface DactyloBlocksCommands {
       metadata?: HBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => BlockId | null
 
   /**
    * Inserts a {@link BulletListItemBlock} at the given position with metadata.
    * By defaults it inserts after the current selection.
    *
+   * Returns the {@link BlockId} of the inserted block on success,
+   * or `null` if no ops were applied.
+   *
    * @example
    * ```ts
-   * editor.blocks.commands.insertBulletListItem()
-   * editor.blocks.commands.insertBulletListItem({ pos: 'end' })
-   * editor.blocks.commands.insertBulletListItem({}, 'ai-agent')
+   * const blockId = editor.blocks.commands.insertBulletListItem()
+   * const blockId = editor.blocks.commands.insertBulletListItem({ pos: 'end' })
+   * const blockId = editor.blocks.commands.insertBulletListItem({}, 'ai-agent')
    * ```
    */
   readonly insertBulletListItem: (
@@ -850,17 +863,20 @@ export interface DactyloBlocksCommands {
       metadata?: BBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => BlockId | null
 
   /**
    * Inserts a {@link NumberedListItemBlock} at the given position with metadata.
    * By defaults it inserts after the current selection.
    *
+   * Returns the {@link BlockId} of the inserted block on success,
+   * or `null` if no ops were applied.
+   *
    * @example
    * ```ts
-   * editor.blocks.commands.insertNumberedListItem()
-   * editor.blocks.commands.insertNumberedListItem({ pos: 'end' })
-   * editor.blocks.commands.insertNumberedListItem({}, 'ai-agent')
+   * const blockId = editor.blocks.commands.insertNumberedListItem()
+   * const blockId = editor.blocks.commands.insertNumberedListItem({ pos: 'end' })
+   * const blockId = editor.blocks.commands.insertNumberedListItem({}, 'ai-agent')
    * ```
    */
   readonly insertNumberedListItem: (
@@ -873,17 +889,20 @@ export interface DactyloBlocksCommands {
       metadata?: NBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => BlockId | null
 
   /**
    * Inserts a {@link CheckboxListItemBlock} at the given position with metadata.
    * By defaults it inserts after the current selection.
    *
+   * Returns the {@link BlockId} of the inserted block on success,
+   * or `null` if no ops were applied.
+   *
    * @example
    * ```ts
-   * editor.blocks.commands.insertCheckboxListItem()
-   * editor.blocks.commands.insertCheckboxListItem({ checked: true, pos: 'end' })
-   * editor.blocks.commands.insertCheckboxListItem({ checked: true, pos: 'end' }, 'ai-agent')
+   * const blockId = editor.blocks.commands.insertCheckboxListItem()
+   * const blockId = editor.blocks.commands.insertCheckboxListItem({ checked: true, pos: 'end' })
+   * const blockId = editor.blocks.commands.insertCheckboxListItem({ checked: true, pos: 'end' }, 'ai-agent')
    * ```
    */
   readonly insertCheckboxListItem: (
@@ -898,17 +917,20 @@ export interface DactyloBlocksCommands {
       metadata?: CBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => BlockId | null
 
   /**
    * Inserts a {@link DividerBlock} at the given position with metadata.
    * By defaults it inserts after the current selection.
    *
+   * Returns the {@link BlockId} of the inserted block on success,
+   * or `null` if no ops were applied.
+   *
    * @example
    * ```ts
-   * editor.blocks.commands.insertDivider()
-   * editor.blocks.commands.insertDivider({ pos: 'end' })
-   * editor.blocks.commands.insertDivider({}, 'ai-agent')
+   * const blockId = editor.blocks.commands.insertDivider()
+   * const blockId = editor.blocks.commands.insertDivider({ pos: 'end' })
+   * const blockId = editor.blocks.commands.insertDivider({}, 'ai-agent')
    * ```
    */
   readonly insertDivider: (
@@ -920,7 +942,7 @@ export interface DactyloBlocksCommands {
       metadata?: DBM
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => BlockId | null
 
   /**
    * Deletes a {@link Block} from the document state by ID.
@@ -2118,6 +2140,9 @@ export class Dactylo {
         /**
          * Inserts a {@link BulletListItemBlock} at the given position with metadata.
          * By defaults it inserts after the current selection.
+         *
+         * Returns the {@link BlockId} of the inserted block on success,
+         * or `null` if no ops were applied.
          */
         insertBulletListItem: (
           opts: {
@@ -2125,7 +2150,7 @@ export class Dactylo {
             metadata?: BBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
+        ): BlockId | null =>
           this.#safeExecuteCommand(
             'blocks/insert-bullet-list-item',
             () =>
@@ -2137,13 +2162,16 @@ export class Dactylo {
                 },
                 source,
               ),
-            noop,
+            nullish,
             { payload: { source } },
           ),
 
         /**
          * Inserts a {@link CheckboxListItemBlock} at the given position with metadata.
          * By defaults it inserts after the current selection.
+         *
+         * Returns the {@link BlockId} of the inserted block on success,
+         * or `null` if no ops were applied.
          */
         insertCheckboxListItem: (
           opts: {
@@ -2153,7 +2181,7 @@ export class Dactylo {
             metadata?: CBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
+        ): BlockId | null =>
           this.#safeExecuteCommand(
             'blocks/insert-checkbox-list-item',
             () =>
@@ -2165,13 +2193,16 @@ export class Dactylo {
                 },
                 source,
               ),
-            noop,
+            nullish,
             { payload: { source } },
           ),
 
         /**
          * Inserts a {@link DividerBlock} at the given position with metadata.
          * By defaults it inserts after the current selection.
+         *
+         * Returns the {@link BlockId} of the inserted block on success,
+         * or `null` if no ops were applied.
          */
         insertDivider: (
           opts: {
@@ -2179,7 +2210,7 @@ export class Dactylo {
             metadata?: DBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
+        ): BlockId | null =>
           this.#safeExecuteCommand(
             'blocks/insert-divider',
             () =>
@@ -2191,13 +2222,16 @@ export class Dactylo {
                 },
                 source,
               ),
-            noop,
+            nullish,
             { payload: { source } },
           ),
 
         /**
          * Inserts a {@link HeadingBlock} at the given position with metadata.
          * By defaults it inserts after the current selection.
+         *
+         * Returns the {@link BlockId} of the inserted block on success,
+         * or `null` if no ops were applied.
          */
         insertHeading: (
           /** Level of the heading. */
@@ -2208,7 +2242,7 @@ export class Dactylo {
             metadata?: HBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
+        ): BlockId | null =>
           this.#safeExecuteCommand(
             'blocks/insert-heading',
             () =>
@@ -2221,13 +2255,16 @@ export class Dactylo {
                 },
                 source,
               ),
-            noop,
+            nullish,
             { payload: { source } },
           ),
 
         /**
          * Inserts a {@link NumberedListItemBlock} at the given position with metadata.
          * By defaults it inserts after the current selection.
+         *
+         * Returns the {@link BlockId} of the inserted block on success,
+         * or `null` if no ops were applied.
          */
         insertNumberedListItem: (
           opts: {
@@ -2236,7 +2273,7 @@ export class Dactylo {
             metadata?: NBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
+        ): BlockId | null =>
           this.#safeExecuteCommand(
             'blocks/insert-numbered-list-item',
             () =>
@@ -2248,13 +2285,16 @@ export class Dactylo {
                 },
                 source,
               ),
-            noop,
+            nullish,
             { payload: { source } },
           ),
 
         /**
          * Inserts a {@link ParagraphBlock} at the given position with metadata.
          * By defaults it inserts after the current selection.
+         *
+         * Returns the {@link BlockId} of the inserted block on success,
+         * or `null` if no ops were applied.
          */
         insertParagraph: (
           opts: {
@@ -2262,7 +2302,7 @@ export class Dactylo {
             metadata?: PBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
+        ): BlockId | null =>
           this.#safeExecuteCommand(
             'blocks/insert-paragraph',
             () =>
@@ -2274,13 +2314,16 @@ export class Dactylo {
                 },
                 source,
               ),
-            noop,
+            nullish,
             { payload: { source } },
           ),
 
         /**
          * Inserts a {@link QuoteBlock} at the given position with metadata.
          * By defaults it inserts after the current selection.
+         *
+         * Returns the {@link BlockId} of the inserted block on success,
+         * or `null` if no ops were applied.
          */
         insertQuote: (
           opts: {
@@ -2288,7 +2331,7 @@ export class Dactylo {
             metadata?: QBM
           } = {},
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
+        ): BlockId | null =>
           this.#safeExecuteCommand(
             'blocks/insert-quote',
             () =>
@@ -2299,7 +2342,7 @@ export class Dactylo {
                 },
                 source,
               ),
-            noop,
+            nullish,
             { payload: { source } },
           ),
 

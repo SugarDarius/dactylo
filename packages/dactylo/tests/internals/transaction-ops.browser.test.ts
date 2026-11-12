@@ -19,8 +19,12 @@ describe('TransactionPipeline block commands', () => {
     focus(pipeline)
     const before = snapshot(pipeline.context)
 
-    pipeline.insertParagraphBlock({}, 'user')
+    const blockId = pipeline.insertParagraphBlock({}, 'user')
+    if (!blockId) {
+      throw new Error('Expected an inserted paragraph')
+    }
 
+    expect(pipeline.context.state.blockOrderById).toContain(blockId)
     expect(pipeline.context.state.blockOrderById).toHaveLength(2)
     assertUndoRedo(pipeline, before)
   })
@@ -30,14 +34,67 @@ describe('TransactionPipeline block commands', () => {
     focus(pipeline)
     const before = snapshot(pipeline.context)
 
-    pipeline.insertHeadingBlock(1, {}, 'user')
+    const blockId = pipeline.insertHeadingBlock(1, {}, 'user')
+    if (!blockId) {
+      throw new Error('Expected an inserted heading')
+    }
 
-    expect(
-      pipeline.context.state.blockOrderById.map(
-        (id) => pipeline.context.state.blocks.get(id)?.__type,
-      ),
-    ).toContain('heading')
+    expect(pipeline.context.state.blocks.get(blockId)?.__type).toBe('heading')
     assertUndoRedo(pipeline, before)
+  })
+
+  test('insertQuoteBlock returns the inserted block id', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+
+    const blockId = pipeline.insertQuoteBlock({}, 'user')
+    if (!blockId) {
+      throw new Error('Expected an inserted quote')
+    }
+
+    expect(pipeline.context.state.blocks.get(blockId)?.__type).toBe('quote')
+  })
+
+  test('insertBulletListItemBlock returns the inserted block id', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+
+    const blockId = pipeline.insertBulletListItemBlock({}, 'user')
+    if (!blockId) {
+      throw new Error('Expected an inserted bullet list item')
+    }
+
+    expect(pipeline.context.state.blocks.get(blockId)?.__type).toBe(
+      'bullet_list_item',
+    )
+  })
+
+  test('insertNumberedListItemBlock returns the inserted block id', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+
+    const blockId = pipeline.insertNumberedListItemBlock({}, 'user')
+    if (!blockId) {
+      throw new Error('Expected an inserted numbered list item')
+    }
+
+    expect(pipeline.context.state.blocks.get(blockId)?.__type).toBe(
+      'numbered_list_item',
+    )
+  })
+
+  test('insertCheckboxListItemBlock returns the inserted block id', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+
+    const blockId = pipeline.insertCheckboxListItemBlock({}, 'user')
+    if (!blockId) {
+      throw new Error('Expected an inserted checkbox list item')
+    }
+
+    expect(pipeline.context.state.blocks.get(blockId)?.__type).toBe(
+      'checkbox_list_item',
+    )
   })
 
   test('insertDividerBlock and undo/redo round-trip', () => {
@@ -45,21 +102,35 @@ describe('TransactionPipeline block commands', () => {
     focus(pipeline)
     const before = snapshot(pipeline.context)
 
-    pipeline.insertDividerBlock({}, 'user')
+    const blockId = pipeline.insertDividerBlock({}, 'user')
+    if (!blockId) {
+      throw new Error('Expected an inserted divider')
+    }
 
-    expect(
-      pipeline.context.state.blockOrderById.map(
-        (id) => pipeline.context.state.blocks.get(id)?.__type,
-      ),
-    ).toContain('divider')
+    expect(pipeline.context.state.blocks.get(blockId)?.__type).toBe('divider')
     assertUndoRedo(pipeline, before)
+  })
+
+  test('insert block commands return null without a position or selection', () => {
+    const pipeline = makePipeline({ markdown: false })
+
+    expect(pipeline.insertParagraphBlock({}, 'user')).toBeNull()
+    expect(pipeline.insertQuoteBlock({}, 'user')).toBeNull()
+    expect(pipeline.insertHeadingBlock(1, {}, 'user')).toBeNull()
+    expect(pipeline.insertBulletListItemBlock({}, 'user')).toBeNull()
+    expect(pipeline.insertNumberedListItemBlock({}, 'user')).toBeNull()
+    expect(pipeline.insertCheckboxListItemBlock({}, 'user')).toBeNull()
+    expect(pipeline.insertDividerBlock({}, 'user')).toBeNull()
+    expect(pipeline.context.state.blockOrderById).toHaveLength(1)
   })
 
   test('deleteBlock and undo/redo round-trip', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
-    pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
-    const extraId = pipeline.context.state.blockOrderById.at(-1)
+    const extraId = pipeline.insertParagraphBlock(
+      { pos: { type: 'end' } },
+      'user',
+    )
     if (!extraId) {
       throw new Error('Expected an inserted block')
     }

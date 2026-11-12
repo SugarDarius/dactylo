@@ -10,7 +10,7 @@ import type {
   TNM,
 } from '../../src/index'
 import { isParagraphBlock } from '../../src/internals/blocks'
-import type { ParagraphBlock } from '../../src/internals/blocks'
+import type { BlockId, ParagraphBlock } from '../../src/internals/blocks'
 import { createTextNode, isTextNode } from '../../src/internals/nodes'
 import type { TextNode } from '../../src/internals/nodes'
 import type { WithUnless } from '../../src/internals/types'
@@ -29,6 +29,9 @@ describe('metadata aliases', () => {
     expectTypeOf(editor.blocks.commands.insertParagraph)
       .parameter(0)
       .toExtend<{ pos?: unknown; metadata?: PBM } | undefined>()
+    expectTypeOf(
+      editor.blocks.commands.insertParagraph,
+    ).returns.toEqualTypeOf<BlockId | null>()
     expectTypeOf(editor.blocks.commands.patchParagraph).parameter(1).toExtend<{
       content?: unknown
       metadata?: PBM
@@ -37,6 +40,9 @@ describe('metadata aliases', () => {
     expectTypeOf(editor.blocks.commands.insertHeading)
       .parameter(1)
       .toExtend<{ pos?: unknown; metadata?: HBM } | undefined>()
+    expectTypeOf(
+      editor.blocks.commands.insertHeading,
+    ).returns.toEqualTypeOf<BlockId | null>()
     expectTypeOf(editor.blocks.commands.patchHeading).parameter(1).toExtend<{
       level?: unknown
       content?: unknown
@@ -46,6 +52,21 @@ describe('metadata aliases', () => {
     expectTypeOf(editor.blocks.commands.insertQuote)
       .parameter(0)
       .toExtend<{ pos?: unknown; metadata?: Metadata } | undefined>()
+    expectTypeOf(
+      editor.blocks.commands.insertQuote,
+    ).returns.toEqualTypeOf<BlockId | null>()
+    expectTypeOf(
+      editor.blocks.commands.insertBulletListItem,
+    ).returns.toEqualTypeOf<BlockId | null>()
+    expectTypeOf(
+      editor.blocks.commands.insertNumberedListItem,
+    ).returns.toEqualTypeOf<BlockId | null>()
+    expectTypeOf(
+      editor.blocks.commands.insertCheckboxListItem,
+    ).returns.toEqualTypeOf<BlockId | null>()
+    expectTypeOf(
+      editor.blocks.commands.insertDivider,
+    ).returns.toEqualTypeOf<BlockId | null>()
     expectTypeOf(editor.blocks.commands.patchDivider)
       .parameter(1)
       .toExtend<{ metadata?: Metadata }>()

@@ -22,6 +22,11 @@ export function negate(): false {
   return false
 }
 
+/** A function that returns a null value. */
+export function nullish(): null {
+  return null
+}
+
 /** Clamps `value` to the range `[min, max]` (inclusive). */
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(value, max))

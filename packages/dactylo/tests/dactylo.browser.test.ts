@@ -528,12 +528,16 @@ describe('Dactylo blocks', () => {
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
 
-    editor.blocks.commands.insertHeading(2)
+    const blockId = editor.blocks.commands.insertHeading(2)
+    if (!blockId) {
+      throw new Error('Expected an inserted heading')
+    }
 
     const context = editor.getContext()
     expect(context.state.blockOrderById).toHaveLength(2)
     expect(isParagraphBlock(nthInlineBlock(context, 0))).toBe(true)
     const heading = nthInlineBlock(context, 1)
+    expect(heading.id).toBe(blockId)
     expect(isHeadingBlock(heading)).toBe(true)
     if (isHeadingBlock(heading)) {
       expect(heading.level).toBe(2)
@@ -547,12 +551,16 @@ describe('Dactylo blocks', () => {
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
 
-    editor.blocks.commands.insertQuote()
+    const blockId = editor.blocks.commands.insertQuote()
+    if (!blockId) {
+      throw new Error('Expected an inserted quote')
+    }
 
     const context = editor.getContext()
     expect(context.state.blockOrderById).toHaveLength(2)
     expect(isParagraphBlock(nthInlineBlock(context, 0))).toBe(true)
     const quote = nthInlineBlock(context, 1)
+    expect(quote.id).toBe(blockId)
     expect(isQuoteBlock(quote)).toBe(true)
     expect(blockTexts(context)).toEqual(['Hello', ''])
     expect(editor.blocks.tools.isWithEmptyInlineContent(quote.id)).toBe(true)
@@ -563,12 +571,16 @@ describe('Dactylo blocks', () => {
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
 
-    editor.blocks.commands.insertNumberedListItem()
+    const blockId = editor.blocks.commands.insertNumberedListItem()
+    if (!blockId) {
+      throw new Error('Expected an inserted numbered list item')
+    }
 
     const context = editor.getContext()
     expect(context.state.blockOrderById).toHaveLength(2)
     expect(isParagraphBlock(nthInlineBlock(context, 0))).toBe(true)
     const item = nthInlineBlock(context, 1)
+    expect(item.id).toBe(blockId)
     expect(isNumberedListItemBlock(item)).toBe(true)
     if (isNumberedListItemBlock(item)) {
       expect(item.variant).toBe('default')
@@ -583,9 +595,14 @@ describe('Dactylo blocks', () => {
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
 
-    editor.blocks.commands.insertBulletListItem()
-    editor.blocks.commands.insertDivider()
-    editor.blocks.commands.insertParagraph({ pos: { type: 'end' } })
+    const bulletId = editor.blocks.commands.insertBulletListItem()
+    const dividerId = editor.blocks.commands.insertDivider()
+    const paragraphId = editor.blocks.commands.insertParagraph({
+      pos: { type: 'end' },
+    })
+    if (!(bulletId && dividerId && paragraphId)) {
+      throw new Error('Expected inserted bullet, divider, and paragraph')
+    }
 
     // Divider insert always places a paragraph after the rule for the caret.
 
@@ -605,6 +622,9 @@ describe('Dactylo blocks', () => {
       'paragraph',
       'paragraph',
     ])
+    expect(state.blocks.get(bulletId)?.__type).toBe('bullet_list_item')
+    expect(state.blocks.get(dividerId)?.__type).toBe('divider')
+    expect(state.blocks.get(paragraphId)?.__type).toBe('paragraph')
     expect(isBulletListItemBlock(nthInlineBlock(editor.getContext(), 1))).toBe(
       true,
     )
@@ -1232,7 +1252,13 @@ describe('Dactylo read-only mode', () => {
     expect(sendInput(editor, 'insertText', 'x')).toBe(false)
     editor.marks.commands.toggle('bold')
     editor.history.commands.undo()
-    editor.blocks.commands.insertParagraph()
+    expect(editor.blocks.commands.insertParagraph()).toBeNull()
+    expect(editor.blocks.commands.insertQuote()).toBeNull()
+    expect(editor.blocks.commands.insertHeading(1)).toBeNull()
+    expect(editor.blocks.commands.insertBulletListItem()).toBeNull()
+    expect(editor.blocks.commands.insertNumberedListItem()).toBeNull()
+    expect(editor.blocks.commands.insertCheckboxListItem()).toBeNull()
+    expect(editor.blocks.commands.insertDivider()).toBeNull()
 
     expect(snapshot(editor.getContext())).toEqual(before)
     expect(editor.history.tools.canUndo()).toBe(false)
