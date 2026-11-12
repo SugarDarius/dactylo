@@ -95,23 +95,6 @@ export interface OperationsBuilderInitialMetadata {
   readonly mentions: MNM
 }
 
-/** Creates initial metadata for operations builders. */
-export function createInitialMetadata(): OperationsBuilderInitialMetadata {
-  return {
-    bulletedList: {} as BBM,
-    checkboxList: {} as CBM,
-    divider: {} as DBM,
-    heading: {} as HBM,
-    lineBreak: {} as LBNM,
-    link: {} as LNM,
-    mentions: {} as MNM,
-    numberedList: {} as NBM,
-    paragraph: {} as PBM,
-    quote: {} as QBM,
-    text: {} as TNM,
-  }
-}
-
 /** Intent when building ops to delete text. */
 export interface BuilderDeleteIntent {
   /** The operations to apply. */

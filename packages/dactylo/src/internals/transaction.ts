@@ -1,3 +1,16 @@
+import type {
+  BBM,
+  CBM,
+  DBM,
+  HBM,
+  LBNM,
+  LNM,
+  MNM,
+  NBM,
+  PBM,
+  QBM,
+  TNM,
+} from './augmentation'
 import type { BlockId, HeadingBlock, NumberedListItemBlock } from './blocks'
 import { readTransferredData } from './clipboard'
 import { warn, warnOnceIf } from './console'
@@ -16,7 +29,6 @@ import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
 import type { InlineNode } from './nodes'
 import type { Operation } from './operations'
-import { createInitialMetadata } from './operations-builder'
 import type {
   InsertOrMoveBlockPosition,
   OperationsBuilderInitialMetadata,
@@ -531,7 +543,19 @@ export class TransactionPipeline {
      *  - from markdown string
      *  - patch if no inline content is provided for a block with inline content
      */
-    const initialMetadata = options.initialMetadata ?? createInitialMetadata()
+    const initialMetadata = options.initialMetadata ?? {
+      bulletedList: {} as BBM,
+      checkboxList: {} as CBM,
+      divider: {} as DBM,
+      heading: {} as HBM,
+      lineBreak: {} as LBNM,
+      link: {} as LNM,
+      mentions: {} as MNM,
+      numberedList: {} as NBM,
+      paragraph: {} as PBM,
+      quote: {} as QBM,
+      text: {} as TNM,
+    }
     this.#context = createInitialEditorContext({
       paragraphMetadata: initialMetadata.paragraph,
       textMetadata: initialMetadata.text,
