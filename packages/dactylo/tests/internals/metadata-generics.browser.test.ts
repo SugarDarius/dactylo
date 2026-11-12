@@ -2,7 +2,13 @@ import { describe, expectTypeOf, test } from 'vitest'
 
 import { Dactylo } from '../../src/dactylo'
 import type { DactyloOptions } from '../../src/dactylo'
-import type { HBM, Metadata, PBM, TNM } from '../../src/index'
+import type {
+  HBM,
+  Metadata,
+  MutateBlockTypeOp,
+  PBM,
+  TNM,
+} from '../../src/index'
 import { isParagraphBlock } from '../../src/internals/blocks'
 import type { ParagraphBlock } from '../../src/internals/blocks'
 import { createTextNode, isTextNode } from '../../src/internals/nodes'
@@ -117,5 +123,16 @@ describe('WithUnless', () => {
     expectTypeOf({
       paragraph: { initialMetadata: { source: 'import' } },
     }).toExtend<DactyloOptions>()
+  })
+})
+
+describe('MutateBlockTypeOp', () => {
+  test('requires metadata and has no dropMetadata', () => {
+    expectTypeOf<MutateBlockTypeOp['metadata']>().toEqualTypeOf<Metadata>()
+
+    type HasDropMetadata = 'dropMetadata' extends keyof MutateBlockTypeOp
+      ? true
+      : false
+    expectTypeOf<HasDropMetadata>().toEqualTypeOf<false>()
   })
 })

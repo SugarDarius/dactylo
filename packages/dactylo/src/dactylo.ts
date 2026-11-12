@@ -1100,7 +1100,7 @@ export interface DactyloBaseOptions {
    */
   readonly editable?: boolean
 
-  /** Alias for {@link DactyloConfigOptions.editor.paragraph.placeholder}. */
+  /** Alias for `paragraph.placeholder` option. */
   readonly placeholder?: string
 
   /**
@@ -1415,6 +1415,7 @@ export class Dactylo {
         initialMetadata: options.text?.initialMetadata ?? ({} as TNM),
       },
     }
+
     this.#pipeline = new TransactionPipeline({
       autolink: {
         enabled: this.#config.autolink.enabled,
@@ -1425,9 +1426,18 @@ export class Dactylo {
         locales,
       },
       history: options.pipeline?.history,
-      initial: {
-        paragraphMetadata: this.#config.paragraph.initialMetadata,
-        textMetadata: this.#config.text.initialMetadata,
+      initialMetadata: {
+        bulletedList: this.#config.bulletedList.initialMetadata,
+        checkboxList: this.#config.checkboxList.initialMetadata,
+        divider: this.#config.divider.initialMetadata,
+        heading: this.#config.heading.initialMetadata,
+        lineBreak: this.#config.lineBreak.initialMetadata,
+        link: this.#config.link.initialMetadata,
+        mentions: this.#config.mentions.initialMetadata,
+        numberedList: this.#config.numberedList.initialMetadata,
+        paragraph: this.#config.paragraph.initialMetadata,
+        quote: this.#config.quote.initialMetadata,
+        text: this.#config.text.initialMetadata,
       },
       inlineCommandTrigger: {
         character: this.#config.inlineCommandTrigger.character,
@@ -1441,6 +1451,7 @@ export class Dactylo {
         enabled: this.#config.mentions.enabled,
       },
     })
+
     this.#domManager = new DOMManager({
       commitSelection: (next: Selection | null) =>
         this.#pipeline.updateSelection(next, 'user'),
@@ -1448,6 +1459,7 @@ export class Dactylo {
       getIMEComposingState: () => this.#pipeline.isIMEComposing,
       getSelection: () => this.#pipeline.context.selection,
     })
+
     this.#eventSources = {
       commands: new EventSource<DactyloCommandEvent>(),
       editable: new EventSource<DactyloEditableEvent>(),
@@ -2116,7 +2128,15 @@ export class Dactylo {
         ) =>
           this.#safeExecuteCommand(
             'blocks/insert-bullet-list-item',
-            () => this.#pipeline.insertBulletListItemBlock(opts, source),
+            () =>
+              this.#pipeline.insertBulletListItemBlock(
+                {
+                  ...opts,
+                  metadata:
+                    opts.metadata ?? this.#config.bulletedList.initialMetadata,
+                },
+                source,
+              ),
             noop,
             { payload: { source } },
           ),
@@ -2136,7 +2156,15 @@ export class Dactylo {
         ) =>
           this.#safeExecuteCommand(
             'blocks/insert-checkbox-list-item',
-            () => this.#pipeline.insertCheckboxListItemBlock(opts, source),
+            () =>
+              this.#pipeline.insertCheckboxListItemBlock(
+                {
+                  ...opts,
+                  metadata:
+                    opts.metadata ?? this.#config.checkboxList.initialMetadata,
+                },
+                source,
+              ),
             noop,
             { payload: { source } },
           ),
@@ -2154,7 +2182,15 @@ export class Dactylo {
         ) =>
           this.#safeExecuteCommand(
             'blocks/insert-divider',
-            () => this.#pipeline.insertDividerBlock(opts, source),
+            () =>
+              this.#pipeline.insertDividerBlock(
+                {
+                  ...opts,
+                  metadata:
+                    opts.metadata ?? this.#config.divider.initialMetadata,
+                },
+                source,
+              ),
             noop,
             { payload: { source } },
           ),
@@ -2175,7 +2211,16 @@ export class Dactylo {
         ) =>
           this.#safeExecuteCommand(
             'blocks/insert-heading',
-            () => this.#pipeline.insertHeadingBlock(level, opts, source),
+            () =>
+              this.#pipeline.insertHeadingBlock(
+                level,
+                {
+                  ...opts,
+                  metadata:
+                    opts.metadata ?? this.#config.heading.initialMetadata,
+                },
+                source,
+              ),
             noop,
             { payload: { source } },
           ),
@@ -2194,7 +2239,15 @@ export class Dactylo {
         ) =>
           this.#safeExecuteCommand(
             'blocks/insert-numbered-list-item',
-            () => this.#pipeline.insertNumberedListItemBlock(opts, source),
+            () =>
+              this.#pipeline.insertNumberedListItemBlock(
+                {
+                  ...opts,
+                  metadata:
+                    opts.metadata ?? this.#config.numberedList.initialMetadata,
+                },
+                source,
+              ),
             noop,
             { payload: { source } },
           ),
@@ -2212,7 +2265,15 @@ export class Dactylo {
         ) =>
           this.#safeExecuteCommand(
             'blocks/insert-paragraph',
-            () => this.#pipeline.insertParagraphBlock(opts, source),
+            () =>
+              this.#pipeline.insertParagraphBlock(
+                {
+                  ...opts,
+                  metadata:
+                    opts.metadata ?? this.#config.paragraph.initialMetadata,
+                },
+                source,
+              ),
             noop,
             { payload: { source } },
           ),
@@ -2230,7 +2291,14 @@ export class Dactylo {
         ) =>
           this.#safeExecuteCommand(
             'blocks/insert-quote',
-            () => this.#pipeline.insertQuoteBlock(opts, source),
+            () =>
+              this.#pipeline.insertQuoteBlock(
+                {
+                  ...opts,
+                  metadata: opts.metadata ?? this.#config.quote.initialMetadata,
+                },
+                source,
+              ),
             noop,
             { payload: { source } },
           ),

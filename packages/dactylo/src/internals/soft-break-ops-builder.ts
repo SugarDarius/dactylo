@@ -15,7 +15,11 @@ import {
 } from './nodes'
 import type { InlineNodeWithEditableText } from './nodes'
 import type { Operation } from './operations'
-import type { BuilderOpsIntent, OperationRule } from './operations-builder'
+import type {
+  BuilderOpsIntent,
+  OperationRule,
+  OperationsBuilderInitialMetadata,
+} from './operations-builder'
 import {
   buildDeleteRangeCrossBlockIntent,
   buildDeleteRangeWithinBlockIntent,
@@ -101,8 +105,18 @@ export type SoftBreakOpsSituation =
   | SoftBreakOpsCursorSelectionSituation
   | SoftBreakOpsRangeSelectionSituation
 
+/** Resources for soft break operations. */
+export interface SoftBreakOpsResources {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
+}
+
 /** Soft break operations rule. */
-export type SoftBreakOpsRule = OperationRule<SoftBreakOpsSituation>
+export type SoftBreakOpsRule = OperationRule<
+  SoftBreakOpsSituation,
+  unknown,
+  SoftBreakOpsResources
+>
 
 /** Builds inline soft-break operations at a caret inside a text or link node. */
 export function buildSoftBreakInlineOpsAtCaret(
@@ -110,12 +124,16 @@ export function buildSoftBreakInlineOpsAtCaret(
   at: TextCursor,
   node: InlineNodeWithEditableText,
   _nodeIndex: number,
+  initialMetadata: OperationsBuilderInitialMetadata,
 ): { ops: Operation[]; next: CursorSelection } {
-  const lineBreak = createLineBreakNode()
+  const lineBreak = createLineBreakNode({
+    metadata: initialMetadata.lineBreak,
+  })
 
   if (isCursorAtBlockEnd(at, block)) {
     const insertedText = createTextNode({
       marks: node.marks,
+      metadata: initialMetadata.text,
       text: '',
     })
 
@@ -189,7 +207,7 @@ export const cursorRules: SoftBreakOpsRule[] = [
      * 💡 Selection is a cursor and it's at block end.
      * 🎯 Inserts a new line break node after the current node
      * and a new text node with empty text.      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ context, situation, resources }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -200,6 +218,7 @@ export const cursorRules: SoftBreakOpsRule[] = [
         at,
         node,
         index,
+        resources.initialMetadata,
       )
 
       return withTrailingSelectionOp(ops, next, context.selection)
@@ -219,7 +238,7 @@ export const cursorRules: SoftBreakOpsRule[] = [
      * 💡 Selection is a cursor and it's not at block end.
      * 🎯 Splits the node at the cursor position.
      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ context, situation, resources }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -230,6 +249,7 @@ export const cursorRules: SoftBreakOpsRule[] = [
         at,
         node,
         index,
+        resources.initialMetadata,
       )
 
       return withTrailingSelectionOp(ops, next, context.selection)
@@ -253,7 +273,7 @@ export const rangeRules: SoftBreakOpsRule[] = [
      * 💡 Range selection lies entirely inside one text/link node.
      * 🎯 Delete the selected run in-node, then soft-break at anchor (no survivor join).
      */
-    build: ({ situation }): Operation[] | null => {
+    build: ({ situation, resources }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-node'
@@ -287,6 +307,7 @@ export const rangeRules: SoftBreakOpsRule[] = [
         deleteIntent.caret,
         nodeAfter,
         index,
+        resources.initialMetadata,
       )
 
       return withTrailingSelectionOp(ops, next, range)
@@ -303,7 +324,7 @@ export const rangeRules: SoftBreakOpsRule[] = [
      * 💡 Range spans multiple inline nodes in one block.
      * 🎯 Delete the range without joining survivors, then soft-break at anchor.
      */
-    build: ({ situation }): Operation[] | null => {
+    build: ({ situation, resources }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-block'
@@ -319,7 +340,10 @@ export const rangeRules: SoftBreakOpsRule[] = [
         block,
         anchor,
         focus,
-        { joinSurvivors: false },
+        {
+          joinSurvivors: false,
+          textMetadata: resources.initialMetadata.text,
+        },
       )
       const caretNode = resolvesCaretNode(block, deleteIntent)
 
@@ -336,6 +360,7 @@ export const rangeRules: SoftBreakOpsRule[] = [
         deleteIntent.caret,
         caretNode,
         caretIndex,
+        resources.initialMetadata,
       )
 
       return withTrailingSelectionOp(ops, next, range)
@@ -351,7 +376,7 @@ export const rangeRules: SoftBreakOpsRule[] = [
      * 💡 Range crosses block boundaries.
      * 🎯 Forward trim → delete middle blocks → backward trim → merge → soft break at merge split.
      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ context, situation, resources }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'cross-block'
@@ -367,6 +392,7 @@ export const rangeRules: SoftBreakOpsRule[] = [
         range,
         startBlock,
         endBlock,
+        resources.initialMetadata.text,
       )
       const caretBlock = deleteIntent.caretBlock ?? startBlock
       const caretNode = resolvesCaretNode(caretBlock, deleteIntent)
@@ -379,6 +405,7 @@ export const rangeRules: SoftBreakOpsRule[] = [
         deleteIntent.caret,
         caretNode,
         caretIndex,
+        resources.initialMetadata,
       )
 
       return withTrailingSelectionOp([...deleteIntent.ops, ...ops], next, range)
@@ -391,10 +418,24 @@ export const rangeRules: SoftBreakOpsRule[] = [
   },
 ]
 
+/** Options for constructing a soft break operations builder. */
+export interface SoftBreakOpsBuilderOptions {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
+}
+
 /** Soft break operations builder. */
-export class SoftBreakOpsBuilder extends OperationsBuilder<SoftBreakOpsSituation> {
-  constructor() {
+export class SoftBreakOpsBuilder extends OperationsBuilder<
+  SoftBreakOpsSituation,
+  unknown,
+  SoftBreakOpsResources
+> {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly #initialMetadata: OperationsBuilderInitialMetadata
+
+  constructor(options: SoftBreakOpsBuilderOptions) {
     super({ name: 'soft-break-ops-builder' })
+    this.#initialMetadata = options.initialMetadata
   }
 
   /** Describes the {@link SoftBreakOpsSituation}. */
@@ -519,7 +560,7 @@ export class SoftBreakOpsBuilder extends OperationsBuilder<SoftBreakOpsSituation
     const match = this.iterRules({
       context,
       input: null,
-      resources: null,
+      resources: { initialMetadata: this.#initialMetadata },
       rules,
       situation,
     }).next()
@@ -535,7 +576,7 @@ export class SoftBreakOpsBuilder extends OperationsBuilder<SoftBreakOpsSituation
     const ops = build({
       context,
       input: null,
-      resources: null,
+      resources: { initialMetadata: this.#initialMetadata },
       situation,
     })
 

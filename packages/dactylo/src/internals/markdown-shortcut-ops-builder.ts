@@ -70,6 +70,7 @@ import type {
   MarkdownMarkShortcutSpec,
   OperationRule,
   OperationsBuilderAutolinkConfig,
+  OperationsBuilderInitialMetadata,
 } from './operations-builder'
 import { sanitizeLinkHref } from './sanitize-link'
 import { createCursor, isRangeSelection, isSelectionActive } from './selection'
@@ -113,6 +114,9 @@ export interface MarkdownShortcutOpsInput {
 export interface MarkdownShortcutOpsResources {
   /** Whether autolink detection is enabled. */
   readonly autolinkEnabled: boolean
+
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
 }
 
 /** Rule for markdown operations. */
@@ -444,6 +448,7 @@ export function buildMarkdownLinkShortcutOps(
   index: number,
   cursorOffset: number,
   spec: MarkdownLinkShortcutSpec,
+  initialMetadata: OperationsBuilderInitialMetadata,
 ): Operation[] {
   const { openDelimiterOffset, text, href, title } = spec
   const markdownLength = cursorOffset - openDelimiterOffset
@@ -451,7 +456,7 @@ export function buildMarkdownLinkShortcutOps(
 
   const link = createLinkNode({
     marks: node.marks,
-    metadata: node.metadata,
+    metadata: initialMetadata.link,
     text,
     url: { href, title },
   })
@@ -663,7 +668,7 @@ const rules: MarkdownShortcutOpsRule[] = [
      *    {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
      * 🎯 Mutate the block into a {@link HeadingBlock} and strip `#{1,6}<space>`.
      */
-    build: ({ context, situation, input }): Operation[] | null => {
+    build: ({ context, situation, input, resources }): Operation[] | null => {
       if (
         situation.kind !== 'cursor-selection' ||
         input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
@@ -681,6 +686,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         {
           __type: 'mutate_block_type',
           blockId: block.id,
+          metadata: resources.initialMetadata.heading,
           snapshot: block,
           spec: { kind: 'to_heading', level },
         },
@@ -734,7 +740,7 @@ const rules: MarkdownShortcutOpsRule[] = [
      *    {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
      * 🎯 Mutate the paragraph into a {@link QuoteBlock} and strip `> `.
      */
-    build: ({ context, situation, input }): Operation[] | null => {
+    build: ({ context, situation, input, resources }): Operation[] | null => {
       if (
         situation.kind !== 'cursor-selection' ||
         input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
@@ -751,6 +757,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         {
           __type: 'mutate_block_type',
           blockId: block.id,
+          metadata: resources.initialMetadata.quote,
           snapshot: block,
           spec: { kind: 'to_quote' },
         },
@@ -803,7 +810,7 @@ const rules: MarkdownShortcutOpsRule[] = [
      *    {@link INLINE_DETECTOR_TRIGGER_CHARACTER}.
      * 🎯 Mutate the paragraph into a {@link BulletListItemBlock} and strip `- `.
      */
-    build: ({ context, situation, input }): Operation[] | null => {
+    build: ({ context, situation, input, resources }): Operation[] | null => {
       if (
         situation.kind !== 'cursor-selection' ||
         input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
@@ -820,6 +827,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         {
           __type: 'mutate_block_type',
           blockId: block.id,
+          metadata: resources.initialMetadata.bulletedList,
           snapshot: block,
           spec: { kind: 'to_bullet_list_item' },
         },
@@ -873,7 +881,7 @@ const rules: MarkdownShortcutOpsRule[] = [
      * 🎯 Mutate the block into a {@link NumberedListItemBlock} with that marker
      *    and strip the prefix.
      */
-    build: ({ context, situation, input }): Operation[] | null => {
+    build: ({ context, situation, input, resources }): Operation[] | null => {
       if (
         situation.kind !== 'cursor-selection' ||
         input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
@@ -891,6 +899,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         {
           __type: 'mutate_block_type',
           blockId: block.id,
+          metadata: resources.initialMetadata.numberedList,
           snapshot: block,
           spec: {
             kind: 'to_numbered_list_item',
@@ -953,7 +962,7 @@ const rules: MarkdownShortcutOpsRule[] = [
      * 🎯 Mutate the paragraph into a {@link CheckboxListItemBlock} (`[x]` / `[X]`
      *    checked) and strip the trigger prefix.
      */
-    build: ({ context, situation, input }): Operation[] | null => {
+    build: ({ context, situation, input, resources }): Operation[] | null => {
       if (
         situation.kind !== 'cursor-selection' ||
         input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
@@ -971,6 +980,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         {
           __type: 'mutate_block_type',
           blockId: block.id,
+          metadata: resources.initialMetadata.checkboxList,
           snapshot: block,
           spec: { checked: parsed.checked, kind: 'to_checkbox_list_item' },
         },
@@ -1025,7 +1035,7 @@ const rules: MarkdownShortcutOpsRule[] = [
      *    position and move the caret into a new empty {@link ParagraphBlock} below
      *    (same UX as programmatic divider insert).
      */
-    build: ({ context, situation, input }): Operation[] | null => {
+    build: ({ context, situation, input, resources }): Operation[] | null => {
       if (
         situation.kind !== 'cursor-selection' ||
         input.text !== INLINE_DETECTOR_TRIGGER_CHARACTER
@@ -1046,6 +1056,7 @@ const rules: MarkdownShortcutOpsRule[] = [
       })
 
       const divider = createDividerBlock({
+        metadata: resources.initialMetadata.divider,
         parentId: block.parentId,
         posKey,
       })
@@ -1057,9 +1068,14 @@ const rules: MarkdownShortcutOpsRule[] = [
        * the selection is set inside it.
        */
       const insertedText = createTextNode({
+        metadata: resources.initialMetadata.text,
         text: '',
       })
-      const paragraph = createParagraphBlockAfter(divider, [insertedText])
+      const paragraph = createParagraphBlockAfter(
+        divider,
+        [insertedText],
+        resources.initialMetadata.paragraph,
+      )
 
       const idx = state.blockOrderById.indexOf(block.id)
       /** Keeping `undo()` consistent. */
@@ -1396,6 +1412,7 @@ const rules: MarkdownShortcutOpsRule[] = [
         index,
         at.offset,
         spec,
+        resources.initialMetadata,
       )
     },
     name: 'cursor/link/inline-closing-delimiter',
@@ -1430,6 +1447,9 @@ export interface MarkdownShortcutOpsBuilderOptions {
     /** Whether to enable autolink detection. */
     readonly enabled: boolean
   }
+
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
 }
 
 /** Markdown ops builder. */
@@ -1441,9 +1461,13 @@ export class MarkdownShortcutOpsBuilder extends OperationsBuilder<
   /** Configuration for autolink detection. */
   readonly #autolinkConfig: OperationsBuilderAutolinkConfig
 
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly #initialMetadata: OperationsBuilderInitialMetadata
+
   constructor(options: MarkdownShortcutOpsBuilderOptions) {
     super({ name: 'markdown-shortcut-ops-builder' })
     this.#autolinkConfig = options.autolink
+    this.#initialMetadata = options.initialMetadata
   }
 
   /** Describes the {@link MarkdownShortcutOpsSituation}. */
@@ -1499,7 +1523,10 @@ export class MarkdownShortcutOpsBuilder extends OperationsBuilder<
     const match = this.iterRules({
       context,
       input,
-      resources: { autolinkEnabled: this.#autolinkConfig.enabled },
+      resources: {
+        autolinkEnabled: this.#autolinkConfig.enabled,
+        initialMetadata: this.#initialMetadata,
+      },
       rules,
       situation,
     }).next()
@@ -1511,7 +1538,10 @@ export class MarkdownShortcutOpsBuilder extends OperationsBuilder<
     const ops = build({
       context,
       input,
-      resources: { autolinkEnabled: this.#autolinkConfig.enabled },
+      resources: {
+        autolinkEnabled: this.#autolinkConfig.enabled,
+        initialMetadata: this.#initialMetadata,
+      },
       situation,
     })
     if (ops === null) {

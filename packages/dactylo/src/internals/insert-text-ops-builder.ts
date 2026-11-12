@@ -15,7 +15,11 @@ import {
 } from './nodes'
 import type { InlineNodeWithEditableText } from './nodes'
 import type { Operation } from './operations'
-import type { BuilderOpsIntent, OperationRule } from './operations-builder'
+import type {
+  BuilderOpsIntent,
+  OperationRule,
+  OperationsBuilderInitialMetadata,
+} from './operations-builder'
 import {
   buildDeleteRangeCrossBlockIntent,
   buildDeleteRangeWithinBlockIntent,
@@ -105,10 +109,17 @@ export interface InsertTextOpsInput {
   readonly text: string
 }
 
+/** Resources for insert text operations. */
+export interface InsertTextOpsResources {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
+}
+
 /** Inserted text operation rule. */
 export type InsertTextOpsRule = OperationRule<
   InsertTextOpsSituation,
-  InsertTextOpsInput
+  InsertTextOpsInput,
+  InsertTextOpsResources
 >
 
 /** Builds operations to insert text at a cursor selection. */
@@ -149,12 +160,14 @@ export function buildReplaceLinkRangeWithTextOps(
   to: number,
   text: string,
   prevSelection: Selection | null,
+  initialMetadata: OperationsBuilderInitialMetadata,
 ): Operation[] {
   const before = node.text.slice(0, from)
   const after = node.text.slice(to)
 
   const insertedText = createTextNode({
     marks: node.marks,
+    metadata: initialMetadata.text,
     text,
   })
 
@@ -235,9 +248,11 @@ export function buildInsertTextExitingLinkAtCaretOps(
   caret: TextCursor,
   text: string,
   prevSelection: Selection | null,
+  initialMetadata: OperationsBuilderInitialMetadata,
 ): Operation[] {
   const insertedText = createTextNode({
     marks: caretNode.marks,
+    metadata: initialMetadata.text,
     text,
   })
   const caretIndex = block.content.findIndex((node) => node.id === caretNode.id)
@@ -268,7 +283,7 @@ export const cursorRules: InsertTextOpsRule[] = [
      * 💡 Cursor is at the beginning of a link.
      * 🎯 Insert a new text node before the link instead of continuing the link.
      */
-    build: ({ context, situation, input }): Operation[] | null => {
+    build: ({ context, situation, input, resources }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -278,6 +293,7 @@ export const cursorRules: InsertTextOpsRule[] = [
       const prevNode = block.content[index - 1]
       const insertedText = createTextNode({
         marks: node.marks,
+        metadata: resources.initialMetadata.text,
         text: input.text,
       })
 
@@ -310,7 +326,7 @@ export const cursorRules: InsertTextOpsRule[] = [
      * 💡 Cursor is at the end of a link.
      * 🎯 Insert a new text node after the link instead of continuing the link.
      */
-    build: ({ context, situation, input }): Operation[] | null => {
+    build: ({ context, situation, input, resources }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -319,6 +335,7 @@ export const cursorRules: InsertTextOpsRule[] = [
 
       const insertedText = createTextNode({
         marks: node.marks,
+        metadata: resources.initialMetadata.text,
         text: input.text,
       })
 
@@ -368,7 +385,7 @@ export const rangeRules: InsertTextOpsRule[] = [
      * 🎯 Replace the selected link run with a text node.
      *    Unselected prefix/suffix stay as link nodes.
      */
-    build: ({ context, situation, input }): Operation[] | null => {
+    build: ({ context, situation, input, resources }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-node' ||
@@ -388,6 +405,7 @@ export const rangeRules: InsertTextOpsRule[] = [
         range.focus.offset,
         input.text,
         context.selection,
+        resources.initialMetadata,
       )
     },
     name: 'range/same-node/link/replace-with-text',
@@ -441,7 +459,7 @@ export const rangeRules: InsertTextOpsRule[] = [
      *    Live selections of a link suffix often include the following text node.
      * 🎯 Delete the range, then insert a text node instead of continuing the link.
      */
-    build: ({ situation, input }): Operation[] | null => {
+    build: ({ situation, input, resources }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-block'
@@ -457,7 +475,10 @@ export const rangeRules: InsertTextOpsRule[] = [
         block,
         anchor,
         focus,
-        { joinSurvivors: false },
+        {
+          joinSurvivors: false,
+          textMetadata: resources.initialMetadata.text,
+        },
       )
       const caretNode = resolvesCaretNode(block, deleteIntent)
 
@@ -469,6 +490,7 @@ export const rangeRules: InsertTextOpsRule[] = [
           deleteIntent.caret,
           input.text,
           range,
+          resources.initialMetadata,
         ),
       ]
     },
@@ -494,7 +516,7 @@ export const rangeRules: InsertTextOpsRule[] = [
      * 🎯 Deleting the selection in-block, and insert replacement char
      * at current anchor position (no survivor join).
      */
-    build: ({ situation, input }): Operation[] | null => {
+    build: ({ situation, input, resources }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-block'
@@ -510,7 +532,10 @@ export const rangeRules: InsertTextOpsRule[] = [
         block,
         anchor,
         focus,
-        { joinSurvivors: false },
+        {
+          joinSurvivors: false,
+          textMetadata: resources.initialMetadata.text,
+        },
       )
       return [
         ...deleteIntent.ops,
@@ -528,7 +553,7 @@ export const rangeRules: InsertTextOpsRule[] = [
      * 💡 Range selection is across multiple blocks.
      * 🎯 Perform surgery with: forward trim → delete middle → backward trim → merge → insert at split.
      */
-    build: ({ context, situation, input }): Operation[] | null => {
+    build: ({ context, situation, input, resources }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'cross-block'
@@ -544,6 +569,7 @@ export const rangeRules: InsertTextOpsRule[] = [
         range,
         startBlock,
         endBlock,
+        resources.initialMetadata.text,
       )
 
       return [
@@ -561,13 +587,24 @@ export const rangeRules: InsertTextOpsRule[] = [
 
 // --- Builder ───────────────────────────────────────---------------
 
+/** Options for constructing an insert text operations builder. */
+export interface InsertTextOpsBuilderOptions {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
+}
+
 /** Insert text operations builder. */
 export class InsertTextOpsBuilder extends OperationsBuilder<
   InsertTextOpsSituation,
-  InsertTextOpsInput
+  InsertTextOpsInput,
+  InsertTextOpsResources
 > {
-  constructor() {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly #initialMetadata: OperationsBuilderInitialMetadata
+
+  constructor(options: InsertTextOpsBuilderOptions) {
     super({ name: 'insert-text-ops-builder' })
+    this.#initialMetadata = options.initialMetadata
   }
 
   /** Describes the {@link InsertTextOpsSituation}. */
@@ -699,7 +736,7 @@ export class InsertTextOpsBuilder extends OperationsBuilder<
     const match = this.iterRules({
       context,
       input,
-      resources: null,
+      resources: { initialMetadata: this.#initialMetadata },
       rules,
       situation,
     }).next()
@@ -712,7 +749,12 @@ export class InsertTextOpsBuilder extends OperationsBuilder<
     }
 
     const build = match.value
-    const ops = build({ context, input, resources: null, situation })
+    const ops = build({
+      context,
+      input,
+      resources: { initialMetadata: this.#initialMetadata },
+      situation,
+    })
 
     if (ops === null) {
       warn(

@@ -20,6 +20,7 @@ import {
 import type {
   BuilderOpsIntent,
   OperationRule,
+  OperationsBuilderInitialMetadata,
   PlainTextAutolinkSpec,
 } from './operations-builder'
 import { collectPlainTextLinks } from './plain-text'
@@ -60,10 +61,17 @@ export interface AutolinkOpsInput {
   readonly text: string
 }
 
+/** Resources for autolink operations. */
+export interface AutolinkOpsResources {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
+}
+
 /** Rule for autolink operations. */
 export type AutolinkOpsRule = OperationRule<
   AutolinkOpsSituation,
-  AutolinkOpsInput
+  AutolinkOpsInput,
+  AutolinkOpsResources
 >
 
 /**
@@ -120,6 +128,7 @@ export function buildPlainTextAutolinkOps(
   node: InlineNodeWithEditableText,
   index: number,
   spec: PlainTextAutolinkSpec,
+  initialMetadata: OperationsBuilderInitialMetadata,
 ): Operation[] {
   const { start, end, text, href, title } = spec
   const matchLength = end - start
@@ -127,7 +136,7 @@ export function buildPlainTextAutolinkOps(
 
   const link = createLinkNode({
     marks: node.marks,
-    metadata: node.metadata,
+    metadata: initialMetadata.link,
     text,
     url: { href, title },
   })
@@ -211,7 +220,7 @@ const rules: AutolinkOpsRule[] = [
      * 🎯 Wrap that match in a {@link LinkNode}, keep the trigger space (and any
      *    prefix/suffix) as text, caret after the space (not inside the link).
      */
-    build: ({ context, situation, input }): Operation[] | null => {
+    build: ({ context, situation, input, resources }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -229,7 +238,14 @@ const rules: AutolinkOpsRule[] = [
         return null
       }
 
-      return buildPlainTextAutolinkOps(context, block, node, index, spec)
+      return buildPlainTextAutolinkOps(
+        context,
+        block,
+        node,
+        index,
+        spec,
+        resources.initialMetadata,
+      )
     },
     name: 'cursor/plain-text/inline-detector-trigger-character',
     when: ({ situation, input }): boolean => {
@@ -250,13 +266,24 @@ const rules: AutolinkOpsRule[] = [
   },
 ]
 
+/** Options for constructing an autolink operations builder. */
+export interface AutolinkOpsBuilderOptions {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
+}
+
 /** Autolink ops builder. */
 export class AutolinkOpsBuilder extends OperationsBuilder<
   AutolinkOpsSituation,
-  AutolinkOpsInput
+  AutolinkOpsInput,
+  AutolinkOpsResources
 > {
-  constructor() {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly #initialMetadata: OperationsBuilderInitialMetadata
+
+  constructor(options: AutolinkOpsBuilderOptions) {
     super({ name: 'autolink-ops-builder' })
+    this.#initialMetadata = options.initialMetadata
   }
 
   /** Describes the {@link AutolinkOpsSituation}. */
@@ -312,7 +339,7 @@ export class AutolinkOpsBuilder extends OperationsBuilder<
     const match = this.iterRules({
       context,
       input,
-      resources: null,
+      resources: { initialMetadata: this.#initialMetadata },
       rules,
       situation,
     }).next()
@@ -324,7 +351,7 @@ export class AutolinkOpsBuilder extends OperationsBuilder<
     const ops = build({
       context,
       input,
-      resources: null,
+      resources: { initialMetadata: this.#initialMetadata },
       situation,
     })
     if (ops === null) {

@@ -40,7 +40,11 @@ import {
   stripEmptyRunwaysAtMergeSeam,
   withTrailingSelectionOp,
 } from './operations-builder'
-import type { BuilderOpsIntent, OperationRule } from './operations-builder'
+import type {
+  BuilderOpsIntent,
+  OperationRule,
+  OperationsBuilderInitialMetadata,
+} from './operations-builder'
 import {
   createCursor,
   cursorAtBlockEnd,
@@ -111,6 +115,9 @@ export type DeleteContentOpsSituation =
 export interface DeleteContentOpsResources {
   /** Grapheme offset caret instance. */
   readonly graphemeOffsetCaret: GraphemeOffsetCaret
+
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
 }
 
 /** Delete content operations rule. */
@@ -190,7 +197,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
      * 🎯 Operations:
      * - Mutate the block into a {@link ParagraphBlock} in place.
      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ context, situation, resources }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -200,6 +207,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
         {
           __type: 'mutate_block_type',
           blockId: block.id,
+          metadata: resources.initialMetadata.paragraph,
           snapshot: block,
           spec: { kind: 'to_paragraph' },
         },
@@ -230,7 +238,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
      * 🎯 Operations:
      * - Merge the current block with the previous block.
      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ context, situation, resources }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -286,7 +294,11 @@ export const cursorRules: DeleteContentOpsRule[] = [
       }
 
       let targetHead = [...targetBlock.content]
-      const collapsedHead = buildCollapseEmptyBlockOps(targetBlock, targetHead)
+      const collapsedHead = buildCollapseEmptyBlockOps(
+        targetBlock,
+        targetHead,
+        resources.initialMetadata.text,
+      )
       if (collapsedHead) {
         ops.push(...collapsedHead.ops)
         targetHead = [collapsedHead.placeholder]
@@ -658,7 +670,11 @@ export const cursorRules: DeleteContentOpsRule[] = [
             : inline,
         )
 
-      const collapsed = buildCollapseEmptyBlockOps(block, remaining)
+      const collapsed = buildCollapseEmptyBlockOps(
+        block,
+        remaining,
+        resources.initialMetadata.text,
+      )
 
       if (collapsed) {
         return withTrailingSelectionOp(
@@ -740,7 +756,11 @@ export const cursorRules: DeleteContentOpsRule[] = [
       }
 
       const remaining = block.content.filter((inline) => inline.id !== node.id)
-      const collapsed = buildCollapseEmptyBlockOps(block, remaining)
+      const collapsed = buildCollapseEmptyBlockOps(
+        block,
+        remaining,
+        resources.initialMetadata.text,
+      )
 
       if (collapsed) {
         return withTrailingSelectionOp(
@@ -831,7 +851,11 @@ export const cursorRules: DeleteContentOpsRule[] = [
         inline.id === node.id ? { ...node, text: remainingText } : inline,
       )
 
-      const collapsed = buildCollapseEmptyBlockOps(block, remaining)
+      const collapsed = buildCollapseEmptyBlockOps(
+        block,
+        remaining,
+        resources.initialMetadata.text,
+      )
 
       if (collapsed) {
         return withTrailingSelectionOp(
@@ -899,7 +923,7 @@ export const rangeRules: DeleteContentOpsRule[] = [
      * 🎯 Operations:
      * - Deletes the content within the range.
      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ context, situation, resources }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'within-same-block'
@@ -915,6 +939,7 @@ export const rangeRules: DeleteContentOpsRule[] = [
         block,
         anchor,
         focus,
+        { textMetadata: resources.initialMetadata.text },
       )
 
       return withTrailingSelectionOp(
@@ -936,7 +961,7 @@ export const rangeRules: DeleteContentOpsRule[] = [
     },
   },
   {
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ context, situation, resources }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'cross-blocks'
@@ -952,6 +977,7 @@ export const rangeRules: DeleteContentOpsRule[] = [
         range,
         startBlock,
         endBlock,
+        resources.initialMetadata.text,
       )
 
       return withTrailingSelectionOp(
@@ -978,6 +1004,9 @@ export const rangeRules: DeleteContentOpsRule[] = [
 export interface DeleteContentOpsBuilderOptions {
   /** Grapheme offset caret instance. */
   readonly graphemeOffsetCaret: GraphemeOffsetCaret
+
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
 }
 
 /** Delete content operations builder. */
@@ -989,9 +1018,13 @@ export class DeleteContentOpsBuilder extends OperationsBuilder<
   /** Grapheme offset caret instance. */
   readonly #graphemeOffsetCaret: GraphemeOffsetCaret
 
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly #initialMetadata: OperationsBuilderInitialMetadata
+
   constructor(options: DeleteContentOpsBuilderOptions) {
     super({ name: 'delete-content-ops-builder' })
     this.#graphemeOffsetCaret = options.graphemeOffsetCaret
+    this.#initialMetadata = options.initialMetadata
   }
 
   /** Describes the {@link DeleteContentOpsSituation}. */
@@ -1106,7 +1139,10 @@ export class DeleteContentOpsBuilder extends OperationsBuilder<
     const match = this.iterRules({
       context,
       input: null,
-      resources: { graphemeOffsetCaret: this.#graphemeOffsetCaret },
+      resources: {
+        graphemeOffsetCaret: this.#graphemeOffsetCaret,
+        initialMetadata: this.#initialMetadata,
+      },
       rules,
       situation,
     }).next()
@@ -1122,7 +1158,10 @@ export class DeleteContentOpsBuilder extends OperationsBuilder<
     const ops = build({
       context,
       input: null,
-      resources: { graphemeOffsetCaret: this.#graphemeOffsetCaret },
+      resources: {
+        graphemeOffsetCaret: this.#graphemeOffsetCaret,
+        initialMetadata: this.#initialMetadata,
+      },
       situation,
     })
 

@@ -12,7 +12,11 @@ import {
 } from './nodes'
 import type { InlineNode, InlineNodeWithEditableText } from './nodes'
 import type { Operation } from './operations'
-import type { BuilderOpsIntent, OperationRule } from './operations-builder'
+import type {
+  BuilderOpsIntent,
+  OperationRule,
+  OperationsBuilderInitialMetadata,
+} from './operations-builder'
 import {
   OperationsBuilder,
   withTrailingSelectionOp,
@@ -47,8 +51,18 @@ export type ExitCodeMarkOpsSituation =
   | ExitCodeMarkOpsNoSelectionSituation
   | ExitCodeMarkOpsCursorSelectionSituation
 
+/** Resources for exit-code-mark operations. */
+export interface ExitCodeMarkOpsResources {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
+}
+
 /** Exit-code-mark operation rule. */
-export type ExitCodeMarkOpsRule = OperationRule<ExitCodeMarkOpsSituation>
+export type ExitCodeMarkOpsRule = OperationRule<
+  ExitCodeMarkOpsSituation,
+  unknown,
+  ExitCodeMarkOpsResources
+>
 
 /**
  * Whether `node` is already an unmarked-text hatch after a code run.
@@ -73,7 +87,7 @@ export const cursorRules: ExitCodeMarkOpsRule[] = [
      * 🎯 Insert a `" "` text node after it (not a link) without `code`,
      *    and put the caret after that space.
      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ context, situation, resources }): Operation[] | null => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -82,6 +96,7 @@ export const cursorRules: ExitCodeMarkOpsRule[] = [
 
       const insertedText = createTextNode({
         marks: marksWithoutCode(node.marks),
+        metadata: resources.initialMetadata.text,
         text: ' ',
       })
 
@@ -123,10 +138,24 @@ export const cursorRules: ExitCodeMarkOpsRule[] = [
   },
 ]
 
+/** Options for constructing an exit-code-mark operations builder. */
+export interface ExitCodeMarkOpsBuilderOptions {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
+}
+
 /** Exit-code-mark operations builder. */
-export class ExitCodeMarkOpsBuilder extends OperationsBuilder<ExitCodeMarkOpsSituation> {
-  constructor() {
+export class ExitCodeMarkOpsBuilder extends OperationsBuilder<
+  ExitCodeMarkOpsSituation,
+  unknown,
+  ExitCodeMarkOpsResources
+> {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly #initialMetadata: OperationsBuilderInitialMetadata
+
+  constructor(options: ExitCodeMarkOpsBuilderOptions) {
     super({ name: 'exit-code-mark-ops-builder' })
+    this.#initialMetadata = options.initialMetadata
   }
 
   /** Describes the {@link ExitCodeMarkOpsSituation}. */
@@ -168,7 +197,7 @@ export class ExitCodeMarkOpsBuilder extends OperationsBuilder<ExitCodeMarkOpsSit
     const match = this.iterRules({
       context,
       input: null,
-      resources: null,
+      resources: { initialMetadata: this.#initialMetadata },
       rules: cursorRules,
       situation,
     }).next()
@@ -179,7 +208,7 @@ export class ExitCodeMarkOpsBuilder extends OperationsBuilder<ExitCodeMarkOpsSit
     const ops = match.value({
       context,
       input: null,
-      resources: null,
+      resources: { initialMetadata: this.#initialMetadata },
       situation,
     })
     if (ops === null) {

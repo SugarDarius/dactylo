@@ -1,3 +1,4 @@
+import type { LNM, TNM } from './augmentation'
 import {
   MARKDOWN_LINK_PATTERN,
   PLAIN_TEXT_LINES_SPLIT_PATTERN,
@@ -174,6 +175,7 @@ export function parsePlainTextLineSegments(line: string): PlainTextSegment[] {
 export function plainTextToEditableTextNodes(
   line: string,
   marks: Marks,
+  initial: { text?: TNM; link?: LNM } = {},
 ): InlineNode[] {
   const nodes: InlineNode[] = []
   const segments = parsePlainTextLineSegments(line)
@@ -184,11 +186,18 @@ export function plainTextToEditableTextNodes(
         continue
       }
 
-      nodes.push(createTextNode({ marks, text: segment.text }))
+      nodes.push(
+        createTextNode({
+          marks,
+          metadata: initial.text,
+          text: segment.text,
+        }),
+      )
     } else if (segment.kind === 'link') {
       nodes.push(
         createLinkNode({
           marks,
+          metadata: initial.link,
           text: segment.text,
           url: { href: segment.href, title: segment.title },
         }),

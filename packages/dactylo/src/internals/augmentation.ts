@@ -15,14 +15,18 @@
  * Trade-offs of such DX:
  *  1. One schema per app. A document composer and a comment
  *     composer in the same app cannot declare different metadata shapes.
- *  2. Compile-time only. Enter, split, merge, paste, and markdown shortcuts
- *     still copy or default to `{}`. Nothing validates bags at runtime.
+ *  2. Compile-time only. Enter, markdown, insert, and paste apply configured
+ *     `initialMetadata` for new entities of a type. Same-type continuation
+ *     (list-item Enter, paragraph split, clone) still copies the source bag.
+ *     Merge still spreads. Nothing validates bags at runtime.
  *  3. Required keys lie about defaults. Factories use `opts.metadata ?? {}`.
+ *     Product paths pass the configured bag so `{}` is only a test/fallback.
  *     Declare optional fields (`fontSize?: number`) so `insertParagraph()`
  *     stays honest.
- *  4. Cross-type ops are unsound. `mutate_block_type` copies the previous
- *     bag into a new type; merge spreads two bags. Per-type shapes can
- *     disagree. Internals keep copying; types do not invent a merge policy.
+ *  4. Cross-type ops are unsound. `mutate_block_type` always replaces the bag
+ *     with the target type’s `initialMetadata`; undo restores the snapshot
+ *     bag. Merge still spreads two bags. Per-type shapes can disagree.
+ *     Internals keep copying on merge; types do not invent a merge policy.
  *  5. Patch still replaces the whole record. Passing `{ textAlign: 'center' }`
  *     drops every other key at runtime.
  *

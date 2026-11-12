@@ -5,6 +5,7 @@ import type { DactyloCommandEvent, DactyloToolEvent } from '../src/dactylo'
 import {
   isBulletListItemBlock,
   isCheckboxListItemBlock,
+  isDividerBlock,
   isHeadingBlock,
   isNumberedListItemBlock,
   isParagraphBlock,
@@ -1024,6 +1025,103 @@ describe('Dactylo markdown and autolink', () => {
       false,
     )
     expect(blockTexts(editor.getContext())).toEqual(['https://example.com '])
+  })
+})
+
+describe('Dactylo initial metadata', () => {
+  const initials = {
+    divider: { initialMetadata: { k: 'd' } },
+    heading: { initialMetadata: { k: 'h' } },
+    lineBreak: { initialMetadata: { k: 'lb' } },
+    paragraph: { initialMetadata: { k: 'p' } },
+    text: { initialMetadata: { k: 't' } },
+  }
+
+  test('# space mutates to heading initial metadata, not the paragraph bag', () => {
+    const editor = makeEditor(initials)
+    editor.selection.commands.focus()
+    typeText(editor, '#')
+    typeText(editor, ' ')
+
+    const heading = firstInlineBlock(editor.getContext())
+    expect(isHeadingBlock(heading)).toBe(true)
+    expect(heading.metadata).toEqual({ k: 'h' })
+  })
+
+  test('undo of a heading shortcut restores the paragraph initial bag', () => {
+    const editor = makeEditor(initials)
+    editor.selection.commands.focus()
+    typeText(editor, '#')
+    typeText(editor, ' ')
+
+    editor.history.commands.undo()
+
+    const paragraph = firstInlineBlock(editor.getContext())
+    expect(isParagraphBlock(paragraph)).toBe(true)
+    expect(paragraph.metadata).toEqual({ k: 'p' })
+    expect(blockTexts(editor.getContext())).toEqual(['# '])
+  })
+
+  test('--- space stamps divider and follow-up paragraph initials', () => {
+    const editor = makeEditor(initials)
+    editor.selection.commands.focus()
+    typeText(editor, '---')
+    typeText(editor, ' ')
+
+    const { state } = editor.getContext()
+    const [dividerId, paragraphId] = state.blockOrderById
+    if (!dividerId || !paragraphId) {
+      throw new Error('Expected a divider and a follow-up paragraph')
+    }
+
+    const divider = state.blocks.get(dividerId)
+    const paragraph = state.blocks.get(paragraphId)
+    if (!divider || !paragraph) {
+      throw new Error('Expected both blocks to exist')
+    }
+
+    expect(isDividerBlock(divider)).toBe(true)
+    expect(divider.metadata).toEqual({ k: 'd' })
+    expect(isParagraphBlock(paragraph)).toBe(true)
+    if (!isParagraphBlock(paragraph)) {
+      throw new Error('Expected a follow-up paragraph')
+    }
+    expect(paragraph.metadata).toEqual({ k: 'p' })
+    const text = paragraph.content.find(isTextNode)
+    expect(text?.metadata).toEqual({ k: 't' })
+  })
+
+  test('Enter at the end of a heading creates a paragraph with paragraph initial', () => {
+    const editor = makeEditor(initials)
+    editor.selection.commands.focus()
+    typeText(editor, '#')
+    typeText(editor, ' ')
+    typeText(editor, 'Title')
+
+    hardBreak(editor)
+
+    const heading = nthInlineBlock(editor.getContext(), 0)
+    const paragraph = nthInlineBlock(editor.getContext(), 1)
+    expect(isHeadingBlock(heading)).toBe(true)
+    expect(heading.metadata).toEqual({ k: 'h' })
+    expect(isParagraphBlock(paragraph)).toBe(true)
+    expect(paragraph.metadata).toEqual({ k: 'p' })
+  })
+
+  test('Shift+Enter stamps line-break and text initials', () => {
+    const editor = makeEditor(initials)
+    editor.selection.commands.focus()
+
+    softBreak(editor)
+
+    const block = firstInlineBlock(editor.getContext())
+    const lineBreak = block.content.find(isLineBreakNode)
+    const emptyText = block.content.find(
+      (node) => isTextNode(node) && node.text === '',
+    )
+
+    expect(lineBreak?.metadata).toEqual({ k: 'lb' })
+    expect(emptyText?.metadata).toEqual({ k: 't' })
   })
 })
 

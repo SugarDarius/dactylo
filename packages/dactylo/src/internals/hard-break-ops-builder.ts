@@ -7,6 +7,7 @@ import {
   isBulletListItemBlock,
   isCheckboxListItemBlock,
   isNumberedListItemBlock,
+  isParagraphBlock,
   isQuoteBlock,
 } from './blocks'
 import type { BlockWithInlineContent } from './blocks'
@@ -41,7 +42,11 @@ import {
   resolvesCaretNode,
   withTrailingSelectionOp,
 } from './operations-builder'
-import type { BuilderOpsIntent, OperationRule } from './operations-builder'
+import type {
+  BuilderOpsIntent,
+  OperationRule,
+  OperationsBuilderInitialMetadata,
+} from './operations-builder'
 import {
   createCursor,
   cursorAtBlockStart,
@@ -118,14 +123,25 @@ export type HardBreakOpsSituation =
   | HardBreakOpsCursorSelectionSituation
   | HardBreakOpsRangeSelectionSituation
 
+/** Resources for hard break operations. */
+export interface HardBreakOpsResources {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
+}
+
 /** Hard break operations rule. */
-export type HardBreakOpsRule = OperationRule<HardBreakOpsSituation>
+export type HardBreakOpsRule = OperationRule<
+  HardBreakOpsSituation,
+  unknown,
+  HardBreakOpsResources
+>
 
 /** Creates the block inserted or split by a hard break from `source`. */
 export function createBlockAfterHardBreak(
   source: BlockWithInlineContent,
   content: InlineNode[],
   posKey: ReturnType<typeof computeInsertBlockPosKey>,
+  initialMetadata: OperationsBuilderInitialMetadata,
 ): BlockWithInlineContent {
   if (isBulletListItemBlock(source)) {
     return createBulletListItemBlock({
@@ -161,7 +177,9 @@ export function createBlockAfterHardBreak(
 
   return createParagraphBlock({
     content,
-    metadata: source.metadata,
+    metadata: isParagraphBlock(source)
+      ? source.metadata
+      : initialMetadata.paragraph,
     parentId: source.parentId,
     posKey,
   })
@@ -183,6 +201,7 @@ export function buildHardBreakBlockOpsAtCaret(
   block: BlockWithInlineContent,
   at: TextCursor,
   node: InlineNodeWithEditableText,
+  initialMetadata: OperationsBuilderInitialMetadata,
 ): { ops: Operation[]; next: CursorSelection } {
   if (
     (isBulletListItemBlock(block) ||
@@ -195,6 +214,7 @@ export function buildHardBreakBlockOpsAtCaret(
       {
         __type: 'mutate_block_type',
         blockId: block.id,
+        metadata: initialMetadata.paragraph,
         snapshot: block,
         spec: { kind: 'to_paragraph' },
       },
@@ -217,8 +237,9 @@ export function buildHardBreakBlockOpsAtCaret(
   if (isCursorAtBlockEnd(at, block)) {
     const insertedBlock = createBlockAfterHardBreak(
       block,
-      [createTextNode({ text: '' })],
+      [createTextNode({ metadata: initialMetadata.text, text: '' })],
       posKey,
+      initialMetadata,
     )
 
     const next = cursorAtBlockStart(insertedBlock.id, insertedBlock)
@@ -281,7 +302,12 @@ export function buildHardBreakBlockOpsAtCaret(
     { index: found.index, node },
     at.offset,
   )
-  const insertedBlock = createBlockAfterHardBreak(block, tailSnapshot, posKey)
+  const insertedBlock = createBlockAfterHardBreak(
+    block,
+    tailSnapshot,
+    posKey,
+    initialMetadata,
+  )
   const next = cursorAtBlockStart(insertedBlock.id, insertedBlock)
   if (!next) {
     buildError(
@@ -324,7 +350,7 @@ export const cursorRules: HardBreakOpsRule[] = [
      * 💡 Selection is a cursor and it's at block end.
      * 🎯 Inserts a new block after the current block.
      */
-    build: ({ context, situation }) => {
+    build: ({ context, situation, resources }) => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -335,6 +361,7 @@ export const cursorRules: HardBreakOpsRule[] = [
         block,
         at,
         node,
+        resources.initialMetadata,
       )
       return withTrailingSelectionOp(ops, next, context.selection)
     },
@@ -353,7 +380,7 @@ export const cursorRules: HardBreakOpsRule[] = [
      * 💡 Selection is a cursor and it's not at block end.
      * 🎯 Splits the block at the cursor position.
      */
-    build: ({ context, situation }) => {
+    build: ({ context, situation, resources }) => {
       if (situation.kind !== 'cursor-selection') {
         return null
       }
@@ -364,6 +391,7 @@ export const cursorRules: HardBreakOpsRule[] = [
         block,
         at,
         node,
+        resources.initialMetadata,
       )
       return withTrailingSelectionOp(ops, next, context.selection)
     },
@@ -386,7 +414,7 @@ export const rangeRules: HardBreakOpsRule[] = [
      * 💡 Range selection lies entirely inside one editable text node.
      * 🎯 `delete_text` on `[anchor, focus)`, then hard-break at anchor (post-delete caret).
      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ context, situation, resources }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-node'
@@ -421,6 +449,7 @@ export const rangeRules: HardBreakOpsRule[] = [
         blockAfter,
         deleteIntent.caret,
         nodeAfter,
+        resources.initialMetadata,
       )
 
       return withTrailingSelectionOp([...deleteIntent.ops, ...ops], next, range)
@@ -436,7 +465,7 @@ export const rangeRules: HardBreakOpsRule[] = [
      * 💡 Range spans multiple inline nodes in one block.
      * 🎯 Delete the range without joining survivors, then hard-break at anchor.
      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ context, situation, resources }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'same-block'
@@ -452,7 +481,10 @@ export const rangeRules: HardBreakOpsRule[] = [
         block,
         anchor,
         focus,
-        { joinSurvivors: false },
+        {
+          joinSurvivors: false,
+          textMetadata: resources.initialMetadata.text,
+        },
       )
       const caretNode = resolvesCaretNode(block, deleteIntent)
 
@@ -469,6 +501,7 @@ export const rangeRules: HardBreakOpsRule[] = [
         newBlock,
         deleteIntent.caret,
         caretNode,
+        resources.initialMetadata,
       )
 
       return withTrailingSelectionOp([...deleteIntent.ops, ...ops], next, range)
@@ -484,7 +517,7 @@ export const rangeRules: HardBreakOpsRule[] = [
      * 💡 Range crosses block boundaries.
      * 🎯 Forward trim → delete middle blocks → backward trim → merge → hard-break at merge split.
      */
-    build: ({ context, situation }): Operation[] | null => {
+    build: ({ context, situation, resources }): Operation[] | null => {
       if (
         situation.kind !== 'range-selection' ||
         situation.topology.kind !== 'cross-block'
@@ -500,6 +533,7 @@ export const rangeRules: HardBreakOpsRule[] = [
         range,
         startBlock,
         endBlock,
+        resources.initialMetadata.text,
       )
       const caretBlock = deleteIntent.caretBlock ?? startBlock
       const caretNode = resolvesCaretNode(caretBlock, deleteIntent)
@@ -509,6 +543,7 @@ export const rangeRules: HardBreakOpsRule[] = [
         caretBlock,
         deleteIntent.caret,
         caretNode,
+        resources.initialMetadata,
       )
 
       return withTrailingSelectionOp([...deleteIntent.ops, ...ops], next, range)
@@ -521,10 +556,24 @@ export const rangeRules: HardBreakOpsRule[] = [
   },
 ]
 
+/** Options for constructing a {@link HardBreakOpsBuilder} instance. */
+export interface HardBreakOpsBuilderOptions {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
+}
+
 /** Hard break ops builder. */
-export class HardBreakOpsBuilder extends OperationsBuilder<HardBreakOpsSituation> {
-  constructor() {
+export class HardBreakOpsBuilder extends OperationsBuilder<
+  HardBreakOpsSituation,
+  unknown,
+  HardBreakOpsResources
+> {
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly #initialMetadata: OperationsBuilderInitialMetadata
+
+  constructor(options: HardBreakOpsBuilderOptions) {
     super({ name: 'hard-break-ops-builder' })
+    this.#initialMetadata = options.initialMetadata
   }
 
   /** Describes the {@link HardBreakOpsSituation}. */
@@ -649,7 +698,7 @@ export class HardBreakOpsBuilder extends OperationsBuilder<HardBreakOpsSituation
     const match = this.iterRules({
       context,
       input: null,
-      resources: null,
+      resources: { initialMetadata: this.#initialMetadata },
       rules,
       situation,
     }).next()
@@ -665,7 +714,7 @@ export class HardBreakOpsBuilder extends OperationsBuilder<HardBreakOpsSituation
     const ops = build({
       context,
       input: null,
-      resources: null,
+      resources: { initialMetadata: this.#initialMetadata },
       situation,
     })
 

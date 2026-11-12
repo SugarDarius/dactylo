@@ -22,6 +22,7 @@ import type {
   BuilderOpsIntent,
   OperationRule,
   OperationsBuilderAutolinkConfig,
+  OperationsBuilderInitialMetadata,
 } from './operations-builder'
 import {
   buildDeleteRangeCrossBlockIntent,
@@ -122,6 +123,9 @@ export interface PastePlainTextOpsInput {
 export interface PastePlainTextOpsResources {
   /** Whether autolink detection is enabled. */
   readonly autolinkEnabled: boolean
+
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
 }
 
 /** Paste plain text operations rule. */
@@ -141,6 +145,7 @@ export function buildPastePlainTextSingleLineAtCaretOps(
   opts: {
     autolinkEnabled: boolean
     prevSelection: Selection | null
+    initialMetadata: OperationsBuilderInitialMetadata
   },
 ): Operation[] | null {
   const hasLinks = opts.autolinkEnabled && plainTextHasLinks(line)
@@ -167,14 +172,23 @@ export function buildPastePlainTextSingleLineAtCaretOps(
   const before = node.text.slice(0, at.offset)
   const after = node.text.slice(at.offset)
 
-  const sliced = plainTextToEditableTextNodes(line, node.marks)
+  const sliced = plainTextToEditableTextNodes(line, node.marks, {
+    link: opts.initialMetadata.link,
+    text: opts.initialMetadata.text,
+  })
   if (sliced.length === 0) {
     return null
   }
 
   const lastSlice = sliced[sliced.length - 1]
   if (lastSlice && isLinkNode(lastSlice)) {
-    sliced.push(createTextNode({ marks: node.marks, text: ' ' }))
+    sliced.push(
+      createTextNode({
+        marks: node.marks,
+        metadata: opts.initialMetadata.text,
+        text: ' ',
+      }),
+    )
   }
 
   const [firstSlice] = sliced
@@ -300,6 +314,7 @@ export const cursorRules: PastePlainTextOpsRule[] = [
         at,
         {
           autolinkEnabled: resources.autolinkEnabled,
+          initialMetadata: resources.initialMetadata,
           prevSelection: context.selection,
         },
       )
@@ -347,6 +362,7 @@ export const cursorRules: PastePlainTextOpsRule[] = [
         at,
         {
           autolinkEnabled: resources.autolinkEnabled,
+          initialMetadata: resources.initialMetadata,
           prevSelection: context.selection,
         },
       )
@@ -420,6 +436,7 @@ export const rangeRules: PastePlainTextOpsRule[] = [
         deleteIntent.caret,
         {
           autolinkEnabled: resources.autolinkEnabled,
+          initialMetadata: resources.initialMetadata,
           prevSelection: context.selection,
         },
       )
@@ -458,7 +475,10 @@ export const rangeRules: PastePlainTextOpsRule[] = [
         block,
         anchor,
         focus,
-        { joinSurvivors: false },
+        {
+          joinSurvivors: false,
+          textMetadata: resources.initialMetadata.text,
+        },
       )
       const caretNode = resolvesCaretNode(block, deleteIntent)
 
@@ -484,6 +504,7 @@ export const rangeRules: PastePlainTextOpsRule[] = [
         deleteIntent.caret,
         {
           autolinkEnabled: resources.autolinkEnabled,
+          initialMetadata: resources.initialMetadata,
           prevSelection: context.selection,
         },
       )
@@ -522,6 +543,7 @@ export const rangeRules: PastePlainTextOpsRule[] = [
         range,
         startBlock,
         endBlock,
+        resources.initialMetadata.text,
       )
 
       const caretBlock = deleteIntent.caretBlock ?? startBlock
@@ -545,6 +567,7 @@ export const rangeRules: PastePlainTextOpsRule[] = [
         deleteIntent.caret,
         {
           autolinkEnabled: resources.autolinkEnabled,
+          initialMetadata: resources.initialMetadata,
           prevSelection: context.selection,
         },
       )
@@ -571,6 +594,9 @@ export interface PastePlainTextOpsBuilderOptions {
     /** Whether to enable autolink detection. */
     readonly enabled: boolean
   }
+
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
 }
 
 export class PastePlainTextOpsBuilder extends OperationsBuilder<
@@ -581,9 +607,13 @@ export class PastePlainTextOpsBuilder extends OperationsBuilder<
   /** Configuration for autolink detection. */
   readonly #autolinkConfig: OperationsBuilderAutolinkConfig
 
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly #initialMetadata: OperationsBuilderInitialMetadata
+
   constructor(options: PastePlainTextOpsBuilderOptions) {
     super({ name: 'paste-plain-text-ops-builder' })
     this.#autolinkConfig = options.autolink
+    this.#initialMetadata = options.initialMetadata
   }
 
   /** Describes the {@link PastePlainTextOpsSituation}. */
@@ -713,6 +743,7 @@ export class PastePlainTextOpsBuilder extends OperationsBuilder<
       input,
       resources: {
         autolinkEnabled: this.#autolinkConfig.enabled,
+        initialMetadata: this.#initialMetadata,
       },
       rules,
       situation,
@@ -731,6 +762,7 @@ export class PastePlainTextOpsBuilder extends OperationsBuilder<
       input,
       resources: {
         autolinkEnabled: this.#autolinkConfig.enabled,
+        initialMetadata: this.#initialMetadata,
       },
       situation,
     })

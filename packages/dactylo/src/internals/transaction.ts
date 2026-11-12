@@ -1,4 +1,3 @@
-import type { PBM, TNM } from './augmentation'
 import type { BlockId, HeadingBlock, NumberedListItemBlock } from './blocks'
 import { readTransferredData } from './clipboard'
 import { warn, warnOnceIf } from './console'
@@ -17,7 +16,11 @@ import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
 import type { InlineNode } from './nodes'
 import type { Operation } from './operations'
-import type { InsertOrMoveBlockPosition } from './operations-builder'
+import { createInitialMetadata } from './operations-builder'
+import type {
+  InsertOrMoveBlockPosition,
+  OperationsBuilderInitialMetadata,
+} from './operations-builder'
 import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
 import type { Selection } from './selection'
@@ -343,18 +346,12 @@ export interface TransactionPipelineOptions {
   readonly debug: boolean
 
   /**
-   * Configuration for creating an initial {@link EditorContext}
+   * Configuration for creating initial metadata in {@link DocumentState}
    * when it's not initialized from a JSON object or a markdown string.
    *
    * Defaults to `{}`
    */
-  readonly initial?: {
-    /** {@link ParagraphBlock} metadata taken from augmented type {@link PBM} */
-    readonly paragraphMetadata?: PBM
-
-    /** {@link TextNode} metadata taken from augmented type {@link TNM} */
-    readonly textMetadata?: TNM
-  }
+  readonly initialMetadata?: OperationsBuilderInitialMetadata
 
   /** Configuration for the batch of the transaction pipeline */
   readonly batch?: {
@@ -396,7 +393,10 @@ export interface TransactionPipelineOptions {
   }
 
   /** Configuration for the operations engine. */
-  readonly engine: Omit<OperationsEngineOptions, 'autolink' | 'debug'>
+  readonly engine: Omit<
+    OperationsEngineOptions,
+    'autolink' | 'debug' | 'initialMetadata'
+  >
 }
 
 /** Configuration for mentions. */
@@ -531,9 +531,10 @@ export class TransactionPipeline {
      *  - from markdown string
      *  - patch if no inline content is provided for a block with inline content
      */
+    const initialMetadata = options.initialMetadata ?? createInitialMetadata()
     this.#context = createInitialEditorContext({
-      paragraphMetadata: options.initial?.paragraphMetadata,
-      textMetadata: options.initial?.textMetadata,
+      paragraphMetadata: initialMetadata.paragraph,
+      textMetadata: initialMetadata.text,
     })
     this.#batch = new Batch({
       maxSize: options.batch?.maxSize,
@@ -553,6 +554,7 @@ export class TransactionPipeline {
       ...options.engine,
       autolink: this.#autolink,
       debug: this.#debug,
+      initialMetadata,
     })
 
     this.#history = new HistoryStack(options.history)

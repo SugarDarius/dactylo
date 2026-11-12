@@ -27,6 +27,7 @@ import type { Marks } from './marks'
 import type { InlineNode, NodeId } from './nodes'
 import type { PosKey } from './position'
 import type { Selection } from './selection'
+import type { Metadata } from './types'
 
 /** Inserts a block at the given position (fractional index). */
 export interface InsertBlockOp {
@@ -150,8 +151,8 @@ export interface MutateBlockTypeOp {
   /** Snapshot of the block with inline content before the mutation. */
   readonly snapshot: BlockWithInlineContent
 
-  /** Whether to drop metadata during type mutation. */
-  readonly dropMetadata?: true
+  /** Metadata applied to the block after the type mutation. */
+  readonly metadata: Metadata
 
   /** Describes the mutation to apply. */
   readonly spec:

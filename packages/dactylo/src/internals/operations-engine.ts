@@ -60,6 +60,7 @@ import type {
   BuilderOpsIntent,
   InsertBlockSpec,
   InsertOrMoveBlockPosition,
+  OperationsBuilderInitialMetadata,
   PatchBlockSpec,
 } from './operations-builder'
 import { makeOperationsRuntime } from './operations-runtime'
@@ -95,6 +96,12 @@ export interface OperationsEngineOptions {
     /** Whether to enable autolink detection. */
     readonly enabled: boolean
   }
+
+  /**
+   * Initial metadata applied when creating blocks and inline nodes.
+   * Defaults to empty bags.
+   */
+  readonly initialMetadata: OperationsBuilderInitialMetadata
 }
 
 /**
@@ -109,6 +116,9 @@ export interface OperationsEngineOptions {
 export class OperationsEngine {
   /** Whether to enable debug mode. */
   readonly #debug: boolean
+
+  /** Initial metadata applied when creating blocks and inline nodes. */
+  readonly #initialMetadata: OperationsBuilderInitialMetadata
 
   /** Ops  runtime. */
   readonly #opsRuntime: OperationsRuntime
@@ -142,25 +152,39 @@ export class OperationsEngine {
 
   constructor(options: OperationsEngineOptions) {
     this.#debug = options.debug ?? false
+    this.#initialMetadata = options.initialMetadata
     this.#opsRuntime = makeOperationsRuntime()
 
     this.#marksOpsBuilder = new MarksOpsBuilder()
     this.#markdownShortcutOpsBuilder = new MarkdownShortcutOpsBuilder({
       autolink: options.autolink,
+      initialMetadata: this.#initialMetadata,
     })
-    this.#autolinkOpsBuilder = new AutolinkOpsBuilder()
-    this.#insertTextOpsBuilder = new InsertTextOpsBuilder()
+    this.#autolinkOpsBuilder = new AutolinkOpsBuilder({
+      initialMetadata: this.#initialMetadata,
+    })
+    this.#insertTextOpsBuilder = new InsertTextOpsBuilder({
+      initialMetadata: this.#initialMetadata,
+    })
     this.#deleteContentOpsBuilder = new DeleteContentOpsBuilder({
       graphemeOffsetCaret: new GraphemeOffsetCaret({
         locales: options.locales,
       }),
+      initialMetadata: this.#initialMetadata,
     })
     this.#pastePlainTextOpsBuilder = new PastePlainTextOpsBuilder({
       autolink: options.autolink,
+      initialMetadata: this.#initialMetadata,
     })
-    this.#softBreakOpsBuilder = new SoftBreakOpsBuilder()
-    this.#hardBreakOpsBuilder = new HardBreakOpsBuilder()
-    this.#exitCodeMarkOpsBuilder = new ExitCodeMarkOpsBuilder()
+    this.#softBreakOpsBuilder = new SoftBreakOpsBuilder({
+      initialMetadata: this.#initialMetadata,
+    })
+    this.#hardBreakOpsBuilder = new HardBreakOpsBuilder({
+      initialMetadata: this.#initialMetadata,
+    })
+    this.#exitCodeMarkOpsBuilder = new ExitCodeMarkOpsBuilder({
+      initialMetadata: this.#initialMetadata,
+    })
   }
 
   // --- Runtime ----─────────────────────────────────────────---------
@@ -383,6 +407,7 @@ export class OperationsEngine {
     const afterBlockId = resolveInsertAfterBlockId(state, finalPos)
 
     const insertedText = createTextNode({
+      metadata: this.#initialMetadata.text,
       text: '',
     })
 
@@ -564,15 +589,19 @@ export class OperationsEngine {
           posKey,
         })
 
-        const paragraph = createParagraphBlockAfter(divider, [
-          /**
-           * Invariant UX:
-           * When inserting a divider block,
-           * a {@link ParagraphBlock} is inserted right after it and
-           * the selection is set inside it.
-           */
-          insertedText,
-        ])
+        const paragraph = createParagraphBlockAfter(
+          divider,
+          [
+            /**
+             * Invariant UX:
+             * When inserting a divider block,
+             * a {@link ParagraphBlock} is inserted right after it and
+             * the selection is set inside it.
+             */
+            insertedText,
+          ],
+          this.#initialMetadata.paragraph,
+        )
 
         const ops: Operation[] = [
           {

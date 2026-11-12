@@ -1,3 +1,16 @@
+import type {
+  BBM,
+  CBM,
+  DBM,
+  HBM,
+  LBNM,
+  LNM,
+  MNM,
+  NBM,
+  PBM,
+  QBM,
+  TNM,
+} from './augmentation'
 import {
   findNodeInBlockWithInlineContent,
   isNumberedListItemBlock,
@@ -45,6 +58,59 @@ import type { Metadata, Relax } from './types'
 import { assertNever } from './utils'
 
 // --- Interfaces -───────────────────────────────────---------------
+
+/** Initial metadata applied when creating blocks and inline nodes. */
+export interface OperationsBuilderInitialMetadata {
+  /** {@link ParagraphBlock} metadata taken from augmented type {@link PBM} */
+  readonly paragraph: PBM
+
+  /** {@link HeadingBlock} metadata taken from augmented type {@link HBM} */
+  readonly heading: HBM
+
+  /** {@link QuoteBlock} metadata taken from augmented type {@link QBM} */
+  readonly quote: QBM
+
+  /** {@link BulletListItemBlock} metadata taken from augmented type {@link BBM} */
+  readonly bulletedList: BBM
+
+  /** {@link NumberedListItemBlock} metadata taken from augmented type {@link NBM} */
+  readonly numberedList: NBM
+
+  /** {@link CheckboxListItemBlock} metadata taken from augmented type {@link CBM} */
+  readonly checkboxList: CBM
+
+  /** {@link DividerBlock} metadata taken from augmented type {@link DBM} */
+  readonly divider: DBM
+
+  /** {@link TextNode} metadata taken from augmented type {@link TNM} */
+  readonly text: TNM
+
+  /** {@link LinkNode} metadata taken from augmented type {@link LNM} */
+  readonly link: LNM
+
+  /** {@link LineBreakNode} metadata taken from augmented type {@link LBNM} */
+  readonly lineBreak: LBNM
+
+  /** {@link MentionNode} metadata taken from augmented type {@link MNM} */
+  readonly mentions: MNM
+}
+
+/** Creates initial metadata for operations builders. */
+export function createInitialMetadata(): OperationsBuilderInitialMetadata {
+  return {
+    bulletedList: {} as BBM,
+    checkboxList: {} as CBM,
+    divider: {} as DBM,
+    heading: {} as HBM,
+    lineBreak: {} as LBNM,
+    link: {} as LNM,
+    mentions: {} as MNM,
+    numberedList: {} as NBM,
+    paragraph: {} as PBM,
+    quote: {} as QBM,
+    text: {} as TNM,
+  }
+}
 
 /** Intent when building ops to delete text. */
 export interface BuilderDeleteIntent {
@@ -1033,6 +1099,7 @@ export function buildBackwardTrimBlockOps(
 export function buildCollapseEmptyBlockOps(
   block: BlockWithInlineContent,
   contentAfterPriorGeometry: InlineNode[],
+  textMetadata?: TNM,
 ): { ops: Operation[]; placeholder: TextNode } | null {
   if (!isInlineContentTextEmpty(contentAfterPriorGeometry)) {
     return null
@@ -1070,7 +1137,7 @@ export function buildCollapseEmptyBlockOps(
     }
   }
 
-  const placeholder = createTextNode({ text: '' })
+  const placeholder = createTextNode({ metadata: textMetadata, text: '' })
   const ops: Operation[] = [
     ...buildRemoveInlineNodeRangeOps(
       block,
@@ -1097,8 +1164,9 @@ export function buildApplyCollapseIfNeededIntent(
   block: BlockWithInlineContent,
   remaining: InlineNode[],
   intent: BuilderDeleteIntent,
+  textMetadata?: TNM,
 ): BuilderDeleteIntent {
-  const collapsed = buildCollapseEmptyBlockOps(block, remaining)
+  const collapsed = buildCollapseEmptyBlockOps(block, remaining, textMetadata)
   if (!collapsed) {
     return intent
   }
@@ -1121,9 +1189,12 @@ export function buildDeleteRangeWithinBlockIntent(
   opts: {
     /** Whether to join matching-mark text ends onto the anchor. */
     joinSurvivors?: boolean
+
+    /** Initial text metadata for a collapse placeholder. */
+    textMetadata?: TNM
   } = {},
 ): BuilderDeleteIntent {
-  const { joinSurvivors = true } = opts
+  const { joinSurvivors = true, textMetadata } = opts
 
   const anchorFound = findNodeInBlockWithInlineContent(block, anchor.nodeId)
   const focusFound = findNodeInBlockWithInlineContent(block, focus.nodeId)
@@ -1156,6 +1227,7 @@ export function buildDeleteRangeWithinBlockIntent(
         joinSurvivors,
       ),
       intent,
+      textMetadata,
     )
   }
 
@@ -1270,6 +1342,7 @@ export function buildDeleteRangeWithinBlockIntent(
       },
       ops,
     },
+    textMetadata,
   )
 }
 
@@ -1283,6 +1356,7 @@ export function buildDeleteRangeCrossBlockIntent(
   range: RangeSelection,
   startBlock: BlockWithInlineContent,
   endBlock: BlockWithInlineContent,
+  textMetadata?: TNM,
 ): BuilderDeleteIntent {
   const ops: Operation[] = [
     ...buildForwardTrimBlockOps(startBlock, range.anchor),
@@ -1294,7 +1368,11 @@ export function buildDeleteRangeCrossBlockIntent(
     startBlock,
     range.anchor,
   )
-  const collapsedHead = buildCollapseEmptyBlockOps(startBlock, remainingHead)
+  const collapsedHead = buildCollapseEmptyBlockOps(
+    startBlock,
+    remainingHead,
+    textMetadata,
+  )
 
   if (collapsedHead) {
     ops.push(...collapsedHead.ops)
@@ -1344,6 +1422,7 @@ export function buildDeleteRangeCrossBlockIntent(
   const collapsedMerged = buildCollapseEmptyBlockOps(
     startBlock,
     mergedRemaining,
+    textMetadata,
   )
 
   if (collapsedMerged) {
