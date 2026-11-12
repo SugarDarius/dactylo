@@ -113,3 +113,19 @@ describe('putBlocks', () => {
     expect(next.blocks.size).toBe(1)
   })
 })
+
+describe('createInitialEmptyDocumentState', () => {
+  test('applies paragraph and text metadata to the empty document', () => {
+    const state = createInitialEmptyDocumentState({
+      paragraphMetadata: { source: 'paragraph' },
+      textMetadata: { source: 'text' },
+    })
+    const block = firstParagraph(state)
+    const [node] = block.content
+
+    expect(block.metadata).toEqual({ source: 'paragraph' })
+    expect(node && isTextNode(node) ? node.metadata : undefined).toEqual({
+      source: 'text',
+    })
+  })
+})

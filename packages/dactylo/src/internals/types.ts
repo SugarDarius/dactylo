@@ -53,6 +53,21 @@ export type Autocomplete<U extends T, T = string> =
   | U
   | (T & Record<never, never>)
 
+/** Returns a type with the keys of `K` and `ExtraKey` merged, unless `M` is empty. */
+export type WithUnless<K extends string, Inner, ExtraKey extends string, M> =
+  Record<string, never> extends M
+    ? Readonly<
+        Partial<Record<K, Inner & Readonly<Partial<Record<ExtraKey, M>>>>>
+      >
+    : Readonly<Required<Record<K, Inner & Readonly<Record<ExtraKey, M>>>>>
+
+/** Makes a tuple optional when `{}` is assignable to `V`. */
+export type OptionalTuple<T extends unknown[]> = { [K in keyof T]?: T[K] }
+
+/** Makes a constructor rest tuple optional when `{}` is assignable to `V`. */
+export type OptionalTupleUnless<T extends unknown[], V> =
+  Record<string, never> extends V ? OptionalTuple<T> : T
+
 /** Metadata type to store custom data */
 export type Metadata = Record<
   string,

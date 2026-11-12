@@ -1,4 +1,5 @@
 export type {
+  DactyloBaseOptions,
   DactyloBlocksApi,
   DactyloBlocksCommands,
   DactyloBlocksTools,

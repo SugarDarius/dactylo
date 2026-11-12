@@ -3,9 +3,13 @@ import type {
   CBM,
   DBM,
   HBM,
+  LBNM,
+  LNM,
+  MNM,
   NBM,
   PBM,
   QBM,
+  TNM,
 } from './internals/augmentation'
 import type {
   BlockId,
@@ -53,7 +57,12 @@ import {
 import type { Selection } from './internals/selection'
 import { TransactionPipeline } from './internals/transaction'
 import type { Transaction, TransactionSource } from './internals/transaction'
-import type { CancelCallback, Relax } from './internals/types'
+import type {
+  CancelCallback,
+  OptionalTupleUnless,
+  Relax,
+  WithUnless,
+} from './internals/types'
 import { canUseDOM, negate, noop } from './internals/utils'
 
 /** Api to interact with one aspect of the editor. */
@@ -88,21 +97,6 @@ export interface DactyloStaticConfig {
   /** The locales used for writing and reading text. */
   readonly locales: Intl.LocalesArgument
 
-  /** Configuration for mentions. */
-  readonly mentions: {
-    /**
-     * Whether to enable mentions.
-     * Defaults to `true`
-     */
-    readonly enabled: boolean
-
-    /**
-     * The character to trigger a mention.
-     * Defaults to `@`
-     */
-    readonly character: string
-  }
-
   /** Configuration for inline command trigger. */
   readonly inlineCommandTrigger: {
     /**
@@ -122,36 +116,90 @@ export interface DactyloStaticConfig {
   readonly heading: {
     /** Placeholder text when a heading is created or empty. */
     readonly placeholder: string
+
+    /**
+     * Initial metadata applied.
+     * Defaults to `{}`
+     */
+    readonly initialMetadata: HBM
   }
 
   /** Configuration for paragraphs. */
   readonly paragraph: {
     /** Placeholder text when an empty paragraph is created or empty. */
     readonly placeholder: string
+
+    /**
+     * Initial metadata applied.
+     * Defaults to `{}`
+     */
+    readonly initialMetadata: PBM
   }
 
   /** Configuration for quotes. */
   readonly quote: {
     /** Placeholder text when an empty quote is created or empty. */
     readonly placeholder: string
+
+    /**
+     * Initial metadata applied.
+     * Defaults to `{}`
+     */
+    readonly initialMetadata: QBM
   }
 
   /** Configuration for bulleted lists. */
   readonly bulletedList: {
     /** Placeholder text when a bullet list item is created or empty. */
     readonly placeholder: string
+
+    /**
+     * Initial metadata applied.
+     * Defaults to `{}`
+     */
+    readonly initialMetadata: BBM
   }
 
   /** Configuration for numbered lists. */
   readonly numberedList: {
     /** Placeholder text when a numbered list item is created or empty. */
     readonly placeholder: string
+
+    /**
+     * Initial metadata applied.
+     * Defaults to `{}`
+     */
+    readonly initialMetadata: NBM
   }
 
   /** Configuration for checkbox lists. */
   readonly checkboxList: {
     /** Placeholder text when a checkbox list item is created or empty. */
     readonly placeholder: string
+
+    /**
+     * Initial metadata applied.
+     * Defaults to `{}`
+     */
+    readonly initialMetadata: CBM
+  }
+
+  /** Configuration for dividers. */
+  readonly divider: {
+    /**
+     * Initial metadata applied.
+     * Defaults to `{}`
+     */
+    readonly initialMetadata: DBM
+  }
+
+  /** Configuration for texts. */
+  readonly text: {
+    /**
+     * Initial metadata applied.
+     * Defaults to `{}`
+     */
+    readonly initialMetadata: TNM
   }
 
   /** Configuration for links. */
@@ -161,6 +209,42 @@ export interface DactyloStaticConfig {
      * Defaults to `true`
      */
     readonly openOnClick: boolean
+
+    /**
+     * Initial metadata applied.
+     * Defaults to `{}`
+     */
+    readonly initialMetadata: LNM
+  }
+
+  /** Configuration for line breaks. */
+  readonly lineBreak: {
+    /**
+     * Initial metadata applied.
+     * Defaults to `{}`
+     */
+    readonly initialMetadata: LBNM
+  }
+
+  /** Configuration for mentions. */
+  readonly mentions: {
+    /**
+     * Whether to enable mentions.
+     * Defaults to `true`
+     */
+    readonly enabled: boolean
+
+    /**
+     * The character to trigger a mention.
+     * Defaults to `@`
+     */
+    readonly character: string
+
+    /**
+     * Initial metadata applied.
+     * Defaults to `{}`
+     */
+    readonly initialMetadata: MNM
   }
 }
 
@@ -1002,8 +1086,8 @@ export type DactyloBlocksApi = DactyloAspectApi<
   DactyloBlocksCommands
 >
 
-/** Options for constructing a {@link Dactylo} instance. */
-export interface DactyloOptions {
+/** Base options for constructing a {@link Dactylo} instance. */
+export interface DactyloBaseOptions {
   /**
    * Whether to enable debug mode.
    * Defaults to `false`
@@ -1043,21 +1127,6 @@ export interface DactyloOptions {
     readonly enabled?: boolean
   }
 
-  /** Configuration for mentions. */
-  readonly mentions?: {
-    /**
-     * Whether to enable mentions.
-     * Defaults to `true`
-     */
-    readonly enabled?: boolean
-
-    /**
-     * The character to trigger a mention.
-     * Defaults to `@`
-     */
-    readonly character?: string
-  }
-
   /** Configuration for inline command trigger. */
   readonly inlineCommandTrigger?: {
     /**
@@ -1073,75 +1142,6 @@ export interface DactyloOptions {
     readonly character?: string
   }
 
-  /** Configuration for paragraphs. */
-  readonly paragraph?: {
-    /**
-     * Placeholder text when an empty paragraph is created or empty.
-     * Defaults to placeholder option in {@link DactyloOptions} if set
-     * or defaults to {@link DEFAULT_PARAGRAPH_PLACEHOLDER}.
-     */
-    readonly placeholder?: string
-  }
-
-  /** Configuration for quotes. */
-  readonly quote?: {
-    /**
-     * Placeholder text when an empty quote is created or empty.
-     * Defaults to placeholder option in {@link DactyloOptions} if set
-     * or defaults to {@link DEFAULT_QUOTE_PLACEHOLDER}.
-     */
-    readonly placeholder?: string
-  }
-
-  /** Configuration for headings. */
-  readonly heading?: {
-    /**
-     * Placeholder text when a heading is created or empty.
-     * Defaults to {@link DEFAULT_HEADING_PLACEHOLDER} with level.
-     * @example
-     * ```txt
-     * Heading 1
-     * ```
-     */
-    readonly placeholder?: string
-  }
-
-  /** Configuration for bulleted lists. */
-  readonly bulletedList?: {
-    /**
-     * Placeholder text when a bulleted list is created or empty.
-     * Defaults to {@link DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER}.
-     */
-    readonly placeholder?: string
-  }
-
-  /** Configuration for numbered lists. */
-  readonly numberedList?: {
-    /**
-     * Placeholder text when a numbered list item is created or empty.
-     * Defaults to {@link DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER}.
-     */
-    readonly placeholder?: string
-  }
-
-  /** Configuration for checkbox lists. */
-  readonly checkboxList?: {
-    /**
-     * Placeholder text when a checkbox list is created or empty.
-     * Defaults to {@link DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER}.
-     */
-    readonly placeholder?: string
-  }
-
-  /** Configuration for links. */
-  readonly link?: {
-    /**
-     * Whether to open links on click when the editor is editable.
-     * Defaults to `true`
-     */
-    readonly openOnClick?: boolean
-  }
-
   /** Configuration for the transaction pipeline */
   readonly pipeline?: {
     /** Configuration for the batch of the transaction pipeline */
@@ -1154,6 +1154,132 @@ export interface DactyloOptions {
     readonly history?: HistoryStackOptions
   }
 }
+
+/** Options for constructing a {@link Dactylo} instance. */
+export type DactyloOptions = DactyloBaseOptions &
+  /** Configuration for paragraphs. */
+  WithUnless<
+    'paragraph',
+    {
+      /**
+       * Placeholder text when an empty paragraph is created or empty.
+       * Defaults to placeholder option in {@link DactyloOptions} if set
+       * or defaults to {@link DEFAULT_PARAGRAPH_PLACEHOLDER}.
+       */
+      readonly placeholder?: string
+    },
+    'initialMetadata',
+    PBM
+  > &
+  /** Configuration for quotes. */
+  WithUnless<
+    'quote',
+    {
+      /**
+       * Placeholder text when an empty quote is created or empty.
+       * Defaults to placeholder option in {@link DactyloOptions} if set
+       * or defaults to {@link DEFAULT_QUOTE_PLACEHOLDER}.
+       */
+      readonly placeholder?: string
+    },
+    'initialMetadata',
+    QBM
+  > &
+  /** Configuration for headings. */
+  WithUnless<
+    'heading',
+    {
+      /**
+       * Placeholder text when a heading is created or empty.
+       * Defaults to {@link DEFAULT_HEADING_PLACEHOLDER} with level.
+       */
+      readonly placeholder?: string
+    },
+    'initialMetadata',
+    HBM
+  > &
+  /** Configuration for bulleted lists. */
+  WithUnless<
+    'bulletedList',
+    {
+      /**
+       * Placeholder text when a bulleted list item is created or empty.
+       * Defaults to {@link DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER}.
+       */
+      readonly placeholder?: string
+    },
+    'initialMetadata',
+    BBM
+  > &
+  /** Configuration for numbered lists. */
+  WithUnless<
+    'numberedList',
+    {
+      /**
+       * Placeholder text when a numbered list item is created or empty.
+       * Defaults to {@link DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER}.
+       */
+      readonly placeholder?: string
+    },
+    'initialMetadata',
+    NBM
+  > &
+  /** Configuration for checkbox lists. */
+  WithUnless<
+    'checkboxList',
+    {
+      /**
+       * Placeholder text when a checkbox list is created or empty.
+       * Defaults to {@link DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER}.
+       */
+      readonly placeholder?: string
+    },
+    'initialMetadata',
+    CBM
+  > &
+  /** Configuration for dividers. */
+  // oxlint-disable-next-line typescript/ban-types typescript/no-empty-object-type
+  WithUnless<'divider', {}, 'initialMetadata', DBM> &
+  /** Configuration for texts. */
+  // oxlint-disable-next-line typescript/ban-types typescript/no-empty-object-type
+  WithUnless<'text', {}, 'initialMetadata', TNM> &
+  /** Configuration for links. */
+  // oxlint-disable-next-line typescript/ban-types typescript/no-empty-object-type
+  WithUnless<
+    'link',
+    {
+      /**
+       * Whether to open links on click when the editor is editable.
+       * Defaults to `true`
+       */
+      readonly openOnClick?: boolean
+    },
+    'initialMetadata',
+    LNM
+  > &
+  /** Configuration for line breaks. */
+  // oxlint-disable-next-line typescript/ban-types typescript/no-empty-object-type
+  WithUnless<'lineBreak', {}, 'initialMetadata', LBNM> &
+  /** Configuration for mentions. */
+  // oxlint-disable-next-line typescript/ban-types typescript/no-empty-object-type
+  WithUnless<
+    'mentions',
+    {
+      /**
+       * Whether to enable mentions.
+       * Defaults to `true`
+       */
+      readonly enabled?: boolean
+
+      /**
+       * The character to trigger a mention.
+       * Defaults to `@`
+       */
+      readonly character?: string
+    },
+    'initialMetadata',
+    MNM
+  >
 
 /**
  * Dactylo is a block-based rich-text markdown editor whose runtime model is a structured document (blocks + inline nodes),
@@ -1205,7 +1331,14 @@ export class Dactylo {
   /** Events emitted by Dactylo. */
   readonly #eventSources: DactyloEventSources
 
-  constructor(options: DactyloOptions = {}) {
+  constructor(
+    ...args: OptionalTupleUnless<
+      [options: DactyloOptions],
+      PBM & QBM & HBM & BBM & NBM & CBM & DBM & TNM & LNM & LBNM & MNM
+    >
+  ) {
+    const options = args[0] ?? {}
+
     this.#editable = options.editable ?? true
     this.#debug = options.debug ?? false
 
@@ -1216,16 +1349,22 @@ export class Dactylo {
         enabled: options.autolink?.enabled ?? DEFAULT_AUTOLINK_ENABLED,
       },
       bulletedList: {
+        initialMetadata: options.bulletedList?.initialMetadata ?? ({} as BBM),
         placeholder:
           options.bulletedList?.placeholder ??
           DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
       },
       checkboxList: {
+        initialMetadata: options.checkboxList?.initialMetadata ?? ({} as CBM),
         placeholder:
           options.checkboxList?.placeholder ??
           DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
       },
+      divider: {
+        initialMetadata: options.divider?.initialMetadata ?? ({} as DBM),
+      },
       heading: {
+        initialMetadata: options.heading?.initialMetadata ?? ({} as HBM),
         placeholder:
           options.heading?.placeholder ?? DEFAULT_HEADING_PLACEHOLDER,
       },
@@ -1237,7 +1376,11 @@ export class Dactylo {
           options.inlineCommandTrigger?.enabled ??
           DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
       },
+      lineBreak: {
+        initialMetadata: options.lineBreak?.initialMetadata ?? ({} as LBNM),
+      },
       link: {
+        initialMetadata: options.link?.initialMetadata ?? ({} as LNM),
         openOnClick:
           options.link?.openOnClick ?? DEFAULT_LINK_OPEN_ON_CLICK_ENABLED,
       },
@@ -1249,20 +1392,27 @@ export class Dactylo {
       mentions: {
         character: options.mentions?.character ?? DEFAULT_MENTION_CHARACTER,
         enabled: options.mentions?.enabled ?? DEFAULT_MENTIONS_ENABLED,
+        initialMetadata: options.mentions?.initialMetadata ?? ({} as MNM),
       },
       numberedList: {
+        initialMetadata: options.numberedList?.initialMetadata ?? ({} as NBM),
         placeholder:
           options.numberedList?.placeholder ??
           DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER,
       },
       paragraph: {
+        initialMetadata: options.paragraph?.initialMetadata ?? ({} as PBM),
         placeholder:
           options.placeholder ??
           options.paragraph?.placeholder ??
           DEFAULT_PARAGRAPH_PLACEHOLDER,
       },
       quote: {
+        initialMetadata: options.quote?.initialMetadata ?? ({} as QBM),
         placeholder: options.quote?.placeholder ?? DEFAULT_QUOTE_PLACEHOLDER,
+      },
+      text: {
+        initialMetadata: options.text?.initialMetadata ?? ({} as TNM),
       },
     }
     this.#pipeline = new TransactionPipeline({
@@ -1275,6 +1425,10 @@ export class Dactylo {
         locales,
       },
       history: options.pipeline?.history,
+      initial: {
+        paragraphMetadata: this.#config.paragraph.initialMetadata,
+        textMetadata: this.#config.text.initialMetadata,
+      },
       inlineCommandTrigger: {
         character: this.#config.inlineCommandTrigger.character,
         enabled: this.#config.inlineCommandTrigger.enabled,

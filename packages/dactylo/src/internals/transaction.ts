@@ -1,3 +1,4 @@
+import type { PBM, TNM } from './augmentation'
 import type { BlockId, HeadingBlock, NumberedListItemBlock } from './blocks'
 import { readTransferredData } from './clipboard'
 import { warn, warnOnceIf } from './console'
@@ -341,6 +342,20 @@ export interface TransactionPipelineOptions {
    */
   readonly debug: boolean
 
+  /**
+   * Configuration for creating an initial {@link EditorContext}
+   * when it's not initialized from a JSON object or a markdown string.
+   *
+   * Defaults to `{}`
+   */
+  readonly initial?: {
+    /** {@link ParagraphBlock} metadata taken from augmented type {@link PBM} */
+    readonly paragraphMetadata?: PBM
+
+    /** {@link TextNode} metadata taken from augmented type {@link TNM} */
+    readonly textMetadata?: TNM
+  }
+
   /** Configuration for the batch of the transaction pipeline */
   readonly batch?: {
     /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
@@ -516,7 +531,10 @@ export class TransactionPipeline {
      *  - from markdown string
      *  - patch if no inline content is provided for a block with inline content
      */
-    this.#context = createInitialEditorContext()
+    this.#context = createInitialEditorContext({
+      paragraphMetadata: options.initial?.paragraphMetadata,
+      textMetadata: options.initial?.textMetadata,
+    })
     this.#batch = new Batch({
       maxSize: options.batch?.maxSize,
       onFlush: (ops, policy) =>

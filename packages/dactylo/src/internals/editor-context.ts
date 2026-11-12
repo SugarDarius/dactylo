@@ -1,3 +1,4 @@
+import type { PBM, TNM } from './augmentation'
 import { findNodeInBlockWithInlineContent, touchBlock } from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
 import {
@@ -114,10 +115,15 @@ export interface EditorContext {
 }
 
 /** Creates the initial context for an empty document. */
-export function createInitialEditorContext(): EditorContext {
+export function createInitialEditorContext(
+  opts: {
+    paragraphMetadata?: PBM
+    textMetadata?: TNM
+  } = {},
+): EditorContext {
   return {
     selection: null,
-    state: createInitialEmptyDocumentState(),
+    state: createInitialEmptyDocumentState({ ...opts }),
   }
 }
 

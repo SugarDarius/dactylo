@@ -32,6 +32,7 @@ import {
   isInlineNodeWithEditableText,
   isLineBreakNode,
   isLinkNode,
+  isTextNode,
 } from '../src/internals/nodes'
 import type { Transaction } from '../src/internals/transaction'
 import {
@@ -73,23 +74,45 @@ describe('Dactylo construction', () => {
 
     expect(editor.config).toEqual({
       autolink: { enabled: DEFAULT_AUTOLINK_ENABLED },
-      bulletedList: { placeholder: DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER },
-      checkboxList: { placeholder: DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER },
-      heading: { placeholder: DEFAULT_HEADING_PLACEHOLDER },
+      bulletedList: {
+        initialMetadata: {},
+        placeholder: DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
+      },
+      checkboxList: {
+        initialMetadata: {},
+        placeholder: DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
+      },
+      divider: { initialMetadata: {} },
+      heading: {
+        initialMetadata: {},
+        placeholder: DEFAULT_HEADING_PLACEHOLDER,
+      },
       inlineCommandTrigger: {
         character: DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
         enabled: DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
       },
-      link: { openOnClick: DEFAULT_LINK_OPEN_ON_CLICK_ENABLED },
+      lineBreak: { initialMetadata: {} },
+      link: {
+        initialMetadata: {},
+        openOnClick: DEFAULT_LINK_OPEN_ON_CLICK_ENABLED,
+      },
       locales: DEFAULT_LOCALES,
       markdown: { enabled: DEFAULT_MARKDOWN_SHORTCUTS_ENABLED },
       mentions: {
         character: DEFAULT_MENTION_CHARACTER,
         enabled: DEFAULT_MENTIONS_ENABLED,
+        initialMetadata: {},
       },
-      numberedList: { placeholder: DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER },
-      paragraph: { placeholder: 'Notes…' },
-      quote: { placeholder: DEFAULT_QUOTE_PLACEHOLDER },
+      numberedList: {
+        initialMetadata: {},
+        placeholder: DEFAULT_NUMBERED_LIST_ITEM_PLACEHOLDER,
+      },
+      paragraph: { initialMetadata: {}, placeholder: 'Notes…' },
+      quote: {
+        initialMetadata: {},
+        placeholder: DEFAULT_QUOTE_PLACEHOLDER,
+      },
+      text: { initialMetadata: {} },
     })
   })
 
@@ -110,21 +133,51 @@ describe('Dactylo construction', () => {
 
     expect(editor.config).toEqual({
       autolink: { enabled: false },
-      bulletedList: { placeholder: 'Item' },
-      checkboxList: { placeholder: DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER },
-      heading: { placeholder: 'Title' },
+      bulletedList: { initialMetadata: {}, placeholder: 'Item' },
+      checkboxList: {
+        initialMetadata: {},
+        placeholder: DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
+      },
+      divider: { initialMetadata: {} },
+      heading: { initialMetadata: {}, placeholder: 'Title' },
       inlineCommandTrigger: { character: '!', enabled: false },
-      link: { openOnClick: false },
+      lineBreak: { initialMetadata: {} },
+      link: { initialMetadata: {}, openOnClick: false },
       locales: 'fr-FR',
       markdown: { enabled: false },
-      mentions: { character: '#', enabled: false },
-      numberedList: { placeholder: 'Numero' },
-      paragraph: { placeholder: 'Start here' },
-      quote: { placeholder: 'Quote' },
+      mentions: {
+        character: '#',
+        enabled: false,
+        initialMetadata: {},
+      },
+      numberedList: { initialMetadata: {}, placeholder: 'Numero' },
+      paragraph: { initialMetadata: {}, placeholder: 'Start here' },
+      quote: { initialMetadata: {}, placeholder: 'Quote' },
+      text: { initialMetadata: {} },
     })
     expect(editor.config.paragraph.placeholder).not.toBe(
       DEFAULT_PARAGRAPH_PLACEHOLDER,
     )
+  })
+
+  test('stores paragraph and text initialMetadata on config and the empty document', () => {
+    const editor = makeEditor({
+      paragraph: { initialMetadata: { source: 'paragraph' } },
+      text: { initialMetadata: { source: 'text' } },
+    })
+
+    expect(editor.config.paragraph.initialMetadata).toEqual({
+      source: 'paragraph',
+    })
+    expect(editor.config.text.initialMetadata).toEqual({ source: 'text' })
+
+    const block = firstInlineBlock(editor.getContext())
+    expect(block.metadata).toEqual({ source: 'paragraph' })
+
+    const [node] = block.content
+    expect(node && isTextNode(node) ? node.metadata : undefined).toEqual({
+      source: 'text',
+    })
   })
 })
 

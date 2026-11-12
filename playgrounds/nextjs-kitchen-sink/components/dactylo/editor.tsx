@@ -452,6 +452,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         clientOnly={true}
         debug={true}
         className='dark:shadow-accent relative flex w-full flex-col gap-2 rounded-md shadow-xs'
+        paragraph={{ initialMetadata: { fontSize: '16px' } }}
       >
         <Toolbar />
         <Composer.Editable

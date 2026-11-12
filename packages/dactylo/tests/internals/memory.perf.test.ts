@@ -54,7 +54,7 @@ function firstParagraph(state: DocumentState): ParagraphBlock {
 
 function createTenKCharDocument(): DocumentState {
   const chunk = 'x'.repeat(CHARS_PER_BLOCK)
-  const state = createInitialEmptyDocumentState()
+  const state = createInitialEmptyDocumentState({})
   const first = firstParagraph(state)
   const incoming: ParagraphBlock[] = [
     { ...first, content: [createTextNode({ text: chunk })] },

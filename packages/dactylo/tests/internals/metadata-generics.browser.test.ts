@@ -1,11 +1,13 @@
 import { describe, expectTypeOf, test } from 'vitest'
 
 import { Dactylo } from '../../src/dactylo'
+import type { DactyloOptions } from '../../src/dactylo'
 import type { HBM, Metadata, PBM, TNM } from '../../src/index'
 import { isParagraphBlock } from '../../src/internals/blocks'
 import type { ParagraphBlock } from '../../src/internals/blocks'
 import { createTextNode, isTextNode } from '../../src/internals/nodes'
 import type { TextNode } from '../../src/internals/nodes'
+import type { WithUnless } from '../../src/internals/types'
 
 describe('metadata aliases', () => {
   test('default block and node metadata is the open Metadata bag', () => {
@@ -69,5 +71,51 @@ describe('metadata aliases', () => {
       // @ts-expect-error nested objects are not a valid Metadata value
       metadata: { fontSize: { nested: true } },
     })
+  })
+})
+
+describe('WithUnless', () => {
+  test('keeps the outer key optional when metadata accepts {}', () => {
+    type Opts = WithUnless<
+      'paragraph',
+      { readonly placeholder?: string },
+      'initialMetadata',
+      { fontSize?: number }
+    >
+
+    expectTypeOf({}).toExtend<Opts>()
+    expectTypeOf({
+      paragraph: { placeholder: 'Notes…' },
+    }).toExtend<Opts>()
+    expectTypeOf({
+      paragraph: { initialMetadata: { fontSize: 16 } },
+    }).toExtend<Opts>()
+  })
+
+  test('requires the outer key and extra key when metadata has required fields', () => {
+    type Opts = WithUnless<
+      'paragraph',
+      { readonly placeholder?: string },
+      'initialMetadata',
+      { fontSize: number }
+    >
+
+    expectTypeOf({
+      paragraph: { initialMetadata: { fontSize: 16 } },
+    }).toExtend<Opts>()
+    expectTypeOf({}).not.toExtend<Opts>()
+    expectTypeOf({
+      paragraph: { placeholder: 'Notes…' },
+    }).not.toExtend<Opts>()
+  })
+
+  test('DactyloOptions does not require initialMetadata for the default bag', () => {
+    expectTypeOf({}).toExtend<DactyloOptions>()
+    expectTypeOf({
+      paragraph: { placeholder: 'Notes…' },
+    }).toExtend<DactyloOptions>()
+    expectTypeOf({
+      paragraph: { initialMetadata: { source: 'import' } },
+    }).toExtend<DactyloOptions>()
   })
 })

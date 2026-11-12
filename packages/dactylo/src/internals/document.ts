@@ -1,3 +1,4 @@
+import type { PBM, TNM } from './augmentation'
 import {
   createParagraphBlock,
   isBlockWithInlineContent,
@@ -109,13 +110,20 @@ export interface DocumentState {
 }
 
 /** Creates an initial empty doc state for empty document. */
-export function createInitialEmptyDocumentState(): DocumentState {
+export function createInitialEmptyDocumentState(
+  opts: {
+    textMetadata?: TNM
+    paragraphMetadata?: PBM
+  } = {},
+): DocumentState {
   const block = createParagraphBlock({
     content: [
       createTextNode({
+        metadata: opts.textMetadata ?? {},
         text: '',
       }),
     ],
+    metadata: opts.paragraphMetadata ?? {},
     posKey: makeInitialPosition(),
   })
   return {
