@@ -56,6 +56,36 @@ import {
   snapshot,
 } from './utils/pipeline'
 
+function threeNumberedEditor() {
+  const editor = makeTypingEditor()
+  const leftoverId = firstInlineBlock(editor.getContext()).id
+  if (
+    !editor.blocks.commands.insertNumberedListItem({ pos: { type: 'start' } })
+  ) {
+    throw new Error('Expected an inserted numbered list item')
+  }
+  if (!editor.blocks.commands.delete(leftoverId)) {
+    throw new Error('Expected leftover paragraph to be deleted')
+  }
+  editor.selection.commands.focus()
+  typeText(editor, 'A')
+  hardBreak(editor)
+  typeText(editor, 'B')
+  hardBreak(editor)
+  typeText(editor, 'C')
+  return editor
+}
+
+function numberedMarkers(
+  editor: ReturnType<typeof makeTypingEditor>,
+): string[] {
+  const { state } = editor.getContext()
+  return state.blockOrderById.map((id) => {
+    const block = state.blocks.get(id)
+    return block && isNumberedListItemBlock(block) ? block.markerNumbering : ''
+  })
+}
+
 describe('Dactylo construction', () => {
   test('starts as an empty editable paragraph with no selection', () => {
     const editor = makeEditor()
@@ -645,6 +675,58 @@ describe('Dactylo blocks', () => {
 
     expect(blockTexts(editor.getContext())).toEqual(['Hello', '', 'Hello'])
     expect(nthInlineBlock(editor.getContext(), 2).id).toBe(paragraphId)
+  })
+
+  test('move reindexes a numbered run so 1. 2. 3. stays consecutive', () => {
+    const editor = threeNumberedEditor()
+    const lastId = nthInlineBlock(editor.getContext(), 2).id
+
+    expect(editor.blocks.commands.move(lastId, { type: 'start' })).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual(['C', 'A', 'B'])
+    expect(numberedMarkers(editor)).toEqual(['1.', '2.', '3.'])
+  })
+
+  test('move compactifies leftover numbered markers after splitting a run', () => {
+    const editor = threeNumberedEditor()
+    const paragraphId = editor.blocks.commands.insertParagraph({
+      pos: { type: 'end' },
+    })
+    if (!paragraphId) {
+      throw new Error('Expected an inserted paragraph')
+    }
+    const middleId = nthInlineBlock(editor.getContext(), 1).id
+
+    expect(
+      editor.blocks.commands.move(middleId, {
+        blockId: paragraphId,
+        type: 'after',
+      }),
+    ).toBe(true)
+
+    expect(nthInlineBlock(editor.getContext(), 2).__type).toBe('paragraph')
+    expect(blockTexts(editor.getContext())).toEqual(['A', 'C', '', 'B'])
+    expect(numberedMarkers(editor)).toEqual(['1.', '2.', '', '1.'])
+  })
+
+  test('move of a paragraph into a numbered run reindexes the split suffix', () => {
+    const editor = threeNumberedEditor()
+    const paragraphId = editor.blocks.commands.insertParagraph({
+      pos: { type: 'end' },
+    })
+    if (!paragraphId) {
+      throw new Error('Expected an inserted paragraph')
+    }
+
+    expect(
+      editor.blocks.commands.move(paragraphId, {
+        blockId: nthInlineBlock(editor.getContext(), 0).id,
+        type: 'after',
+      }),
+    ).toBe(true)
+
+    expect(nthInlineBlock(editor.getContext(), 1).__type).toBe('paragraph')
+    expect(numberedMarkers(editor)).toEqual(['1.', '', '2.', '3.'])
   })
 
   test('delete skips the first empty block and removes a later block', () => {

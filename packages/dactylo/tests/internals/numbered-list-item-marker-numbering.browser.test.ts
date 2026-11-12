@@ -248,22 +248,26 @@ describe('numbered list markerNumbering', () => {
 
   test('move last to start of 1. 2. 3. stays 1. 2. 3.', () => {
     const pipeline = threeNumbered()
-    pipeline.moveBlock(
-      nthInlineBlock(pipeline.context, 2).id,
-      { type: 'start' },
-      'user',
-    )
+    expect(
+      pipeline.moveBlock(
+        nthInlineBlock(pipeline.context, 2).id,
+        { type: 'start' },
+        'user',
+      ),
+    ).toBe(true)
 
     expect(markers(pipeline)).toEqual(['1.', '2.', '3.'])
   })
 
   test('move first to end of 1. 2. 3. stays 1. 2. 3.', () => {
     const pipeline = threeNumbered()
-    pipeline.moveBlock(
-      nthInlineBlock(pipeline.context, 0).id,
-      { type: 'end' },
-      'user',
-    )
+    expect(
+      pipeline.moveBlock(
+        nthInlineBlock(pipeline.context, 0).id,
+        { type: 'end' },
+        'user',
+      ),
+    ).toBe(true)
 
     expect(markers(pipeline)).toEqual(['1.', '2.', '3.'])
   })
@@ -276,7 +280,7 @@ describe('numbered list markerNumbering', () => {
     }
     const before = snapshot(pipeline.context)
 
-    pipeline.moveBlock(lastId, { type: 'start' }, 'user')
+    expect(pipeline.moveBlock(lastId, { type: 'start' }, 'user')).toBe(true)
     const after = snapshot(pipeline.context)
 
     expect(pipeline.context.state.blockOrderById).toEqual([
@@ -312,14 +316,16 @@ describe('numbered list markerNumbering', () => {
   test('move middle item after a paragraph compactifies the leftover run', () => {
     const pipeline = threeNumbered()
     pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
-    pipeline.moveBlock(
-      nthInlineBlock(pipeline.context, 1).id,
-      {
-        blockId: nthInlineBlock(pipeline.context, 3).id,
-        type: 'after',
-      },
-      'user',
-    )
+    expect(
+      pipeline.moveBlock(
+        nthInlineBlock(pipeline.context, 1).id,
+        {
+          blockId: nthInlineBlock(pipeline.context, 3).id,
+          type: 'after',
+        },
+        'user',
+      ),
+    ).toBe(true)
 
     expect(nthInlineBlock(pipeline.context, 2).__type).toBe('paragraph')
     expect(markers(pipeline)).toEqual(['1.', '2.', '', '1.'])
@@ -338,14 +344,16 @@ describe('numbered list markerNumbering', () => {
     expect(markers(pipeline)).toEqual(['2.', '3.', '4.'])
 
     pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
-    pipeline.moveBlock(
-      nthInlineBlock(pipeline.context, 0).id,
-      {
-        blockId: nthInlineBlock(pipeline.context, 3).id,
-        type: 'after',
-      },
-      'user',
-    )
+    expect(
+      pipeline.moveBlock(
+        nthInlineBlock(pipeline.context, 0).id,
+        {
+          blockId: nthInlineBlock(pipeline.context, 3).id,
+          type: 'after',
+        },
+        'user',
+      ),
+    ).toBe(true)
 
     expect(markers(pipeline)).toEqual(['3.', '4.', '', '1.'])
   })
@@ -353,14 +361,16 @@ describe('numbered list markerNumbering', () => {
   test('moving a paragraph into 1. 2. 3. splits with keep-start', () => {
     const pipeline = threeNumbered()
     pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
-    pipeline.moveBlock(
-      nthInlineBlock(pipeline.context, 3).id,
-      {
-        blockId: nthInlineBlock(pipeline.context, 0).id,
-        type: 'after',
-      },
-      'user',
-    )
+    expect(
+      pipeline.moveBlock(
+        nthInlineBlock(pipeline.context, 3).id,
+        {
+          blockId: nthInlineBlock(pipeline.context, 0).id,
+          type: 'after',
+        },
+        'user',
+      ),
+    ).toBe(true)
 
     expect(nthInlineBlock(pipeline.context, 1).__type).toBe('paragraph')
     expect(markers(pipeline)).toEqual(['1.', '', '2.', '3.'])
@@ -370,17 +380,19 @@ describe('numbered list markerNumbering', () => {
     const pipeline = threeNumbered()
     pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
     const paragraphId = nthInlineBlock(pipeline.context, 3).id
-    pipeline.moveBlock(
-      paragraphId,
-      {
-        blockId: nthInlineBlock(pipeline.context, 0).id,
-        type: 'after',
-      },
-      'user',
-    )
+    expect(
+      pipeline.moveBlock(
+        paragraphId,
+        {
+          blockId: nthInlineBlock(pipeline.context, 0).id,
+          type: 'after',
+        },
+        'user',
+      ),
+    ).toBe(true)
     expect(markers(pipeline)).toEqual(['1.', '', '2.', '3.'])
 
-    pipeline.moveBlock(paragraphId, { type: 'end' }, 'user')
+    expect(pipeline.moveBlock(paragraphId, { type: 'end' }, 'user')).toBe(true)
     expect(markers(pipeline)).toEqual(['1.', '2.', '3.', ''])
   })
 
@@ -395,14 +407,16 @@ describe('numbered list markerNumbering', () => {
     )
     expect(markers(pipeline)).toEqual(['i.', 'ii.', '1.'])
 
-    pipeline.moveBlock(
-      nthInlineBlock(pipeline.context, 2).id,
-      {
-        blockId: nthInlineBlock(pipeline.context, 0).id,
-        type: 'after',
-      },
-      'user',
-    )
+    expect(
+      pipeline.moveBlock(
+        nthInlineBlock(pipeline.context, 2).id,
+        {
+          blockId: nthInlineBlock(pipeline.context, 0).id,
+          type: 'after',
+        },
+        'user',
+      ),
+    ).toBe(true)
 
     expect(requireNumbered(nthInlineBlock(pipeline.context, 0))).toMatchObject({
       markerNumbering: 'i.',
