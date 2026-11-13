@@ -118,4 +118,12 @@ export class InlineBuffer {
 
     return true
   }
+
+  /** Releases the current inline buffer. */
+  release(): boolean {
+    this.#pointer = null
+    this.#bufferedText = null
+
+    return true
+  }
 }
