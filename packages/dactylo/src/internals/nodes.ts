@@ -8,7 +8,7 @@
  * oo give better mutation performances while staying memory-conscious.
  */
 
-import type { LBNM, LNM, MNM, TNM } from './augmentation'
+import type { LBNM, LNM, MNAD, MNM, TNM } from './augmentation'
 import { createBaseMarks, isMarksEqual } from './marks'
 import type { Marks } from './marks'
 import { generateRandomId } from './random-id'
@@ -82,13 +82,14 @@ export interface MentionNode extends INode<MNM> {
 
   /** Structural data of the artefact representing the mention. */
   readonly artefact: {
-    /** The  key to use when you want to refer to the mention in the code. */
+    /** Key referencing the mention in the code. */
     readonly key: string
 
-    /** The type to use when you want a specific rendering
-     * in UI libraries for the mention.
+    /**
+     * Additional data to store with the mention.
+     * Defaults to `{}`.
      */
-    readonly type: string
+    readonly data: MNAD
   }
 }
 
@@ -189,6 +190,27 @@ export function isLinkNode<N extends InlineNode>(
   node: N,
 ): node is Extract<N, { readonly __type: 'link' }> {
   return node.__type === 'link'
+}
+
+/** Creates a {@link MentionNode}. */
+export function createMentionNode(opts: {
+  artefact: {
+    key: string
+    data?: MNAD
+  }
+  metadata?: MNM
+}): MentionNode {
+  return {
+    __type: 'mention',
+    artefact: {
+      data: opts.artefact.data ?? {},
+      key: opts.artefact.key,
+    },
+    createdAt: new Date(),
+    id: generateNodeId(),
+    metadata: (opts.metadata ?? {}) as MNM,
+    updatedAt: null,
+  }
 }
 
 /** Whether the node is a mention node. */

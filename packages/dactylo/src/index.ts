@@ -36,6 +36,7 @@ export type {
   LBNM,
   LNM,
   MNM,
+  MNAD,
   PBM,
   QBM,
   TNM,

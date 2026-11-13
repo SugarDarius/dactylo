@@ -42,7 +42,7 @@
  * }
  * ```
  */
-import type { Metadata } from './types'
+import type { JsonValue, Metadata } from './types'
 
 declare global {
   /**
@@ -66,6 +66,7 @@ export type DactyloExtendableTypes =
   | 'LinkNodeMetadata'
   | 'LineBreakNodeMetadata'
   | 'MentionNodeMetadata'
+  | 'MentionNodeArtefactData'
 
 /** Hover message shown when a {@link DactyloTypes} override for `K` is invalid. */
 export type MakeErrorString<
@@ -173,4 +174,11 @@ export type MNM = GetOverride<
   'MentionNodeMetadata',
   Metadata,
   'is not a valid `Metadata` value'
+>
+
+/** Extended type for {@link MentionNode}'s `artefact.data` */
+export type MNAD = GetOverride<
+  'MentionNodeArtefactData',
+  JsonValue,
+  'is not a valid `JsonValue` value'
 >
