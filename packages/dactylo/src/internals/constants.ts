@@ -29,14 +29,14 @@ export const DEFAULT_MENTIONS_ENABLED = true as const
 /** Default mention character. */
 export const DEFAULT_MENTION_CHARACTER = '@' as const
 
-/** Character class (`space`) for “safe” text before opening a typed mention buffer.. */
-export const MENTION_BUFFER_BEFORE_CHAR_OPENER = /\s/u
-
 /** Default slash command enabled. */
 export const DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED = true as const
 
 /** Default slash command character. */
 export const DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER = '/' as const
+
+/** Character class (`space`) for “safe” text before opening a typed mention buffer.. */
+export const INLINE_BUFFER_BEFORE_CHAR_OPENER = /\s/u
 
 /** Default autolink detection enabled. */
 export const DEFAULT_AUTOLINK_ENABLED = true as const

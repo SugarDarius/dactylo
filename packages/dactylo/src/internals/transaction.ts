@@ -20,7 +20,7 @@ import {
 } from './constants'
 import {
   createInitialEditorContext,
-  findMentionPointerAtCursor,
+  findInlineBufferPointerAtCursor,
 } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
@@ -28,6 +28,7 @@ import type { Observable } from './event-source'
 import { EventSource } from './event-source'
 import { HistoryStack } from './history'
 import type { HistoryEvent, HistoryStackOptions } from './history'
+import { InlineCommandTriggerBuffer } from './inline-command-trigger-buffer'
 import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
 import { MentionBuffer } from './mention-buffer'
@@ -525,6 +526,9 @@ export class TransactionPipeline {
   /** Inline command trigger configuration. */
   readonly #inlineCommandTrigger: TransactionPipelineInlineCommandTriggerConfig
 
+  /** Inline command trigger buffer instance. */
+  readonly #inlineCommandTriggerBuffer: InlineCommandTriggerBuffer
+
   /** Autolink configuration. */
   readonly #autolink: TransactionPipelineAutolinkConfig
 
@@ -589,6 +593,10 @@ export class TransactionPipeline {
     })
 
     this.#inlineCommandTrigger = options.inlineCommandTrigger
+    this.#inlineCommandTriggerBuffer = new InlineCommandTriggerBuffer({
+      debug: this.#debug,
+      enabled: this.#inlineCommandTrigger.enabled,
+    })
 
     this.#operationsEngine = new OperationsEngine({
       ...options.engine,
@@ -946,6 +954,7 @@ export class TransactionPipeline {
                 this.#context,
                 transferredData,
               )
+
               if (intent === null) {
                 return false
               }
@@ -957,6 +966,9 @@ export class TransactionPipeline {
                 pushToHistory: !skipHistory,
                 source: 'user',
               })
+
+              // @todo: handle mention buffer buffering
+              // @todo: handle inline command trigger buffer buffering
 
               return true
             }
@@ -1073,12 +1085,20 @@ export class TransactionPipeline {
           })
 
           /** Adds typed text to the mention buffer. */
-          if (this.#mentionBuffer.isBuffering) {
+          if (
+            this.#mentionBuffer.isBuffering &&
+            !this.#inlineCommandTriggerBuffer.isBuffering
+          ) {
             this.#mentionBuffer.appendTypedText(text)
-          }
-          // @todo: handle slash command trigger buffering
-          else if (this.#isMentionIntent(text)) {
-            const pointer = findMentionPointerAtCursor(this.#context)
+            return true
+          } else if (
+            this.#inlineCommandTriggerBuffer.isBuffering &&
+            !this.#mentionBuffer.isBuffering
+          ) {
+            this.#inlineCommandTriggerBuffer.appendTypedText(text)
+            return true
+          } else if (this.#isMentionIntent(text)) {
+            const pointer = findInlineBufferPointerAtCursor(this.#context)
 
             /**
              * Invariant UX:
@@ -1087,12 +1107,22 @@ export class TransactionPipeline {
              */
             if (pointer !== null) {
               this.#mentionBuffer.start(pointer)
+              return true
             }
           }
           /** Applies inline command trigger buffering when a inline command trigger is being typed. */
           else if (this.#isInlineCommandTriggerIntent(text)) {
-            // @todo: apply inline composition ops built for inline command trigger
-            warn('inline command trigger buffering is not implemented yet.')
+            const pointer = findInlineBufferPointerAtCursor(this.#context)
+
+            /**
+             * Invariant UX:
+             * An inline command trigger buffer is only started when the cursor is at the start of
+             * a {@link TextNode} or immediately after a whitespace character.
+             */
+            if (pointer !== null) {
+              this.#inlineCommandTriggerBuffer.start(pointer)
+              return true
+            }
           } else {
             /**
              * Applies built ops when a markdown shortcut is detected.
@@ -1116,6 +1146,8 @@ export class TransactionPipeline {
                   pushToHistory: true,
                   source: 'user',
                 })
+
+                return true
               }
             }
 
@@ -1144,6 +1176,8 @@ export class TransactionPipeline {
                   pushToHistory: true,
                   source: 'user',
                 })
+
+                return true
               }
             }
           }

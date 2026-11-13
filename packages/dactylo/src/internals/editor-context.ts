@@ -1,7 +1,7 @@
 import type { PBM, TNM } from './augmentation'
 import { findNodeInBlockWithInlineContent, touchBlock } from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
-import { MENTION_BUFFER_BEFORE_CHAR_OPENER } from './constants'
+import { INLINE_BUFFER_BEFORE_CHAR_OPENER } from './constants'
 import {
   collectTextSpansInRange,
   createInitialEmptyDocumentState,
@@ -215,10 +215,10 @@ export function isMarkActiveInContext(
 }
 
 /**
- * Whether a {@link CursorSelection} is in a {@link TextNode} to start a mention buffer.
+ * Whether a {@link CursorSelection} is in a {@link TextNode} to start an inline buffer.
  * Start of the {@link TextNode}, or a whitespace character immediately before the caret.
  */
-export function findMentionPointerAtCursor(
+export function findInlineBufferPointerAtCursor(
   context: EditorContext,
 ): { blockId: BlockId; nodeId: NodeId; triggerOffset: number } | null {
   const { selection, state } = context
@@ -239,7 +239,7 @@ export function findMentionPointerAtCursor(
 
     if (
       previous === undefined ||
-      !MENTION_BUFFER_BEFORE_CHAR_OPENER.test(previous)
+      !INLINE_BUFFER_BEFORE_CHAR_OPENER.test(previous)
     ) {
       return null
     }
