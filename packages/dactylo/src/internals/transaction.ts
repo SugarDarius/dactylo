@@ -1121,7 +1121,7 @@ export class TransactionPipeline {
           }
 
           /** Applies mentions buffering when a mention is being typed. */
-          if (this.#isMentionIntent(text)) {
+          if (this.#isMentionIntent(text) && !this.#mentionBuffer.isBuffering) {
             const pointer = findMentionPointerAtCursor(this.#context)
 
             /**

@@ -12,6 +12,9 @@ export interface MentionPointer {
 
   /** Offset inside the {@link TextNode} where the mention character is located. */
   readonly triggerOffset: number
+
+  /** Text that's being typed into the mention buffer. */
+  readonly bufferedText: string
 }
 
 /** Options for constructing a {@link MentionBuffer}. */
@@ -40,6 +43,11 @@ export class MentionBuffer {
     this.#pointer = null
   }
 
+  /** Whether a mention is currently being buffered. */
+  get isBuffering(): boolean {
+    return this.#enabled && this.#pointer !== null
+  }
+
   /** Opens a pointer at the caret's mention start. */
   start(input: {
     blockId: BlockId
@@ -54,7 +62,7 @@ export class MentionBuffer {
       return false
     }
 
-    this.#pointer = { ...input }
+    this.#pointer = { ...input, bufferedText: '' }
 
     return true
   }

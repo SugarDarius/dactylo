@@ -12,9 +12,8 @@ import {
 import type { DocumentState } from './document'
 import { isMarkEnabled } from './marks'
 import type { MarkKey } from './marks'
-import type { MentionPointer } from './mention-buffer'
 import { isInlineNodeWithEditableText, isTextNode } from './nodes'
-import type { InlineNode } from './nodes'
+import type { InlineNode, NodeId } from './nodes'
 import { isCursorSelection, isSelectionActive } from './selection'
 import type { Selection } from './selection'
 
@@ -221,7 +220,7 @@ export function isMarkActiveInContext(
  */
 export function findMentionPointerAtCursor(
   context: EditorContext,
-): MentionPointer | null {
+): { blockId: BlockId; nodeId: NodeId; triggerOffset: number } | null {
   const { selection, state } = context
   if (!isCursorSelection(selection)) {
     return null
