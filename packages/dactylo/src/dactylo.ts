@@ -1296,7 +1296,6 @@ export type DactyloOptions = DactyloBaseOptions &
   // oxlint-disable-next-line typescript/ban-types typescript/no-empty-object-type
   WithUnless<'lineBreak', {}, 'initialMetadata', LBNM> &
   /** Configuration for mentions. */
-  // oxlint-disable-next-line typescript/ban-types typescript/no-empty-object-type
   WithUnless<
     'mentions',
     {
