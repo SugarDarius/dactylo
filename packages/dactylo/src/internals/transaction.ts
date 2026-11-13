@@ -944,6 +944,19 @@ export class TransactionPipeline {
         /** In any case we prevent native browser behavior as we want full control over paste. */
         prevent()
 
+        /**
+         * Invariant UX (debatable):
+         * When pasting content from clipboard, we don't allow it
+         * when a mention or inline command trigger buffer is active.
+         */
+        if (
+          inputType === 'insertFromPaste' &&
+          (this.#mentionBuffer.isBuffering ||
+            this.#inlineCommandTriggerBuffer.isBuffering)
+        ) {
+          return false
+        }
+
         const transferredData = readTransferredData(event.dataTransfer)
         if (transferredData !== null) {
           // @todo: handle other clipboard data types
@@ -966,9 +979,6 @@ export class TransactionPipeline {
                 pushToHistory: !skipHistory,
                 source: 'user',
               })
-
-              // @todo: handle mention buffer buffering
-              // @todo: handle inline command trigger buffer buffering
 
               return true
             }
