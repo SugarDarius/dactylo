@@ -21,9 +21,9 @@ import {
   DEFAULT_AUTOLINK_ENABLED,
   DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
   DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
+  DEFAULT_COMMAND_TRIGGER_CHARACTER,
+  DEFAULT_COMMAND_TRIGGER_ENABLED,
   DEFAULT_HEADING_PLACEHOLDER,
-  DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
-  DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
   DEFAULT_LINK_OPEN_ON_CLICK_ENABLED,
   DEFAULT_LOCALES,
   DEFAULT_MARKDOWN_SHORTCUTS_ENABLED,
@@ -97,16 +97,16 @@ export interface DactyloStaticConfig {
   /** The locales used for writing and reading text. */
   readonly locales: Intl.LocalesArgument
 
-  /** Configuration for inline command trigger. */
-  readonly inlineCommandTrigger: {
+  /** Configuration for command trigger. */
+  readonly commandTrigger: {
     /**
-     * Whether to enable inline command trigger.
+     * Whether to enable command trigger.
      * Defaults to `true`
      */
     readonly enabled: boolean
 
     /**
-     * The character to trigger an inline command.
+     * The character to trigger a command.
      * Defaults to `/`
      */
     readonly character: string
@@ -1162,16 +1162,16 @@ export interface DactyloBaseOptions {
     readonly enabled?: boolean
   }
 
-  /** Configuration for inline command trigger. */
-  readonly inlineCommandTrigger?: {
+  /** Configuration for command trigger. */
+  readonly commandTrigger?: {
     /**
-     * Whether to enable inline command trigger.
+     * Whether to enable command trigger.
      * Defaults to `true`
      */
     readonly enabled?: boolean
 
     /**
-     * The character to trigger an inline command.
+     * The character to trigger a command.
      * Defaults to `/`
      */
     readonly character?: string
@@ -1396,25 +1396,20 @@ export class Dactylo {
     }, 'Mention character must be a single non-empty character')
 
     validateConfigOption(() => {
-      if (options.inlineCommandTrigger?.character !== undefined) {
-        return options.inlineCommandTrigger.character.length === 1
+      if (options.commandTrigger?.character !== undefined) {
+        return options.commandTrigger.character.length === 1
       }
 
       return true
-    }, 'Inline command trigger character must be a single non-empty character')
+    }, 'Command trigger character must be a single non-empty character')
 
     validateConfigOption(() => {
-      if (
-        options.mentions?.character &&
-        options.inlineCommandTrigger?.character
-      ) {
-        return (
-          options.mentions.character !== options.inlineCommandTrigger.character
-        )
+      if (options.mentions?.character && options.commandTrigger?.character) {
+        return options.mentions.character !== options.commandTrigger.character
       }
 
       return true
-    }, 'Mention and inline command trigger characters must be different')
+    }, 'Mention and command trigger characters must be different')
 
     this.#editable = options.editable ?? true
     this.#debug = options.debug ?? false
@@ -1437,6 +1432,13 @@ export class Dactylo {
           options.checkboxList?.placeholder ??
           DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
       },
+      commandTrigger: {
+        character:
+          options.commandTrigger?.character ??
+          DEFAULT_COMMAND_TRIGGER_CHARACTER,
+        enabled:
+          options.commandTrigger?.enabled ?? DEFAULT_COMMAND_TRIGGER_ENABLED,
+      },
       divider: {
         initialMetadata: options.divider?.initialMetadata ?? ({} as DBM),
       },
@@ -1444,14 +1446,6 @@ export class Dactylo {
         initialMetadata: options.heading?.initialMetadata ?? ({} as HBM),
         placeholder:
           options.heading?.placeholder ?? DEFAULT_HEADING_PLACEHOLDER,
-      },
-      inlineCommandTrigger: {
-        character:
-          options.inlineCommandTrigger?.character ??
-          DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
-        enabled:
-          options.inlineCommandTrigger?.enabled ??
-          DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
       },
       lineBreak: {
         initialMetadata: options.lineBreak?.initialMetadata ?? ({} as LBNM),
@@ -1498,6 +1492,10 @@ export class Dactylo {
         enabled: this.#config.autolink.enabled,
       },
       batch: options.pipeline?.batch,
+      commandTrigger: {
+        character: this.#config.commandTrigger.character,
+        enabled: this.#config.commandTrigger.enabled,
+      },
       debug: this.#debug,
       engine: {
         locales,
@@ -1515,10 +1513,6 @@ export class Dactylo {
         paragraph: this.#config.paragraph.initialMetadata,
         quote: this.#config.quote.initialMetadata,
         text: this.#config.text.initialMetadata,
-      },
-      inlineCommandTrigger: {
-        character: this.#config.inlineCommandTrigger.character,
-        enabled: this.#config.inlineCommandTrigger.enabled,
       },
       markdown: {
         enabled: this.#config.markdown.enabled,

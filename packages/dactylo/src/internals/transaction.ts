@@ -13,6 +13,7 @@ import type {
 } from './augmentation'
 import type { BlockId, HeadingBlock, NumberedListItemBlock } from './blocks'
 import { readTransferredData } from './clipboard'
+import { CommandTriggerBuffer } from './command-trigger-buffer'
 import { warn, warnOnceIf } from './console'
 import {
   DEFAULT_BATCH_MAX_SIZE,
@@ -28,7 +29,6 @@ import type { Observable } from './event-source'
 import { EventSource } from './event-source'
 import { HistoryStack } from './history'
 import type { HistoryEvent, HistoryStackOptions } from './history'
-import { InlineCommandTriggerBuffer } from './inline-command-trigger-buffer'
 import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
 import { MentionBuffer } from './mention-buffer'
@@ -388,12 +388,12 @@ export interface TransactionPipelineOptions {
     readonly character: string
   }
 
-  /** Configuration for inline command trigger. */
-  readonly inlineCommandTrigger: {
-    /** Whether to enable inline command trigger. */
+  /** Configuration for command trigger. */
+  readonly commandTrigger: {
+    /** Whether to enable command trigger. */
     readonly enabled: boolean
 
-    /** Character to trigger an inline command. */
+    /** Character to trigger a command. */
     readonly character: string
   }
 
@@ -425,12 +425,12 @@ export interface TransactionPipelineMentionsConfig {
   readonly character: string
 }
 
-/** Configuration for inline command trigger. */
-export interface TransactionPipelineInlineCommandTriggerConfig {
-  /** Whether to enable inline command trigger. */
+/** Configuration for command trigger. */
+export interface TransactionPipelineCommandTriggerConfig {
+  /** Whether to enable command trigger. */
   readonly enabled: boolean
 
-  /** Character to use for inline command trigger. */
+  /** Character to use for command trigger. */
   readonly character: string
 }
 
@@ -523,11 +523,11 @@ export class TransactionPipeline {
   /** Mention buffer instance. */
   readonly #mentionBuffer: MentionBuffer
 
-  /** Inline command trigger configuration. */
-  readonly #inlineCommandTrigger: TransactionPipelineInlineCommandTriggerConfig
+  /** Command trigger configuration. */
+  readonly #commandTrigger: TransactionPipelineCommandTriggerConfig
 
-  /** Inline command trigger buffer instance. */
-  readonly #inlineCommandTriggerBuffer: InlineCommandTriggerBuffer
+  /** Command trigger buffer instance. */
+  readonly #commandTriggerBuffer: CommandTriggerBuffer
 
   /** Autolink configuration. */
   readonly #autolink: TransactionPipelineAutolinkConfig
@@ -592,10 +592,10 @@ export class TransactionPipeline {
       enabled: this.#mentions.enabled,
     })
 
-    this.#inlineCommandTrigger = options.inlineCommandTrigger
-    this.#inlineCommandTriggerBuffer = new InlineCommandTriggerBuffer({
+    this.#commandTrigger = options.commandTrigger
+    this.#commandTriggerBuffer = new CommandTriggerBuffer({
       debug: this.#debug,
-      enabled: this.#inlineCommandTrigger.enabled,
+      enabled: this.#commandTrigger.enabled,
     })
 
     this.#operationsEngine = new OperationsEngine({
@@ -642,14 +642,14 @@ export class TransactionPipeline {
     return text === this.#mentions.character
   }
 
-  /** Whether an inline command is being typed. */
-  #isInlineCommandTriggerIntent(text: string): boolean {
-    if (!this.#inlineCommandTrigger.enabled) {
-      warnOnceIf(this.#debug, 'Inline command trigger is not enabled.')
+  /** Whether a command trigger is being typed. */
+  #isCommandTriggerIntent(text: string): boolean {
+    if (!this.#commandTrigger.enabled) {
+      warnOnceIf(this.#debug, 'Command trigger is not enabled.')
       return false
     }
 
-    return text === this.#inlineCommandTrigger.character
+    return text === this.#commandTrigger.character
   }
 
   /** Notifies the history stack changes. */
@@ -947,12 +947,12 @@ export class TransactionPipeline {
         /**
          * Invariant UX (debatable):
          * When pasting content from clipboard, we don't allow it
-         * when a mention or inline command trigger buffer is active.
+         * when a mention or command trigger buffer is active.
          */
         if (
           inputType === 'insertFromPaste' &&
           (this.#mentionBuffer.isBuffering ||
-            this.#inlineCommandTriggerBuffer.isBuffering)
+            this.#commandTriggerBuffer.isBuffering)
         ) {
           return false
         }
@@ -1097,15 +1097,15 @@ export class TransactionPipeline {
           /** Adds typed text to the mention buffer. */
           if (
             this.#mentionBuffer.isBuffering &&
-            !this.#inlineCommandTriggerBuffer.isBuffering
+            !this.#commandTriggerBuffer.isBuffering
           ) {
             this.#mentionBuffer.appendTypedText(text)
             return true
           } else if (
-            this.#inlineCommandTriggerBuffer.isBuffering &&
+            this.#commandTriggerBuffer.isBuffering &&
             !this.#mentionBuffer.isBuffering
           ) {
-            this.#inlineCommandTriggerBuffer.appendTypedText(text)
+            this.#commandTriggerBuffer.appendTypedText(text)
             return true
           } else if (this.#isMentionIntent(text)) {
             const pointer = findInlineBufferPointerAtCursor(this.#context)
@@ -1120,17 +1120,17 @@ export class TransactionPipeline {
               return true
             }
           }
-          /** Applies inline command trigger buffering when a inline command trigger is being typed. */
-          else if (this.#isInlineCommandTriggerIntent(text)) {
+          /** Applies command trigger buffering when a command trigger is being typed. */
+          else if (this.#isCommandTriggerIntent(text)) {
             const pointer = findInlineBufferPointerAtCursor(this.#context)
 
             /**
              * Invariant UX:
-             * An inline command trigger buffer is only started when the cursor is at the start of
+             * A command trigger buffer is only started when the cursor is at the start of
              * a {@link TextNode} or immediately after a whitespace character.
              */
             if (pointer !== null) {
-              this.#inlineCommandTriggerBuffer.start(pointer)
+              this.#commandTriggerBuffer.start(pointer)
               return true
             }
           } else {

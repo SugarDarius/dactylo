@@ -194,7 +194,7 @@ export function Editor() {
 | Markdown inline shortcuts                        | 🚧 **In Progress** | Use Build-in markdown inline shortcuts for headings, divider, links, lists and marks    |
 | Autolink detection                               | ✅ **Done**        | Automatically transform links from pastes into inline nodes (configurable)              |
 | Mentions (`@…`)                                  | 🚧 **In Progress** | Enables build-in inline composition for inserting mentions (configurable)               |
-| Inline command trigger (`/…`)                    | 🚧 **In Progress** | Enables build-in inline composition for triggering external commands (configurable)     |
+| Command trigger (`/…`)                           | 🚧 **In Progress** | Enables build-in inline composition for triggering external commands (configurable)     |
 | IME composition                                  | 🚧 **In Progress** | Build-in IME composition management                                                     |
 | Clipboard (paste / cut / copy)                   | 🚧 **In Progress** | Clipboard events management                                                             |
 | Browser native shortcuts                         | 🚧 **In Progress** | Shortcuts management like `mod+z`, `mod+a`                                              |

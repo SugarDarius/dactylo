@@ -15,9 +15,9 @@ import {
   DEFAULT_AUTOLINK_ENABLED,
   DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
   DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
+  DEFAULT_COMMAND_TRIGGER_CHARACTER,
+  DEFAULT_COMMAND_TRIGGER_ENABLED,
   DEFAULT_HEADING_PLACEHOLDER,
-  DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
-  DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
   DEFAULT_LINK_OPEN_ON_CLICK_ENABLED,
   DEFAULT_LOCALES,
   DEFAULT_MARKDOWN_SHORTCUTS_ENABLED,
@@ -118,9 +118,9 @@ describe('Dactylo construction', () => {
         initialMetadata: {},
         placeholder: DEFAULT_HEADING_PLACEHOLDER,
       },
-      inlineCommandTrigger: {
-        character: DEFAULT_INLINE_COMMAND_TRIGGER_CHARACTER,
-        enabled: DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED,
+      commandTrigger: {
+        character: DEFAULT_COMMAND_TRIGGER_CHARACTER,
+        enabled: DEFAULT_COMMAND_TRIGGER_ENABLED,
       },
       lineBreak: { initialMetadata: {} },
       link: {
@@ -152,7 +152,7 @@ describe('Dactylo construction', () => {
       autolink: { enabled: false },
       bulletedList: { placeholder: 'Item' },
       heading: { placeholder: 'Title' },
-      inlineCommandTrigger: { character: '!', enabled: false },
+      commandTrigger: { character: '!', enabled: false },
       link: { openOnClick: false },
       locales: 'fr-FR',
       markdown: { enabled: false },
@@ -171,7 +171,7 @@ describe('Dactylo construction', () => {
       },
       divider: { initialMetadata: {} },
       heading: { initialMetadata: {}, placeholder: 'Title' },
-      inlineCommandTrigger: { character: '!', enabled: false },
+      commandTrigger: { character: '!', enabled: false },
       lineBreak: { initialMetadata: {} },
       link: { initialMetadata: {}, openOnClick: false },
       locales: 'fr-FR',
@@ -203,29 +203,25 @@ describe('Dactylo construction', () => {
     )
   })
 
-  test('throws when the inline command trigger character is not a single character', () => {
-    expect(() =>
-      makeEditor({ inlineCommandTrigger: { character: '//' } }),
-    ).toThrow(
-      'Inline command trigger character must be a single non-empty character',
+  test('throws when the command trigger character is not a single character', () => {
+    expect(() => makeEditor({ commandTrigger: { character: '//' } })).toThrow(
+      'Command trigger character must be a single non-empty character',
     )
   })
 
-  test('throws when the inline command trigger character is empty', () => {
-    expect(() =>
-      makeEditor({ inlineCommandTrigger: { character: '' } }),
-    ).toThrow(
-      'Inline command trigger character must be a single non-empty character',
+  test('throws when the command trigger character is empty', () => {
+    expect(() => makeEditor({ commandTrigger: { character: '' } })).toThrow(
+      'Command trigger character must be a single non-empty character',
     )
   })
 
-  test('throws when mention and inline command trigger characters are the same', () => {
+  test('throws when mention and command trigger characters are the same', () => {
     expect(() =>
       makeEditor({
-        inlineCommandTrigger: { character: '#' },
+        commandTrigger: { character: '#' },
         mentions: { character: '#' },
       }),
-    ).toThrow('Mention and inline command trigger characters must be different')
+    ).toThrow('Mention and command trigger characters must be different')
   })
 
   test('stores paragraph and text initialMetadata on config and the empty document', () => {

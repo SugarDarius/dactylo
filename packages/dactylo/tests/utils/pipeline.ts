@@ -78,9 +78,9 @@ export function makePipeline(
 ): TransactionPipeline {
   return new TransactionPipeline({
     autolink: { enabled: opts.autolink ?? false },
+    commandTrigger: { character: '/', enabled: false },
     debug: false,
     engine: { locales: 'en-US' },
-    inlineCommandTrigger: { character: '/', enabled: false },
     markdown: { enabled: opts.markdown ?? true },
     mentions: { character: '@', enabled: false },
   })

@@ -25,6 +25,24 @@ export interface InlineBufferOptions {
   readonly enabled: boolean
 }
 
+/**
+ * Holds the in-progress query after a typed inline opener (ex. `@` mention, `/` command trigger, …).
+ *
+ * Purpose:
+ * When the user types an opener at a safe caret (start of a {@link TextNode},
+ * or immediately after whitespace), this buffer records that caret as an
+ * {@link InlineBufferPointer} and then accumulates the characters typed after
+ * the opener. {@link MentionBuffer} and {@link CommandTriggerBuffer}
+ * share this lifecycle so mentions and slash commands stay mutually exclusive.
+ *
+ * Rationale:
+ * The opener is still inserted into the document as ordinary text. “The user
+ * is composing a mention” is not a document fact — it is ephemeral UX state.
+ * Re-scanning the node on every keystroke would treat incidental `@` / `/`
+ * (emails, paths) as queries, and would ignore the open-position invariant.
+ * Keeping the query here lets a picker read `bufferedText` without parsing the
+ * AST, and `abort` / `release` can drop the pointer without mutating the document.
+ */
 export class InlineBuffer {
   /** Name of the inline buffer. */
   readonly #name: string
