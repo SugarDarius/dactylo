@@ -1072,56 +1072,12 @@ export class TransactionPipeline {
             source: 'user',
           })
 
-          /**
-           * Applies built ops when a markdown shortcut is detected.
-           *  → User typed `space` at the end of `##`, `-`, `>`, …
-           *  → User typed `*`, ```, `_`, …
-           */
-          if (this.#markdown.enabled) {
-            const mdIntent = this.#operationsEngine.buildMarkdownShortcutOps(
-              this.#context,
-              text,
-            )
-
-            if (mdIntent !== null) {
-              const { ops: mdOps, label: mdLabel } = mdIntent
-              this.#commit(mdOps, {
-                label: transactionPolicyLabel('input', 'digest-event', mdLabel),
-                pushToHistory: true,
-                source: 'user',
-              })
-            }
+          /** Adds typed text to the mention buffer. */
+          if (this.#mentionBuffer.isBuffering) {
+            this.#mentionBuffer.appendTypedText(text)
           }
-
-          /**
-           * Applies ops built when {@link INLINE_DETECTOR_TRIGGER_CHARACTER} is typed for autolink detection.
-           *  → User typed `space` at the end of a recognized link.
-           */
-          if (
-            this.#autolinkEnabled() &&
-            text === INLINE_DETECTOR_TRIGGER_CHARACTER
-          ) {
-            const autolinkIntent = this.#operationsEngine.buildAutolinkOps(
-              this.#context,
-              text,
-            )
-
-            if (autolinkIntent !== null) {
-              const { ops: autolinkOps, label: autolinkLabel } = autolinkIntent
-              this.#commit(autolinkOps, {
-                label: transactionPolicyLabel(
-                  'input',
-                  'digest-event',
-                  autolinkLabel,
-                ),
-                pushToHistory: true,
-                source: 'user',
-              })
-            }
-          }
-
-          /** Applies mentions buffering when a mention is being typed. */
-          if (this.#isMentionIntent(text) && !this.#mentionBuffer.isBuffering) {
+          // @todo: handle slash command trigger buffering
+          else if (this.#isMentionIntent(text)) {
             const pointer = findMentionPointerAtCursor(this.#context)
 
             /**
@@ -1133,11 +1089,63 @@ export class TransactionPipeline {
               this.#mentionBuffer.start(pointer)
             }
           }
-
           /** Applies inline command trigger buffering when a inline command trigger is being typed. */
-          if (this.#isInlineCommandTriggerIntent(text)) {
+          else if (this.#isInlineCommandTriggerIntent(text)) {
             // @todo: apply inline composition ops built for inline command trigger
             warn('inline command trigger buffering is not implemented yet.')
+          } else {
+            /**
+             * Applies built ops when a markdown shortcut is detected.
+             *  → User typed `space` at the end of `##`, `-`, `>`, …
+             *  → User typed `*`, ```, `_`, …
+             */
+            if (this.#markdown.enabled) {
+              const mdIntent = this.#operationsEngine.buildMarkdownShortcutOps(
+                this.#context,
+                text,
+              )
+
+              if (mdIntent !== null) {
+                const { ops: mdOps, label: mdLabel } = mdIntent
+                this.#commit(mdOps, {
+                  label: transactionPolicyLabel(
+                    'input',
+                    'digest-event',
+                    mdLabel,
+                  ),
+                  pushToHistory: true,
+                  source: 'user',
+                })
+              }
+            }
+
+            /**
+             * Applies ops built when {@link INLINE_DETECTOR_TRIGGER_CHARACTER} is typed for autolink detection.
+             *  → User typed `space` at the end of a recognized link.
+             */
+            if (
+              this.#autolinkEnabled() &&
+              text === INLINE_DETECTOR_TRIGGER_CHARACTER
+            ) {
+              const autolinkIntent = this.#operationsEngine.buildAutolinkOps(
+                this.#context,
+                text,
+              )
+
+              if (autolinkIntent !== null) {
+                const { ops: autolinkOps, label: autolinkLabel } =
+                  autolinkIntent
+                this.#commit(autolinkOps, {
+                  label: transactionPolicyLabel(
+                    'input',
+                    'digest-event',
+                    autolinkLabel,
+                  ),
+                  pushToHistory: true,
+                  source: 'user',
+                })
+              }
+            }
           }
 
           return true

@@ -12,9 +12,6 @@ export interface MentionPointer {
 
   /** Offset inside the {@link TextNode} where the mention character is located. */
   readonly triggerOffset: number
-
-  /** Text that's being typed into the mention buffer. */
-  readonly bufferedText: string
 }
 
 /** Options for constructing a {@link MentionBuffer}. */
@@ -36,16 +33,33 @@ export class MentionBuffer {
   /** Pointer at the mention character that opened the current buffer. */
   #pointer: MentionPointer | null
 
+  /** Text that's being typed into the mention buffer. */
+  #bufferedText: string | null
+
   constructor(options: MentionBufferOptions) {
     this.#debug = options.debug
     this.#enabled = options.enabled
 
     this.#pointer = null
+    this.#bufferedText = null
   }
 
   /** Whether a mention is currently being buffered. */
   get isBuffering(): boolean {
     return this.#enabled && this.#pointer !== null
+  }
+
+  /** Returns the text that's being typed into the mention buffer. */
+  get typedText(): string | null {
+    if (!this.#enabled || this.#pointer === null) {
+      warnOnceIf(
+        this.#debug,
+        '`MentionBuffer.typedText()` called but no mention is being buffered',
+      )
+      return null
+    }
+
+    return this.#bufferedText
   }
 
   /** Opens a pointer at the caret's mention start. */
@@ -62,7 +76,23 @@ export class MentionBuffer {
       return false
     }
 
-    this.#pointer = { ...input, bufferedText: '' }
+    this.#pointer = { ...input }
+    this.#bufferedText = ''
+
+    return true
+  }
+
+  /** Appends text to the current mention buffer. */
+  appendTypedText(text: string): boolean {
+    if (!this.#enabled || this.#pointer === null) {
+      warnOnceIf(
+        this.#debug,
+        '`MentionBuffer.appendBufferedText()` called but no mention is being buffered',
+      )
+      return false
+    }
+
+    this.#bufferedText += text
 
     return true
   }
