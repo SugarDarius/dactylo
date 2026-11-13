@@ -39,8 +39,12 @@ export type {
   ComposerCheckboxListItemBlockProps,
   ComposerDividerBlockProps,
   ComposerEditableProps,
+  ComposerHeadingBlockProps,
+  ComposerLineBreakNodeProps,
   ComposerLinkNodeProps,
+  ComposerNumberedListItemBlockProps,
   ComposerParagraphBlockProps,
+  ComposerQuoteBlockProps,
   ComposerRootProps,
   ComposerTextNodeProps,
 } from './types'

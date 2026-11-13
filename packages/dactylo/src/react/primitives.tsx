@@ -842,15 +842,16 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
 ComposerEditable.displayName = COMPOSER_EDITABLE_NAME
 
 export {
-  ComposerRoot as Root,
+  ComposerBulletListItemBlock as BulletListItemBlock,
+  ComposerCheckboxListItemBlock as CheckboxListItemBlock,
   ComposerEditable as Editable,
+  ComposerDividerBlock as DividerBlock,
+  ComposerHeadingBlock as HeadingBlock,
+  ComposerLineBreakNode as LineBreakNode,
+  ComposerLinkNode as LinkNode,
+  ComposerNumberedListItemBlock as NumberedListItemBlock,
   ComposerParagraphBlock as ParagraphBlock,
   ComposerQuoteBlock as QuoteBlock,
-  ComposerHeadingBlock as HeadingBlock,
-  ComposerBulletListItemBlock as BulletListItemBlock,
-  ComposerNumberedListItemBlock as NumberedListItemBlock,
-  ComposerCheckboxListItemBlock as CheckboxListItemBlock,
-  ComposerDividerBlock as DividerBlock,
+  ComposerRoot as Root,
   ComposerTextNode as TextNode,
-  ComposerLinkNode as LinkNode,
 }
