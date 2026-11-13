@@ -68,6 +68,18 @@ export type OptionalTuple<T extends unknown[]> = { [K in keyof T]?: T[K] }
 export type OptionalTupleUnless<T extends unknown[], V> =
   Record<string, never> extends V ? OptionalTuple<T> : T
 
+/** Any JSON valid primitive value. */
+export type JsonPrimitive = string | number | boolean | null | undefined
+
+/** Any JSON valid object value. */
+export type JsonObject = { [Key in string]: JsonValue }
+
+/** Any JSON valid array value. */
+export type JsonArray = JsonValue[] | readonly JsonValue[]
+
+/** Any JSON valid value. */
+export type JsonValue = JsonPrimitive | JsonObject | JsonArray
+
 /** Metadata type to store custom data */
 export type Metadata = Record<
   string,
