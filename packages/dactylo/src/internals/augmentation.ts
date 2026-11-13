@@ -66,7 +66,7 @@ export type DactyloExtendableTypes =
   | 'LinkNodeMetadata'
   | 'LineBreakNodeMetadata'
   | 'MentionNodeMetadata'
-  | 'MentionNodeArtefactData'
+  | 'MentionNodeEntityData'
 
 /** Hover message shown when a {@link DactyloTypes} override for `K` is invalid. */
 export type MakeErrorString<
@@ -176,9 +176,9 @@ export type MNM = GetOverride<
   'is not a valid `Metadata` value'
 >
 
-/** Extended type for {@link MentionNode}'s `artefact.data` */
-export type MNAD = GetOverride<
-  'MentionNodeArtefactData',
+/** Extended type for {@link MentionNode}'s `entity.data` */
+export type MNED = GetOverride<
+  'MentionNodeEntityData',
   JsonValue,
   'is not a valid `JsonValue` value'
 >

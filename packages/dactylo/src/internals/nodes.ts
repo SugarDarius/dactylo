@@ -8,7 +8,7 @@
  * oo give better mutation performances while staying memory-conscious.
  */
 
-import type { LBNM, LNM, MNAD, MNM, TNM } from './augmentation'
+import type { LBNM, LNM, MNED, MNM, TNM } from './augmentation'
 import { createBaseMarks, isMarksEqual } from './marks'
 import type { Marks } from './marks'
 import { generateRandomId } from './random-id'
@@ -80,16 +80,19 @@ export interface LinkNode extends INode<LNM> {
 export interface MentionNode extends INode<MNM> {
   readonly __type: 'mention'
 
-  /** Structural data of the artefact representing the mention. */
-  readonly artefact: {
-    /** Key referencing the mention in the code. */
-    readonly key: string
+  /** Developer-provided structural data  */
+  readonly entity: {
+    /**
+     * Id referencing the mention's entity in the code.
+     * For example it can reference a user id, a team id, a page id, …
+     */
+    readonly id: string
 
     /**
-     * Additional data to store with the mention.
+     * Additional data to store with the mention's entity.
      * Defaults to `{}`.
      */
-    readonly data: MNAD
+    readonly data: MNED
   }
 }
 
@@ -194,19 +197,19 @@ export function isLinkNode<N extends InlineNode>(
 
 /** Creates a {@link MentionNode}. */
 export function createMentionNode(opts: {
-  artefact: {
-    key: string
-    data?: MNAD
+  entity: {
+    id: string
+    data?: MNED
   }
   metadata?: MNM
 }): MentionNode {
   return {
     __type: 'mention',
-    artefact: {
-      data: opts.artefact.data ?? {},
-      key: opts.artefact.key,
-    },
     createdAt: new Date(),
+    entity: {
+      data: opts.entity.data ?? {},
+      id: opts.entity.id,
+    },
     id: generateNodeId(),
     metadata: (opts.metadata ?? {}) as MNM,
     updatedAt: null,
