@@ -18,7 +18,10 @@ import {
   DEFAULT_BATCH_MAX_SIZE,
   INLINE_DETECTOR_TRIGGER_CHARACTER,
 } from './constants'
-import { createInitialEditorContext } from './editor-context'
+import {
+  createInitialEditorContext,
+  findMentionPointerAtCursor,
+} from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import type { Observable } from './event-source'
@@ -27,6 +30,7 @@ import { HistoryStack } from './history'
 import type { HistoryEvent, HistoryStackOptions } from './history'
 import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
+import { MentionBuffer } from './mention-buffer'
 import type { InlineNode } from './nodes'
 import type { Operation } from './operations'
 import type {
@@ -515,6 +519,9 @@ export class TransactionPipeline {
   /** Mentions configuration. */
   readonly #mentions: TransactionPipelineMentionsConfig
 
+  /** Mention buffer instance. */
+  readonly #mentionBuffer: MentionBuffer
+
   /** Inline command trigger configuration. */
   readonly #inlineCommandTrigger: TransactionPipelineInlineCommandTriggerConfig
 
@@ -529,6 +536,21 @@ export class TransactionPipeline {
 
   constructor(options: TransactionPipelineOptions) {
     this.#debug = options.debug ?? false
+
+    const initialMetadata = options.initialMetadata ?? {
+      bulletedList: {} as BBM,
+      checkboxList: {} as CBM,
+      divider: {} as DBM,
+      heading: {} as HBM,
+      lineBreak: {} as LBNM,
+      link: {} as LNM,
+      mentions: {} as MNM,
+      numberedList: {} as NBM,
+      paragraph: {} as PBM,
+      quote: {} as QBM,
+      text: {} as TNM,
+    }
+
     /**
      * Initialize the editor context
      * If no initial content is provided, it creates an empty document
@@ -543,23 +565,11 @@ export class TransactionPipeline {
      *  - from markdown string
      *  - patch if no inline content is provided for a block with inline content
      */
-    const initialMetadata = options.initialMetadata ?? {
-      bulletedList: {} as BBM,
-      checkboxList: {} as CBM,
-      divider: {} as DBM,
-      heading: {} as HBM,
-      lineBreak: {} as LBNM,
-      link: {} as LNM,
-      mentions: {} as MNM,
-      numberedList: {} as NBM,
-      paragraph: {} as PBM,
-      quote: {} as QBM,
-      text: {} as TNM,
-    }
     this.#context = createInitialEditorContext({
       paragraphMetadata: initialMetadata.paragraph,
       textMetadata: initialMetadata.text,
     })
+
     this.#batch = new Batch({
       maxSize: options.batch?.maxSize,
       onFlush: (ops, policy) =>
@@ -571,7 +581,13 @@ export class TransactionPipeline {
 
     this.#autolink = options.autolink
     this.#markdown = options.markdown
+
     this.#mentions = options.mentions
+    this.#mentionBuffer = new MentionBuffer({
+      debug: this.#debug,
+      enabled: this.#mentions.enabled,
+    })
+
     this.#inlineCommandTrigger = options.inlineCommandTrigger
 
     this.#operationsEngine = new OperationsEngine({
@@ -609,7 +625,7 @@ export class TransactionPipeline {
   }
 
   /** Whether a mention is being typed. */
-  #isMentioning(text: string): boolean {
+  #isMentionIntent(text: string): boolean {
     if (!this.#mentions.enabled) {
       warnOnceIf(this.#debug, 'Mentions are not enabled.')
       return false
@@ -619,7 +635,7 @@ export class TransactionPipeline {
   }
 
   /** Whether an inline command is being typed. */
-  #isInlineCommandTriggering(text: string): boolean {
+  #isInlineCommandTriggerIntent(text: string): boolean {
     if (!this.#inlineCommandTrigger.enabled) {
       warnOnceIf(this.#debug, 'Inline command trigger is not enabled.')
       return false
@@ -1104,16 +1120,24 @@ export class TransactionPipeline {
             }
           }
 
-          /** Applies inline composition ops built for mentions. */
-          if (this.#isMentioning(text)) {
-            // @todo: apply inline composition ops built for mentions
-            warn('mentions detection is not implemented yet.')
+          /** Applies mentions buffering when a mention is being typed. */
+          if (this.#isMentionIntent(text)) {
+            const pointer = findMentionPointerAtCursor(this.#context)
+
+            /**
+             * Invariant UX:
+             * A mention buffer is only started when the cursor is at the start of
+             * a {@link TextNode} or immediately after a whitespace character.
+             */
+            if (pointer !== null) {
+              this.#mentionBuffer.start(pointer)
+            }
           }
 
-          /** Applies inline composition ops built for inline command trigger. */
-          if (this.#isInlineCommandTriggering(text)) {
+          /** Applies inline command trigger buffering when a inline command trigger is being typed. */
+          if (this.#isInlineCommandTriggerIntent(text)) {
             // @todo: apply inline composition ops built for inline command trigger
-            warn('inline command trigger detection is not implemented yet.')
+            warn('inline command trigger buffering is not implemented yet.')
           }
 
           return true

@@ -1,6 +1,7 @@
 import type { PBM, TNM } from './augmentation'
 import { findNodeInBlockWithInlineContent, touchBlock } from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
+import { MENTION_BUFFER_BEFORE_CHAR_OPENER } from './constants'
 import {
   collectTextSpansInRange,
   createInitialEmptyDocumentState,
@@ -11,9 +12,10 @@ import {
 import type { DocumentState } from './document'
 import { isMarkEnabled } from './marks'
 import type { MarkKey } from './marks'
-import { isInlineNodeWithEditableText } from './nodes'
+import type { MentionPointer } from './mention-buffer'
+import { isInlineNodeWithEditableText, isTextNode } from './nodes'
 import type { InlineNode } from './nodes'
-import { isSelectionActive } from './selection'
+import { isCursorSelection, isSelectionActive } from './selection'
 import type { Selection } from './selection'
 
 /**
@@ -211,4 +213,42 @@ export function isMarkActiveInContext(
   }
 
   return false
+}
+
+/**
+ * Whether a {@link CursorSelection} is in a {@link TextNode} to start a mention buffer.
+ * Start of the {@link TextNode}, or a whitespace character immediately before the caret.
+ */
+export function findMentionPointerAtCursor(
+  context: EditorContext,
+): MentionPointer | null {
+  const { selection, state } = context
+  if (!isCursorSelection(selection)) {
+    return null
+  }
+
+  const { anchor } = selection
+  const block = getBlockWithInlineContent(state, anchor.blockId)
+  const found = findNodeInBlockWithInlineContent(block, anchor.nodeId)
+  if (!found || !isTextNode(found.node)) {
+    return null
+  }
+
+  if (anchor.offset > 0) {
+    const { text } = found.node
+    const previous = text[anchor.offset - 1]
+
+    if (
+      previous === undefined ||
+      !MENTION_BUFFER_BEFORE_CHAR_OPENER.test(previous)
+    ) {
+      return null
+    }
+  }
+
+  return {
+    blockId: anchor.blockId,
+    nodeId: found.node.id,
+    triggerOffset: anchor.offset,
+  }
 }

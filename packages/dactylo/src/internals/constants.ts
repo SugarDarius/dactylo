@@ -29,6 +29,9 @@ export const DEFAULT_MENTIONS_ENABLED = true as const
 /** Default mention character. */
 export const DEFAULT_MENTION_CHARACTER = '@' as const
 
+/** Character class (`space`) for “safe” text before opening a typed mention buffer.. */
+export const MENTION_BUFFER_BEFORE_CHAR_OPENER = /\s/u
+
 /** Default slash command enabled. */
 export const DEFAULT_INLINE_COMMAND_TRIGGER_ENABLED = true as const
 
@@ -436,7 +439,7 @@ export const MARKDOWN_LINK_SHORTCUT_PATTERN = new RegExp(
 export const MARKDOWN_LINK_SHORTCUT_CLOSING_DELIMITERS = [')']
 
 /**
- * Character class for “safe” text before an opening mark delimiter when the
+ * Character class (`space`) for “safe” text before an opening mark delimiter when the
  * shortcut is not at the start of the node. A single ASCII/Unicode whitespace
  * satisfies CommonMark-style “left-flanking” typing UX (`Hello **there**`).
  */
