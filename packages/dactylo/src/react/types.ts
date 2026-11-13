@@ -71,6 +71,12 @@ export interface ComposerSlotInlineContentProps {
 export interface ComposerBlockBaseProps extends React.HTMLAttributes<HTMLDivElement> {
   /** At which index the block is rendered inside `<Composer.Editable />`. */
   blockIndex: number
+
+  /** Overrides that can be applied to block components. */
+  overrides?: {
+    /** Override placeholder on top of {@link DactyloStaticConfig} at component level. */
+    placeholder?: string
+  }
 }
 
 /** Props for declaring a paragraph block component. */
@@ -113,7 +119,10 @@ export interface ComposerCheckboxListItemBlockProps extends ComposerBlockBasePro
 }
 
 /** Props for declaring a divider block component. */
-export interface ComposerDividerBlockProps extends ComposerBlockBaseProps {
+export interface ComposerDividerBlockProps extends Omit<
+  ComposerBlockBaseProps,
+  'overrides'
+> {
   /** The divider block to render. */
   block: DividerBlock
 }

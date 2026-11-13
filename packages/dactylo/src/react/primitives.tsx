@@ -1,11 +1,4 @@
-import {
-  forwardRef,
-  memo,
-  useDebugValue,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react'
+import { forwardRef, memo, useDebugValue, useEffect, useRef } from 'react'
 
 import { Dactylo } from '../dactylo'
 import type { HeadingBlock } from '../internals/blocks'
@@ -302,9 +295,11 @@ const ComposerSlotInlineContent = ({
 const ComposerParagraphBlock = forwardRef<
   HTMLDivElement,
   ComposerParagraphBlockProps
->(({ block, blockIndex, ...props }, forwardedRef) => {
+>(({ block, blockIndex, overrides, ...props }, forwardedRef) => {
   const { paragraph } = useEditorConfig()
   const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
+
+  const placeholder = overrides?.placeholder ?? paragraph.placeholder
 
   return (
     <div
@@ -331,7 +326,7 @@ const ComposerParagraphBlock = forwardRef<
         {...{
           [BLOCK_CONTENT_ATTR_NAME]: '',
           [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
-          [BLOCK_PLACEHOLDER_ATTR_NAME]: paragraph.placeholder,
+          [BLOCK_PLACEHOLDER_ATTR_NAME]: placeholder,
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
@@ -344,9 +339,11 @@ ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
 /** Adds a {@link QuoteBlock} to the composer. */
 const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
-  ({ block, blockIndex, ...props }, forwardedRef) => {
+  ({ block, blockIndex, overrides, ...props }, forwardedRef) => {
     const { quote } = useEditorConfig()
     const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
+
+    const placeholder = overrides?.placeholder ?? quote.placeholder
 
     return (
       <div
@@ -383,7 +380,7 @@ const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
           {...{
             [BLOCK_CONTENT_ATTR_NAME]: '',
             [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
-            [BLOCK_PLACEHOLDER_ATTR_NAME]: quote.placeholder,
+            [BLOCK_PLACEHOLDER_ATTR_NAME]: placeholder,
           }}
           style={{ ...EDITABLE_OUTLINE_STYLE }}
         >
@@ -420,18 +417,14 @@ const ComposerHeadingsPrimitive = COMPOSER_HEADING_LEVELS.reduce(
 const ComposerHeadingBlock = forwardRef<
   HTMLDivElement,
   ComposerHeadingBlockProps
->(({ block, blockIndex, ...props }, forwardedRef) => {
+>(({ block, blockIndex, overrides, ...props }, forwardedRef) => {
   const { heading } = useEditorConfig()
   const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
 
   const Heading = ComposerHeadingsPrimitive[block.level]
-  const placeholder = useMemo(
-    () =>
-      heading.placeholder.replace(
-        HEADING_LEVEL_REPLACER,
-        block.level.toString(),
-      ),
-    [block.level, heading.placeholder],
+  const placeholder = (overrides?.placeholder ?? heading.placeholder).replace(
+    HEADING_LEVEL_REPLACER,
+    block.level.toString(),
   )
 
   return (
@@ -475,9 +468,11 @@ ComposerHeadingBlock.displayName = COMPOSER_HEADING_BLOCK_NAME
 const ComposerBulletListItemBlock = forwardRef<
   HTMLDivElement,
   ComposerBulletListItemBlockProps
->(({ block, blockIndex, ...props }, forwardedRef) => {
+>(({ block, blockIndex, overrides, ...props }, forwardedRef) => {
   const { bulletedList } = useEditorConfig()
   const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
+
+  const placeholder = overrides?.placeholder ?? bulletedList.placeholder
 
   return (
     <div
@@ -514,7 +509,7 @@ const ComposerBulletListItemBlock = forwardRef<
         {...{
           [BLOCK_CONTENT_ATTR_NAME]: '',
           [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
-          [BLOCK_PLACEHOLDER_ATTR_NAME]: bulletedList.placeholder,
+          [BLOCK_PLACEHOLDER_ATTR_NAME]: placeholder,
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
@@ -586,73 +581,80 @@ ComposerNumberedListItemBlock.displayName =
 const ComposerCheckboxListItemBlock = forwardRef<
   HTMLDivElement,
   ComposerCheckboxListItemBlockProps
->(({ block, blockIndex, onCheckedChange, ...props }, forwardedRef) => {
-  const { checkboxList } = useEditorConfig()
-  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
-  const { patch } = useCheckboxLists()
+>(
+  (
+    { block, blockIndex, overrides, onCheckedChange, ...props },
+    forwardedRef,
+  ) => {
+    const { checkboxList } = useEditorConfig()
+    const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
+    const { patch } = useCheckboxLists()
 
-  const handleClick = useStableCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault()
-      e.stopPropagation()
+    const placeholder = overrides?.placeholder ?? checkboxList.placeholder
 
-      const checked = !block.checked
+    const handleClick = useStableCallback(
+      (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault()
+        e.stopPropagation()
 
-      patch(block.id, { checked })
-      onCheckedChange?.(checked)
-    },
-  )
+        const checked = !block.checked
 
-  return (
-    <div
-      {...props}
-      ref={forwardedRef}
-      {...{
-        [BLOCK_ATTR_NAME]: '',
-        [BLOCK_ID_DATA_NAME]: block.id,
-        [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
-        [CHECKBOX_LIST_ITEM_BLOCK_ATTR_NAME]: '',
-        [CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME]: block.checked.toString(),
-      }}
-      data-active={isActive ?? undefined}
-      aria-roledescription='checkbox-list-item-block'
-    >
+        patch(block.id, { checked })
+        onCheckedChange?.(checked)
+      },
+    )
+
+    return (
       <div
-        contentEditable={false}
-        aria-roledescription='checkbox-list-item-marker'
-        {...{ [CHECKBOX_LIST_ITEM_MARKER_ATTR_NAME]: '' }}
-      >
-        <button
-          type='button'
-          role='checkbox'
-          disabled={!canEdit}
-          onClick={handleClick}
-          aria-checked={block.checked ? 'true' : 'false'}
-          aria-roledescription='checkbox-list-item-marker-input'
-          {...{ [CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME]: '' }}
-        />
-      </div>
-      <div
-        id={editableId}
-        role={canEdit ? 'textbox' : undefined}
-        aria-roledescription='checkbox-list-item-block-editable'
-        aria-multiline={canEdit ? 'true' : undefined}
-        contentEditable={canEdit ? 'true' : undefined}
-        suppressContentEditableWarning
-        data-active={isActive ?? undefined}
-        data-empty={isEmpty ?? undefined}
+        {...props}
+        ref={forwardedRef}
         {...{
-          [BLOCK_CONTENT_ATTR_NAME]: '',
-          [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
-          [BLOCK_PLACEHOLDER_ATTR_NAME]: checkboxList.placeholder,
+          [BLOCK_ATTR_NAME]: '',
+          [BLOCK_ID_DATA_NAME]: block.id,
+          [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
+          [CHECKBOX_LIST_ITEM_BLOCK_ATTR_NAME]: '',
+          [CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME]: block.checked.toString(),
         }}
-        style={{ ...EDITABLE_OUTLINE_STYLE }}
+        data-active={isActive ?? undefined}
+        aria-roledescription='checkbox-list-item-block'
       >
-        <ComposerSlotInlineContent content={block.content} />
+        <div
+          contentEditable={false}
+          aria-roledescription='checkbox-list-item-marker'
+          {...{ [CHECKBOX_LIST_ITEM_MARKER_ATTR_NAME]: '' }}
+        >
+          <button
+            type='button'
+            role='checkbox'
+            disabled={!canEdit}
+            onClick={handleClick}
+            aria-checked={block.checked ? 'true' : 'false'}
+            aria-roledescription='checkbox-list-item-marker-input'
+            {...{ [CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME]: '' }}
+          />
+        </div>
+        <div
+          id={editableId}
+          role={canEdit ? 'textbox' : undefined}
+          aria-roledescription='checkbox-list-item-block-editable'
+          aria-multiline={canEdit ? 'true' : undefined}
+          contentEditable={canEdit ? 'true' : undefined}
+          suppressContentEditableWarning
+          data-active={isActive ?? undefined}
+          data-empty={isEmpty ?? undefined}
+          {...{
+            [BLOCK_CONTENT_ATTR_NAME]: '',
+            [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
+            [BLOCK_PLACEHOLDER_ATTR_NAME]: placeholder,
+          }}
+          style={{ ...EDITABLE_OUTLINE_STYLE }}
+        >
+          <ComposerSlotInlineContent content={block.content} />
+        </div>
       </div>
-    </div>
-  )
-})
+    )
+  },
+)
 ComposerCheckboxListItemBlock.displayName =
   COMPOSER_CHECKBOX_LIST_ITEM_BLOCK_NAME
 
