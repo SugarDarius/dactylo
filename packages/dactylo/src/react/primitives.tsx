@@ -59,7 +59,6 @@ import {
   useFocus,
 } from './composer'
 import {
-  COMPOSER_BLOCK_NAME,
   COMPOSER_BLOCKS_NAME,
   COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME,
   COMPOSER_CHECKBOX_LIST_ITEM_BLOCK_NAME,
@@ -75,6 +74,7 @@ import {
   COMPOSER_PARAGRAPH_BLOCK_NAME,
   COMPOSER_QUOTE_BLOCK_NAME,
   COMPOSER_ROOT_NAME,
+  COMPOSER_SLOT_BLOCK_NAME,
   COMPOSER_TEXT_NODE_NAME,
 } from './internals/constants'
 import {
@@ -85,7 +85,6 @@ import {
 } from './internals/hooks'
 import { mergeRefs } from './internals/utils'
 import type {
-  ComposerBlockProps,
   ComposerBulletListItemBlockProps,
   ComposerCheckboxListItemBlockProps,
   ComposerContext,
@@ -99,6 +98,7 @@ import type {
   ComposerParagraphBlockProps,
   ComposerQuoteBlockProps,
   ComposerRootProps,
+  ComposerSlotBlockProps,
   ComposerTextNodeProps,
 } from './types'
 
@@ -300,7 +300,7 @@ const ComposerInlineContent = ({ content }: ComposerInlineContentProps) => {
 const ComposerParagraphBlock = forwardRef<
   HTMLDivElement,
   ComposerParagraphBlockProps
->(({ block, indexOfRendering, ...props }, forwardedRef) => {
+>(({ block, blockIndex, ...props }, forwardedRef) => {
   const { paragraph } = useEditorConfig()
   const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
 
@@ -311,7 +311,7 @@ const ComposerParagraphBlock = forwardRef<
       {...{
         [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
-        [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
+        [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
         [PARAGRAPH_BLOCK_ATTR_NAME]: '',
       }}
       data-active={isActive ?? undefined}
@@ -342,7 +342,7 @@ ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
 /** Adds a {@link QuoteBlock} to the composer. */
 const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
-  ({ block, indexOfRendering, ...props }, forwardedRef) => {
+  ({ block, blockIndex, ...props }, forwardedRef) => {
     const { quote } = useEditorConfig()
     const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
 
@@ -353,7 +353,7 @@ const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
         {...{
           [BLOCK_ATTR_NAME]: '',
           [BLOCK_ID_DATA_NAME]: block.id,
-          [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
+          [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
           [QUOTE_BLOCK_ATTR_NAME]: '',
         }}
         data-active={isActive ?? undefined}
@@ -418,7 +418,7 @@ const ComposerHeadingsPrimitive = COMPOSER_HEADING_LEVELS.reduce(
 const ComposerHeadingBlock = forwardRef<
   HTMLDivElement,
   ComposerHeadingBlockProps
->(({ block, indexOfRendering, ...props }, forwardedRef) => {
+>(({ block, blockIndex, ...props }, forwardedRef) => {
   const { heading } = useEditorConfig()
   const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
 
@@ -439,7 +439,7 @@ const ComposerHeadingBlock = forwardRef<
       {...{
         [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
-        [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
+        [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
         [HEADING_BLOCK_ATTR_NAME]: '',
         [HEADING_BLOCK_LEVEL_DATA_NAME]: block.level.toString(),
       }}
@@ -473,7 +473,7 @@ ComposerHeadingBlock.displayName = COMPOSER_HEADING_BLOCK_NAME
 const ComposerBulletListItemBlock = forwardRef<
   HTMLDivElement,
   ComposerBulletListItemBlockProps
->(({ block, indexOfRendering, ...props }, forwardedRef) => {
+>(({ block, blockIndex, ...props }, forwardedRef) => {
   const { bulletedList } = useEditorConfig()
   const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
 
@@ -484,7 +484,7 @@ const ComposerBulletListItemBlock = forwardRef<
       {...{
         [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
-        [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
+        [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
         [BULLET_LIST_ITEM_BLOCK_ATTR_NAME]: '',
       }}
       data-active={isActive ?? undefined}
@@ -527,7 +527,7 @@ ComposerBulletListItemBlock.displayName = COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME
 const ComposerNumberedListItemBlock = forwardRef<
   HTMLDivElement,
   ComposerNumberedListItemBlockProps
->(({ block, indexOfRendering, ...props }, forwardedRef) => {
+>(({ block, blockIndex, ...props }, forwardedRef) => {
   const { numberedList } = useEditorConfig()
   const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
 
@@ -538,7 +538,7 @@ const ComposerNumberedListItemBlock = forwardRef<
       {...{
         [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
-        [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
+        [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
         [NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME]: '',
         [NUMBERED_LIST_ITEM_VARIANT_DATA_NAME]: block.variant,
       }}
@@ -584,7 +584,7 @@ ComposerNumberedListItemBlock.displayName =
 const ComposerCheckboxListItemBlock = forwardRef<
   HTMLDivElement,
   ComposerCheckboxListItemBlockProps
->(({ block, indexOfRendering, onCheckedChange, ...props }, forwardedRef) => {
+>(({ block, blockIndex, onCheckedChange, ...props }, forwardedRef) => {
   const { checkboxList } = useEditorConfig()
   const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
   const { patch } = useCheckboxLists()
@@ -608,7 +608,7 @@ const ComposerCheckboxListItemBlock = forwardRef<
       {...{
         [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
-        [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
+        [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
         [CHECKBOX_LIST_ITEM_BLOCK_ATTR_NAME]: '',
         [CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME]: block.checked.toString(),
       }}
@@ -658,7 +658,7 @@ ComposerCheckboxListItemBlock.displayName =
 const ComposerDividerBlock = forwardRef<
   HTMLDivElement,
   ComposerDividerBlockProps
->(({ block, indexOfRendering, ...props }, forwardedRef) => (
+>(({ block, blockIndex, ...props }, forwardedRef) => (
   <div
     {...props}
     ref={forwardedRef}
@@ -666,7 +666,7 @@ const ComposerDividerBlock = forwardRef<
     {...{
       [BLOCK_ATTR_NAME]: '',
       [BLOCK_ID_DATA_NAME]: block.id,
-      [BLOCK_INDEX_DATA_NAME]: indexOfRendering.toString(),
+      [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
       [DIVIDER_BLOCK_ATTR_NAME]: '',
     }}
     aria-roledescription='divider-block'
@@ -682,64 +682,72 @@ const ComposerDividerBlock = forwardRef<
 ComposerDividerBlock.displayName = COMPOSER_DIVIDER_BLOCK_NAME
 
 /** Renders a block based on its type. */
-const ComposerBlock = memo<ComposerBlockProps>(({ blockId, ...props }) => {
-  const block = useBlock(blockId)
-  /**
-   * Skipping rendering for blocks that are not in the document state.
-   * It should never happens because `blockOrderById` from {@link DocumentState}
-   * is always n sync `blocks` after each inserts.
-   *
-   * 👉🏻 We don't throw an error because we don't want to break users' UI
-   * to keep a seamless experience.
-   */
-  if (!block) {
-    return null
-  }
-
-  const type = block.__type
-  switch (type) {
-    case 'paragraph': {
-      return <ComposerParagraphBlock key={block.id} {...props} block={block} />
-    }
-    case 'quote': {
-      return <ComposerQuoteBlock key={block.id} {...props} block={block} />
-    }
-    case 'heading': {
-      return <ComposerHeadingBlock key={block.id} {...props} block={block} />
-    }
-    case 'bullet_list_item': {
-      return (
-        <ComposerBulletListItemBlock key={block.id} {...props} block={block} />
-      )
-    }
-    case 'numbered_list_item': {
-      return (
-        <ComposerNumberedListItemBlock
-          key={block.id}
-          {...props}
-          block={block}
-        />
-      )
-    }
-    case 'checkbox_list_item': {
-      return (
-        <ComposerCheckboxListItemBlock
-          key={block.id}
-          {...props}
-          block={block}
-        />
-      )
-    }
-    case 'divider': {
-      return <ComposerDividerBlock key={block.id} {...props} block={block} />
-    }
-    default: {
-      warnOnce(`Skipping rendering for unsupported block type: ${type}.`)
+const ComposerSlotBlock = memo<ComposerSlotBlockProps>(
+  ({ blockId, ...props }) => {
+    const block = useBlock(blockId)
+    /**
+     * Skipping rendering for blocks that are not in the document state.
+     * It should never happens because `blockOrderById` from {@link DocumentState}
+     * is always n sync `blocks` after each inserts.
+     *
+     * 👉🏻 We don't throw an error because we don't want to break users' UI
+     * to keep a seamless experience.
+     */
+    if (!block) {
       return null
     }
-  }
-})
-ComposerBlock.displayName = COMPOSER_BLOCK_NAME
+
+    const type = block.__type
+    switch (type) {
+      case 'paragraph': {
+        return (
+          <ComposerParagraphBlock key={block.id} {...props} block={block} />
+        )
+      }
+      case 'quote': {
+        return <ComposerQuoteBlock key={block.id} {...props} block={block} />
+      }
+      case 'heading': {
+        return <ComposerHeadingBlock key={block.id} {...props} block={block} />
+      }
+      case 'bullet_list_item': {
+        return (
+          <ComposerBulletListItemBlock
+            key={block.id}
+            {...props}
+            block={block}
+          />
+        )
+      }
+      case 'numbered_list_item': {
+        return (
+          <ComposerNumberedListItemBlock
+            key={block.id}
+            {...props}
+            block={block}
+          />
+        )
+      }
+      case 'checkbox_list_item': {
+        return (
+          <ComposerCheckboxListItemBlock
+            key={block.id}
+            {...props}
+            block={block}
+          />
+        )
+      }
+      case 'divider': {
+        return <ComposerDividerBlock key={block.id} {...props} block={block} />
+      }
+      default: {
+        warnOnce(`Skipping rendering for unsupported block type: ${type}.`)
+        return null
+      }
+    }
+  },
+)
+ComposerSlotBlock.displayName = COMPOSER_SLOT_BLOCK_NAME
 
 /** Renders the composed blocks. */
 const ComposerBlocks = memo(
@@ -756,10 +764,10 @@ const ComposerBlocks = memo(
           aria-roledescription='blocks'
         >
           {blockOrderById.map((blockId, index) => (
-            <ComposerBlock
+            <ComposerSlotBlock
               key={blockId}
               blockId={blockId}
-              indexOfRendering={index}
+              blockIndex={index}
             />
           ))}
         </div>

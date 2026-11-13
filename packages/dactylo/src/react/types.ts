@@ -67,79 +67,64 @@ export interface ComposerInlineContentProps {
   content: readonly InlineNode[]
 }
 
+/** Base props for declaring a block component. */
+export interface ComposerBlockBaseProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** At which index the block is rendered inside `<Composer.Editable />`. */
+  blockIndex: number
+}
+
 /** Props for declaring a paragraph block component. */
-export interface ComposerParagraphBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ComposerParagraphBlockProps extends ComposerBlockBaseProps {
   /** The paragraph block to render. */
   block: ParagraphBlock
-
-  /** At which index the paragraph block is rendered inside `<Composer.Editable />`. */
-  indexOfRendering: number
 }
 
 /** Props for declaring a quote block component. */
-export interface ComposerQuoteBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ComposerQuoteBlockProps extends ComposerBlockBaseProps {
   /** The quote block to render. */
   block: QuoteBlock
-
-  /** At which index the quote block is rendered inside `<Composer.Editable />`. */
-  indexOfRendering: number
 }
 
 /** Props for declaring a heading block component. */
-export interface ComposerHeadingBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ComposerHeadingBlockProps extends ComposerBlockBaseProps {
   /** The heading block to render. */
   block: HeadingBlock
-
-  /** At which index the heading block is rendered inside `<Composer.Editable />`. */
-  indexOfRendering: number
 }
 
 /** Props for declaring a bullet list item block component. */
-export interface ComposerBulletListItemBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ComposerBulletListItemBlockProps extends ComposerBlockBaseProps {
   /** The bullet list item block to render. */
   block: BulletListItemBlock
-
-  /** At which index the bullet list item block is rendered inside `<Composer.Editable />`. */
-  indexOfRendering: number
 }
 
 /** Props for declaring a numbered list item block component. */
-export interface ComposerNumberedListItemBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ComposerNumberedListItemBlockProps extends ComposerBlockBaseProps {
   /** The numbered list item block to render. */
   block: NumberedListItemBlock
-
-  /** At which index the numbered list item block is rendered inside `<Composer.Editable />`. */
-  indexOfRendering: number
 }
 
 /** Props for declaring a checkbox list item block component. */
-export interface ComposerCheckboxListItemBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ComposerCheckboxListItemBlockProps extends ComposerBlockBaseProps {
   /** The checkbox list item block to render. */
   block: CheckboxListItemBlock
-
-  /** At which index the checkbox list item block is rendered inside `<Composer.Editable />`. */
-  indexOfRendering: number
 
   /** A callback function that is called when the checkbox list item block is checked or unchecked. */
   onCheckedChange?: (checked: boolean) => void
 }
 
 /** Props for declaring a divider block component. */
-export interface ComposerDividerBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ComposerDividerBlockProps extends ComposerBlockBaseProps {
   /** The divider block to render. */
   block: DividerBlock
-
-  /** At which index the divider block is rendered inside `<Composer.Editable />`. */
-  indexOfRendering: number
 }
 
-/** Props for declaring a block wrapper component. */
-export interface ComposerBlockProps extends React.HTMLAttributes<HTMLDivElement> {
+/** Props for declaring a slot block component. */
+export interface ComposerSlotBlockProps extends React.HTMLAttributes<HTMLDivElement> {
   /** The block ID to render. */
   blockId: BlockId
 
   /** At which index the block is rendered inside `<Composer.Editable />`. */
-  indexOfRendering: number
+  blockIndex: number
 }
 
 /** Props for declaring the composer editable component. */
