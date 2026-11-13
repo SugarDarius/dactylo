@@ -9,6 +9,7 @@ import {
   DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT,
   LINE_BREAK_NODE_ATTR_NAME,
   LINK_NODE_ATTR_NAME,
+  MENTION_NODE_ATTR_NAME,
   NODE_ATTR_NAME,
   NODE_ID_DATA_NAME,
   TEXT_NODE_ATTR_NAME,
@@ -361,11 +362,12 @@ export function getDOMPointFromTextCursor(
     return null
   }
 
-  if (node.hasAttribute(LINE_BREAK_NODE_ATTR_NAME)) {
+  if (
+    node.hasAttribute(LINE_BREAK_NODE_ATTR_NAME) ||
+    node.hasAttribute(MENTION_NODE_ATTR_NAME)
+  ) {
     return { node, offset: 0 }
   }
-
-  // @todo: handle mention nodes.
 
   if (
     node.hasAttribute(TEXT_NODE_ATTR_NAME) ||

@@ -183,6 +183,9 @@ export const LINK_NODE_CLICKABLE_ATTR_NAME =
 /** Line break node attribute name. */
 export const LINE_BREAK_NODE_ATTR_NAME = 'dactylo-line-break-node' as const
 
+/** Mention node attribute name. */
+export const MENTION_NODE_ATTR_NAME = 'dactylo-mention-node' as const
+
 /** DOM paint space character. */
 export const DOM_SPACE_UNICODE_CODEPOINT = '\u00A0' as const
 /** DOM pain zero width space character. */

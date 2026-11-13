@@ -350,6 +350,15 @@ export interface OperationsBuilderAutolinkConfig {
   readonly enabled: boolean
 }
 
+/** Configuration for mention detection. */
+export interface OperationsBuilderMentionConfig {
+  /** Whether to enable mention detection. */
+  readonly enabled: boolean
+
+  /** The character that triggers the mention detection. */
+  readonly character: string
+}
+
 // --- Core -─────────────────────────────────────────---------------
 
 /** Rule describing a list of operations to apply to the document. */
