@@ -47,11 +47,6 @@ export function canUseDOM(): boolean {
   )
 }
 
-/** Clones a regular expression. */
-export function cloneRegExp(regex: RegExp): RegExp {
-  return new RegExp(regex.source, regex.flags)
-}
-
 /** Normalizes a URL to a full URL. */
 export function normalizeUrl(url: string): string {
   const trimmed = url.trim()
