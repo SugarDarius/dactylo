@@ -191,6 +191,43 @@ describe('Dactylo construction', () => {
     )
   })
 
+  test('throws when the mention character is not a single character', () => {
+    expect(() => makeEditor({ mentions: { character: '@@' } })).toThrow(
+      'Mention character must be a single non-empty character',
+    )
+  })
+
+  test('throws when the mention character is empty', () => {
+    expect(() => makeEditor({ mentions: { character: '' } })).toThrow(
+      'Mention character must be a single non-empty character',
+    )
+  })
+
+  test('throws when the inline command trigger character is not a single character', () => {
+    expect(() =>
+      makeEditor({ inlineCommandTrigger: { character: '//' } }),
+    ).toThrow(
+      'Inline command trigger character must be a single non-empty character',
+    )
+  })
+
+  test('throws when the inline command trigger character is empty', () => {
+    expect(() =>
+      makeEditor({ inlineCommandTrigger: { character: '' } }),
+    ).toThrow(
+      'Inline command trigger character must be a single non-empty character',
+    )
+  })
+
+  test('throws when mention and inline command trigger characters are the same', () => {
+    expect(() =>
+      makeEditor({
+        inlineCommandTrigger: { character: '#' },
+        mentions: { character: '#' },
+      }),
+    ).toThrow('Mention and inline command trigger characters must be different')
+  })
+
   test('stores paragraph and text initialMetadata on config and the empty document', () => {
     const editor = makeEditor({
       paragraph: { initialMetadata: { source: 'paragraph' } },

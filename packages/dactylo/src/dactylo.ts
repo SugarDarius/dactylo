@@ -1315,6 +1315,20 @@ export type DactyloOptions = DactyloBaseOptions &
     MNM
   >
 
+/** Validates a configuration option. */
+export function validateConfigOption(
+  condition: boolean | (() => boolean),
+  message: string,
+): never | void {
+  if (typeof condition === 'function' ? !condition() : !condition) {
+    throw DactyloError.from({
+      code: 'BAD_CONFIG_OPTION',
+      hint: 'Dactylo/constructor',
+      message,
+    })
+  }
+}
+
 /**
  * Dactylo is a block-based rich-text markdown editor whose runtime model is a structured document (blocks + inline nodes),
  * not a plain text buffer with regex parsing on every keystroke.
@@ -1372,6 +1386,35 @@ export class Dactylo {
     >
   ) {
     const options = args[0] ?? {}
+
+    validateConfigOption(() => {
+      if (options.mentions?.character !== undefined) {
+        return options.mentions.character.length === 1
+      }
+
+      return true
+    }, 'Mention character must be a single non-empty character')
+
+    validateConfigOption(() => {
+      if (options.inlineCommandTrigger?.character !== undefined) {
+        return options.inlineCommandTrigger.character.length === 1
+      }
+
+      return true
+    }, 'Inline command trigger character must be a single non-empty character')
+
+    validateConfigOption(() => {
+      if (
+        options.mentions?.character &&
+        options.inlineCommandTrigger?.character
+      ) {
+        return (
+          options.mentions.character !== options.inlineCommandTrigger.character
+        )
+      }
+
+      return true
+    }, 'Mention and inline command trigger characters must be different')
 
     this.#editable = options.editable ?? true
     this.#debug = options.debug ?? false
