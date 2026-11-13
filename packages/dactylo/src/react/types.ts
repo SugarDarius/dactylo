@@ -61,8 +61,8 @@ export interface ComposerLineBreakNodeProps extends React.HTMLAttributes<HTMLBRE
   node: LineBreakNode
 }
 
-/** Props for declaring an inline content component. */
-export interface ComposerInlineContentProps {
+/** Props for declaring a slot inline content component. */
+export interface ComposerSlotInlineContentProps {
   /** The inline content to render. */
   content: readonly InlineNode[]
 }

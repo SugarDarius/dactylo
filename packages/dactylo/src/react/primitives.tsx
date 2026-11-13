@@ -91,7 +91,6 @@ import type {
   ComposerDividerBlockProps,
   ComposerEditableProps,
   ComposerHeadingBlockProps,
-  ComposerInlineContentProps,
   ComposerLineBreakNodeProps,
   ComposerLinkNodeProps,
   ComposerNumberedListItemBlockProps,
@@ -99,6 +98,7 @@ import type {
   ComposerQuoteBlockProps,
   ComposerRootProps,
   ComposerSlotBlockProps,
+  ComposerSlotInlineContentProps,
   ComposerTextNodeProps,
 } from './types'
 
@@ -268,8 +268,10 @@ export const ComposerLineBreakNode = memo(
 )
 ComposerLineBreakNode.displayName = COMPOSER_LINE_BREAK_NODE_NAME
 
-/** Adds inline content for a block to the composer. */
-const ComposerInlineContent = ({ content }: ComposerInlineContentProps) => {
+/** Adds a slot inline content component for a block with inline content to the composer. */
+const ComposerSlotInlineContent = ({
+  content,
+}: ComposerSlotInlineContentProps) => {
   const children = []
 
   for (const node of content) {
@@ -333,7 +335,7 @@ const ComposerParagraphBlock = forwardRef<
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
-        <ComposerInlineContent content={block.content} />
+        <ComposerSlotInlineContent content={block.content} />
       </div>
     </div>
   )
@@ -385,7 +387,7 @@ const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
           }}
           style={{ ...EDITABLE_OUTLINE_STYLE }}
         >
-          <ComposerInlineContent content={block.content} />
+          <ComposerSlotInlineContent content={block.content} />
         </div>
       </div>
     )
@@ -462,7 +464,7 @@ const ComposerHeadingBlock = forwardRef<
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
-        <ComposerInlineContent content={block.content} />
+        <ComposerSlotInlineContent content={block.content} />
       </Heading>
     </div>
   )
@@ -516,7 +518,7 @@ const ComposerBulletListItemBlock = forwardRef<
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
-        <ComposerInlineContent content={block.content} />
+        <ComposerSlotInlineContent content={block.content} />
       </div>
     </div>
   )
@@ -572,7 +574,7 @@ const ComposerNumberedListItemBlock = forwardRef<
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
-        <ComposerInlineContent content={block.content} />
+        <ComposerSlotInlineContent content={block.content} />
       </div>
     </div>
   )
@@ -646,7 +648,7 @@ const ComposerCheckboxListItemBlock = forwardRef<
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
-        <ComposerInlineContent content={block.content} />
+        <ComposerSlotInlineContent content={block.content} />
       </div>
     </div>
   )
