@@ -322,7 +322,7 @@ export type DactyloCommand =
   | 'blocks/patch-divider'
 
   /** Mentions commands. */
-  | 'mentions/confirm'
+  | 'mentions/confirm-buffer'
 
 /** Event emitted when a command is executed. */
 export interface DactyloCommandEvent {
@@ -1169,7 +1169,7 @@ export interface DactyloMentionsTools {
 /** Commands to mutate {@link DocumentState} mentions of the editor. */
 export interface DactyloMentionsCommands {
   /**
-   * Confirms the current mention buffer.
+   * Confirms the current mention buffer Confirms the current mention buffer by inserting a mention node into the document.
    * Entity's data are provided by the `mentions.resolver` option.
    *
    * Client only.
@@ -2674,7 +2674,7 @@ export class Dactylo {
     return {
       commands: {
         /**
-         * Confirms the current mention buffer.
+         * Confirms the current mention buffer by inserting a mention node into the document.
          * Entity's data are provided by the `mentions.resolver` option.
          *
          * Client only.
@@ -2684,7 +2684,7 @@ export class Dactylo {
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
           this.#safeExecuteCommand(
-            'mentions/confirm',
+            'mentions/confirm-buffer',
             () =>
               this.#pipeline.confirmBufferedInlineMention(
                 {
