@@ -16,9 +16,9 @@ export interface InlineBufferPointer {
 }
 
 /** Event emitted when the state of the {@link InlineBuffer} changes. */
-export interface InlineBufferEvent {
+export interface InlineBufferEvent<K extends string> {
   /** Kind of event that was emitted. */
-  readonly kind: string
+  readonly kind: K
 
   /** State of the inline buffer. */
   readonly state: 'started' | 'buffering' | 'aborted' | 'released'
@@ -30,12 +30,12 @@ export interface InlineBufferEvent {
   readonly bufferedText: string | null
 }
 
-export interface InlineBufferOptions {
+export interface InlineBufferOptions<K extends string> {
   /** Name of the inline buffer. */
   readonly name?: string
 
   /** Kind of event that will be emitted. */
-  readonly eventKind?: string
+  readonly eventKind: K
 
   /** Whether to enable debug mode. */
   readonly debug: boolean
@@ -62,12 +62,14 @@ export interface InlineBufferOptions {
  * Keeping the query here lets a picker read `bufferedText` without parsing the
  * AST, and `abort` / `release` can drop the pointer without mutating the document.
  */
-export class InlineBuffer extends EventSource<InlineBufferEvent> {
+export class InlineBuffer<K extends string> extends EventSource<
+  InlineBufferEvent<K>
+> {
   /** Name of the inline buffer. */
   readonly #name: string
 
   /** Kind of event that will be emitted. */
-  readonly #eventKind: string
+  readonly #eventKind: K
 
   /** Whether to enable debug mode. */
   readonly #debug: boolean
@@ -81,11 +83,11 @@ export class InlineBuffer extends EventSource<InlineBufferEvent> {
   /** Text that's being typed into the inline buffer. */
   #bufferedText: string | null
 
-  constructor(options: InlineBufferOptions) {
+  constructor(options: InlineBufferOptions<K>) {
     super()
 
     this.#name = options.name ?? 'InlineBuffer'
-    this.#eventKind = options.eventKind ?? 'inline'
+    this.#eventKind = options.eventKind
 
     this.#debug = options.debug
     this.#enabled = options.enabled

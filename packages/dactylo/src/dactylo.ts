@@ -407,13 +407,13 @@ export interface DactyloEventsApi {
    * Subscribes to the mention buffer changes.
    * 👉🏻 Fires anytime the inline buffer is updated.
    */
-  readonly mention: Observable<InlineBufferEvent>
+  readonly mention: Observable<InlineBufferEvent<'mention'>>
 
   /**
    * Subscribes to the command trigger buffer changes.
    * 👉🏻 Fires anytime the inline buffer is updated.
    */
-  readonly commandTrigger: Observable<InlineBufferEvent>
+  readonly commandTrigger: Observable<InlineBufferEvent<'command-trigger'>>
 
   /**
    * Subscribes to applied transactions.

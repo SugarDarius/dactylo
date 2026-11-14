@@ -331,13 +331,13 @@ export interface TransactionPipelineEvents {
    * Subscribes to the mention buffer changes.
    * 👉🏻 Fires anytime the inline buffer is updated.
    */
-  readonly mention: Observable<InlineBufferEvent>
+  readonly mention: Observable<InlineBufferEvent<'mention'>>
 
   /**
    * Subscribes to the command trigger buffer changes.
    * 👉🏻 Fires anytime the inline buffer is updated.
    */
-  readonly commandTrigger: Observable<InlineBufferEvent>
+  readonly commandTrigger: Observable<InlineBufferEvent<'command-trigger'>>
 
   /**
    * Subscribes to applied transactions.
@@ -534,13 +534,13 @@ export class TransactionPipeline {
   readonly #mentions: TransactionPipelineMentionsConfig
 
   /** Mention buffer instance. */
-  readonly #mentionBuffer: InlineBuffer
+  readonly #mentionBuffer: InlineBuffer<'mention'>
 
   /** Command trigger configuration. */
   readonly #commandTrigger: TransactionPipelineCommandTriggerConfig
 
   /** Command trigger buffer instance. */
-  readonly #commandTriggerBuffer: InlineBuffer
+  readonly #commandTriggerBuffer: InlineBuffer<'command-trigger'>
 
   /** Autolink configuration. */
   readonly #autolink: TransactionPipelineAutolinkConfig
