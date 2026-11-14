@@ -45,6 +45,7 @@ import type {
 } from './internals/event-source'
 import { EventSource } from './internals/event-source'
 import type { HistoryEvent, HistoryStackOptions } from './internals/history'
+import type { InlineBufferEvent } from './internals/inline-buffer'
 import type { MarkKey } from './internals/marks'
 import type { InlineNode } from './internals/nodes'
 import type { InsertOrMoveBlockPosition } from './internals/operations-builder'
@@ -401,6 +402,18 @@ export interface DactyloEventsApi {
 
   /** Subscribes to the history stack changes. */
   readonly history: Observable<HistoryEvent>
+
+  /**
+   * Subscribes to the mention buffer changes.
+   * 👉🏻 Fires anytime the inline buffer is updated.
+   */
+  readonly mention: Observable<InlineBufferEvent>
+
+  /**
+   * Subscribes to the command trigger buffer changes.
+   * 👉🏻 Fires anytime the inline buffer is updated.
+   */
+  readonly commandTrigger: Observable<InlineBufferEvent>
 
   /**
    * Subscribes to applied transactions.
@@ -1708,6 +1721,19 @@ export class Dactylo {
   get events(): DactyloEventsApi {
     return {
       /**
+       * Subscribes to the command trigger buffer changes.
+       * 👉🏻 Fires anytime the inline buffer is updated.
+       *
+       * @example
+       * ```ts
+       * const unsub = editor.events.commandTrigger.subscribe(({ bufferedText, state, }) => {
+       *  console.log({ bufferedText, state })
+       * })
+       * ```
+       */
+      commandTrigger: this.#pipeline.events.commandTrigger,
+
+      /**
        * Subscribes to the commands executed by the user/ai-agent.
        *
        * @example
@@ -1754,6 +1780,19 @@ export class Dactylo {
        * ```
        */
       history: this.#pipeline.events.history,
+
+      /**
+       * Subscribes to the mention buffer changes.
+       * 👉🏻 Fires anytime the inline buffer is updated.
+       *
+       * @example
+       * ```ts
+       * const unsub = editor.events.mention.subscribe(({ bufferedText, state, }) => {
+       *  console.log({ bufferedText, state })
+       * })
+       * ```
+       */
+      mention: this.#pipeline.events.mention,
 
       /**
        * Subscribes to the tools executed by the user/ai-agent.

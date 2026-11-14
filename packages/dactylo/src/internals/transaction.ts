@@ -30,6 +30,7 @@ import type { Observable } from './event-source'
 import { EventSource } from './event-source'
 import { HistoryStack } from './history'
 import type { HistoryEvent, HistoryStackOptions } from './history'
+import type { InlineBufferEvent } from './inline-buffer'
 import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
 import { MentionBuffer } from './mention-buffer'
@@ -326,6 +327,18 @@ export interface TransactionPipelineEvents {
    * Fires anytime the history stack is updated.
    */
   readonly history: Observable<HistoryEvent>
+
+  /**
+   * Subscribes to the mention buffer changes.
+   * 👉🏻 Fires anytime the inline buffer is updated.
+   */
+  readonly mention: Observable<InlineBufferEvent>
+
+  /**
+   * Subscribes to the command trigger buffer changes.
+   * 👉🏻 Fires anytime the inline buffer is updated.
+   */
+  readonly commandTrigger: Observable<InlineBufferEvent>
 
   /**
    * Subscribes to applied transactions.
@@ -770,8 +783,10 @@ export class TransactionPipeline {
   /** Returns the events emitted by the transaction pipeline. */
   get events(): TransactionPipelineEvents {
     return {
+      commandTrigger: this.#commandTriggerBuffer.observable,
       context: this.#eventSources.context.observable,
       history: this.#eventSources.history.observable,
+      mention: this.#mentionBuffer.observable,
       transactionDidApply: this.#eventSources.transactionDidApply.observable,
       transactionDidReject: this.#eventSources.transactionDidReject.observable,
     }
