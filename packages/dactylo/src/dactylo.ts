@@ -1170,6 +1170,8 @@ export interface DactyloMentionsTools {
 export interface DactyloMentionsCommands {
   /**
    * Confirms the current mention buffer.
+   * Entity's data are provided by the `mentions.resolver` option.
+   *
    * Client only.
    *
    * @example
@@ -1179,7 +1181,7 @@ export interface DactyloMentionsCommands {
    * ```
    */
   readonly confirm: (
-    entityId: string,
+    opts: { entityId: string; metadata?: MNM },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => void
 }
@@ -2662,6 +2664,72 @@ export class Dactylo {
                 blockId,
               ),
             negate,
+          ),
+      },
+    }
+  }
+
+  /** Returns the Api to interact with the {@link DocumentState} mentions of the editor. */
+  get mentions(): DactyloMentionsApi {
+    return {
+      commands: {
+        /**
+         * Confirms the current mention buffer.
+         * Entity's data are provided by the `mentions.resolver` option.
+         *
+         * Client only.
+         */
+        confirm: (
+          opts: { entityId: string; metadata?: MNM },
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'mentions/confirm',
+            () =>
+              this.#pipeline.confirmBufferedInlineMention(
+                {
+                  entity: {
+                    // @todo: add resolve for mention's entity data
+                    data: {},
+                    id: opts.entityId,
+                  },
+                  metadata: opts.metadata,
+                },
+                source,
+              ),
+            negate,
+            {
+              payload: {
+                entityId: opts.entityId,
+                metadata: opts.metadata,
+                source,
+              },
+            },
+          ),
+      },
+      tools: {
+        /**
+         * Returns the text that's being typed into the current mention buffer.
+         * Client only.
+         */
+        getBufferedText: () =>
+          this.#safeExecuteTool(
+            'mentions/get-buffered-text',
+            () => this.#pipeline.mentionInlineBuffer.bufferedText,
+            nullish,
+            { clientOnly: true },
+          ),
+
+        /**
+         * Whether a mention is currently being buffered.
+         * Client only.
+         */
+        isBuffering: () =>
+          this.#safeExecuteTool(
+            'mentions/is-buffering',
+            () => this.#pipeline.mentionInlineBuffer.isBuffering,
+            negate,
+            { clientOnly: true },
           ),
       },
     }
