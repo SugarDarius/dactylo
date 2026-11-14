@@ -603,6 +603,7 @@ export class TransactionPipeline {
     this.#mentionBuffer = new InlineBuffer({
       debug: this.#debug,
       enabled: this.#mentions.enabled,
+      eventKind: 'mention',
       name: 'MentionBuffer',
     })
 
@@ -610,6 +611,7 @@ export class TransactionPipeline {
     this.#commandTriggerBuffer = new InlineBuffer({
       debug: this.#debug,
       enabled: this.#commandTrigger.enabled,
+      eventKind: 'command-trigger',
       name: 'CommandTriggerBuffer',
     })
 

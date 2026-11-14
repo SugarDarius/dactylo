@@ -17,6 +17,10 @@ export interface InlineBufferPointer {
 
 /** Event emitted when the state of the {@link InlineBuffer} changes. */
 export interface InlineBufferEvent {
+  /** Kind of event that was emitted. */
+  readonly kind: string
+
+  /** State of the inline buffer. */
   readonly state: 'started' | 'buffering' | 'aborted' | 'released'
 
   /** Pointer at the inline character that opened the current buffer. */
@@ -29,6 +33,9 @@ export interface InlineBufferEvent {
 export interface InlineBufferOptions {
   /** Name of the inline buffer. */
   readonly name?: string
+
+  /** Kind of event that will be emitted. */
+  readonly eventKind?: string
 
   /** Whether to enable debug mode. */
   readonly debug: boolean
@@ -59,6 +66,9 @@ export class InlineBuffer extends EventSource<InlineBufferEvent> {
   /** Name of the inline buffer. */
   readonly #name: string
 
+  /** Kind of event that will be emitted. */
+  readonly #eventKind: string
+
   /** Whether to enable debug mode. */
   readonly #debug: boolean
 
@@ -75,6 +85,8 @@ export class InlineBuffer extends EventSource<InlineBufferEvent> {
     super()
 
     this.#name = options.name ?? 'InlineBuffer'
+    this.#eventKind = options.eventKind ?? 'inline'
+
     this.#debug = options.debug
     this.#enabled = options.enabled
 
@@ -119,6 +131,7 @@ export class InlineBuffer extends EventSource<InlineBufferEvent> {
 
     this.notify({
       bufferedText: this.#bufferedText,
+      kind: this.#eventKind,
       pointer: this.#pointer,
       state: 'started',
     })
@@ -157,6 +170,7 @@ export class InlineBuffer extends EventSource<InlineBufferEvent> {
 
     this.notify({
       bufferedText: this.#bufferedText,
+      kind: this.#eventKind,
       pointer: this.#pointer,
       state: 'buffering',
     })
@@ -179,6 +193,7 @@ export class InlineBuffer extends EventSource<InlineBufferEvent> {
 
     this.notify({
       bufferedText: this.#bufferedText,
+      kind: this.#eventKind,
       pointer: this.#pointer,
       state: 'aborted',
     })
@@ -193,6 +208,7 @@ export class InlineBuffer extends EventSource<InlineBufferEvent> {
 
     this.notify({
       bufferedText: this.#bufferedText,
+      kind: this.#eventKind,
       pointer: this.#pointer,
       state: 'released',
     })
