@@ -781,6 +781,16 @@ export class TransactionPipeline {
     this.#isIMEComposing = isComposing
   }
 
+  /** Returns the inline buffer for mentions. */
+  get mentionInlineBuffer(): InlineBuffer<'mention'> {
+    return this.#mentionBuffer
+  }
+
+  /** Returns the inline buffer for command trigger. */
+  get commandTriggerInlineBuffer(): InlineBuffer<'command-trigger'> {
+    return this.#commandTriggerBuffer
+  }
+
   // ─── Events ───────────────────────────────────────────────────----
 
   /** Returns the events emitted by the transaction pipeline. */
