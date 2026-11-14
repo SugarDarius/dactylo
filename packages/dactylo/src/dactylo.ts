@@ -2699,6 +2699,7 @@ export class Dactylo {
               ),
             negate,
             {
+              clientOnly: true,
               payload: {
                 entityId: opts.entityId,
                 metadata: opts.metadata,
