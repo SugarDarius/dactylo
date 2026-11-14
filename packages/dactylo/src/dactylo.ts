@@ -1145,6 +1145,7 @@ export type DactyloBlocksApi = DactyloAspectApi<
 export interface DactyloMentionsTools {
   /**
    * Whether a mention is currently being buffered.
+   * Client only.
    *
    * @example
    * ```ts
@@ -1155,6 +1156,7 @@ export interface DactyloMentionsTools {
 
   /**
    * Returns the text that's being typed into the current mention buffer.
+   * Client only.
    *
    * @example
    * ```ts
@@ -1168,6 +1170,7 @@ export interface DactyloMentionsTools {
 export interface DactyloMentionsCommands {
   /**
    * Confirms the current mention buffer.
+   * Client only.
    *
    * @example
    * ```ts
