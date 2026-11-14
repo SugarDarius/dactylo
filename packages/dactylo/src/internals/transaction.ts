@@ -14,7 +14,6 @@ import type {
 } from './augmentation'
 import type { BlockId, HeadingBlock, NumberedListItemBlock } from './blocks'
 import { readTransferredData } from './clipboard'
-import { CommandTriggerBuffer } from './command-trigger-buffer'
 import { warn, warnOnceIf } from './console'
 import {
   DEFAULT_BATCH_MAX_SIZE,
@@ -30,10 +29,10 @@ import type { Observable } from './event-source'
 import { EventSource } from './event-source'
 import { HistoryStack } from './history'
 import type { HistoryEvent, HistoryStackOptions } from './history'
+import { InlineBuffer } from './inline-buffer'
 import type { InlineBufferEvent } from './inline-buffer'
 import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
-import { MentionBuffer } from './mention-buffer'
 import type { InlineNode } from './nodes'
 import type { Operation } from './operations'
 import type {
@@ -535,13 +534,13 @@ export class TransactionPipeline {
   readonly #mentions: TransactionPipelineMentionsConfig
 
   /** Mention buffer instance. */
-  readonly #mentionBuffer: MentionBuffer
+  readonly #mentionBuffer: InlineBuffer
 
   /** Command trigger configuration. */
   readonly #commandTrigger: TransactionPipelineCommandTriggerConfig
 
   /** Command trigger buffer instance. */
-  readonly #commandTriggerBuffer: CommandTriggerBuffer
+  readonly #commandTriggerBuffer: InlineBuffer
 
   /** Autolink configuration. */
   readonly #autolink: TransactionPipelineAutolinkConfig
@@ -601,15 +600,17 @@ export class TransactionPipeline {
     this.#markdown = options.markdown
 
     this.#mentions = options.mentions
-    this.#mentionBuffer = new MentionBuffer({
+    this.#mentionBuffer = new InlineBuffer({
       debug: this.#debug,
       enabled: this.#mentions.enabled,
+      name: 'MentionBuffer',
     })
 
     this.#commandTrigger = options.commandTrigger
-    this.#commandTriggerBuffer = new CommandTriggerBuffer({
+    this.#commandTriggerBuffer = new InlineBuffer({
       debug: this.#debug,
       enabled: this.#commandTrigger.enabled,
+      name: 'CommandTriggerBuffer',
     })
 
     this.#operationsEngine = new OperationsEngine({
