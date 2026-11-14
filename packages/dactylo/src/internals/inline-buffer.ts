@@ -1,5 +1,6 @@
 import type { BlockId } from './blocks'
 import { warnOnceIf } from './console'
+import { EventSource } from './event-source'
 import type { NodeId } from './nodes'
 
 /** Pointer at the inline character that opened the current buffer. */
@@ -12,6 +13,17 @@ export interface InlineBufferPointer {
 
   /** Offset inside the {@link TextNode} where the inline character is located. */
   readonly triggerOffset: number
+}
+
+/** Event emitted when the state of the {@link InlineBuffer} changes. */
+export interface InlineBufferEvent {
+  readonly state: 'started' | 'buffering' | 'aborted' | 'released'
+
+  /** Pointer at the inline character that opened the current buffer. */
+  readonly pointer: InlineBufferPointer | null
+
+  /** Text that's being typed into the inline buffer. */
+  readonly bufferedText: string | null
 }
 
 export interface InlineBufferOptions {
@@ -43,7 +55,7 @@ export interface InlineBufferOptions {
  * Keeping the query here lets a picker read `bufferedText` without parsing the
  * AST, and `abort` / `release` can drop the pointer without mutating the document.
  */
-export class InlineBuffer {
+export class InlineBuffer extends EventSource<InlineBufferEvent> {
   /** Name of the inline buffer. */
   readonly #name: string
 
@@ -60,6 +72,8 @@ export class InlineBuffer {
   #bufferedText: string | null
 
   constructor(options: InlineBufferOptions) {
+    super()
+
     this.#name = options.name ?? 'InlineBuffer'
     this.#debug = options.debug
     this.#enabled = options.enabled
@@ -103,6 +117,12 @@ export class InlineBuffer {
     this.#pointer = { ...input }
     this.#bufferedText = ''
 
+    this.notify({
+      bufferedText: this.#bufferedText,
+      pointer: this.#pointer,
+      state: 'started',
+    })
+
     return true
   }
 
@@ -135,6 +155,12 @@ export class InlineBuffer {
 
     this.#bufferedText += text
 
+    this.notify({
+      bufferedText: this.#bufferedText,
+      pointer: this.#pointer,
+      state: 'buffering',
+    })
+
     return true
   }
 
@@ -151,6 +177,12 @@ export class InlineBuffer {
     this.#pointer = null
     this.#bufferedText = null
 
+    this.notify({
+      bufferedText: this.#bufferedText,
+      pointer: this.#pointer,
+      state: 'aborted',
+    })
+
     return true
   }
 
@@ -158,6 +190,12 @@ export class InlineBuffer {
   release(): boolean {
     this.#pointer = null
     this.#bufferedText = null
+
+    this.notify({
+      bufferedText: this.#bufferedText,
+      pointer: this.#pointer,
+      state: 'released',
+    })
 
     return true
   }

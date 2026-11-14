@@ -903,7 +903,7 @@ export class TransactionPipeline {
     /**
      * Should not happen as we check if the buffer is being buffered before calling this method.
      * But we return `null` for UI libraries to let render what they need based on this state
-     * and not crash the UI with an error.
+     * and not break the UI with an error.
      */
     if (pointer === null || bufferedText === null) {
       return false
@@ -922,11 +922,10 @@ export class TransactionPipeline {
       )
 
     if (intent === null) {
+      /** When no intent we need to abort the buffer to clear up the state and notify the UI. */
       this.#mentionBuffer.abort()
       return false
     }
-
-    this.#mentionBuffer.release()
 
     const { ops, label } = intent
     this.#commit(ops, {
@@ -934,6 +933,9 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    /** After ops are committed we can safely release the buffer for the next typed mention. */
+    this.#mentionBuffer.release()
 
     return true
   }
