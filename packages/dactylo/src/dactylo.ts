@@ -270,6 +270,10 @@ export type DactyloTool =
   /** Blocks tools. */
   | 'blocks/is-with-empty-inline-content'
 
+  /** Mentions tools. */
+  | 'mentions/is-buffering'
+  | 'mentions/get-buffered-text'
+
 /** Discriminated union of commands that can be executed by the user/ai-agent. */
 export type DactyloCommand =
   /** History commands. */
@@ -316,6 +320,9 @@ export type DactyloCommand =
   | 'blocks/patch-numbered-list-item'
   | 'blocks/patch-checkbox-list-item'
   | 'blocks/patch-divider'
+
+  /** Mentions commands. */
+  | 'mentions/confirm'
 
 /** Event emitted when a command is executed. */
 export interface DactyloCommandEvent {
@@ -1132,6 +1139,52 @@ export interface DactyloBlocksCommands {
 export type DactyloBlocksApi = DactyloAspectApi<
   DactyloBlocksTools,
   DactyloBlocksCommands
+>
+
+/** Tools to query mentions in the editor. */
+export interface DactyloMentionsTools {
+  /**
+   * Whether a mention is currently being buffered.
+   *
+   * @example
+   * ```ts
+   * const isBuffering = editor.mentions.tools.isBuffering()
+   * ```
+   */
+  readonly isBuffering: () => boolean
+
+  /**
+   * Returns the text that's being typed into the current mention buffer.
+   *
+   * @example
+   * ```ts
+   * const bufferedText = editor.mentions.tools.getBufferedText()
+   * ```
+   */
+  readonly getBufferedText: () => string | null
+}
+
+/** Commands to mutate {@link DocumentState} mentions of the editor. */
+export interface DactyloMentionsCommands {
+  /**
+   * Confirms the current mention buffer.
+   *
+   * @example
+   * ```ts
+   * editor.mentions.commands.confirm('user-123', 'user')
+   * editor.mentions.commands.confirm('file-123', 'ai-agent')
+   * ```
+   */
+  readonly confirm: (
+    entityId: string,
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => void
+}
+
+/** Api to interact with the {@link DocumentState} mentions of the editor. */
+export type DactyloMentionsApi = DactyloAspectApi<
+  DactyloMentionsTools,
+  DactyloMentionsCommands
 >
 
 /** Base options for constructing a {@link Dactylo} instance. */
