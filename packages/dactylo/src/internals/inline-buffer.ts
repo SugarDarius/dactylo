@@ -106,8 +106,25 @@ export class InlineBuffer {
     return true
   }
 
+  /** Returns the current inline buffer pointer and buffered text. */
+  get(): [InlineBufferPointer | null, string | null] {
+    if (
+      !this.#enabled ||
+      this.#pointer === null ||
+      this.#bufferedText === null
+    ) {
+      warnOnceIf(
+        this.#debug,
+        `\`${this.#name}.get()\` called but inline buffering is not enabled or not being buffered`,
+      )
+      return [null, null]
+    }
+
+    return [this.#pointer, this.#bufferedText]
+  }
+
   /** Appends text to the current inline buffer. */
-  appendTypedText(text: string): boolean {
+  append(text: string): boolean {
     if (!this.#enabled || this.#pointer === null) {
       warnOnceIf(
         this.#debug,

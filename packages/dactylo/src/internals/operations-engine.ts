@@ -1,3 +1,4 @@
+import type { MNED, MNM } from './augmentation'
 import { AutolinkOpsBuilder } from './autolink-ops-builder'
 import {
   cloneBlock,
@@ -9,6 +10,7 @@ import {
   createParagraphBlock,
   createParagraphBlockAfter,
   createQuoteBlock,
+  findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
   isBulletListItemBlock,
   isCheckboxListItemBlock,
@@ -42,8 +44,13 @@ import { InsertTextOpsBuilder } from './insert-text-ops-builder'
 import { MarkdownShortcutOpsBuilder } from './markdown-shortcut-ops-builder'
 import type { MarkKey } from './marks'
 import { MarksOpsBuilder } from './marks-ops-builder'
-import { createTextNode } from './nodes'
-import type { InlineNode } from './nodes'
+import {
+  createFromInlineWithEditableText,
+  createMentionNode,
+  createTextNode,
+  isTextNode,
+} from './nodes'
+import type { InlineNode, NodeId } from './nodes'
 import {
   formatMarkerNumbering,
   markerNumberingAfterNeighbor,
@@ -55,6 +62,7 @@ import {
   buildReindexAfterRemovedNumberedItemOps,
   buildReindexNumberedListRunsOps,
   buildReindexNumberedListSuffixOps,
+  withTrailingSelectionOp,
 } from './operations-builder'
 import type {
   BuilderOpsIntent,
@@ -224,6 +232,133 @@ export class OperationsEngine {
   }
 
   // --- Composing operations ─────────────────────────────────────────
+
+  /** Builds operations to insert a mention node after a mention buffer is confirmed. */
+  buildInsertMentionAfterBufferConfirmOps(
+    context: EditorContext,
+    /** Spec for inserting a mention after confirming a {@link MentionBuffer}. */
+    spec: {
+      /** Entity related to the mention. */
+      entity: { id: string; data: MNED }
+      /** Metadata for the mention. */
+      metadata?: MNM
+      /** Block ID where the mention is being inserted. */
+      blockId: BlockId
+      /** Node ID where the mention is being inserted. */
+      nodeId: NodeId
+      /** Trigger offset where the mention is being inserted. */
+      triggerOffset: number
+      /** Buffered text where the mention is being inserted. */
+      bufferedText: string
+      /** Character that triggered the mention buffer. */
+      character: string
+    },
+  ): BuilderOpsIntent | null {
+    if (!isCursorSelection(context.selection)) {
+      return null
+    }
+
+    const { state } = context
+    const {
+      blockId,
+      entity,
+      metadata,
+      nodeId,
+      triggerOffset,
+      character,
+      bufferedText,
+    } = spec
+
+    const block = getBlockWithInlineContent(state, blockId)
+    const found = findNodeInBlockWithInlineContent(block, nodeId)
+
+    if (!found || !isTextNode(found.node)) {
+      return null
+    }
+
+    const { node } = found
+
+    const opener = node.text.slice(
+      triggerOffset,
+      triggerOffset + character.length,
+    )
+
+    if (opener !== character) {
+      return null
+    }
+
+    const qLen = character.length + bufferedText.length
+    const query = node.text.slice(triggerOffset, triggerOffset + qLen)
+
+    if (query !== character + bufferedText) {
+      return null
+    }
+
+    const suffix = node.text.slice(triggerOffset + qLen)
+    const mention = createMentionNode({
+      entity,
+      metadata: metadata ?? this.#initialMetadata.mentions,
+    })
+
+    let ops: Operation[] = []
+
+    if (triggerOffset === 0) {
+      ops.push({
+        __type: 'delete_text',
+        blockId: block.id,
+        length: qLen,
+        nodeId: node.id,
+        offset: 0,
+        snapshot: { text: query },
+      })
+    } else {
+      ops.push({
+        __type: 'delete_text',
+        blockId: block.id,
+        length: node.text.length - triggerOffset,
+        nodeId: node.id,
+        offset: triggerOffset,
+        snapshot: { text: node.text.slice(triggerOffset) },
+      })
+    }
+
+    ops.push({
+      __type: 'insert_inline_node',
+      afterNodeId: node.id,
+      blockId: block.id,
+      node: mention,
+    })
+
+    const after =
+      suffix.length > 0
+        ? createFromInlineWithEditableText(node, {
+            marks: node.marks,
+            text: suffix,
+          })
+        : createTextNode({
+            metadata: this.#initialMetadata.text,
+            text: ' ',
+          })
+
+    ops.push({
+      __type: 'insert_inline_node',
+      afterNodeId: mention.id,
+      blockId: block.id,
+      node: after,
+    })
+
+    ops = withTrailingSelectionOp(
+      ops,
+      createCursor({
+        blockId: block.id,
+        nodeId: after.id,
+        offset: after.text.length,
+      }),
+      context.selection,
+    )
+
+    return { label: 'insert-after-buffer-confirm', ops }
+  }
 
   /** Builds operations to insert a text (char or emoji). */
   buildInsertTextOps(

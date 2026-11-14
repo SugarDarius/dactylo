@@ -5,6 +5,7 @@ import type {
   HBM,
   LBNM,
   LNM,
+  MNED,
   MNM,
   NBM,
   PBM,
@@ -868,6 +869,76 @@ export class TransactionPipeline {
   // --- Composing operations ─────────────────────────────────────────
 
   /**
+   * Confirms a mention buffer by inserting a mention node into the document.
+   * Enforces core constraints invariants:
+   *  - A mention is currently being buffered.
+   *  - The mention buffer is confirmed by a user action.
+   *  - When the mention buffer is confirmed, the mention is inserted into the document and the buffer is released
+   *    and we notify that the mention buffer is confirmed.
+   *  - Otherwise, the buffer is aborted and wwe notify that the mention buffer is aborted,
+   *  - The created mention is pushed to the {@link HistoryStack}.
+   *
+   *  Returns a boolean indicating whether the mention buffer was confirmed or not.
+   */
+  confirmBufferedInlineMention(
+    opts: {
+      entity: {
+        id: string
+        /** Data provider by resolver. */
+        data: MNED
+      }
+      metadata?: MNM
+    },
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): boolean {
+    if (!this.#mentionBuffer.isBuffering) {
+      warnOnceIf(
+        this.#debug,
+        `Cannot confirm mention as there is no mention buffer active.`,
+      )
+      return false
+    }
+
+    const [pointer, bufferedText] = this.#mentionBuffer.get()
+    /**
+     * Should not happen as we check if the buffer is being buffered before calling this method.
+     * But we return `null` for UI libraries to let render what they need based on this state
+     * and not crash the UI with an error.
+     */
+    if (pointer === null || bufferedText === null) {
+      return false
+    }
+
+    const intent =
+      this.#operationsEngine.buildInsertMentionAfterBufferConfirmOps(
+        this.#context,
+        {
+          entity: opts.entity,
+          metadata: opts.metadata,
+          ...pointer,
+          bufferedText,
+          character: this.#mentions.character,
+        },
+      )
+
+    if (intent === null) {
+      this.#mentionBuffer.abort()
+      return false
+    }
+
+    this.#mentionBuffer.release()
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('mentions', 'confirm', label),
+      pushToHistory: true,
+      source,
+    })
+
+    return true
+  }
+
+  /**
    * Digests and translates an input event into operations.
    * Enforces core constraints invariants:
    * - `Enter` → new block
@@ -1099,13 +1170,13 @@ export class TransactionPipeline {
             this.#mentionBuffer.isBuffering &&
             !this.#commandTriggerBuffer.isBuffering
           ) {
-            this.#mentionBuffer.appendTypedText(text)
+            this.#mentionBuffer.append(text)
             return true
           } else if (
             this.#commandTriggerBuffer.isBuffering &&
             !this.#mentionBuffer.isBuffering
           ) {
-            this.#commandTriggerBuffer.appendTypedText(text)
+            this.#commandTriggerBuffer.append(text)
             return true
           } else if (this.#isMentionIntent(text)) {
             const pointer = findInlineBufferPointerAtCursor(this.#context)
