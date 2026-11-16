@@ -125,14 +125,14 @@ describe('Dactylo construction', () => {
         initialMetadata: {},
         placeholder: DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
       },
+      commandTrigger: {
+        character: DEFAULT_COMMAND_TRIGGER_CHARACTER,
+        enabled: DEFAULT_COMMAND_TRIGGER_ENABLED,
+      },
       divider: { initialMetadata: {} },
       heading: {
         initialMetadata: {},
         placeholder: DEFAULT_HEADING_PLACEHOLDER,
-      },
-      commandTrigger: {
-        character: DEFAULT_COMMAND_TRIGGER_CHARACTER,
-        enabled: DEFAULT_COMMAND_TRIGGER_ENABLED,
       },
       lineBreak: { initialMetadata: {} },
       link: {
@@ -163,8 +163,8 @@ describe('Dactylo construction', () => {
     const editor = makeEditor({
       autolink: { enabled: false },
       bulletedList: { placeholder: 'Item' },
-      heading: { placeholder: 'Title' },
       commandTrigger: { character: '!', enabled: false },
+      heading: { placeholder: 'Title' },
       link: { openOnClick: false },
       locales: 'fr-FR',
       markdown: { enabled: false },
@@ -181,9 +181,9 @@ describe('Dactylo construction', () => {
         initialMetadata: {},
         placeholder: DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
       },
+      commandTrigger: { character: '!', enabled: false },
       divider: { initialMetadata: {} },
       heading: { initialMetadata: {}, placeholder: 'Title' },
-      commandTrigger: { character: '!', enabled: false },
       lineBreak: { initialMetadata: {} },
       link: { initialMetadata: {}, openOnClick: false },
       locales: 'fr-FR',

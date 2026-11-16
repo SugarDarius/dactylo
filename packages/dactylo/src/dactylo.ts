@@ -1186,7 +1186,7 @@ export interface DactyloMentionsCommands {
     opts: {
       entity: {
         id: string
-        /** Developer-provided additional data. Defaults to `{}`. */
+        /** Developer-provided additional data. */
         data: MNED
       }
       metadata?: MNM

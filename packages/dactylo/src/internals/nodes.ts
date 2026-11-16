@@ -199,7 +199,7 @@ export function isLinkNode<N extends InlineNode>(
 export function createMentionNode(opts: {
   entity: {
     id: string
-    data?: MNED
+    data: MNED
   }
   metadata?: MNM
 }): MentionNode {
@@ -207,7 +207,7 @@ export function createMentionNode(opts: {
     __type: 'mention',
     createdAt: new Date(),
     entity: {
-      data: opts.entity.data ?? {},
+      data: opts.entity.data,
       id: opts.entity.id,
     },
     id: generateNodeId(),
