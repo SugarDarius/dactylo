@@ -324,6 +324,7 @@ export type DactyloCommand =
 
   /** Mentions commands. */
   | 'mentions/confirm-buffer'
+  | 'mentions/dismiss-buffer'
 
 /** Event emitted when a command is executed. */
 export interface DactyloCommandEvent {
@@ -1170,7 +1171,7 @@ export interface DactyloMentionsTools {
 /** Commands to mutate {@link DocumentState} mentions of the editor. */
 export interface DactyloMentionsCommands {
   /**
-   * Confirms the current mention buffer Confirms the current mention buffer by inserting a mention node into the document.
+   * Confirms the current mention buffer by inserting a mention node into the document.
    * Returns a boolean indicating whether the confirm command was successful.
    *
    * Client only.
@@ -1190,6 +1191,22 @@ export interface DactyloMentionsCommands {
       }
       metadata?: MNM
     },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => boolean
+
+  /**
+   * Dismisses the current mention buffer by cancelling the inline buffer
+   * Returns a boolean indicating whether the dismiss command was successful.
+   *
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * editor.mentions.commands.dismiss()
+   * editor.mentions.commands.dismiss('ai-agent')
+   * ```
+   */
+  readonly dismiss: (
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => boolean
 }
@@ -2722,6 +2739,22 @@ export class Dactylo {
                 source,
               },
             },
+          ),
+        /**
+         * Dismisses the current mention buffer by cancelling the inline buffer
+         * Returns a boolean indicating whether the dismiss command was successful.
+         *
+         * Client only.
+         * ```
+         */
+        dismiss: (
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'mentions/dismiss-buffer',
+            () => this.#pipeline.mentionInlineBuffer.abort(),
+            negate,
+            { payload: { source } },
           ),
       },
       tools: {
