@@ -301,6 +301,14 @@ export function deleteBackward(pipeline: TransactionPipeline): void {
   }
 }
 
+/** Delete / delete content forward. */
+export function deleteForward(pipeline: TransactionPipeline): void {
+  const handled = pipeline.digestInputEvent(inputEvent('deleteContentForward'))
+  if (!handled) {
+    throw new Error('deleteContentForward was not handled')
+  }
+}
+
 /** Pastes plain text. */
 export function pastePlainText(
   pipeline: TransactionPipeline,
@@ -368,6 +376,11 @@ export function typeLines(
 /** Backspace that may be a no-op (e.g. at the start of the document). */
 export function tryDeleteBackward(pipeline: TransactionPipeline): boolean {
   return pipeline.digestInputEvent(inputEvent('deleteContentBackward'))
+}
+
+/** Delete that may be a no-op (e.g. at the end of the document). */
+export function tryDeleteForward(pipeline: TransactionPipeline): boolean {
+  return pipeline.digestInputEvent(inputEvent('deleteContentForward'))
 }
 
 /** Undo must restore `before`; redo must restore the post-edit snapshot. */

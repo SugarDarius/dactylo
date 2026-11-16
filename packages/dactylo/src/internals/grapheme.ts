@@ -151,4 +151,18 @@ export class GraphemeOffsetCaret {
     const { start, end } = this.#getRangeContaining(text, snapped - 1)
     return { length: end - start, start }
   }
+
+  /** Deletes the grapheme immediately after the caret. */
+  getForwardDeleteRange(
+    text: string,
+    offset: number,
+  ): { start: number; length: number } {
+    const snapped = this.snapOffsetToBoundary(text, offset)
+    if (snapped === text.length) {
+      return { length: 0, start: snapped }
+    }
+
+    const { start, end } = this.#getRangeContaining(text, snapped)
+    return { length: end - start, start }
+  }
 }

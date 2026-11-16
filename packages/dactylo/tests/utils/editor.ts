@@ -76,9 +76,22 @@ export function deleteBackward(editor: Dactylo): void {
   }
 }
 
+/** Delete / delete content forward. */
+export function deleteForward(editor: Dactylo): void {
+  const handled = sendInput(editor, 'deleteContentForward')
+  if (!handled) {
+    throw new Error('deleteContentForward was not handled')
+  }
+}
+
 /** Backspace that may be a no-op (e.g. at the start of the document). */
 export function tryDeleteBackward(editor: Dactylo): boolean {
   return sendInput(editor, 'deleteContentBackward')
+}
+
+/** Delete that may be a no-op (e.g. at the end of the document). */
+export function tryDeleteForward(editor: Dactylo): boolean {
+  return sendInput(editor, 'deleteContentForward')
 }
 
 /** Pastes plain text. */

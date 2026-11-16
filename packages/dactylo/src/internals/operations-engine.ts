@@ -24,6 +24,7 @@ import {
 import type { BlockId, HeadingBlock, NumberedListItemBlock } from './blocks'
 import type { TextPlainData } from './clipboard'
 import { warn, warnIf, warnOnceIf } from './console'
+import { DeleteContentForwardOpsBuilder } from './delete-content-forward-ops-builder'
 import { DeleteContentOpsBuilder } from './delete-content-ops-builder'
 import {
   computeInsertBlockPosKey,
@@ -146,6 +147,9 @@ export class OperationsEngine {
   /** Delete content ops builder. */
   readonly #deleteContentOpsBuilder: DeleteContentOpsBuilder
 
+  /** Delete content forward ops builder. */
+  readonly #deleteContentForwardOpsBuilder: DeleteContentForwardOpsBuilder
+
   /** Paste plain text ops builder. */
   readonly #pastePlainTextOpsBuilder: PastePlainTextOpsBuilder
 
@@ -175,6 +179,12 @@ export class OperationsEngine {
       initialMetadata: this.#initialMetadata,
     })
     this.#deleteContentOpsBuilder = new DeleteContentOpsBuilder({
+      graphemeOffsetCaret: new GraphemeOffsetCaret({
+        locales: options.locales,
+      }),
+      initialMetadata: this.#initialMetadata,
+    })
+    this.#deleteContentForwardOpsBuilder = new DeleteContentForwardOpsBuilder({
       graphemeOffsetCaret: new GraphemeOffsetCaret({
         locales: options.locales,
       }),
@@ -371,6 +381,13 @@ export class OperationsEngine {
   /** Builds operations to delete content. */
   buildDeleteContentOps(context: EditorContext): BuilderOpsIntent | null {
     return this.#deleteContentOpsBuilder.build(context)
+  }
+
+  /** Builds operations to delete content forward. */
+  buildDeleteContentForwardOps(
+    context: EditorContext,
+  ): BuilderOpsIntent | null {
+    return this.#deleteContentForwardOpsBuilder.build(context)
   }
 
   /** Builds operations when user presses `Enter` key as a hard break. */

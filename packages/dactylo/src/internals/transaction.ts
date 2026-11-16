@@ -1071,7 +1071,7 @@ export class TransactionPipeline {
     switch (inputType) {
       /**
        * Not handled input types bucket as we're consuming explicitly
-       * input types like `insertText`, `insertReplacementText`, `insertFromPaste`, `deleteByCut`, `deleteContentBackward`
+       * input types like `insertText`, `insertReplacementText`, `insertFromPaste`, `deleteByCut`, `deleteContentBackward`, `deleteContentForward`
        * and we prevent the default browser behavior as we want full control over DOM tree with UI libraries.
        */
       case 'historyUndo':
@@ -1193,6 +1193,30 @@ export class TransactionPipeline {
         prevent()
 
         const intent = this.#operationsEngine.buildDeleteContentOps(
+          this.#context,
+        )
+
+        if (intent === null) {
+          return false
+        }
+
+        const { ops, label, coalesce } = intent
+        this.#commit(ops, {
+          coalesce,
+          label: transactionPolicyLabel('input', 'digest-event', label),
+          pushToHistory: true,
+          source: 'user',
+        })
+
+        return true
+      }
+
+      /** Using `Delete` to delete content forward. */
+      case 'deleteContentForward': {
+        /** In any case we prevent native browser behavior as we want full control over delete. */
+        prevent()
+
+        const intent = this.#operationsEngine.buildDeleteContentForwardOps(
           this.#context,
         )
 

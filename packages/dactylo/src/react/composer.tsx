@@ -1067,6 +1067,7 @@ export function useEditable() {
    *  - `insertLineBreak` (`shift+Enter` → soft break)
    *  - `insertParagraph` (`Enter` → hard break)
    *  - `deleteContentBackward` (`Backspace` → delete char for cursor selection or  range of chars for range selection)
+   *  - `deleteContentForward` (`Delete` → delete next char for cursor selection or range of chars for range selection)
    *  - `insertText` (`Typing` → insert text)
    *
    * `input` event fires too late for how {@link Dactylo} works.
