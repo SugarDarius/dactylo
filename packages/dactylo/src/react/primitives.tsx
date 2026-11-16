@@ -190,6 +190,7 @@ const ComposerTextNode = memo(
   forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
     ({ node, ...props }, forwardedRef) => {
       const { renderedText, nodeAttributes } = useEditableNode(node)
+
       return (
         <span
           {...props}
@@ -273,11 +274,13 @@ export const ComposerMentionNode = memo(
         <span
           {...props}
           ref={forwardedRef}
+          contentEditable={false}
           {...{
             [MENTION_NODE_ATTR_NAME]: '',
             [NODE_ATTR_NAME]: '',
             [NODE_ID_DATA_NAME]: node.id,
           }}
+          aria-roledescription='mention-node'
         >
           {mentions.character}
           {node.entity.id}
