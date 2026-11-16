@@ -70,6 +70,7 @@ import {
   COMPOSER_HEADING_TAGS,
   COMPOSER_LINE_BREAK_NODE_NAME,
   COMPOSER_LINK_NODE_NAME,
+  COMPOSER_MENTION_NODE_NAME,
   COMPOSER_NUMBERED_LIST_ITEM_BLOCK_NAME,
   COMPOSER_PARAGRAPH_BLOCK_NAME,
   COMPOSER_QUOTE_BLOCK_NAME,
@@ -331,6 +332,7 @@ export const ComposerMentionNode = memo(
     },
   ),
 )
+ComposerMentionNode.displayName = COMPOSER_MENTION_NODE_NAME
 
 /** Adds a slot inline content component for a block with inline content to the composer. */
 const ComposerSlotInlineContent = ({
