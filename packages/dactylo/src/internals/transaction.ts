@@ -912,7 +912,6 @@ export class TransactionPipeline {
     opts: {
       entity: {
         id: string
-        /** Data provider by resolver. */
         data: MNED
       }
       metadata?: MNM
@@ -920,10 +919,7 @@ export class TransactionPipeline {
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): boolean {
     if (!this.#mentionBuffer.isBuffering) {
-      warnOnceIf(
-        this.#debug,
-        `Cannot confirm mention as there is no mention buffer active.`,
-      )
+      warn(`Cannot confirm mention as there is no mention buffer active.`)
       return false
     }
 

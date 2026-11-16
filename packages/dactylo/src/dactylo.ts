@@ -5,6 +5,7 @@ import type {
   HBM,
   LBNM,
   LNM,
+  MNED,
   MNM,
   NBM,
   PBM,
@@ -1170,20 +1171,27 @@ export interface DactyloMentionsTools {
 export interface DactyloMentionsCommands {
   /**
    * Confirms the current mention buffer Confirms the current mention buffer by inserting a mention node into the document.
-   * Entity's data are provided by the `mentions.resolver` option.
+   * Returns a boolean indicating whether the confirm command was successful.
    *
    * Client only.
    *
    * @example
    * ```ts
-   * editor.mentions.commands.confirm('user-123', 'user')
-   * editor.mentions.commands.confirm('file-123', 'ai-agent')
+   * editor.mentions.commands.confirm({ entityId: 'user-123', data: { name: 'John Doe' }, metadata: { bgColor: 'blue' } })
+   * editor.mentions.commands.confirm({ entityId: 'file-123', data: { name: 'John Doe' }, metadata: { bgColor: 'magenta' } }, 'ai-agent')
    * ```
    */
   readonly confirm: (
-    opts: { entityId: string; metadata?: MNM },
+    opts: {
+      entity: {
+        id: string
+        /** Developer-provided additional data. Defaults to `{}`. */
+        data: MNED
+      }
+      metadata?: MNM
+    },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
+  ) => boolean
 }
 
 /** Api to interact with the {@link DocumentState} mentions of the editor. */
@@ -2675,12 +2683,18 @@ export class Dactylo {
       commands: {
         /**
          * Confirms the current mention buffer by inserting a mention node into the document.
-         * Entity's data are provided by the `mentions.resolver` option.
+         * Returns a boolean indicating whether the confirm command was successful.
          *
          * Client only.
          */
         confirm: (
-          opts: { entityId: string; metadata?: MNM },
+          opts: {
+            entity: {
+              id: string
+              data: MNED
+            }
+            metadata?: MNM
+          },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
           this.#safeExecuteCommand(
@@ -2689,9 +2703,8 @@ export class Dactylo {
               this.#pipeline.confirmBufferedInlineMention(
                 {
                   entity: {
-                    // @todo: add resolve for mention's entity data
-                    data: {},
-                    id: opts.entityId,
+                    data: opts.entity.data,
+                    id: opts.entity.id,
                   },
                   metadata: opts.metadata,
                 },
@@ -2701,7 +2714,10 @@ export class Dactylo {
             {
               clientOnly: true,
               payload: {
-                entityId: opts.entityId,
+                entity: {
+                  data: JSON.stringify(opts.entity.data),
+                  id: opts.entity.id,
+                },
                 metadata: opts.metadata,
                 source,
               },
