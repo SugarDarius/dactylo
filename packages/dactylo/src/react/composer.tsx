@@ -1281,11 +1281,28 @@ export function useInlineBuffer() {
   const { editor } = useComposer()
 
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
-  // @todo: handle command trigger
-  const getSnapshot = useStableCallback(() => {
-    const mPointer = editor.mentions.tools.getPointer()
-    const mBufferedText = editor.mentions.tools.getBufferedText()
 
+  const getMentionPointerSnapshot = useStableCallback(() =>
+    editor.mentions.tools.getPointer(),
+  )
+
+  const getMentionBufferedTextSnapshot = useStableCallback(() =>
+    editor.mentions.tools.getBufferedText(),
+  )
+
+  const mPointer = useSyncExternalStore(
+    subscribe,
+    getMentionPointerSnapshot,
+    getMentionPointerSnapshot,
+  )
+  const mBufferedText = useSyncExternalStore(
+    subscribe,
+    getMentionBufferedTextSnapshot,
+    getMentionBufferedTextSnapshot,
+  )
+
+  // @todo: handle command trigger
+  const inlineBuffer = useMemo(() => {
     if (mPointer !== null && mBufferedText !== null) {
       return {
         bufferedText: mBufferedText,
@@ -1295,9 +1312,9 @@ export function useInlineBuffer() {
     }
 
     return null
-  })
+  }, [mPointer, mBufferedText])
 
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  return inlineBuffer
 }
 
 /**
