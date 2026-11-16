@@ -61,6 +61,10 @@ export type {
 export type { DocumentState } from './internals/document'
 export type { EditorContext } from './internals/editor-context'
 export type { HistoryEvent, HistoryStackOptions } from './internals/history'
+export type {
+  InlineBufferEvent,
+  InlineBufferPointer,
+} from './internals/inline-buffer'
 export type { MarkKey, Marks } from './internals/marks'
 export type {
   InlineNode,

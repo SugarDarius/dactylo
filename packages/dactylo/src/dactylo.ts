@@ -46,7 +46,10 @@ import type {
 } from './internals/event-source'
 import { EventSource } from './internals/event-source'
 import type { HistoryEvent, HistoryStackOptions } from './internals/history'
-import type { InlineBufferEvent } from './internals/inline-buffer'
+import type {
+  InlineBufferEvent,
+  InlineBufferPointer,
+} from './internals/inline-buffer'
 import type { MarkKey } from './internals/marks'
 import type { InlineNode } from './internals/nodes'
 import type { InsertOrMoveBlockPosition } from './internals/operations-builder'
@@ -274,6 +277,7 @@ export type DactyloTool =
   /** Mentions tools. */
   | 'mentions/is-buffering'
   | 'mentions/get-buffered-text'
+  | 'mentions/get-pointer'
 
 /** Discriminated union of commands that can be executed by the user/ai-agent. */
 export type DactyloCommand =
@@ -1166,6 +1170,17 @@ export interface DactyloMentionsTools {
    * ```
    */
   readonly getBufferedText: () => string | null
+
+  /**
+   * Returns the current pointer related to the mention buffer.
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * const pointer = editor.mentions.tools.getPointer()
+   * ```
+   */
+  readonly getPointer: () => InlineBufferPointer | null
 }
 
 /** Commands to mutate {@link DocumentState} mentions of the editor. */
@@ -2766,6 +2781,18 @@ export class Dactylo {
           this.#safeExecuteTool(
             'mentions/get-buffered-text',
             () => this.#pipeline.mentionInlineBuffer.bufferedText,
+            nullish,
+            { clientOnly: true },
+          ),
+
+        /**
+         * Returns the current pointer related to the mention buffer.
+         * Client only.
+         */
+        getPointer: () =>
+          this.#safeExecuteTool(
+            'mentions/get-pointer',
+            () => this.#pipeline.mentionInlineBuffer.pointer,
             nullish,
             { clientOnly: true },
           ),
