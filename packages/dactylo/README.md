@@ -261,7 +261,7 @@ export function Editor() {
 | Blocks API                   | 🚧 **In Progress** | Mutate and reads blocks                                                                         |
 | Inline nodes API             | 🚧 **In Progress** | Mutate and reads inline nodes                                                                   |
 | Metadata API                 | 🚧 **In Progress** | Mutate and reads blocks and inline nodes metadata (config for globals metadata)                 |
-| Mentions API                 | 📆 **Planned**     | Mutate and reads mentions as first-class citizen                                                |
+| Mentions API                 | 🚧 **In Progress** | Mutate and reads mentions as first-class citizen                                                |
 | OnChange/OnSubmit API        | 🚧 **In Progress** | Callback when document state is changing for saving in databases                                |
 | Export JSON and Markdown API | 📆 **Planned**     | Export document state as JSON and Markdown                                                      |
 | Stats API                    | 📆 **Planned**     | Provides stats like total text length, # of blocks, # number of nodes, # of words & chars       |
