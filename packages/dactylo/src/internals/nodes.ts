@@ -133,9 +133,7 @@ export function createTextNode(opts: {
 }
 
 /** Whether the node is a text node. */
-export function isTextNode<N extends InlineNode>(
-  node: N,
-): node is Extract<N, { readonly __type: 'text' }> {
+export function isTextNode(node: InlineNode): node is TextNode {
   return node.__type === 'text'
 }
 
@@ -155,9 +153,7 @@ export function createLineBreakNode(
 }
 
 /** Whether the node is a line break node. */
-export function isLineBreakNode<N extends InlineNode>(
-  node: N,
-): node is Extract<N, { readonly __type: 'line_break' }> {
+export function isLineBreakNode(node: InlineNode): node is LineBreakNode {
   return node.__type === 'line_break'
 }
 
@@ -189,9 +185,7 @@ export function createLinkNode(opts: {
 }
 
 /** Whether the node is a link node. */
-export function isLinkNode<N extends InlineNode>(
-  node: N,
-): node is Extract<N, { readonly __type: 'link' }> {
+export function isLinkNode(node: InlineNode): node is LinkNode {
   return node.__type === 'link'
 }
 
@@ -217,21 +211,19 @@ export function createMentionNode(opts: {
 }
 
 /** Whether the node is a mention node. */
-export function isMentionNode<N extends InlineNode>(
-  node: N,
-): node is Extract<N, { readonly __type: 'mention' }> {
+export function isMentionNode(node: InlineNode): node is MentionNode {
   return node.__type === 'mention'
 }
 
 /** Whether the node is an editable text node or a link node. */
-export function isInlineNodeWithEditableText<N extends InlineNode>(
-  node: N,
-): node is Extract<N, InlineNodeWithEditableText> {
+export function isInlineNodeWithEditableText(
+  node: InlineNode,
+): node is InlineNodeWithEditableText {
   return isTextNode(node) || isLinkNode(node)
 }
 
 /** Clones an inline node by copying properties and creating a new identity. */
-export function cloneInlineNode<N extends InlineNode>(node: N): N {
+export function cloneInlineNode(node: InlineNode): InlineNode {
   return {
     ...node,
     createdAt: new Date(),
