@@ -19,6 +19,8 @@ import type {
   CBM,
   DBM,
   HBM,
+  MNED,
+  MNM,
   NBM,
   PBM,
   QBM,
@@ -952,8 +954,11 @@ export function useIsBlockEmpty(blockId: BlockId): boolean {
  *
  * @example
  * ```tsx
- * const { isBuffering, bufferedText } = useBufferedMention()
+ * const { isBuffering, bufferedText, confirm, dismiss } = useBufferedMention()
  * console.log(isBuffering, bufferedText)
+ *
+ * confirm({ entity: { id: 'user-123', data: { email: 'john@doe.dev', fullName: 'John Doe' } } })
+ * dismiss({ source: 'user' })
  * ```
  */
 export function useBufferedMention() {
@@ -981,8 +986,24 @@ export function useBufferedMention() {
     getBufferedTextSnapshot,
   )
 
+  const confirm = useStableCallback(
+    (
+      opts: { entity: { id: string; data: MNED }; metadata?: MNM },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => {
+      editor.mentions.commands.confirm(opts, source)
+    },
+  )
+
+  const dismiss = useStableCallback(
+    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.mentions.commands.dismiss(source),
+  )
+
   return {
     bufferedText,
+    confirm,
+    dismiss,
     isBuffering,
   } as const
 }
