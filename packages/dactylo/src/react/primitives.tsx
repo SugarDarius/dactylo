@@ -30,6 +30,7 @@ import {
   LINK_NODE_ATTR_NAME,
   LINK_NODE_CLICKABLE_ATTR_NAME,
   MENTION_NODE_ATTR_NAME,
+  MENTION_NODE_ENTITY_ID_DATA_NAME,
   MENTION_QUERY_DATA_NAME,
   NODE_ATTR_NAME,
   NODE_ID_DATA_NAME,
@@ -303,7 +304,7 @@ ComposerLineBreakNode.displayName = COMPOSER_LINE_BREAK_NODE_NAME
 /** Adds a {@link MentionNode} to the composer. */
 export const ComposerMentionNode = memo(
   forwardRef<HTMLSpanElement, ComposerMentionNodeProps>(
-    ({ node, ...props }, forwardedRef) => {
+    ({ node, children, ...props }, forwardedRef) => {
       const { mentions } = useEditorConfig()
 
       return (
@@ -313,13 +314,18 @@ export const ComposerMentionNode = memo(
           contentEditable={false}
           {...{
             [MENTION_NODE_ATTR_NAME]: '',
+            [MENTION_NODE_ENTITY_ID_DATA_NAME]: node.entity.id,
             [NODE_ATTR_NAME]: '',
             [NODE_ID_DATA_NAME]: node.id,
           }}
           aria-roledescription='mention-node'
         >
-          {mentions.character}
-          {node.entity.id}
+          {children ?? (
+            <>
+              {mentions.character}
+              {node.entity.id}
+            </>
+          )}
         </span>
       )
     },
