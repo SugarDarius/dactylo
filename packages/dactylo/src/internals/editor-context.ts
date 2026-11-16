@@ -10,10 +10,11 @@ import {
   putBlock,
 } from './document'
 import type { DocumentState } from './document'
+import type { InlineBufferPointer } from './inline-buffer'
 import { isMarkEnabled } from './marks'
 import type { MarkKey } from './marks'
 import { isInlineNodeWithEditableText, isTextNode } from './nodes'
-import type { InlineNode, NodeId } from './nodes'
+import type { InlineNode } from './nodes'
 import { isCursorSelection, isSelectionActive } from './selection'
 import type { Selection } from './selection'
 
@@ -220,7 +221,7 @@ export function isMarkActiveInContext(
  */
 export function findInlineBufferPointerAtCursor(
   context: EditorContext,
-): { blockId: BlockId; nodeId: NodeId; triggerOffset: number } | null {
+): InlineBufferPointer | null {
   const { selection, state } = context
   if (!isCursorSelection(selection)) {
     return null
