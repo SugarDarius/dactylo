@@ -941,6 +941,48 @@ export function useIsBlockEmpty(blockId: BlockId): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
+// --- Inline nodes ─────────────────────────────────────────--------
+
+/**
+ * Returns whether a mention is currently being buffered.
+ *
+ * @example
+ * ```tsx
+ * const { isBuffering, bufferedText } = useBufferedMention()
+ * console.log(isBuffering, bufferedText)
+ * ```
+ */
+export function useBufferedMention() {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+
+  const getIsBufferingSnapshot = useStableCallback(() =>
+    editor.mentions.tools.isBuffering(),
+  )
+
+  const getBufferedTextSnapshot = useStableCallback(() =>
+    editor.mentions.tools.getBufferedText(),
+  )
+
+  const isBuffering = useSyncExternalStore(
+    subscribe,
+    getIsBufferingSnapshot,
+    getIsBufferingSnapshot,
+  )
+
+  const bufferedText = useSyncExternalStore(
+    subscribe,
+    getBufferedTextSnapshot,
+    getBufferedTextSnapshot,
+  )
+
+  return {
+    bufferedText,
+    isBuffering,
+  } as const
+}
+
 // --- History ------─────────────────────────────────────────-------
 
 /**

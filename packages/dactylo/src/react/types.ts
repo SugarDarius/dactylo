@@ -13,6 +13,7 @@ import type {
   InlineNode,
   LineBreakNode,
   LinkNode,
+  MentionNode,
   TextNode,
 } from '../internals/nodes'
 
@@ -59,6 +60,12 @@ export interface ComposerLinkNodeProps extends React.HTMLAttributes<
 export interface ComposerLineBreakNodeProps extends React.HTMLAttributes<HTMLBRElement> {
   /** The line break node to render. */
   node: LineBreakNode
+}
+
+/** Props for declaring a mention node component. */
+export interface ComposerMentionNodeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  /** The mention node to render. */
+  node: MentionNode
 }
 
 /** Props for declaring a slot inline content component. */

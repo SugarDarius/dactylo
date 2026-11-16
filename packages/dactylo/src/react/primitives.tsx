@@ -27,6 +27,7 @@ import {
   LINE_BREAK_NODE_ATTR_NAME,
   LINK_NODE_ATTR_NAME,
   LINK_NODE_CLICKABLE_ATTR_NAME,
+  MENTION_NODE_ATTR_NAME,
   NODE_ATTR_NAME,
   NODE_ID_DATA_NAME,
   NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME,
@@ -86,6 +87,7 @@ import type {
   ComposerHeadingBlockProps,
   ComposerLineBreakNodeProps,
   ComposerLinkNodeProps,
+  ComposerMentionNodeProps,
   ComposerNumberedListItemBlockProps,
   ComposerParagraphBlockProps,
   ComposerQuoteBlockProps,
@@ -261,6 +263,30 @@ export const ComposerLineBreakNode = memo(
 )
 ComposerLineBreakNode.displayName = COMPOSER_LINE_BREAK_NODE_NAME
 
+/** Adds a {@link MentionNode} to the composer. */
+export const ComposerMentionNode = memo(
+  forwardRef<HTMLSpanElement, ComposerMentionNodeProps>(
+    ({ node, ...props }, forwardedRef) => {
+      const { mentions } = useEditorConfig()
+
+      return (
+        <span
+          {...props}
+          ref={forwardedRef}
+          {...{
+            [MENTION_NODE_ATTR_NAME]: '',
+            [NODE_ATTR_NAME]: '',
+            [NODE_ID_DATA_NAME]: node.id,
+          }}
+        >
+          {mentions.character}
+          {node.entity.id}
+        </span>
+      )
+    },
+  ),
+)
+
 /** Adds a slot inline content component for a block with inline content to the composer. */
 const ComposerSlotInlineContent = ({
   content,
@@ -280,6 +306,10 @@ const ComposerSlotInlineContent = ({
       }
       case 'line_break': {
         children.push(<ComposerLineBreakNode key={node.id} node={node} />)
+        break
+      }
+      case 'mention': {
+        children.push(<ComposerMentionNode key={node.id} node={node} />)
         break
       }
       default: {
@@ -851,6 +881,7 @@ export {
   ComposerHeadingBlock as HeadingBlock,
   ComposerLineBreakNode as LineBreakNode,
   ComposerLinkNode as LinkNode,
+  ComposerMentionNode as MentionNode,
   ComposerNumberedListItemBlock as NumberedListItemBlock,
   ComposerParagraphBlock as ParagraphBlock,
   ComposerQuoteBlock as QuoteBlock,

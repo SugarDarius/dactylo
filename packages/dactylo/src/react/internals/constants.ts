@@ -66,3 +66,6 @@ export const COMPOSER_LINK_NODE_NAME = 'Composer.LinkNode'
 
 /** Line break node component name. */
 export const COMPOSER_LINE_BREAK_NODE_NAME = 'Composer.LineBreakNode'
+
+/** Mention node component name. */
+export const COMPOSER_MENTION_NODE_NAME = 'Composer.MentionNode'
