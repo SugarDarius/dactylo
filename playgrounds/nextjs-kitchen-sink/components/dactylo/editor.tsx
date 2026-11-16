@@ -1,6 +1,18 @@
 'use client'
 
 import type { MarkKey } from '@sugardarius/dactylo'
+import type {
+  ComposerBulletListItemBlockProps,
+  ComposerCheckboxListItemBlockProps,
+  ComposerDividerBlockProps,
+  ComposerHeadingBlockProps,
+  ComposerLinkNodeProps,
+  ComposerMentionNodeProps,
+  ComposerNumberedListItemBlockProps,
+  ComposerParagraphBlockProps,
+  ComposerQuoteBlockProps,
+  ComposerTextNodeProps,
+} from '@sugardarius/dactylo/react'
 import {
   Composer,
   useBulletLists,
@@ -8,6 +20,7 @@ import {
   useCheckboxLists,
   useDividers,
   useEditableListener,
+  useEditorConfig,
   useHeadings,
   useHistory,
   useMark,
@@ -441,6 +454,227 @@ export function Toolbar() {
   )
 }
 
+const editableBlockContentClassName = cn(
+  '[&_[dactylo-block-content][data-dactylo-block-content-editable=true]]:caret-cyan-500',
+  `[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:[content:attr(dactylo-block-placeholder)/'']`,
+  '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:pointer-events-none',
+  '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:max-w-full',
+  '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:min-h-[1em]',
+  '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:p-0',
+  '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:text-muted-foreground',
+  '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:whitespace-break-spaces',
+  '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:wrap-break-word',
+)
+
+const markClassName = cn(
+  'data-[dactylo-italic-mark=true]:italic',
+  'data-[dactylo-bold-mark=true]:font-extrabold',
+  '[&[data-dactylo-code-mark=true]:not([data-dactylo-editable-node-empty=true])]:p-0.5',
+  'data-[dactylo-code-mark=true]:bg-muted',
+  'data-[dactylo-code-mark=true]:rounded-sm',
+  'data-[dactylo-code-mark=true]:font-mono',
+  'data-[dactylo-code-mark=true]:text-sm',
+  'data-[dactylo-code-mark=true]:text-red-600',
+  'data-[dactylo-strikethrough-mark=true]:line-through',
+  'data-[dactylo-underline-mark=true]:underline',
+)
+
+export function ParagraphBlock(props: ComposerParagraphBlockProps) {
+  return (
+    <Composer.ParagraphBlock
+      {...props}
+      className={cn('flex flex-col px-1.5', editableBlockContentClassName)}
+    />
+  )
+}
+
+export function QuoteBlock(props: ComposerQuoteBlockProps) {
+  return (
+    <Composer.QuoteBlock
+      {...props}
+      className={cn(
+        'flex flex-row items-stretch gap-2 px-1.5',
+        '**:[[dactylo-quote-block-marker]]:flex',
+        '**:[[dactylo-quote-block-marker]]:shrink-0',
+        '**:[[dactylo-quote-block-marker]]:items-stretch',
+        '**:[[dactylo-quote-block-marker-border]]:w-0.5',
+        '**:[[dactylo-quote-block-marker-border]]:self-stretch',
+        '**:[[dactylo-quote-block-marker-border]]:rounded-full',
+        '**:[[dactylo-quote-block-marker-border]]:bg-border',
+        '**:[[dactylo-block-content]]:min-w-0',
+        '**:[[dactylo-block-content]]:flex-1',
+        '**:[[dactylo-block-content]]:text-muted-foreground',
+        editableBlockContentClassName,
+      )}
+    />
+  )
+}
+
+export function HeadingBlock(props: ComposerHeadingBlockProps) {
+  return (
+    <Composer.HeadingBlock
+      {...props}
+      className={cn(
+        'flex flex-col px-1.5',
+        'data-[dactylo-heading-block-level=1]:pt-7.5 data-[dactylo-heading-block-level=1]:pb-1.5',
+        'data-[dactylo-heading-block-level=1]:text-5xl',
+        'data-[dactylo-heading-block-level=1]:font-semibold',
+        'data-[dactylo-heading-block-level=1]:tracking-tight',
+        'data-[dactylo-heading-block-level=2]:pt-6.5 data-[dactylo-heading-block-level=2]:pb-1.5',
+        'data-[dactylo-heading-block-level=2]:text-3xl',
+        'data-[dactylo-heading-block-level=2]:font-semibold',
+        'data-[dactylo-heading-block-level=2]:tracking-tight',
+        'data-[dactylo-heading-block-level=3]:pt-5.5 data-[dactylo-heading-block-level=3]:pb-1.5',
+        'data-[dactylo-heading-block-level=3]:text-2xl',
+        'data-[dactylo-heading-block-level=3]:font-semibold',
+        'data-[dactylo-heading-block-level=3]:tracking-tight',
+        'data-[dactylo-heading-block-level=4]:pt-4.5 data-[dactylo-heading-block-level=4]:pb-1.5',
+        'data-[dactylo-heading-block-level=4]:text-xl',
+        'data-[dactylo-heading-block-level=4]:font-semibold',
+        'data-[dactylo-heading-block-level=4]:tracking-tight',
+        'data-[dactylo-heading-block-level=5]:pt-4 data-[dactylo-heading-block-level=5]:pb-1.5',
+        'data-[dactylo-heading-block-level=5]:text-lg',
+        'data-[dactylo-heading-block-level=5]:font-semibold',
+        'data-[dactylo-heading-block-level=5]:tracking-tight',
+        'data-[dactylo-heading-block-level=6]:pt-4 data-[dactylo-heading-block-level=6]:pb-1.5',
+        'data-[dactylo-heading-block-level=6]:text-base',
+        'data-[dactylo-heading-block-level=6]:font-semibold',
+        'data-[dactylo-heading-block-level=6]:tracking-tight',
+        editableBlockContentClassName,
+      )}
+    />
+  )
+}
+
+export function BulletListItemBlock(props: ComposerBulletListItemBlockProps) {
+  return (
+    <Composer.BulletListItemBlock
+      {...props}
+      className={cn(
+        'flex flex-row items-center gap-2 px-1.5',
+        '**:[[dactylo-bullet-list-item-marker]]:flex',
+        '**:[[dactylo-bullet-list-item-marker]]:flex-col',
+        '**:[[dactylo-bullet-list-item-marker]]:justify-center',
+        '**:[[dactylo-bullet-list-item-marker]]:items-center',
+        '**:[[dactylo-bullet-list-item-marker]]:p-1.5',
+        '**:[[dactylo-bullet-list-item-marker-dot]]:size-1.5',
+        '**:[[dactylo-bullet-list-item-marker-dot]]:shrink-0',
+        '**:[[dactylo-bullet-list-item-marker-dot]]:rounded-full',
+        '**:[[dactylo-bullet-list-item-marker-dot]]:bg-current',
+        '**:[[dactylo-block-content]]:min-w-0',
+        '**:[[dactylo-block-content]]:flex-1',
+        editableBlockContentClassName,
+      )}
+    />
+  )
+}
+
+export function NumberedListItemBlock(
+  props: ComposerNumberedListItemBlockProps,
+) {
+  return (
+    <Composer.NumberedListItemBlock
+      {...props}
+      className={cn(
+        'flex flex-row items-center gap-2 px-1.5',
+        '**:[[dactylo-numbered-list-item-marker]]:flex',
+        '**:[[dactylo-numbered-list-item-marker]]:flex-col',
+        '**:[[dactylo-numbered-list-item-marker]]:justify-center',
+        '**:[[dactylo-numbered-list-item-marker]]:items-center',
+        '**:[[dactylo-numbered-list-item-marker]]:p-1',
+        '**:[[dactylo-numbered-list-item-marker-index]]:shrink-0',
+        '**:[[dactylo-numbered-list-item-marker-index]]:select-none',
+        '**:[[dactylo-block-content]]:min-w-0',
+        '**:[[dactylo-block-content]]:flex-1',
+        editableBlockContentClassName,
+      )}
+    />
+  )
+}
+
+export function CheckboxListItemBlock(
+  props: ComposerCheckboxListItemBlockProps,
+) {
+  return (
+    <Composer.CheckboxListItemBlock
+      {...props}
+      className={cn(
+        'flex flex-row items-start gap-2 px-1.5',
+        '**:[[dactylo-checkbox-list-item-marker]]:flex',
+        '**:[[dactylo-checkbox-list-item-marker]]:flex-col',
+        '**:[[dactylo-checkbox-list-item-marker]]:justify-center',
+        '**:[[dactylo-checkbox-list-item-marker]]:items-center',
+        '**:[[dactylo-checkbox-list-item-marker]]:p-1.5',
+        '**:[[dactylo-checkbox-list-item-marker-input]]:size-3.5',
+        '**:[[dactylo-checkbox-list-item-marker-input]]:shrink-0',
+        '**:[[dactylo-checkbox-list-item-marker-input]]:rounded-sm',
+        '**:[[dactylo-checkbox-list-item-marker-input]]:border',
+        '**:[[dactylo-checkbox-list-item-marker-input]]:border-current',
+        '**:[[dactylo-checkbox-list-item-marker-input]]:cursor-pointer',
+        'data-[dactylo-checkbox-list-item-checked=true]:**:[[dactylo-checkbox-list-item-marker-input]]:bg-current',
+        'data-[dactylo-checkbox-list-item-checked=true]:**:[[dactylo-block-content]]:text-muted-foreground',
+        'data-[dactylo-checkbox-list-item-checked=true]:**:[[dactylo-block-content]]:line-through',
+        '**:[[dactylo-block-content]]:min-w-0',
+        '**:[[dactylo-block-content]]:flex-1',
+        editableBlockContentClassName,
+      )}
+    />
+  )
+}
+
+export function DividerBlock(props: ComposerDividerBlockProps) {
+  return (
+    <Composer.DividerBlock
+      {...props}
+      className={cn(
+        'flex w-full flex-col',
+        '**:[[dactylo-block-content]]:flex **:[[dactylo-block-content]]:flex-col',
+        '**:[[dactylo-block-content]]:items-center **:[[dactylo-block-content]]:justify-center',
+        '**:[[dactylo-block-content]]:py-2',
+        '**:[[dactylo-divider-separator]]:bg-border',
+        '**:[[dactylo-divider-separator]]:h-px',
+        '**:[[dactylo-divider-separator]]:w-full',
+        '**:[[dactylo-divider-separator]]:shrink-0',
+      )}
+    />
+  )
+}
+
+export function TextNode(props: ComposerTextNodeProps) {
+  return <Composer.TextNode {...props} className={markClassName} />
+}
+
+export function LinkNode(props: ComposerLinkNodeProps) {
+  return (
+    <Composer.LinkNode
+      {...props}
+      className={cn(
+        'text-cyan-500 underline decoration-cyan-500 underline-offset-2',
+        'hover:text-cyan-400 hover:decoration-cyan-400',
+        'data-[dactylo-link-clickable=true]:cursor-pointer',
+        'data-[dactylo-link-clickable=false]:cursor-default',
+        markClassName,
+      )}
+    />
+  )
+}
+
+export function MentionNode(props: ComposerMentionNodeProps) {
+  const { mentions } = useEditorConfig()
+
+  return (
+    <Composer.MentionNode
+      {...props}
+      className='bg-muted inline-flex items-center gap-0.5 rounded-sm p-0.5'
+    >
+      <span className='text-cyan-500'>{mentions.character}</span>
+      <span className='text-muted-foreground text-xs'>
+        {props.node.entity.data.fullName}
+      </span>
+    </Composer.MentionNode>
+  )
+}
+
 export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -458,183 +692,21 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         <Toolbar />
         <Composer.Editable
           autoFocus
-          // @idea:💡 for DX convenience add custom components
+          components={{
+            BulletListItemBlock,
+            CheckboxListItemBlock,
+            DividerBlock,
+            HeadingBlock,
+            LinkNode,
+            MentionNode,
+            NumberedListItemBlock,
+            ParagraphBlock,
+            QuoteBlock,
+            TextNode,
+          }}
           className={cn(
-            // base
             'selection:text-accent-foreground relative flex w-full flex-col px-6 py-2 whitespace-break-spaces selection:bg-cyan-500',
-
-            // blocks
             '**:[[dactylo-blocks]]:flex **:[[dactylo-blocks]]:flex-col **:[[dactylo-blocks]]:gap-2',
-
-            // blocks with editable content
-            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true]]:caret-cyan-500',
-            `[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:[content:attr(dactylo-block-placeholder)/'']`,
-            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:pointer-events-none',
-            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:max-w-full',
-            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:max-w-full',
-            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:min-h-[1em]',
-            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:p-0',
-            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:text-muted-foreground',
-            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:whitespace-break-spaces',
-            '[&_[dactylo-block-content][data-dactylo-block-content-editable=true][data-empty=true][data-active=true]]:after:wrap-break-word',
-
-            // paragraph block
-            '**:[[dactylo-paragraph-block]]:flex **:[[dactylo-paragraph-block]]:flex-col',
-            '**:[[dactylo-paragraph-block]]:px-1.5',
-
-            // quote block
-            '**:[[dactylo-quote-block]]:flex **:[[dactylo-quote-block]]:flex-row',
-            '**:[[dactylo-quote-block]]:items-stretch',
-            '**:[[dactylo-quote-block]]:gap-2',
-            '**:[[dactylo-quote-block]]:px-1.5',
-
-            '**:[[dactylo-quote-block-marker]]:flex',
-            '**:[[dactylo-quote-block-marker]]:shrink-0',
-            '**:[[dactylo-quote-block-marker]]:items-stretch',
-
-            '**:[[dactylo-quote-block-marker-border]]:w-0.5',
-            '**:[[dactylo-quote-block-marker-border]]:self-stretch',
-            '**:[[dactylo-quote-block-marker-border]]:rounded-full',
-            '**:[[dactylo-quote-block-marker-border]]:bg-border',
-
-            '[&_[dactylo-quote-block]_[dactylo-block-content]]:min-w-0',
-            '[&_[dactylo-quote-block]_[dactylo-block-content]]:flex-1',
-            '[&_[dactylo-quote-block]_[dactylo-block-content]]:text-muted-foreground',
-
-            // bullet list item block
-            '**:[[dactylo-bullet-list-item-block]]:flex **:[[dactylo-bullet-list-item-block]]:flex-row',
-            '**:[[dactylo-bullet-list-item-block]]:items-center',
-            '**:[[dactylo-bullet-list-item-block]]:gap-2',
-            '**:[[dactylo-bullet-list-item-block]]:px-1.5',
-
-            '**:[[dactylo-bullet-list-item-marker]]:flex',
-            '**:[[dactylo-bullet-list-item-marker]]:flex-col',
-            '**:[[dactylo-bullet-list-item-marker]]:justify-center',
-            '**:[[dactylo-bullet-list-item-marker]]:items-center',
-            '**:[[dactylo-bullet-list-item-marker]]:p-1.5',
-
-            '**:[[dactylo-bullet-list-item-marker-dot]]:size-1.5',
-            '**:[[dactylo-bullet-list-item-marker-dot]]:shrink-0',
-            '**:[[dactylo-bullet-list-item-marker-dot]]:rounded-full',
-            '**:[[dactylo-bullet-list-item-marker-dot]]:bg-current',
-
-            '[&_[dactylo-bullet-list-item-block]_[dactylo-block-content]]:min-w-0',
-            '[&_[dactylo-bullet-list-item-block]_[dactylo-block-content]]:flex-1',
-
-            // numbered list item block
-            '**:[[dactylo-numbered-list-item-block]]:flex **:[[dactylo-numbered-list-item-block]]:flex-row',
-            '**:[[dactylo-numbered-list-item-block]]:items-center',
-            '**:[[dactylo-numbered-list-item-block]]:gap-2',
-            '**:[[dactylo-numbered-list-item-block]]:px-1.5',
-
-            '**:[[dactylo-numbered-list-item-marker]]:flex',
-            '**:[[dactylo-numbered-list-item-marker]]:flex-col',
-            '**:[[dactylo-numbered-list-item-marker]]:justify-center',
-            '**:[[dactylo-numbered-list-item-marker]]:items-center',
-            '**:[[dactylo-numbered-list-item-marker]]:p-1',
-
-            '**:[[dactylo-numbered-list-item-marker-index]]:shrink-0',
-            '**:[[dactylo-numbered-list-item-marker-index]]:select-none',
-
-            '[&_[dactylo-numbered-list-item-block]_[dactylo-block-content]]:min-w-0',
-            '[&_[dactylo-numbered-list-item-block]_[dactylo-block-content]]:flex-1',
-
-            // checkbox list item block
-            '**:[[dactylo-checkbox-list-item-block]]:flex **:[[dactylo-checkbox-list-item-block]]:flex-row',
-            '**:[[dactylo-checkbox-list-item-block]]:items-start',
-            '**:[[dactylo-checkbox-list-item-block]]:gap-2',
-            '**:[[dactylo-checkbox-list-item-block]]:px-1.5',
-
-            '**:[[dactylo-checkbox-list-item-marker]]:flex',
-            '**:[[dactylo-checkbox-list-item-marker]]:flex-col',
-            '**:[[dactylo-checkbox-list-item-marker]]:justify-center',
-            '**:[[dactylo-checkbox-list-item-marker]]:items-center',
-            '**:[[dactylo-checkbox-list-item-marker]]:p-1.5',
-
-            '**:[[dactylo-checkbox-list-item-marker-input]]:size-3.5',
-            '**:[[dactylo-checkbox-list-item-marker-input]]:shrink-0',
-            '**:[[dactylo-checkbox-list-item-marker-input]]:rounded-sm',
-            '**:[[dactylo-checkbox-list-item-marker-input]]:border',
-            '**:[[dactylo-checkbox-list-item-marker-input]]:border-current',
-            '**:[[dactylo-checkbox-list-item-marker-input]]:cursor-pointer',
-            '[&_[dactylo-checkbox-list-item-block][data-dactylo-checkbox-list-item-checked=true]_[dactylo-checkbox-list-item-marker-input]]:bg-current',
-
-            '[&_[dactylo-checkbox-list-item-block][data-dactylo-checkbox-list-item-checked=true]_[dactylo-block-content]]:text-muted-foreground',
-            '[&_[dactylo-checkbox-list-item-block][data-dactylo-checkbox-list-item-checked=true]_[dactylo-block-content]]:line-through',
-            '[&_[dactylo-checkbox-list-item-block]_[dactylo-block-content]]:min-w-0',
-            '[&_[dactylo-checkbox-list-item-block]_[dactylo-block-content]]:flex-1',
-
-            // heading block
-            '**:[[dactylo-heading-block]]:flex **:[[dactylo-heading-block]]:flex-col',
-            '**:[[dactylo-heading-block]]:px-1.5',
-
-            // heading block level 1
-            '**:data-[dactylo-heading-block-level=1]:pt-7.5 **:data-[dactylo-heading-block-level=1]:pb-1.5',
-            '**:data-[dactylo-heading-block-level=1]:text-5xl',
-            '**:data-[dactylo-heading-block-level=1]:font-semibold',
-            '**:data-[dactylo-heading-block-level=1]:tracking-tight',
-
-            // heading block level 2
-            '**:data-[dactylo-heading-block-level=2]:pt-6.5 **:data-[dactylo-heading-block-level=2]:pb-1.5',
-            '**:data-[dactylo-heading-block-level=2]:text-3xl',
-            '**:data-[dactylo-heading-block-level=2]:font-semibold',
-            '**:data-[dactylo-heading-block-level=2]:tracking-tight',
-
-            // heading block level 3
-            '**:data-[dactylo-heading-block-level=3]:pt-5.5 **:data-[dactylo-heading-block-level=3]:pb-1.5',
-            '**:data-[dactylo-heading-block-level=3]:text-2xl',
-            '**:data-[dactylo-heading-block-level=3]:font-semibold',
-            '**:data-[dactylo-heading-block-level=3]:tracking-tight',
-
-            // heading block level 4
-            '**:data-[dactylo-heading-block-level=4]:pt-4.5 **:data-[dactylo-heading-block-level=4]:pb-1.5',
-            '**:data-[dactylo-heading-block-level=4]:text-xl',
-            '**:data-[dactylo-heading-block-level=4]:font-semibold',
-            '**:data-[dactylo-heading-block-level=4]:tracking-tight',
-
-            // heading block level 5
-            '**:data-[dactylo-heading-block-level=5]:pt-4 **:data-[dactylo-heading-block-level=5]:pb-1.5',
-            '**:data-[dactylo-heading-block-level=5]:text-lg',
-            '**:data-[dactylo-heading-block-level=5]:font-semibold',
-            '**:data-[dactylo-heading-block-level=5]:tracking-tight',
-
-            // heading block level 6
-            '**:data-[dactylo-heading-block-level=6]:pt-4 **:data-[dactylo-heading-block-level=6]:pb-1.5',
-            '**:data-[dactylo-heading-block-level=6]:text-base',
-            '**:data-[dactylo-heading-block-level=6]:font-semibold',
-            '**:data-[dactylo-heading-block-level=6]:tracking-tight',
-
-            // divider block
-            '**:[[dactylo-divider-block]]:flex **:[[dactylo-divider-block]]:w-full **:[[dactylo-divider-block]]:flex-col',
-            '[&_[dactylo-divider-block]_[dactylo-block-content]]:flex [&_[dactylo-divider-block]_[dactylo-block-content]]:flex-col',
-            '[&_[dactylo-divider-block]_[dactylo-block-content]]:items-center [&_[dactylo-divider-block]_[dactylo-block-content]]:justify-center',
-            '[&_[dactylo-divider-block]_[dactylo-block-content]]:py-2',
-            '**:[[dactylo-divider-separator]]:bg-border',
-            '**:[[dactylo-divider-separator]]:shrink-0',
-            '**:[[dactylo-divider-separator]]:h-px',
-            '**:[[dactylo-divider-separator]]:w-full',
-
-            // link node
-            '[&_[dactylo-node][dactylo-link-node][data-dactylo-link-clickable=true]]:cursor-pointer',
-            '[&_[dactylo-node][dactylo-link-node][data-dactylo-link-clickable=false]]:cursor-default',
-            '[&_[dactylo-node][dactylo-link-node]]:text-cyan-500',
-            '[&_[dactylo-node][dactylo-link-node]]:underline',
-            '[&_[dactylo-node][dactylo-link-node]]:decoration-cyan-500',
-            '[&_[dactylo-node][dactylo-link-node]]:underline-offset-2',
-            '[&_[dactylo-node][dactylo-link-node]]:hover:text-cyan-400',
-            '[&_[dactylo-node][dactylo-link-node]]:hover:decoration-cyan-400',
-
-            // marks
-            '**:data-[dactylo-italic-mark=true]:italic',
-            '**:data-[dactylo-bold-mark=true]:font-extrabold',
-            '**:[&[data-dactylo-code-mark=true]:not([data-dactylo-editable-node-empty=true])]:p-0.5',
-            '**:data-[dactylo-code-mark=true]:bg-muted',
-            '**:data-[dactylo-code-mark=true]:rounded-sm',
-            '**:data-[dactylo-code-mark=true]:font-mono',
-            '**:data-[dactylo-code-mark=true]:text-sm',
-            '**:data-[dactylo-code-mark=true]:text-red-600',
-            '**:data-[dactylo-strikethrough-mark=true]:line-through',
-            '**:data-[dactylo-underline-mark=true]:underline',
           )}
         />
       </Composer.Root>

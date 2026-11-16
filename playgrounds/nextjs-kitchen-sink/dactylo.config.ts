@@ -3,6 +3,11 @@ declare global {
     ParagraphBlockMetadata: {
       fontSize: string
     }
+
+    MentionNodeEntityData: {
+      email: string
+      fullName: string
+    }
   }
 }
 
