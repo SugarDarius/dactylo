@@ -47,13 +47,13 @@ export interface ComposerContext {
 
   /**
    * Inline mention query element store.
-   * @private
+   * @internal
    */
   imqes: ComposerInlineQueryElementStore
 
   /**
    * Inline command trigger query element store.
-   * @private
+   * @internal
    */
   ictqes: ComposerInlineQueryElementStore
 }
