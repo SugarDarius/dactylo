@@ -54,7 +54,10 @@ import type {
 import { shallow } from '../internals/shallow'
 import type { Transaction, TransactionSource } from '../internals/transaction'
 import { noop } from '../internals/utils'
-import { COMPOSER_ROOT_NAME } from './internals/constants'
+import {
+  COMPOSER_EDITABLE_NAME,
+  COMPOSER_ROOT_NAME,
+} from './internals/constants'
 import { createSafeContext } from './internals/context'
 import { findLinkAnchorFromEventTarget, openLink } from './internals/dom'
 import {
@@ -63,10 +66,11 @@ import {
   useStableValue,
   useSyncExternalStoreWithSelector,
 } from './internals/hooks'
-import type { ComposerContext } from './types'
+import type { ComposerContext, ComposerEditableContext } from './types'
 
 // --- Composer Context ─────────────────────────────────────────----
 
+/** Provider and consumer for `<Composer.Root />`. */
 export const { Provider: ComposerProvider, useContext: useComposer } =
   createSafeContext<ComposerContext>({
     errorMsg: `\`<${COMPOSER_ROOT_NAME} />\` is missing. Did you forget to wrap your component within it?`,
@@ -1026,6 +1030,14 @@ export function useHistory() {
 }
 
 // --- Editable ------─────────────────────────────────────────------
+
+/** Provider and consumer for `<Composer.Editable />`. */
+export const {
+  Provider: ComposerEditableProvider,
+  useContext: useComposerEditable,
+} = createSafeContext<ComposerEditableContext>({
+  errorMsg: `\`<${COMPOSER_EDITABLE_NAME} />\` is missing. Did you forget to wrap your component within it?`,
+})
 
 /**
  * Binds `<Composer.Editable />` to {@link Dactylo} selection and events.

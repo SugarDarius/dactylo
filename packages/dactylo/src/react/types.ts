@@ -143,8 +143,53 @@ export interface ComposerSlotBlockProps extends React.HTMLAttributes<HTMLDivElem
   blockIndex: number
 }
 
+/** Components to render in `<Composer.Editable />`. */
+export interface ComposeEditableComponents {
+  /** Component to render a {@link ParagraphBlock}. */
+  ParagraphBlock?: React.ComponentType<ComposerParagraphBlockProps>
+
+  /** Component to render a {@link QuoteBlock}. */
+  QuoteBlock?: React.ComponentType<ComposerQuoteBlockProps>
+
+  /** Component to render a {@link HeadingBlock}. */
+  HeadingBlock?: React.ComponentType<ComposerHeadingBlockProps>
+
+  /** Component to render a {@link BulletListItemBlock}. */
+  BulletListItemBlock?: React.ComponentType<ComposerBulletListItemBlockProps>
+
+  /** Component to render a {@link NumberedListItemBlock}. */
+  NumberedListItemBlock?: React.ComponentType<ComposerNumberedListItemBlockProps>
+
+  /** Component to render a {@link CheckboxListItemBlock}. */
+  CheckboxListItemBlock?: React.ComponentType<ComposerCheckboxListItemBlockProps>
+
+  /** Component to render a {@link DividerBlock}. */
+  DividerBlock?: React.ComponentType<ComposerDividerBlockProps>
+
+  /** Component to render a {@link TextNode}. */
+  TextNode?: React.ComponentType<ComposerTextNodeProps>
+
+  /** Component to render a {@link LinkNode}. */
+  LinkNode?: React.ComponentType<ComposerLinkNodeProps>
+
+  /** Component to render a {@link LineBreakNode}. */
+  LineBreakNode?: React.ComponentType<ComposerLineBreakNodeProps>
+
+  /** Component to render a {@link MentionNode}. */
+  MentionNode?: React.ComponentType<ComposerMentionNodeProps>
+}
+
+/** Context for `<Composer.Editable />`. */
+export interface ComposerEditableContext {
+  /** Components to render in `<Composer.Editable />`. */
+  components: ComposeEditableComponents
+}
+
 /** Props for declaring the composer editable component. */
 export interface ComposerEditableProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Whether to place the cursor in the editor at the document end after initial mount. */
   autoFocus?: boolean
+
+  /** Components to render in `<Composer.Editable />`. */
+  components?: ComposeEditableComponents
 }

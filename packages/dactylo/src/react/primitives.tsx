@@ -47,10 +47,12 @@ import {
 } from '../internals/constants'
 import { paintTextForDOM } from '../internals/dom'
 import {
+  ComposerEditableProvider,
   ComposerProvider,
   useBlock,
   useBlockOrderById,
   useCheckboxLists,
+  useComposerEditable,
   useEditable,
   useEditableBlock,
   useEditableNode,
@@ -76,6 +78,7 @@ import {
   COMPOSER_QUOTE_BLOCK_NAME,
   COMPOSER_ROOT_NAME,
   COMPOSER_SLOT_BLOCK_NAME,
+  COMPOSER_SLOT_INLINE_CONTENT_NAME,
   COMPOSER_TEXT_NODE_NAME,
 } from './internals/constants'
 import {
@@ -90,6 +93,7 @@ import type {
   ComposerCheckboxListItemBlockProps,
   ComposerContext,
   ComposerDividerBlockProps,
+  ComposerEditableContext,
   ComposerEditableProps,
   ComposerHeadingBlockProps,
   ComposerLineBreakNodeProps,
@@ -335,38 +339,46 @@ export const ComposerMentionNode = memo(
 ComposerMentionNode.displayName = COMPOSER_MENTION_NODE_NAME
 
 /** Adds a slot inline content component for a block with inline content to the composer. */
-const ComposerSlotInlineContent = ({
-  content,
-}: ComposerSlotInlineContentProps) => {
-  const children = []
+const ComposerSlotInlineContent = memo<ComposerSlotInlineContentProps>(
+  ({ content }) => {
+    const { components } = useComposerEditable()
 
-  for (const node of content) {
-    const type = node.__type
-    switch (type) {
-      case 'text': {
-        children.push(<ComposerTextNode key={node.id} node={node} />)
-        break
-      }
-      case 'link': {
-        children.push(<ComposerLinkNode key={node.id} node={node} />)
-        break
-      }
-      case 'line_break': {
-        children.push(<ComposerLineBreakNode key={node.id} node={node} />)
-        break
-      }
-      case 'mention': {
-        children.push(<ComposerMentionNode key={node.id} node={node} />)
-        break
-      }
-      default: {
-        warnOnce(`Skipping rendering for unsupported node type: ${type}.`)
+    const TextNodeComp = components.TextNode ?? ComposerTextNode
+    const LinkNodeComp = components.LinkNode ?? ComposerLinkNode
+    const LineBreakNodeComp = components.LineBreakNode ?? ComposerLineBreakNode
+    const MentionNodeComp = components.MentionNode ?? ComposerMentionNode
+
+    const children = []
+
+    for (const node of content) {
+      const type = node.__type
+      switch (type) {
+        case 'text': {
+          children.push(<TextNodeComp key={node.id} node={node} />)
+          break
+        }
+        case 'link': {
+          children.push(<LinkNodeComp key={node.id} node={node} />)
+          break
+        }
+        case 'line_break': {
+          children.push(<LineBreakNodeComp key={node.id} node={node} />)
+          break
+        }
+        case 'mention': {
+          children.push(<MentionNodeComp key={node.id} node={node} />)
+          break
+        }
+        default: {
+          warnOnce(`Skipping rendering for unsupported node type: ${type}.`)
+        }
       }
     }
-  }
 
-  return children
-}
+    return children
+  },
+)
+ComposerSlotInlineContent.displayName = COMPOSER_SLOT_INLINE_CONTENT_NAME
 
 /** Adds a {@link ParagraphBlock} to the composer. */
 const ComposerParagraphBlock = forwardRef<
@@ -765,7 +777,21 @@ ComposerDividerBlock.displayName = COMPOSER_DIVIDER_BLOCK_NAME
 /** Renders a block based on its type. */
 const ComposerSlotBlock = memo<ComposerSlotBlockProps>(
   ({ blockId, ...props }) => {
+    const { components } = useComposerEditable()
     const block = useBlock(blockId)
+
+    const ParagraphBlockComp =
+      components.ParagraphBlock ?? ComposerParagraphBlock
+    const QuoteBlockComp = components.QuoteBlock ?? ComposerQuoteBlock
+    const HeadingBlockComp = components.HeadingBlock ?? ComposerHeadingBlock
+    const BulletListItemBlockComp =
+      components.BulletListItemBlock ?? ComposerBulletListItemBlock
+    const NumberedListItemBlockComp =
+      components.NumberedListItemBlock ?? ComposerNumberedListItemBlock
+    const CheckboxListItemBlockComp =
+      components.CheckboxListItemBlock ?? ComposerCheckboxListItemBlock
+    const DividerBlockComp = components.DividerBlock ?? ComposerDividerBlock
+
     /**
      * Skipping rendering for blocks that are not in the document state.
      * It should never happens because `blockOrderById` from {@link DocumentState}
@@ -781,45 +807,31 @@ const ComposerSlotBlock = memo<ComposerSlotBlockProps>(
     const type = block.__type
     switch (type) {
       case 'paragraph': {
-        return (
-          <ComposerParagraphBlock key={block.id} {...props} block={block} />
-        )
+        return <ParagraphBlockComp key={block.id} {...props} block={block} />
       }
       case 'quote': {
-        return <ComposerQuoteBlock key={block.id} {...props} block={block} />
+        return <QuoteBlockComp key={block.id} {...props} block={block} />
       }
       case 'heading': {
-        return <ComposerHeadingBlock key={block.id} {...props} block={block} />
+        return <HeadingBlockComp key={block.id} {...props} block={block} />
       }
       case 'bullet_list_item': {
         return (
-          <ComposerBulletListItemBlock
-            key={block.id}
-            {...props}
-            block={block}
-          />
+          <BulletListItemBlockComp key={block.id} {...props} block={block} />
         )
       }
       case 'numbered_list_item': {
         return (
-          <ComposerNumberedListItemBlock
-            key={block.id}
-            {...props}
-            block={block}
-          />
+          <NumberedListItemBlockComp key={block.id} {...props} block={block} />
         )
       }
       case 'checkbox_list_item': {
         return (
-          <ComposerCheckboxListItemBlock
-            key={block.id}
-            {...props}
-            block={block}
-          />
+          <CheckboxListItemBlockComp key={block.id} {...props} block={block} />
         )
       }
       case 'divider': {
-        return <ComposerDividerBlock key={block.id} {...props} block={block} />
+        return <DividerBlockComp key={block.id} {...props} block={block} />
       }
       default: {
         warnOnce(`Skipping rendering for unsupported block type: ${type}.`)
@@ -873,9 +885,20 @@ ComposerBlocks.displayName = COMPOSER_BLOCKS_NAME
  */
 const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
   (
-    { children, autoFocus, translate = 'no', spellCheck = 'true', ...props },
+    {
+      children,
+      autoFocus,
+      components,
+      translate = 'no',
+      spellCheck = 'true',
+      ...props
+    },
     forwardedRef,
   ) => {
+    const ctx = useStableValue<ComposerEditableContext>({
+      components: components ?? {},
+    })
+
     const didAutoFocusRef = useRef(false)
 
     const { editableRef, canEdit, focused } = useEditable()
@@ -897,24 +920,26 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
     }, [autoFocus, canEdit, focused, focus])
 
     return (
-      <div
-        {...props}
-        ref={mergedRefs}
-        role='group'
-        aria-roledescription='editable'
-        contentEditable={canEdit ? 'true' : undefined}
-        suppressContentEditableWarning
-        translate={translate}
-        spellCheck={spellCheck}
-        data-disabled={!canEdit || undefined}
-        data-focused={focused || undefined}
-        {...{ [EDITABLE_ATTR_NAME]: '' }}
-        tabIndex={canEdit ? 0 : undefined}
-        style={{ ...EDITABLE_OUTLINE_STYLE }}
-      >
-        <ComposerBlocks translate={translate} spellCheck={spellCheck} />
-        {children}
-      </div>
+      <ComposerEditableProvider value={ctx}>
+        <div
+          {...props}
+          ref={mergedRefs}
+          role='group'
+          aria-roledescription='editable'
+          contentEditable={canEdit ? 'true' : undefined}
+          suppressContentEditableWarning
+          translate={translate}
+          spellCheck={spellCheck}
+          data-disabled={!canEdit || undefined}
+          data-focused={focused || undefined}
+          {...{ [EDITABLE_ATTR_NAME]: '' }}
+          tabIndex={canEdit ? 0 : undefined}
+          style={{ ...EDITABLE_OUTLINE_STYLE }}
+        >
+          <ComposerBlocks translate={translate} spellCheck={spellCheck} />
+          {children}
+        </div>
+      </ComposerEditableProvider>
     )
   },
 )

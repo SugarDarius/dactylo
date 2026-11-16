@@ -58,6 +58,9 @@ export const COMPOSER_NUMBERED_LIST_ITEM_BLOCK_NAME =
 export const COMPOSER_CHECKBOX_LIST_ITEM_BLOCK_NAME =
   'Composer.CheckboxListItemBlock'
 
+/** Slot inline content component name. */
+export const COMPOSER_SLOT_INLINE_CONTENT_NAME = 'Composer.SlotInlineContent'
+
 /** Text node component name. */
 export const COMPOSER_TEXT_NODE_NAME = 'Composer.TextNode'
 
