@@ -1,4 +1,11 @@
-import { forwardRef, memo, useDebugValue, useEffect, useRef } from 'react'
+import {
+  forwardRef,
+  memo,
+  useDebugValue,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react'
 
 import { Dactylo } from '../dactylo'
 import type { HeadingBlock } from '../internals/blocks'
@@ -18,16 +25,19 @@ import {
   CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME,
   CHECKBOX_LIST_ITEM_MARKER_ATTR_NAME,
   CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME,
+  COMMAND_TRIGGER_QUERY_DATA_NAME,
   DIVIDER_BLOCK_ATTR_NAME,
   DIVIDER_SEPARATOR_ATTR_NAME,
   EDITABLE_ATTR_NAME,
   HEADING_BLOCK_ATTR_NAME,
   HEADING_BLOCK_LEVEL_DATA_NAME,
   HEADING_LEVEL_REPLACER,
+  INLINE_QUERY_NODE_ATTR_NAME,
   LINE_BREAK_NODE_ATTR_NAME,
   LINK_NODE_ATTR_NAME,
   LINK_NODE_CLICKABLE_ATTR_NAME,
   MENTION_NODE_ATTR_NAME,
+  MENTION_QUERY_DATA_NAME,
   NODE_ATTR_NAME,
   NODE_ID_DATA_NAME,
   NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME,
@@ -41,6 +51,7 @@ import {
   ROOT_ATTR_NAME,
   TEXT_NODE_ATTR_NAME,
 } from '../internals/constants'
+import { paintTextForDOM } from '../internals/dom'
 import {
   ComposerProvider,
   useBlock,
@@ -51,6 +62,7 @@ import {
   useEditableNode,
   useEditorConfig,
   useFocus,
+  useInlineBuffer,
 } from './composer'
 import {
   COMPOSER_BLOCKS_NAME,
@@ -189,7 +201,52 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 const ComposerTextNode = memo(
   forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
     ({ node, ...props }, forwardedRef) => {
+      const { mentions, commandTrigger } = useEditorConfig()
+      const inlineBuffer = useInlineBuffer()
+
       const { renderedText, nodeAttributes } = useEditableNode(node)
+
+      const rendered = useMemo(() => {
+        if (inlineBuffer === null || node.id !== inlineBuffer.pointer.nodeId) {
+          return renderedText
+        }
+
+        const isMention = inlineBuffer.kind === 'mention'
+        const character = isMention
+          ? mentions.character
+          : commandTrigger.character
+
+        const { pointer } = inlineBuffer
+
+        const from = pointer.triggerOffset
+        const to = from + character.length + inlineBuffer.bufferedText.length
+
+        return (
+          <>
+            {from > 0 ? paintTextForDOM(node.text.slice(0, from)) : null}
+            <span
+              {...{
+                [INLINE_QUERY_NODE_ATTR_NAME]: '',
+                [isMention
+                  ? MENTION_QUERY_DATA_NAME
+                  : COMMAND_TRIGGER_QUERY_DATA_NAME]: inlineBuffer.bufferedText,
+              }}
+            >
+              {paintTextForDOM(node.text.slice(from, to))}
+            </span>
+            {to < node.text.length
+              ? paintTextForDOM(node.text.slice(to))
+              : null}
+          </>
+        )
+      }, [
+        inlineBuffer,
+        node.id,
+        node.text,
+        renderedText,
+        mentions,
+        commandTrigger,
+      ])
 
       return (
         <span
@@ -203,7 +260,7 @@ const ComposerTextNode = memo(
           }}
           aria-roledescription='text-node'
         >
-          {renderedText}
+          {rendered}
         </span>
       )
     },

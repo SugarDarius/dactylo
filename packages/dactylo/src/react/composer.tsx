@@ -1240,6 +1240,33 @@ export function useEditableBlock(block: BlockWithInlineContent) {
 }
 
 /**
+ * Returns the current state of an inline buffer (mention or command trigger).
+ * @private
+ */
+export function useInlineBuffer() {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  // @todo: handle command trigger
+  const getSnapshot = useStableCallback(() => {
+    const mPointer = editor.mentions.tools.getPointer()
+    const mBufferedText = editor.mentions.tools.getBufferedText()
+
+    if (mPointer !== null && mBufferedText !== null) {
+      return {
+        bufferedText: mBufferedText,
+        kind: 'mention',
+        pointer: mPointer,
+      }
+    }
+
+    return null
+  })
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
  * Wires an inline node's with editable text surface to {@link Dactylo}.
  * Works only for inline nodes  {@link TextNode}, and {@link LinkNode}.
  *
@@ -1247,11 +1274,12 @@ export function useEditableBlock(block: BlockWithInlineContent) {
  */
 export function useEditableNode(node: InlineNodeWithEditableText) {
   const renderedText = useMemo(() => paintTextForDOM(node.text), [node.text])
+
   const nodeAttributes = useMemo(
     () => ({
       [EDITABLE_NODE_BOLD_MARK_DATA_NAME]: isMarkEnabled(node.marks, 'bold'),
       [EDITABLE_NODE_CODE_MARK_DATA_NAME]: isMarkEnabled(node.marks, 'code'),
-      [EDITABLE_NODE_EMPTY_DATA_NAME]: node.text.length <= 0,
+      [EDITABLE_NODE_EMPTY_DATA_NAME]: node.text.length <= 0 ? 'true' : 'false',
       [EDITABLE_NODE_ITALIC_MARK_DATA_NAME]: isMarkEnabled(
         node.marks,
         'italic',

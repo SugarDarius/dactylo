@@ -103,27 +103,11 @@ export class InlineBuffer<K extends string> extends EventSource<
 
   /** Returns the text that's being typed into the inline buffer. */
   get bufferedText(): string | null {
-    if (!this.#enabled || this.#pointer === null) {
-      warnOnceIf(
-        this.#debug,
-        `\`${this.#name}.bufferedText()\` called but no inline is being buffered`,
-      )
-      return null
-    }
-
     return this.#bufferedText
   }
 
   /** Returns the current inline buffer pointer. */
   get pointer(): InlineBufferPointer | null {
-    if (!this.#enabled || this.#pointer === null) {
-      warnOnceIf(
-        this.#debug,
-        `\`${this.#name}.pointer()\` called but no inline is being buffered`,
-      )
-      return null
-    }
-
     return this.#pointer
   }
 

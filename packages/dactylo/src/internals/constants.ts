@@ -189,6 +189,15 @@ export const LINE_BREAK_NODE_ATTR_NAME = 'dactylo-line-break-node' as const
 /** Mention node attribute name. */
 export const MENTION_NODE_ATTR_NAME = 'dactylo-mention-node' as const
 
+/** Inline query node attribute name. */
+export const INLINE_QUERY_NODE_ATTR_NAME = 'dactylo-inline-node-query' as const
+
+/** Mention query data name. */
+export const MENTION_QUERY_DATA_NAME = 'data-dactylo-mention-query' as const
+/** Command trigger query data name. */
+export const COMMAND_TRIGGER_QUERY_DATA_NAME =
+  'data-dactylo-command-trigger-query' as const
+
 /** DOM paint space character. */
 export const DOM_SPACE_UNICODE_CODEPOINT = '\u00A0' as const
 /** DOM pain zero width space character. */
