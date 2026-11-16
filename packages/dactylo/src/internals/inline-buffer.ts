@@ -114,6 +114,19 @@ export class InlineBuffer<K extends string> extends EventSource<
     return this.#bufferedText
   }
 
+  /** Returns the current inline buffer pointer. */
+  get pointer(): InlineBufferPointer | null {
+    if (!this.#enabled || this.#pointer === null) {
+      warnOnceIf(
+        this.#debug,
+        `\`${this.#name}.pointer()\` called but no inline is being buffered`,
+      )
+      return null
+    }
+
+    return this.#pointer
+  }
+
   /** Opens a pointer at the caret's inline start. */
   start(input: {
     blockId: BlockId
