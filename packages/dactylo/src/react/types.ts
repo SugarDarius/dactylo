@@ -43,21 +43,27 @@ export interface ComposerRootProps
 // --- Composer.Editable ─────────────────────────────────────────---
 
 /** Props for declaring a text node component. */
-export interface ComposerTextNodeProps extends React.HTMLAttributes<HTMLSpanElement> {
+export interface ComposerTextNodeProps extends Omit<
+  React.HTMLAttributes<HTMLSpanElement>,
+  'children'
+> {
   /** The text node to render. */
   node: TextNode
 }
 
 /** Props for declaring a link node component. */
 export interface ComposerLinkNodeProps extends React.HTMLAttributes<
-  Omit<HTMLAnchorElement, 'href' | 'title'>
+  Omit<HTMLAnchorElement, 'href' | 'title' | 'children'>
 > {
   /** The link node to render. */
   node: LinkNode
 }
 
 /** Props for declaring a line break node component. */
-export interface ComposerLineBreakNodeProps extends React.HTMLAttributes<HTMLBRElement> {
+export interface ComposerLineBreakNodeProps extends Omit<
+  React.HTMLAttributes<HTMLBRElement>,
+  'children'
+> {
   /** The line break node to render. */
   node: LineBreakNode
 }
@@ -75,7 +81,10 @@ export interface ComposerSlotInlineContentProps {
 }
 
 /** Base props for declaring a block component. */
-export interface ComposerBlockBaseProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ComposerBlockBaseProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  'children'
+> {
   /** At which index the block is rendered inside `<Composer.Editable />`. */
   blockIndex: number
 
@@ -143,45 +152,81 @@ export interface ComposerSlotBlockProps extends React.HTMLAttributes<HTMLDivElem
   blockIndex: number
 }
 
-/** Components to render in `<Composer.Editable />`. */
+/**
+ * Slot overrides for `<Composer.Editable />`.
+ *
+ * Each override must render the matching `<Composer.* />` primitive.
+ * The primitive owns editor DOM (block attrs, contentEditable, inline slots).
+ *
+ * @example
+ * ```tsx
+ * <Composer.Editable
+ *   components={{
+ *     ParagraphBlock: ({ block, ...props }) => (
+ *       <div className='my-paragraph-wrapper>
+ *         <Composer.ParagraphBlock block={block} {...props} />
+ *       </div>
+ *     ),
+ *   }}
+ * />
+ * ```
+ */
 export interface ComposeEditableComponents {
-  /** Component to render a {@link ParagraphBlock}. */
+  /** Slot override for {@link ParagraphBlock}. */
   ParagraphBlock?: React.ComponentType<ComposerParagraphBlockProps>
 
-  /** Component to render a {@link QuoteBlock}. */
+  /** Slot override for {@link QuoteBlock}. */
   QuoteBlock?: React.ComponentType<ComposerQuoteBlockProps>
 
-  /** Component to render a {@link HeadingBlock}. */
+  /** Slot override for {@link HeadingBlock}. */
   HeadingBlock?: React.ComponentType<ComposerHeadingBlockProps>
 
-  /** Component to render a {@link BulletListItemBlock}. */
+  /** Slot override for {@link BulletListItemBlock}. */
   BulletListItemBlock?: React.ComponentType<ComposerBulletListItemBlockProps>
 
-  /** Component to render a {@link NumberedListItemBlock}. */
+  /** Slot override for {@link NumberedListItemBlock}. */
   NumberedListItemBlock?: React.ComponentType<ComposerNumberedListItemBlockProps>
 
-  /** Component to render a {@link CheckboxListItemBlock}. */
+  /** Slot override for {@link CheckboxListItemBlock}. */
   CheckboxListItemBlock?: React.ComponentType<ComposerCheckboxListItemBlockProps>
 
-  /** Component to render a {@link DividerBlock}. */
+  /** Slot override for {@link DividerBlock}. */
   DividerBlock?: React.ComponentType<ComposerDividerBlockProps>
 
-  /** Component to render a {@link TextNode}. */
+  /** Slot override for {@link TextNode}. */
   TextNode?: React.ComponentType<ComposerTextNodeProps>
 
-  /** Component to render a {@link LinkNode}. */
+  /** Slot override for {@link LinkNode}. */
   LinkNode?: React.ComponentType<ComposerLinkNodeProps>
 
-  /** Component to render a {@link LineBreakNode}. */
+  /** Slot override for {@link LineBreakNode}. */
   LineBreakNode?: React.ComponentType<ComposerLineBreakNodeProps>
 
-  /** Component to render a {@link MentionNode}. */
+  /** Slot override for {@link MentionNode}. */
   MentionNode?: React.ComponentType<ComposerMentionNodeProps>
 }
 
 /** Context for `<Composer.Editable />`. */
 export interface ComposerEditableContext {
-  /** Components to render in `<Composer.Editable />`. */
+  /**
+   * Slot overrides for `<Composer.Editable />`.
+   *
+   * Each override must render the matching `<Composer.* />` primitive.
+   * The primitive owns editor DOM (block attrs, contentEditable, inline slots).
+   *
+   * @example
+   * ```tsx
+   * <Composer.Editable
+   *   components={{
+   *     ParagraphBlock: ({ block, ...props }) => (
+   *       <div className='my-paragraph-wrapper>
+   *         <Composer.ParagraphBlock block={block} {...props} />
+   *       </div>
+   *     ),
+   *   }}
+   * />
+   * ```
+   */
   components: ComposeEditableComponents
 }
 
@@ -190,6 +235,24 @@ export interface ComposerEditableProps extends React.HTMLAttributes<HTMLDivEleme
   /** Whether to place the cursor in the editor at the document end after initial mount. */
   autoFocus?: boolean
 
-  /** Components to render in `<Composer.Editable />`. */
+  /**
+   * Slot overrides for `<Composer.Editable />`.
+   *
+   * Each override must render the matching `<Composer.* />` primitive.
+   * The primitive owns editor DOM (block attrs, contentEditable, inline slots).
+   *
+   * @example
+   * ```tsx
+   * <Composer.Editable
+   *   components={{
+   *     ParagraphBlock: ({ block, ...props }) => (
+   *       <div className='my-paragraph-wrapper>
+   *         <Composer.ParagraphBlock block={block} {...props} />
+   *       </div>
+   *     ),
+   *   }}
+   * />
+   * ```
+   */
   components?: ComposeEditableComponents
 }
