@@ -110,6 +110,25 @@ function makeMentionsEditor(options: DactyloOptions = {}) {
   })
 }
 
+function typeCommandQuery(
+  editor: ReturnType<typeof makeTypingEditor>,
+  query = '',
+  character = '/',
+): void {
+  typeText(editor, character)
+  if (query.length > 0) {
+    typeText(editor, query)
+  }
+}
+
+/** Editor with command trigger opted in — it is off by default. */
+function makeCommandTriggerEditor(options: DactyloOptions = {}) {
+  return makeTypingEditor({
+    ...options,
+    commandTrigger: { enabled: true, ...options.commandTrigger },
+  })
+}
+
 describe('Dactylo construction', () => {
   test('starts as an empty editable paragraph with no selection', () => {
     const editor = makeEditor()
@@ -1166,6 +1185,134 @@ describe('Dactylo mentions', () => {
     ).toBe(false)
   })
 
+  test('undo while buffering keeps the buffer when the opener remains', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    editor.history.commands.undo()
+
+    expect(blockTexts(editor.getContext())).toEqual(['@'])
+    expect(editor.mentions.tools.isBuffering()).toBe(true)
+    expect(editor.mentions.tools.getBufferedText()).toBe('')
+  })
+
+  test('undo while buffering aborts when the opener is removed', () => {
+    const editor = makeMentionsEditor()
+    const states: string[] = []
+    editor.events.mention.subscribe((event) => {
+      states.push(event.state)
+    })
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    editor.history.commands.undo()
+    editor.history.commands.undo()
+
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+    expect(editor.mentions.tools.getBufferedText()).toBeNull()
+    expect(states.at(-1)).toBe('aborted')
+  })
+
+  test('undo of a coalesced opener and query aborts the buffer', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeText(editor, '@')
+    for (const character of 'john') {
+      typeText(editor, character)
+    }
+
+    expect(editor.mentions.tools.isBuffering()).toBe(true)
+    editor.history.commands.undo()
+
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+  })
+
+  test('redo after leftover-opener undo restores the query in the buffer', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+    editor.history.commands.undo()
+
+    editor.history.commands.redo()
+
+    expect(blockTexts(editor.getContext())).toEqual(['@john'])
+    expect(editor.mentions.tools.isBuffering()).toBe(true)
+    expect(editor.mentions.tools.getBufferedText()).toBe('john')
+  })
+
+  test('Backspace trims the mention query and aborts when the opener is deleted', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    deleteBackward(editor)
+
+    expect(blockTexts(editor.getContext())).toEqual(['@joh'])
+    expect(editor.mentions.tools.isBuffering()).toBe(true)
+    expect(editor.mentions.tools.getBufferedText()).toBe('joh')
+
+    deleteBackward(editor)
+    deleteBackward(editor)
+    deleteBackward(editor)
+
+    expect(blockTexts(editor.getContext())).toEqual(['@'])
+    expect(editor.mentions.tools.isBuffering()).toBe(true)
+    expect(editor.mentions.tools.getBufferedText()).toBe('')
+
+    deleteBackward(editor)
+
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+  })
+
+  test('Enter while buffering aborts and leaves the query as text', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    hardBreak(editor)
+
+    expect(blockTexts(editor.getContext())).toEqual(['@john', ''])
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+  })
+
+  test('Escape while buffering aborts and leaves the query as text', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    expect(pressShortcut(editor, 'Escape')).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual(['@john'])
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+  })
+
+  test('Mod+A while buffering aborts the buffer', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    expect(pressShortcut(editor, 'KeyA', { meta: true })).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual(['@john'])
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+  })
+
+  test('Backspace after Mod+A leaves leftover query as plain text', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    expect(pressShortcut(editor, 'KeyA', { meta: true })).toBe(true)
+    deleteBackward(editor)
+
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+  })
+
   test('commands and tools emit events', () => {
     const editor = makeMentionsEditor()
     const commands: DactyloCommandEvent[] = []
@@ -1270,6 +1417,54 @@ describe('Dactylo mentions', () => {
     editor.setEditable(true)
     expect(editor.mentions.tools.isBuffering()).toBe(true)
     expect(editor.mentions.tools.getBufferedText()).toBe('john')
+  })
+})
+
+describe('Dactylo command trigger', () => {
+  test('undo while buffering keeps the buffer when the opener remains', () => {
+    const editor = makeCommandTriggerEditor()
+    const events: { bufferedText: string | null; state: string }[] = []
+    editor.events.commandTrigger.subscribe((event) => {
+      events.push({ bufferedText: event.bufferedText, state: event.state })
+    })
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+
+    editor.history.commands.undo()
+
+    expect(blockTexts(editor.getContext())).toEqual(['/'])
+    expect(events.at(-1)).toEqual({ bufferedText: '', state: 'buffering' })
+  })
+
+  test('undo while buffering aborts when the opener is removed', () => {
+    const editor = makeCommandTriggerEditor()
+    const states: string[] = []
+    editor.events.commandTrigger.subscribe((event) => {
+      states.push(event.state)
+    })
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+
+    editor.history.commands.undo()
+    editor.history.commands.undo()
+
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(states.at(-1)).toBe('aborted')
+  })
+
+  test('Backspace trims the command trigger query', () => {
+    const editor = makeCommandTriggerEditor()
+    const events: { bufferedText: string | null; state: string }[] = []
+    editor.events.commandTrigger.subscribe((event) => {
+      events.push({ bufferedText: event.bufferedText, state: event.state })
+    })
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+
+    deleteBackward(editor)
+
+    expect(blockTexts(editor.getContext())).toEqual(['/fo'])
+    expect(events.at(-1)).toEqual({ bufferedText: 'fo', state: 'buffering' })
   })
 })
 

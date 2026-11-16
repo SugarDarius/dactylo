@@ -22,6 +22,7 @@ import {
 import {
   createInitialEditorContext,
   findInlineBufferPointerAtCursor,
+  readInlineBufferQueryAtPointer,
 } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
@@ -97,6 +98,12 @@ export interface TransactionPolicy {
 
   /** When true, merge history action for rapid typing coalescing. */
   readonly coalesce?: true
+
+  /**
+   * Whether to stop syncing inline buffers with the current document,
+   * after this commit.
+   */
+  readonly syncInlineBuffers?: false
 }
 
 /** Joins the parts with a `:` for a human-readable label. */
@@ -677,6 +684,42 @@ export class TransactionPipeline {
     })
   }
 
+  /**
+   * Syncs an active inline buffer from the document, or aborts it when the
+   * opener is gone, the selection is a range, or the caret is no longer in the query.
+   */
+  #syncInlineBuffer<K extends string>(
+    buffer: InlineBuffer<K>,
+    character: string,
+  ): void {
+    if (!buffer.isBuffering || buffer.pointer === null) {
+      return
+    }
+
+    const { pointer } = buffer
+    const query = readInlineBufferQueryAtPointer(
+      this.#context,
+      pointer,
+      character,
+    )
+
+    if (query === null) {
+      buffer.abort()
+      return
+    }
+
+    buffer.updateBufferedText(query)
+  }
+
+  /** Syncs mention and command-trigger buffers with the current document. */
+  #syncInlineBuffers(): void {
+    this.#syncInlineBuffer(this.#mentionBuffer, this.#mentions.character)
+    this.#syncInlineBuffer(
+      this.#commandTriggerBuffer,
+      this.#commandTrigger.character,
+    )
+  }
+
   /** Runs the transaction pipeline and updates editor context. */
   /**
    * Dispatches a transaction by running the full pipeline:
@@ -747,6 +790,10 @@ export class TransactionPipeline {
         },
         coalesce,
       )
+    }
+
+    if (transaction.policy?.syncInlineBuffers !== false) {
+      this.#syncInlineBuffers()
     }
 
     this.#eventSources.context.notify(next)
@@ -951,15 +998,17 @@ export class TransactionPipeline {
       return false
     }
 
+    /** When the mention is confirmed, we release the buffer to clear up the state and notify the UI. */
+    this.#mentionBuffer.release()
+
     const { ops, label } = intent
     this.#commit(ops, {
       label: transactionPolicyLabel('mentions', 'confirm', label),
       pushToHistory: true,
       source,
+      /** When the mention is confirmed, we don't need to sync the inline buffers as the buffer is released. */
+      syncInlineBuffers: false,
     })
-
-    /** After ops are committed we can safely release the buffer for the next typed mention. */
-    this.#mentionBuffer.release()
 
     return true
   }
@@ -1217,22 +1266,14 @@ export class TransactionPipeline {
             source: 'user',
           })
 
-          /** Adds typed text to the mention buffer. */
           if (
-            this.#mentionBuffer.isBuffering &&
-            !this.#commandTriggerBuffer.isBuffering
+            this.#mentionBuffer.isBuffering ||
+            this.#commandTriggerBuffer.isBuffering
           ) {
-            this.#mentionBuffer.append(text)
             return true
           }
-          /** Adds typed text to the command trigger buffer. */
-          else if (
-            this.#commandTriggerBuffer.isBuffering &&
-            !this.#mentionBuffer.isBuffering
-          ) {
-            this.#commandTriggerBuffer.append(text)
-            return true
-          } else if (isMentionIntent) {
+
+          if (isMentionIntent) {
             /**
              * Invariant UX:
              * A mention buffer is only started when the cursor is at the start of
@@ -1519,6 +1560,7 @@ export class TransactionPipeline {
    */
   clearSelection(
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    policy?: Pick<TransactionPolicy, 'syncInlineBuffers'>,
   ): void {
     const intent = this.#operationsEngine.buildClearSelectionOps(this.#context)
     if (intent === null) {
@@ -1530,6 +1572,7 @@ export class TransactionPipeline {
       label: transactionPolicyLabel('selection', label),
       pushToHistory: false,
       source,
+      ...policy,
     })
   }
 

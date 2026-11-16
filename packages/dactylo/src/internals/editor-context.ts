@@ -1,5 +1,9 @@
 import type { PBM, TNM } from './augmentation'
-import { findNodeInBlockWithInlineContent, touchBlock } from './blocks'
+import {
+  findNodeInBlockWithInlineContent,
+  isBlockWithInlineContent,
+  touchBlock,
+} from './blocks'
 import type { BlockId, BlockWithInlineContent } from './blocks'
 import { INLINE_BUFFER_BEFORE_CHAR_OPENER } from './constants'
 import {
@@ -15,7 +19,11 @@ import { isMarkEnabled } from './marks'
 import type { MarkKey } from './marks'
 import { isInlineNodeWithEditableText, isTextNode } from './nodes'
 import type { InlineNode } from './nodes'
-import { isCursorSelection, isSelectionActive } from './selection'
+import {
+  isCursorSelection,
+  isRangeSelection,
+  isSelectionActive,
+} from './selection'
 import type { Selection } from './selection'
 
 /**
@@ -251,4 +259,48 @@ export function findInlineBufferPointerAtCursor(
     nodeId: found.node.id,
     triggerOffset: anchor.offset,
   }
+}
+
+/**
+ * Reads query text after an {@link InlineBuffer} opener, or `null` when the buffer should abort.
+ *
+ * Abort when the opener is gone, the node/block is gone, the selection is a
+ * range, or the caret is not a cursor in that node at or after the opener.
+ * A range does not name the query — do not slice from its endpoints.
+ */
+export function readInlineBufferQueryAtPointer(
+  context: EditorContext,
+  pointer: InlineBufferPointer,
+  character: string,
+): string | null {
+  const { selection, state } = context
+  if (isRangeSelection(selection) || !isCursorSelection(selection)) {
+    return null
+  }
+
+  const block = state.blocks.get(pointer.blockId)
+  if (!block || !isBlockWithInlineContent(block)) {
+    return null
+  }
+
+  const found = findNodeInBlockWithInlineContent(block, pointer.nodeId)
+  if (!found || !isTextNode(found.node)) {
+    return null
+  }
+
+  const openerEnd = pointer.triggerOffset + character.length
+  if (found.node.text.slice(pointer.triggerOffset, openerEnd) !== character) {
+    return null
+  }
+
+  const { anchor } = selection
+  if (
+    anchor.blockId !== pointer.blockId ||
+    anchor.nodeId !== pointer.nodeId ||
+    anchor.offset < openerEnd
+  ) {
+    return null
+  }
+
+  return found.node.text.slice(openerEnd, anchor.offset)
 }

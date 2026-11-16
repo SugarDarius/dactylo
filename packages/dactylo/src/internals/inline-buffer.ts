@@ -50,9 +50,11 @@ export interface InlineBufferOptions<K extends string> {
  * Purpose:
  * When the user types an opener at a safe caret (start of a {@link TextNode},
  * or immediately after whitespace), this buffer records that caret as an
- * {@link InlineBufferPointer} and then accumulates the characters typed after
- * the opener. {@link MentionBuffer} and {@link CommandTriggerBuffer}
- * share this lifecycle so mentions and slash commands stay mutually exclusive.
+ * {@link InlineBufferPointer}. After each document commit the pipeline syncs
+ * `bufferedText` from the text between the opener and the caret, or aborts
+ * when the opener is gone or the selection is a range. {@link MentionBuffer}
+ * and {@link CommandTriggerBuffer} share this lifecycle so mentions and slash
+ * commands stay mutually exclusive.
  *
  * Rationale:
  * The opener is still inserted into the document as ordinary text. “The user
@@ -155,17 +157,21 @@ export class InlineBuffer<K extends string> extends EventSource<
     return [this.#pointer, this.#bufferedText]
   }
 
-  /** Appends text to the current inline buffer. */
-  append(text: string): boolean {
+  /** Updates the buffered text of the current inline buffer. */
+  updateBufferedText(text: string): boolean {
     if (!this.#enabled || this.#pointer === null) {
       warnOnceIf(
         this.#debug,
-        `\`${this.#name}.appendBufferedText()\` called but no inline is being buffered`,
+        `\`${this.#name}.updateBufferedText()\` called but no inline is being buffered`,
       )
       return false
     }
 
-    this.#bufferedText += text
+    if (this.#bufferedText === text) {
+      return true
+    }
+
+    this.#bufferedText = text
 
     this.notify({
       bufferedText: this.#bufferedText,

@@ -2858,8 +2858,11 @@ export class Dactylo {
        * We don't call `safeExecuteCommand` because
        * we want to clear the selection in any case whether the editor
        * is editable or not.
+       *
+       * And we don't sync inline buffers as the buffers need to survive
+       * when the editor switch to `read-only` mode.
        */
-      this.#pipeline.clearSelection(source)
+      this.#pipeline.clearSelection(source, { syncInlineBuffers: false })
     }
 
     this.#eventSources.editable.notify({ editable: next })
