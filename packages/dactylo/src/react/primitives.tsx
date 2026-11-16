@@ -49,9 +49,11 @@ import { paintTextForDOM } from '../internals/dom'
 import {
   ComposerEditableProvider,
   ComposerProvider,
+  createInlineQueryElementStore,
   useBlock,
   useBlockOrderById,
   useCheckboxLists,
+  useComposer,
   useComposerEditable,
   useEditable,
   useEditableBlock,
@@ -171,6 +173,10 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
         placeholder,
         quote,
       }),
+      /** Inline command trigger query element store. */
+      ictqes: createInlineQueryElementStore('command-trigger'),
+      /** Inline mention query element store. */
+      imqes: createInlineQueryElementStore('mention'),
     })
 
     useDebugValue(ctx)
@@ -201,6 +207,7 @@ const ComposerTextNode = memo(
   forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
     ({ node, ...props }, forwardedRef) => {
       const { mentions, commandTrigger } = useEditorConfig()
+      const { imqes, ictqes } = useComposer()
       const inlineBuffer = useInlineBuffer()
 
       const { renderedText, nodeAttributes } = useEditableNode(node)
@@ -223,6 +230,7 @@ const ComposerTextNode = memo(
                   ? MENTION_QUERY_DATA_NAME
                   : COMMAND_TRIGGER_QUERY_DATA_NAME]: inlineBuffer.bufferedText,
               }}
+              ref={isMention ? imqes.setElement : ictqes.setElement}
             >
               {paintTextForDOM(node.text.slice(from, to))}
             </span>

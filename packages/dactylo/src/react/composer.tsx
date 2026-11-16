@@ -68,7 +68,41 @@ import {
   useStableValue,
   useSyncExternalStoreWithSelector,
 } from './internals/hooks'
-import type { ComposerContext, ComposerEditableContext } from './types'
+import type {
+  ComposerContext,
+  ComposerEditableContext,
+  ComposerInlineQueryElementStore,
+} from './types'
+
+// --- Composer Inline Query Element Store ──────────────────────---
+
+/** Creates a {@link ComposerInlineQueryElementStore}. */
+export function createInlineQueryElementStore(
+  kind: 'mention' | 'command-trigger',
+): ComposerInlineQueryElementStore {
+  const listeners = new Set<() => void>()
+  let element: HTMLSpanElement | null = null
+
+  return {
+    getSnapshot: () => element,
+    kind,
+    setElement: (next: HTMLSpanElement | null) => {
+      if (element === next) {
+        return
+      }
+      element = next
+      for (const listener of listeners) {
+        listener()
+      }
+    },
+    subscribe: (listener: () => void) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+  }
+}
 
 // --- Composer Context ─────────────────────────────────────────----
 
@@ -954,15 +988,15 @@ export function useIsBlockEmpty(blockId: BlockId): boolean {
  *
  * @example
  * ```tsx
- * const { isBuffering, bufferedText, confirm, dismiss } = useBufferedMention()
+ * const { isBuffering, bufferedText, confirm, dismiss } = useMention()
  * console.log(isBuffering, bufferedText)
  *
  * confirm({ entity: { id: 'user-123', data: { email: 'john@doe.dev', fullName: 'John Doe' } } })
  * dismiss({ source: 'user' })
  * ```
  */
-export function useBufferedMention() {
-  const { editor } = useComposer()
+export function useMention() {
+  const { editor, imqes } = useComposer()
 
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
 
@@ -986,6 +1020,12 @@ export function useBufferedMention() {
     getBufferedTextSnapshot,
   )
 
+  const anchor = useSyncExternalStore(
+    imqes.subscribe,
+    imqes.getSnapshot,
+    imqes.getSnapshot,
+  )
+
   const confirm = useStableCallback(
     (
       opts: { entity: { id: string; data: MNED }; metadata?: MNM },
@@ -1001,6 +1041,7 @@ export function useBufferedMention() {
   )
 
   return {
+    anchor,
     bufferedText,
     confirm,
     dismiss,

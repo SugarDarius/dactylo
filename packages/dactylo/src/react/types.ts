@@ -17,12 +17,45 @@ import type {
   TextNode,
 } from '../internals/nodes'
 
+// --- Composer Inline Query Element Store ──────────────────────---
+/**
+ * Store for keeping in memory the DOM element for an
+ * `[dactylo-inline-node-query]` being rendered while an {@link InlineBuffer} is active.
+ *
+ * @private
+ */
+export interface ComposerInlineQueryElementStore {
+  /** The kind of inline query node being rendered. */
+  kind: 'mention' | 'command-trigger'
+
+  /** Returns the DOM element. */
+  getSnapshot: () => HTMLSpanElement | null
+
+  /** Assigns the DOM element for being used externally. */
+  setElement: (element: HTMLSpanElement | null) => void
+
+  /** Subscribes to React's tree changes for updating the DOM element reference. */
+  subscribe: (listener: () => void) => () => void
+}
+
 // --- Composer Context ──────────────────────────────────────-------
 
 /** Main Composer context. */
 export interface ComposerContext {
   /** The {@link Dactylo} editor instance. */
   editor: Dactylo
+
+  /**
+   * Inline mention query element store.
+   * @private
+   */
+  imqes: ComposerInlineQueryElementStore
+
+  /**
+   * Inline command trigger query element store.
+   * @private
+   */
+  ictqes: ComposerInlineQueryElementStore
 }
 
 // --- Composer.Root ─────────────────────────────────────────-------
