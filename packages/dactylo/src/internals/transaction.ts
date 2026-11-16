@@ -1183,6 +1183,32 @@ export class TransactionPipeline {
             return false
           }
 
+          /**
+           * Capture the opener caret before inserting the trigger character.
+           * `findInlineBufferPointerAtCursor` requires the caret at the start of a
+           * {@link TextNode} or immediately after whitespace — after commit the
+           * caret sits on the trigger itself.
+           */
+          const canStartInlineBuffer =
+            !this.#mentionBuffer.isBuffering &&
+            !this.#commandTriggerBuffer.isBuffering
+
+          const isMentionIntent =
+            canStartInlineBuffer && this.#isMentionIntent(text)
+
+          const isCommandTriggerIntent =
+            canStartInlineBuffer &&
+            !isMentionIntent &&
+            this.#isCommandTriggerIntent(text)
+
+          const mentionPointer = isMentionIntent
+            ? findInlineBufferPointerAtCursor(this.#context)
+            : null
+
+          const commandTriggerPointer = isCommandTriggerIntent
+            ? findInlineBufferPointerAtCursor(this.#context)
+            : null
+
           const { ops, label, coalesce, skipHistory } = intent
           this.#commit(ops, {
             coalesce,
@@ -1198,36 +1224,32 @@ export class TransactionPipeline {
           ) {
             this.#mentionBuffer.append(text)
             return true
-          } else if (
+          }
+          /** Adds typed text to the command trigger buffer. */
+          else if (
             this.#commandTriggerBuffer.isBuffering &&
             !this.#mentionBuffer.isBuffering
           ) {
             this.#commandTriggerBuffer.append(text)
             return true
-          } else if (this.#isMentionIntent(text)) {
-            const pointer = findInlineBufferPointerAtCursor(this.#context)
-
+          } else if (isMentionIntent) {
             /**
              * Invariant UX:
              * A mention buffer is only started when the cursor is at the start of
              * a {@link TextNode} or immediately after a whitespace character.
              */
-            if (pointer !== null) {
-              this.#mentionBuffer.start(pointer)
+            if (mentionPointer !== null) {
+              this.#mentionBuffer.start(mentionPointer)
               return true
             }
-          }
-          /** Applies command trigger buffering when a command trigger is being typed. */
-          else if (this.#isCommandTriggerIntent(text)) {
-            const pointer = findInlineBufferPointerAtCursor(this.#context)
-
+          } else if (isCommandTriggerIntent) {
             /**
              * Invariant UX:
              * A command trigger buffer is only started when the cursor is at the start of
              * a {@link TextNode} or immediately after a whitespace character.
              */
-            if (pointer !== null) {
-              this.#commandTriggerBuffer.start(pointer)
+            if (commandTriggerPointer !== null) {
+              this.#commandTriggerBuffer.start(commandTriggerPointer)
               return true
             }
           } else {

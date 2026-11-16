@@ -33,6 +33,7 @@ import {
   isInlineNodeWithEditableText,
   isLineBreakNode,
   isLinkNode,
+  isMentionNode,
   isTextNode,
 } from '../src/internals/nodes'
 import type { Transaction } from '../src/internals/transaction'
@@ -84,6 +85,17 @@ function numberedMarkers(
     const block = state.blocks.get(id)
     return block && isNumberedListItemBlock(block) ? block.markerNumbering : ''
   })
+}
+
+function typeMentionQuery(
+  editor: ReturnType<typeof makeTypingEditor>,
+  query = '',
+  character = '@',
+): void {
+  typeText(editor, character)
+  if (query.length > 0) {
+    typeText(editor, query)
+  }
 }
 
 describe('Dactylo construction', () => {
@@ -975,6 +987,267 @@ describe('Dactylo blocks', () => {
       expect(patched.markerNumbering).toBe('a.')
       expect(patched.content).toEqual(content)
     }
+  })
+})
+
+describe('Dactylo mentions', () => {
+  const entity = { data: { name: 'John Doe' }, id: 'user-123' } as const
+
+  test('tools report no buffer before a mention is typed', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+    expect(editor.mentions.tools.getBufferedText()).toBeNull()
+  })
+
+  test('typing the mention character starts a buffer with empty query text', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor)
+
+    expect(editor.mentions.tools.isBuffering()).toBe(true)
+    expect(editor.mentions.tools.getBufferedText()).toBe('')
+    expect(blockTexts(editor.getContext())).toEqual(['@'])
+  })
+
+  test('typed characters after the opener are readable via getBufferedText', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    expect(editor.mentions.tools.isBuffering()).toBe(true)
+    expect(editor.mentions.tools.getBufferedText()).toBe('john')
+    expect(blockTexts(editor.getContext())).toEqual(['@john'])
+  })
+
+  test('starts a buffer at the start of a node or after whitespace, not mid-word', () => {
+    const midWord = makeTypingEditor()
+    midWord.selection.commands.focus()
+    typeText(midWord, 'hello')
+    typeMentionQuery(midWord)
+
+    expect(midWord.mentions.tools.isBuffering()).toBe(false)
+    expect(midWord.mentions.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(midWord.getContext())).toEqual(['hello@'])
+
+    const afterSpace = makeTypingEditor()
+    afterSpace.selection.commands.focus()
+    typeText(afterSpace, 'hello ')
+    typeMentionQuery(afterSpace, 'john')
+
+    expect(afterSpace.mentions.tools.isBuffering()).toBe(true)
+    expect(afterSpace.mentions.tools.getBufferedText()).toBe('john')
+    expect(blockTexts(afterSpace.getContext())).toEqual(['hello @john'])
+  })
+
+  test('does not start a buffer when mentions are disabled', () => {
+    const editor = makeEditor({ mentions: { enabled: false } })
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+    expect(editor.mentions.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(editor.getContext())).toEqual(['@john'])
+  })
+
+  test('uses the configured mention character', () => {
+    const editor = makeEditor({ mentions: { character: '#' } })
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'room', '#')
+
+    expect(editor.mentions.tools.isBuffering()).toBe(true)
+    expect(editor.mentions.tools.getBufferedText()).toBe('room')
+    expect(blockTexts(editor.getContext())).toEqual(['#room'])
+  })
+
+  test('confirm inserts a mention node and releases the buffer', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    expect(
+      editor.mentions.commands.confirm({
+        entity,
+        metadata: { bgColor: 'blue' },
+      }),
+    ).toBe(true)
+
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+    expect(editor.mentions.tools.getBufferedText()).toBeNull()
+
+    const mention = firstInlineBlock(editor.getContext()).content.find(
+      isMentionNode,
+    )
+    if (!mention) {
+      throw new Error('Expected a mention node')
+    }
+    expect(mention.entity).toEqual(entity)
+    expect(mention.metadata).toEqual({ bgColor: 'blue' })
+    expect(blockTexts(editor.getContext())).toEqual([' '])
+  })
+
+  test('confirm stamps initial mention metadata when none is provided', () => {
+    const editor = makeEditor({
+      mentions: { initialMetadata: { bgColor: 'magenta' } },
+    })
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    expect(editor.mentions.commands.confirm({ entity })).toBe(true)
+
+    const mention = firstInlineBlock(editor.getContext()).content.find(
+      isMentionNode,
+    )
+    if (!mention) {
+      throw new Error('Expected a mention node')
+    }
+    expect(mention.metadata).toEqual({ bgColor: 'magenta' })
+  })
+
+  test('confirm and dismiss return false when no buffer is active', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    expect(editor.mentions.commands.confirm({ entity })).toBe(false)
+    expect(editor.mentions.commands.dismiss()).toBe(false)
+    expect(blockTexts(editor.getContext())).toEqual([''])
+  })
+
+  test('dismiss aborts the buffer and leaves the query as text', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    expect(editor.mentions.commands.dismiss()).toBe(true)
+
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+    expect(editor.mentions.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(editor.getContext())).toEqual(['@john'])
+    expect(
+      firstInlineBlock(editor.getContext()).content.some(isMentionNode),
+    ).toBe(false)
+  })
+
+  test('undo after confirm restores the query without restarting the buffer', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+    editor.mentions.commands.confirm({ entity })
+
+    editor.history.commands.undo()
+
+    expect(blockTexts(editor.getContext())).toEqual(['@john'])
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+    expect(
+      firstInlineBlock(editor.getContext()).content.some(isMentionNode),
+    ).toBe(false)
+  })
+
+  test('commands and tools emit events', () => {
+    const editor = makeTypingEditor()
+    const commands: DactyloCommandEvent[] = []
+    const tools: DactyloToolEvent[] = []
+    editor.events.commands.subscribe((event) => {
+      commands.push(event)
+    })
+    editor.events.tools.subscribe((event) => {
+      tools.push(event)
+    })
+
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+    editor.mentions.tools.isBuffering()
+    editor.mentions.tools.getBufferedText()
+    editor.mentions.commands.confirm({ entity }, 'ai-agent')
+
+    expect(tools).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          result: true,
+          status: 'success',
+          tool: 'mentions/is-buffering',
+        }),
+        expect.objectContaining({
+          result: 'john',
+          status: 'success',
+          tool: 'mentions/get-buffered-text',
+        }),
+      ]),
+    )
+    expect(commands).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          command: 'mentions/confirm-buffer',
+          payload: {
+            entity: { data: JSON.stringify(entity.data), id: entity.id },
+            metadata: undefined,
+            source: 'ai-agent',
+          },
+          result: true,
+          status: 'success',
+        }),
+      ]),
+    )
+  })
+
+  test('events.mention tracks started, buffering, released, and aborted', () => {
+    const confirmed = makeTypingEditor()
+    const confirmEvents: string[] = []
+    confirmed.events.mention.subscribe((event) => {
+      confirmEvents.push(`${event.state}:${event.bufferedText ?? ''}`)
+    })
+    confirmed.selection.commands.focus()
+    typeMentionQuery(confirmed, 'john')
+    confirmed.mentions.commands.confirm({ entity })
+
+    expect(confirmEvents).toEqual(['started:', 'buffering:john', 'released:'])
+
+    const dismissed = makeTypingEditor()
+    const dismissEvents: string[] = []
+    dismissed.events.mention.subscribe((event) => {
+      dismissEvents.push(event.state)
+    })
+    dismissed.selection.commands.focus()
+    typeMentionQuery(dismissed, 'john')
+    dismissed.mentions.commands.dismiss()
+
+    expect(dismissEvents).toEqual(['started', 'buffering', 'aborted'])
+  })
+
+  test('confirm records the transaction source', () => {
+    const editor = makeTypingEditor()
+    const applied: Transaction[] = []
+    editor.events.transactionDidApply.subscribe((transaction) => {
+      applied.push(transaction)
+    })
+
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+    editor.mentions.commands.confirm({ entity }, 'ai-agent')
+
+    expect(applied.at(-1)?.policy).toEqual(
+      expect.objectContaining({
+        source: 'ai-agent',
+      }),
+    )
+  })
+
+  test('commands are no-ops and tools return fallbacks while read-only', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+    editor.setEditable(false)
+
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+    expect(editor.mentions.tools.getBufferedText()).toBeNull()
+    expect(editor.mentions.commands.confirm({ entity })).toBe(false)
+    expect(editor.mentions.commands.dismiss()).toBe(false)
+    expect(blockTexts(editor.getContext())).toEqual(['@john'])
+
+    editor.setEditable(true)
+    expect(editor.mentions.tools.isBuffering()).toBe(true)
+    expect(editor.mentions.tools.getBufferedText()).toBe('john')
   })
 })
 
