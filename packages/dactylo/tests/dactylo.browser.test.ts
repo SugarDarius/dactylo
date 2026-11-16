@@ -1,7 +1,11 @@
 // @vitest-environment happy-dom
 import { describe, expect, test } from 'vitest'
 
-import type { DactyloCommandEvent, DactyloToolEvent } from '../src/dactylo'
+import type {
+  DactyloCommandEvent,
+  DactyloOptions,
+  DactyloToolEvent,
+} from '../src/dactylo'
 import {
   isBulletListItemBlock,
   isCheckboxListItemBlock,
@@ -96,6 +100,14 @@ function typeMentionQuery(
   if (query.length > 0) {
     typeText(editor, query)
   }
+}
+
+/** Editor with mentions opted in — they are off by default. */
+function makeMentionsEditor(options: DactyloOptions = {}) {
+  return makeTypingEditor({
+    ...options,
+    mentions: { enabled: true, ...options.mentions },
+  })
 }
 
 describe('Dactylo construction', () => {
@@ -994,7 +1006,7 @@ describe('Dactylo mentions', () => {
   const entity = { data: { name: 'John Doe' }, id: 'user-123' } as const
 
   test('tools report no buffer before a mention is typed', () => {
-    const editor = makeTypingEditor()
+    const editor = makeMentionsEditor()
     editor.selection.commands.focus()
 
     expect(editor.mentions.tools.isBuffering()).toBe(false)
@@ -1002,7 +1014,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('typing the mention character starts a buffer with empty query text', () => {
-    const editor = makeTypingEditor()
+    const editor = makeMentionsEditor()
     editor.selection.commands.focus()
     typeMentionQuery(editor)
 
@@ -1012,7 +1024,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('typed characters after the opener are readable via getBufferedText', () => {
-    const editor = makeTypingEditor()
+    const editor = makeMentionsEditor()
     editor.selection.commands.focus()
     typeMentionQuery(editor, 'john')
 
@@ -1022,7 +1034,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('starts a buffer at the start of a node or after whitespace, not mid-word', () => {
-    const midWord = makeTypingEditor()
+    const midWord = makeMentionsEditor()
     midWord.selection.commands.focus()
     typeText(midWord, 'hello')
     typeMentionQuery(midWord)
@@ -1031,7 +1043,7 @@ describe('Dactylo mentions', () => {
     expect(midWord.mentions.tools.getBufferedText()).toBeNull()
     expect(blockTexts(midWord.getContext())).toEqual(['hello@'])
 
-    const afterSpace = makeTypingEditor()
+    const afterSpace = makeMentionsEditor()
     afterSpace.selection.commands.focus()
     typeText(afterSpace, 'hello ')
     typeMentionQuery(afterSpace, 'john')
@@ -1041,8 +1053,18 @@ describe('Dactylo mentions', () => {
     expect(blockTexts(afterSpace.getContext())).toEqual(['hello @john'])
   })
 
+  test('does not start a buffer by default', () => {
+    const editor = makeEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+    expect(editor.mentions.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(editor.getContext())).toEqual(['@john'])
+  })
+
   test('does not start a buffer when mentions are disabled', () => {
-    const editor = makeEditor({ mentions: { enabled: false } })
+    const editor = makeMentionsEditor({ mentions: { enabled: false } })
     editor.selection.commands.focus()
     typeMentionQuery(editor, 'john')
 
@@ -1052,7 +1074,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('uses the configured mention character', () => {
-    const editor = makeEditor({ mentions: { character: '#' } })
+    const editor = makeMentionsEditor({ mentions: { character: '#' } })
     editor.selection.commands.focus()
     typeMentionQuery(editor, 'room', '#')
 
@@ -1062,7 +1084,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('confirm inserts a mention node and releases the buffer', () => {
-    const editor = makeTypingEditor()
+    const editor = makeMentionsEditor()
     editor.selection.commands.focus()
     typeMentionQuery(editor, 'john')
 
@@ -1088,7 +1110,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('confirm stamps initial mention metadata when none is provided', () => {
-    const editor = makeEditor({
+    const editor = makeMentionsEditor({
       mentions: { initialMetadata: { bgColor: 'magenta' } },
     })
     editor.selection.commands.focus()
@@ -1106,7 +1128,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('confirm and dismiss return false when no buffer is active', () => {
-    const editor = makeTypingEditor()
+    const editor = makeMentionsEditor()
     editor.selection.commands.focus()
 
     expect(editor.mentions.commands.confirm({ entity })).toBe(false)
@@ -1115,7 +1137,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('dismiss aborts the buffer and leaves the query as text', () => {
-    const editor = makeTypingEditor()
+    const editor = makeMentionsEditor()
     editor.selection.commands.focus()
     typeMentionQuery(editor, 'john')
 
@@ -1130,7 +1152,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('undo after confirm restores the query without restarting the buffer', () => {
-    const editor = makeTypingEditor()
+    const editor = makeMentionsEditor()
     editor.selection.commands.focus()
     typeMentionQuery(editor, 'john')
     editor.mentions.commands.confirm({ entity })
@@ -1145,7 +1167,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('commands and tools emit events', () => {
-    const editor = makeTypingEditor()
+    const editor = makeMentionsEditor()
     const commands: DactyloCommandEvent[] = []
     const tools: DactyloToolEvent[] = []
     editor.events.commands.subscribe((event) => {
@@ -1192,7 +1214,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('events.mention tracks started, buffering, released, and aborted', () => {
-    const confirmed = makeTypingEditor()
+    const confirmed = makeMentionsEditor()
     const confirmEvents: string[] = []
     confirmed.events.mention.subscribe((event) => {
       confirmEvents.push(`${event.state}:${event.bufferedText ?? ''}`)
@@ -1203,7 +1225,7 @@ describe('Dactylo mentions', () => {
 
     expect(confirmEvents).toEqual(['started:', 'buffering:john', 'released:'])
 
-    const dismissed = makeTypingEditor()
+    const dismissed = makeMentionsEditor()
     const dismissEvents: string[] = []
     dismissed.events.mention.subscribe((event) => {
       dismissEvents.push(event.state)
@@ -1216,7 +1238,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('confirm records the transaction source', () => {
-    const editor = makeTypingEditor()
+    const editor = makeMentionsEditor()
     const applied: Transaction[] = []
     editor.events.transactionDidApply.subscribe((transaction) => {
       applied.push(transaction)
@@ -1234,7 +1256,7 @@ describe('Dactylo mentions', () => {
   })
 
   test('commands are no-ops and tools return fallbacks while read-only', () => {
-    const editor = makeTypingEditor()
+    const editor = makeMentionsEditor()
     editor.selection.commands.focus()
     typeMentionQuery(editor, 'john')
     editor.setEditable(false)

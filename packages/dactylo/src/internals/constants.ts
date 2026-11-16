@@ -24,13 +24,13 @@ export const DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER = 'Task'
 export const DEFAULT_LINK_OPEN_ON_CLICK_ENABLED = true as const
 
 /** Default mentions enabled. */
-export const DEFAULT_MENTIONS_ENABLED = true as const
+export const DEFAULT_MENTIONS_ENABLED = false as const
 
 /** Default mention character. */
 export const DEFAULT_MENTION_CHARACTER = '@' as const
 
 /** Default command trigger enabled. */
-export const DEFAULT_COMMAND_TRIGGER_ENABLED = true as const
+export const DEFAULT_COMMAND_TRIGGER_ENABLED = false as const
 
 /** Default command trigger character. */
 export const DEFAULT_COMMAND_TRIGGER_CHARACTER = '/' as const
