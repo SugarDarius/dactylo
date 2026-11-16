@@ -1,11 +1,4 @@
-import {
-  forwardRef,
-  memo,
-  useDebugValue,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react'
+import { forwardRef, memo, useDebugValue, useEffect, useRef } from 'react'
 
 import { Dactylo } from '../dactylo'
 import type { HeadingBlock } from '../internals/blocks'
@@ -206,22 +199,15 @@ const ComposerTextNode = memo(
 
       const { renderedText, nodeAttributes } = useEditableNode(node)
 
-      const rendered = useMemo(() => {
-        if (inlineBuffer === null || node.id !== inlineBuffer.pointer.nodeId) {
-          return renderedText
-        }
-
+      let rendered: React.ReactNode = renderedText
+      if (inlineBuffer !== null) {
         const isMention = inlineBuffer.kind === 'mention'
         const character = isMention
           ? mentions.character
           : commandTrigger.character
-
-        const { pointer } = inlineBuffer
-
-        const from = pointer.triggerOffset
+        const from = inlineBuffer.pointer.triggerOffset
         const to = from + character.length + inlineBuffer.bufferedText.length
-
-        return (
+        rendered = (
           <>
             {from > 0 ? paintTextForDOM(node.text.slice(0, from)) : null}
             <span
@@ -239,14 +225,7 @@ const ComposerTextNode = memo(
               : null}
           </>
         )
-      }, [
-        inlineBuffer,
-        node.id,
-        node.text,
-        renderedText,
-        mentions,
-        commandTrigger,
-      ])
+      }
 
       return (
         <span
