@@ -16,4 +16,5 @@ export default defineConfig({
   publint: true,
   sourcemap: true,
   target: false,
+  treeshake: true,
 })
