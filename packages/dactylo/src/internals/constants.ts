@@ -86,6 +86,15 @@ export const BLOCK_ATTR_NAME = 'dactylo-block' as const
 export const BLOCK_ID_DATA_NAME = 'data-dactylo-block-id' as const
 /** Block index of rendering data name. */
 export const BLOCK_INDEX_DATA_NAME = 'data-dactylo-block-index' as const
+
+/** Block active data name. */
+export const BLOCK_ACTIVE_DATA_NAME = 'data-active' as const
+/** Block selected data name. */
+export const BLOCK_SELECTED_DATA_NAME = 'data-selected' as const
+/** Block selected coverage topology data name. */
+export const BLOCK_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME =
+  'data-selected-coverage-topology' as const
+
 /** Block placeholder attribute name. */
 export const BLOCK_PLACEHOLDER_ATTR_NAME = 'dactylo-block-placeholder' as const
 /** Block content attribute name. */
@@ -93,6 +102,16 @@ export const BLOCK_CONTENT_ATTR_NAME = 'dactylo-block-content' as const
 /** Block content editable data name. */
 export const BLOCK_CONTENT_EDITABLE_DATA_NAME =
   'data-dactylo-block-content-editable' as const
+
+/** Block content active data name. */
+export const BLOCK_CONTENT_ACTIVE_DATA_NAME = 'data-active' as const
+/** Block content selected data name. */
+export const BLOCK_CONTENT_SELECTED_DATA_NAME = 'data-selected' as const
+/** Block content selected coverage topology data name. */
+export const BLOCK_CONTENT_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME =
+  'data-selected-coverage-topology' as const
+/** Block content empty data name. */
+export const BLOCK_CONTENT_EMPTY_DATA_NAME = 'data-empty' as const
 
 /** {@link ParagraphBlock} attribute name. */
 export const PARAGRAPH_BLOCK_ATTR_NAME = 'dactylo-paragraph-block' as const
@@ -157,6 +176,11 @@ export const CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME =
 export const NODE_ATTR_NAME = 'dactylo-node' as const
 /** {@link InlineNode} ID data name. */
 export const NODE_ID_DATA_NAME = 'data-dactylo-node-id' as const
+/** {@link InlineNode} selected data name. */
+export const NODE_SELECTED_DATA_NAME = 'data-selected'
+/** {@link InlineNode} selected coverage topology data name. */
+export const NODE_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME =
+  'data-selected-coverage-topology' as const
 
 /** {@link InlineNodeWithEditableText} empty data attribute name. */
 export const EDITABLE_NODE_EMPTY_DATA_NAME =

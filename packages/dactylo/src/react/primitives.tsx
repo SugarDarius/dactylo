@@ -4,12 +4,19 @@ import { Dactylo } from '../dactylo'
 import type { HeadingBlock } from '../internals/blocks'
 import { warnOnce } from '../internals/console'
 import {
+  BLOCK_ACTIVE_DATA_NAME,
   BLOCK_ATTR_NAME,
+  BLOCK_CONTENT_ACTIVE_DATA_NAME,
   BLOCK_CONTENT_ATTR_NAME,
   BLOCK_CONTENT_EDITABLE_DATA_NAME,
+  BLOCK_CONTENT_EMPTY_DATA_NAME,
+  BLOCK_CONTENT_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME,
+  BLOCK_CONTENT_SELECTED_DATA_NAME,
   BLOCK_ID_DATA_NAME,
   BLOCK_INDEX_DATA_NAME,
   BLOCK_PLACEHOLDER_ATTR_NAME,
+  BLOCK_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME,
+  BLOCK_SELECTED_DATA_NAME,
   BLOCKS_ATTR_NAME,
   BULLET_LIST_ITEM_BLOCK_ATTR_NAME,
   BULLET_LIST_ITEM_MARKER_ATTR_NAME,
@@ -33,6 +40,8 @@ import {
   MENTION_QUERY_DATA_NAME,
   NODE_ATTR_NAME,
   NODE_ID_DATA_NAME,
+  NODE_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME,
+  NODE_SELECTED_DATA_NAME,
   NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME,
   NUMBERED_LIST_ITEM_MARKER_ATTR_NAME,
   NUMBERED_LIST_ITEM_MARKER_INDEX_ATTR_NAME,
@@ -271,11 +280,11 @@ const ComposerTextNode = memo(
           {...{
             [NODE_ATTR_NAME]: '',
             [NODE_ID_DATA_NAME]: node.id,
+            [NODE_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]: sct ?? undefined,
+            [NODE_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
             [TEXT_NODE_ATTR_NAME]: '',
             ...attributes,
           }}
-          data-selected={sct ? true : undefined}
-          data-selected-coverage-topology={sct ?? undefined}
           aria-roledescription='text-node'
         >
           <ComposerInlineQueryNode nodeId={node.id} text={node.text}>
@@ -308,10 +317,10 @@ const ComposerLinkNode = memo(
               : 'false',
             [NODE_ATTR_NAME]: '',
             [NODE_ID_DATA_NAME]: node.id,
+            [NODE_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]: sct ?? undefined,
+            [NODE_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
             ...attributes,
           }}
-          data-selected={sct ? true : undefined}
-          data-selected-coverage-topology={sct ?? undefined}
           aria-roledescription='link-node'
           href={node.url.href}
           title={node.url.title}
@@ -338,9 +347,9 @@ export const ComposerLineBreakNode = memo(
             [LINE_BREAK_NODE_ATTR_NAME]: '',
             [NODE_ATTR_NAME]: '',
             [NODE_ID_DATA_NAME]: node.id,
+            [NODE_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]: sct ?? undefined,
+            [NODE_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
           }}
-          data-selected={sct ? true : undefined}
-          data-selected-coverage-topology={sct ?? undefined}
           aria-roledescription='line-break-node'
         />
       )
@@ -366,9 +375,9 @@ export const ComposerMentionNode = memo(
             [MENTION_NODE_ENTITY_ID_DATA_NAME]: node.entity.id,
             [NODE_ATTR_NAME]: '',
             [NODE_ID_DATA_NAME]: node.id,
+            [NODE_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]: sct ?? undefined,
+            [NODE_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
           }}
-          data-selected={sct ? true : undefined}
-          data-selected-coverage-topology={sct ?? undefined}
           aria-roledescription='mention-node'
         >
           {children ?? (
@@ -442,14 +451,14 @@ const ComposerParagraphBlock = forwardRef<
       {...props}
       ref={forwardedRef}
       {...{
+        [BLOCK_ACTIVE_DATA_NAME]: isActive ?? undefined,
         [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
         [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
+        [BLOCK_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]: sct ?? undefined,
+        [BLOCK_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
         [PARAGRAPH_BLOCK_ATTR_NAME]: '',
       }}
-      data-active={isActive ?? undefined}
-      data-selected={sct ? true : undefined}
-      data-selected-coverage-topology={sct ?? undefined}
       aria-roledescription='paragraph-block'
     >
       <div
@@ -459,13 +468,14 @@ const ComposerParagraphBlock = forwardRef<
         aria-multiline={canEdit ? 'true' : undefined}
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
-        data-active={isActive ?? undefined}
-        data-selected={sct ? true : undefined}
-        data-selected-coverage-topology={sct ?? undefined}
-        data-empty={isEmpty ?? undefined}
         {...{
+          [BLOCK_CONTENT_ACTIVE_DATA_NAME]: isActive ?? undefined,
           [BLOCK_CONTENT_ATTR_NAME]: '',
           [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
+          [BLOCK_CONTENT_EMPTY_DATA_NAME]: isEmpty ?? undefined,
+          [BLOCK_CONTENT_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]:
+            sct ?? undefined,
+          [BLOCK_CONTENT_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
           [BLOCK_PLACEHOLDER_ATTR_NAME]: placeholder,
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
@@ -491,14 +501,14 @@ const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
         {...props}
         ref={forwardedRef}
         {...{
+          [BLOCK_ACTIVE_DATA_NAME]: isActive ?? undefined,
           [BLOCK_ATTR_NAME]: '',
           [BLOCK_ID_DATA_NAME]: block.id,
           [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
+          [BLOCK_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]: sct ?? undefined,
+          [BLOCK_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
           [QUOTE_BLOCK_ATTR_NAME]: '',
         }}
-        data-active={isActive ?? undefined}
-        data-selected={sct ? true : undefined}
-        data-selected-coverage-topology={sct ?? undefined}
         aria-roledescription='quote-block'
       >
         <div
@@ -518,13 +528,14 @@ const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
           aria-multiline={canEdit ? 'true' : undefined}
           contentEditable={canEdit ? 'true' : undefined}
           suppressContentEditableWarning
-          data-active={isActive ?? undefined}
-          data-selected={sct ? true : undefined}
-          data-selected-coverage-topology={sct ?? undefined}
-          data-empty={isEmpty ?? undefined}
           {...{
+            [BLOCK_CONTENT_ACTIVE_DATA_NAME]: isActive ?? undefined,
             [BLOCK_CONTENT_ATTR_NAME]: '',
             [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
+            [BLOCK_CONTENT_EMPTY_DATA_NAME]: isEmpty ?? undefined,
+            [BLOCK_CONTENT_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]:
+              sct ?? undefined,
+            [BLOCK_CONTENT_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
             [BLOCK_PLACEHOLDER_ATTR_NAME]: placeholder,
           }}
           style={{ ...EDITABLE_OUTLINE_STYLE }}
@@ -578,15 +589,15 @@ const ComposerHeadingBlock = forwardRef<
       {...props}
       ref={forwardedRef}
       {...{
+        [BLOCK_ACTIVE_DATA_NAME]: isActive ?? undefined,
         [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
         [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
+        [BLOCK_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]: sct ?? undefined,
+        [BLOCK_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
         [HEADING_BLOCK_ATTR_NAME]: '',
         [HEADING_BLOCK_LEVEL_DATA_NAME]: block.level.toString(),
       }}
-      data-active={isActive ?? undefined}
-      data-selected={sct ? true : undefined}
-      data-selected-coverage-topology={sct ?? undefined}
       aria-roledescription='heading-block'
     >
       <Heading
@@ -596,13 +607,14 @@ const ComposerHeadingBlock = forwardRef<
         aria-multiline={canEdit ? 'true' : undefined}
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
-        data-active={isActive ?? undefined}
-        data-selected={sct ? true : undefined}
-        data-selected-coverage-topology={sct ?? undefined}
-        data-empty={isEmpty ?? undefined}
         {...{
+          [BLOCK_CONTENT_ACTIVE_DATA_NAME]: isActive ?? undefined,
           [BLOCK_CONTENT_ATTR_NAME]: '',
           [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
+          [BLOCK_CONTENT_EMPTY_DATA_NAME]: isEmpty ?? undefined,
+          [BLOCK_CONTENT_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]:
+            sct ?? undefined,
+          [BLOCK_CONTENT_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
           [BLOCK_PLACEHOLDER_ATTR_NAME]: placeholder,
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
@@ -630,14 +642,14 @@ const ComposerBulletListItemBlock = forwardRef<
       {...props}
       ref={forwardedRef}
       {...{
+        [BLOCK_ACTIVE_DATA_NAME]: isActive ?? undefined,
         [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
         [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
+        [BLOCK_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]: sct ?? undefined,
+        [BLOCK_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
         [BULLET_LIST_ITEM_BLOCK_ATTR_NAME]: '',
       }}
-      data-active={isActive ?? undefined}
-      data-selected={sct ? true : undefined}
-      data-selected-coverage-topology={sct ?? undefined}
       aria-roledescription='bullet-list-item-block'
     >
       <div
@@ -657,13 +669,14 @@ const ComposerBulletListItemBlock = forwardRef<
         aria-multiline={canEdit ? 'true' : undefined}
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
-        data-active={isActive ?? undefined}
-        data-selected={sct ? true : undefined}
-        data-selected-coverage-topology={sct ?? undefined}
-        data-empty={isEmpty ?? undefined}
         {...{
+          [BLOCK_CONTENT_ACTIVE_DATA_NAME]: isActive ?? undefined,
           [BLOCK_CONTENT_ATTR_NAME]: '',
           [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
+          [BLOCK_CONTENT_EMPTY_DATA_NAME]: isEmpty ?? undefined,
+          [BLOCK_CONTENT_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]:
+            sct ?? undefined,
+          [BLOCK_CONTENT_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
           [BLOCK_PLACEHOLDER_ATTR_NAME]: placeholder,
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
@@ -689,15 +702,15 @@ const ComposerNumberedListItemBlock = forwardRef<
       {...props}
       ref={forwardedRef}
       {...{
+        [BLOCK_ACTIVE_DATA_NAME]: isActive ?? undefined,
         [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
         [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
+        [BLOCK_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]: sct ?? undefined,
+        [BLOCK_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
         [NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME]: '',
         [NUMBERED_LIST_ITEM_VARIANT_DATA_NAME]: block.variant,
       }}
-      data-active={isActive ?? undefined}
-      data-selected={sct ? true : undefined}
-      data-selected-coverage-topology={sct ?? undefined}
       aria-roledescription='numbered-list-item-block'
     >
       <div
@@ -718,13 +731,14 @@ const ComposerNumberedListItemBlock = forwardRef<
         aria-multiline={canEdit ? 'true' : undefined}
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
-        data-active={isActive ?? undefined}
-        data-selected={sct ? true : undefined}
-        data-selected-coverage-topology={sct ?? undefined}
-        data-empty={isEmpty ?? undefined}
         {...{
+          [BLOCK_CONTENT_ACTIVE_DATA_NAME]: isActive ?? undefined,
           [BLOCK_CONTENT_ATTR_NAME]: '',
           [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
+          [BLOCK_CONTENT_EMPTY_DATA_NAME]: isEmpty ?? undefined,
+          [BLOCK_CONTENT_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]:
+            sct ?? undefined,
+          [BLOCK_CONTENT_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
           [BLOCK_PLACEHOLDER_ATTR_NAME]: numberedList.placeholder,
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
@@ -770,15 +784,15 @@ const ComposerCheckboxListItemBlock = forwardRef<
         {...props}
         ref={forwardedRef}
         {...{
+          [BLOCK_ACTIVE_DATA_NAME]: isActive ?? undefined,
           [BLOCK_ATTR_NAME]: '',
           [BLOCK_ID_DATA_NAME]: block.id,
           [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
+          [BLOCK_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]: sct ?? undefined,
+          [BLOCK_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
           [CHECKBOX_LIST_ITEM_BLOCK_ATTR_NAME]: '',
           [CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME]: block.checked.toString(),
         }}
-        data-active={isActive ?? undefined}
-        data-selected={sct ? true : undefined}
-        data-selected-coverage-topology={sct ?? undefined}
         aria-roledescription='checkbox-list-item-block'
       >
         <div
@@ -803,13 +817,14 @@ const ComposerCheckboxListItemBlock = forwardRef<
           aria-multiline={canEdit ? 'true' : undefined}
           contentEditable={canEdit ? 'true' : undefined}
           suppressContentEditableWarning
-          data-active={isActive ?? undefined}
-          data-selected={sct ? true : undefined}
-          data-selected-coverage-topology={sct ?? undefined}
-          data-empty={isEmpty ?? undefined}
           {...{
+            [BLOCK_CONTENT_ACTIVE_DATA_NAME]: isActive ?? undefined,
             [BLOCK_CONTENT_ATTR_NAME]: '',
             [BLOCK_CONTENT_EDITABLE_DATA_NAME]: canEdit ? 'true' : 'false',
+            [BLOCK_CONTENT_EMPTY_DATA_NAME]: isEmpty ?? undefined,
+            [BLOCK_CONTENT_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]:
+              sct ?? undefined,
+            [BLOCK_CONTENT_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
             [BLOCK_PLACEHOLDER_ATTR_NAME]: placeholder,
           }}
           style={{ ...EDITABLE_OUTLINE_STYLE }}
@@ -839,15 +854,20 @@ const ComposerDividerBlock = forwardRef<
         [BLOCK_ATTR_NAME]: '',
         [BLOCK_ID_DATA_NAME]: block.id,
         [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
+        [BLOCK_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]: sct ?? undefined,
+        [BLOCK_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
         [DIVIDER_BLOCK_ATTR_NAME]: '',
       }}
-      data-selected={sct ? true : undefined}
-      data-selected-coverage-sct={sct ?? undefined}
       aria-roledescription='divider-block'
     >
       <div
         aria-roledescription='divider-block-content'
-        {...{ [BLOCK_CONTENT_ATTR_NAME]: '' }}
+        {...{
+          [BLOCK_CONTENT_ATTR_NAME]: '',
+          [BLOCK_CONTENT_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]:
+            sct ?? undefined,
+          [BLOCK_CONTENT_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
+        }}
       >
         <div {...{ [DIVIDER_SEPARATOR_ATTR_NAME]: '' }} />
       </div>
