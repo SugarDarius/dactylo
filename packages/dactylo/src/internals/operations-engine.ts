@@ -51,7 +51,7 @@ import {
   createTextNode,
   isTextNode,
 } from './nodes'
-import type { InlineNode, NodeId } from './nodes'
+import type { InlineNode, MentionNode, NodeId } from './nodes'
 import {
   formatMarkerNumbering,
   markerNumberingAfterNeighbor,
@@ -243,7 +243,11 @@ export class OperationsEngine {
 
   // --- Composing operations ─────────────────────────────────────────
 
-  /** Builds operations to insert a mention node after a mention buffer is confirmed. */
+  /**
+   * Builds operations to insert a mention node after a mention buffer is confirmed.
+   * Returns a tuple containing the operations and the created mention node.
+   * Returns `null` if the mention buffer is not confirmed.
+   */
   buildInsertMentionAfterBufferConfirmOps(
     context: EditorContext,
     /** Spec for inserting a mention after confirming a {@link MentionBuffer}. */
@@ -263,7 +267,7 @@ export class OperationsEngine {
       /** Character that triggered the mention buffer. */
       character: string
     },
-  ): BuilderOpsIntent | null {
+  ): [BuilderOpsIntent, MentionNode] | null {
     if (!isCursorSelection(context.selection)) {
       return null
     }
@@ -367,7 +371,7 @@ export class OperationsEngine {
       context.selection,
     )
 
-    return { label: 'insert-after-buffer-confirm', ops }
+    return [{ label: 'insert-after-buffer-confirm', ops }, mention]
   }
 
   /** Builds operations to insert a text (char or emoji). */

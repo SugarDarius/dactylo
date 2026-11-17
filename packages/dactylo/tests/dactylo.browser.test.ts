@@ -40,7 +40,10 @@ import {
   isMentionNode,
   isTextNode,
 } from '../src/internals/nodes'
-import type { Transaction } from '../src/internals/transaction'
+import type {
+  MentionDidCreatedEvent,
+  Transaction,
+} from '../src/internals/transaction'
 import {
   deleteBackward,
   hardBreak,
@@ -1382,6 +1385,63 @@ describe('Dactylo mentions', () => {
     dismissed.mentions.commands.dismiss()
 
     expect(dismissEvents).toEqual(['started', 'buffering', 'aborted'])
+  })
+
+  test('events.mentionDidCreated fires after confirm with the created mention', () => {
+    const editor = makeMentionsEditor()
+    const events: MentionDidCreatedEvent[] = []
+    editor.events.mentionDidCreated.subscribe((event) => {
+      events.push(event)
+    })
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    expect(
+      editor.mentions.commands.confirm({
+        entity,
+        metadata: { bgColor: 'blue' },
+      }),
+    ).toBe(true)
+
+    const block = firstInlineBlock(editor.getContext())
+    const mention = block.content.find(isMentionNode)
+    if (!mention) {
+      throw new Error('Expected a mention node')
+    }
+
+    expect(events).toEqual([
+      {
+        blockId: block.id,
+        createdAt: mention.createdAt,
+        entity,
+        metadata: { bgColor: 'blue' },
+        nodeId: mention.id,
+      },
+    ])
+
+    editor.history.commands.undo()
+    expect(events).toHaveLength(1)
+  })
+
+  test('events.mentionDidCreated does not fire on dismiss or failed confirm', () => {
+    const idle = makeMentionsEditor()
+    const idleEvents: MentionDidCreatedEvent[] = []
+    idle.events.mentionDidCreated.subscribe((event) => {
+      idleEvents.push(event)
+    })
+    idle.selection.commands.focus()
+    expect(idle.mentions.commands.confirm({ entity })).toBe(false)
+    expect(idleEvents).toEqual([])
+
+    const dismissed = makeMentionsEditor()
+    const dismissEvents: MentionDidCreatedEvent[] = []
+    dismissed.events.mentionDidCreated.subscribe((event) => {
+      dismissEvents.push(event)
+    })
+    dismissed.selection.commands.focus()
+    typeMentionQuery(dismissed, 'john')
+    expect(dismissed.mentions.commands.dismiss()).toBe(true)
+    expect(dismissEvents).toEqual([])
   })
 
   test('confirm records the transaction source', () => {

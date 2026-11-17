@@ -93,11 +93,12 @@ export type {
 } from './internals/selection'
 export { shallow } from './internals/shallow'
 export type {
+  CommandTriggerBufferEvent,
+  MentionBufferEvent,
+  MentionDidCreatedEvent,
   Transaction,
   TransactionPipelineOptions,
   TransactionSource,
-  MentionBufferEvent,
-  CommandTriggerBufferEvent,
 } from './internals/transaction'
 export type {
   Metadata,

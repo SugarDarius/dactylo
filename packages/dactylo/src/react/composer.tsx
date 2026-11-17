@@ -57,6 +57,7 @@ import { shallow } from '../internals/shallow'
 import type {
   CommandTriggerBufferEvent,
   MentionBufferEvent,
+  MentionDidCreatedEvent,
   Transaction,
   TransactionSource,
 } from '../internals/transaction'
@@ -1562,6 +1563,28 @@ export function useMentionBufferListener(
 
   useEffect(
     () => editor.events.mentionBuffer.subscribe(stableListener),
+    [editor, stableListener],
+  )
+}
+
+/**
+ * Get informed when a mention was created.
+ *
+ * @example
+ * ```tsx
+ * useMentionDidCreatedListener((event) => {
+ *   console.log(event)
+ * })
+ * ```
+ */
+export function useMentionDidCreatedListener(
+  listener: (event: MentionDidCreatedEvent) => void,
+): void {
+  const { editor } = useComposer()
+  const stableListener = useStableCallback(listener)
+
+  useEffect(
+    () => editor.events.mentionDidCreated.subscribe(stableListener),
     [editor, stableListener],
   )
 }

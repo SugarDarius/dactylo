@@ -80,16 +80,16 @@ export interface LinkNode extends INode<LNM> {
 export interface MentionNode extends INode<MNM> {
   readonly __type: 'mention'
 
-  /** Developer-provided structural data  */
+  /** Entity related to the mention. */
   readonly entity: {
     /**
      * Id referencing the mention's entity in the code.
-     * For example it can reference a user id, a team id, a page id, …
+     * 👉🏻 For example it can reference a user id, a team id, a page id, …
      */
     readonly id: string
 
     /**
-     * Additional data to store with the mention's entity.
+     * Developer-provided additional data to store with the mention's entity.
      * Defaults to `{}`.
      */
     readonly data: MNED

@@ -61,6 +61,7 @@ import { TransactionPipeline } from './internals/transaction'
 import type {
   CommandTriggerBufferEvent,
   MentionBufferEvent,
+  MentionDidCreatedEvent,
   Transaction,
   TransactionSource,
 } from './internals/transaction'
@@ -470,6 +471,18 @@ export interface DactyloEventsApi {
    * ```
    */
   readonly mentionBuffer: Observable<MentionBufferEvent>
+
+  /**
+   * Subscribes to mentions that were created.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.mentionDidCreated.subscribe((event) => {
+   *  console.log(event.blockId, event.nodeId, event.entity, event.metadata)
+   * })
+   * ```
+   */
+  readonly mentionDidCreated: Observable<MentionDidCreatedEvent>
 
   /**
    * Subscribes to the command trigger buffer changes.
@@ -1911,6 +1924,9 @@ export class Dactylo {
        * 👉🏻 Fires anytime the inline buffer is updated.
        */
       mentionBuffer: this.#pipeline.events.mentionBuffer,
+
+      /** Subscribes to mentions that were created. */
+      mentionDidCreated: this.#pipeline.events.mentionDidCreated,
 
       /** Subscribes to the tools executed by the user/ai-agent.*/
       tools: this.#eventSources.tools.observable,

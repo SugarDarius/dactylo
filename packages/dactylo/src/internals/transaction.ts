@@ -34,7 +34,7 @@ import { InlineBuffer } from './inline-buffer'
 import type { InlineBufferEvent } from './inline-buffer'
 import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
-import type { InlineNode } from './nodes'
+import type { InlineNode, NodeId } from './nodes'
 import type { Operation } from './operations'
 import type {
   InsertOrMoveBlockPosition,
@@ -321,11 +321,35 @@ export interface Transaction {
   readonly policy?: TransactionPolicy
 }
 
-/** Alias for the mention buffer event. */
+/** Alias for the emitted mention buffer event. */
 export type MentionBufferEvent = InlineBufferEvent<'mention'>
 
-/** Alias for the command trigger buffer event. */
+/** Alias for the emitted command trigger buffer event. */
 export type CommandTriggerBufferEvent = InlineBufferEvent<'command-trigger'>
+
+/** Event emitted when a mention that was created after a mention buffer was confirmed. */
+export interface MentionDidCreatedEvent {
+  /** {@link BlockId} where the mention was created. */
+  readonly blockId: BlockId
+
+  /** Created {@link MentionNode}'s node id. */
+  readonly nodeId: NodeId
+
+  /** Entity related to the mention that was created. */
+  readonly entity: {
+    /** Id referencing the mention's entity in the code. */
+    readonly id: string
+
+    /** Developer-provided additional data stored with the mention's entity. */
+    readonly data: MNED
+  }
+
+  /** When the mention was created. */
+  readonly createdAt: Date
+
+  /** Metadata associated with the mention that was created. */
+  readonly metadata: MNM
+}
 
 /** Events emitted by the transaction pipeline */
 export interface TransactionPipelineEvents {
@@ -346,6 +370,9 @@ export interface TransactionPipelineEvents {
    * 👉🏻 Fires anytime the inline buffer is updated.
    */
   readonly mentionBuffer: Observable<MentionBufferEvent>
+
+  /** Subscribes to mentions that were created. */
+  readonly mentionDidCreated: Observable<MentionDidCreatedEvent>
 
   /**
    * Subscribes to the command trigger buffer changes.
@@ -374,11 +401,14 @@ export interface TransactionPipelineEventSources {
   /** The event source for the history stack */
   readonly history: EventSource<HistoryEvent>
 
-  /** The event source for the transaction that was applied. */
+  /** The event source for a transaction that was applied. */
   readonly transactionDidApply: EventSource<Transaction>
 
-  /** The event source for the transaction that was rejected. */
+  /** The event source for a transaction that was rejected. */
   readonly transactionDidReject: EventSource<Transaction>
+
+  /** The event source for a mention that was created. */
+  readonly mentionDidCreated: EventSource<MentionDidCreatedEvent>
 }
 
 /** Options for constructing a {@link TransactionPipeline} instance. */
@@ -641,6 +671,7 @@ export class TransactionPipeline {
     this.#eventSources = {
       context: new EventSource<EditorContext>(),
       history: new EventSource<HistoryEvent>(),
+      mentionDidCreated: new EventSource<MentionDidCreatedEvent>(),
       transactionDidApply: new EventSource<Transaction>(),
       transactionDidReject: new EventSource<Transaction>(),
     }
@@ -854,6 +885,7 @@ export class TransactionPipeline {
       context: this.#eventSources.context.observable,
       history: this.#eventSources.history.observable,
       mentionBuffer: this.#mentionBuffer.observable,
+      mentionDidCreated: this.#eventSources.mentionDidCreated.observable,
       transactionDidApply: this.#eventSources.transactionDidApply.observable,
       transactionDidReject: this.#eventSources.transactionDidReject.observable,
     }
@@ -984,10 +1016,12 @@ export class TransactionPipeline {
      * and not break the UI with an error.
      */
     if (pointer === null || bufferedText === null) {
+      /** When no pointer or buffered text, we need to abort the buffer to clear up the state and notify the UI. */
+      this.#mentionBuffer.abort()
       return false
     }
 
-    const intent =
+    const tuple =
       this.#operationsEngine.buildInsertMentionAfterBufferConfirmOps(
         this.#context,
         {
@@ -999,7 +1033,7 @@ export class TransactionPipeline {
         },
       )
 
-    if (intent === null) {
+    if (tuple === null) {
       /** When no intent we need to abort the buffer to clear up the state and notify the UI. */
       this.#mentionBuffer.abort()
       return false
@@ -1008,6 +1042,8 @@ export class TransactionPipeline {
     /** When the mention is confirmed, we release the buffer to clear up the state and notify the UI. */
     this.#mentionBuffer.release()
 
+    const [intent, mention] = tuple
+
     const { ops, label } = intent
     this.#commit(ops, {
       label: transactionPolicyLabel('mentions', 'confirm', label),
@@ -1015,6 +1051,14 @@ export class TransactionPipeline {
       source,
       /** When the mention is confirmed, we don't need to sync the inline buffers as the buffer is released. */
       syncInlineBuffers: false,
+    })
+
+    this.#eventSources.mentionDidCreated.notify({
+      blockId: pointer.blockId,
+      createdAt: mention.createdAt,
+      entity: mention.entity,
+      metadata: mention.metadata,
+      nodeId: mention.id,
     })
 
     return true
