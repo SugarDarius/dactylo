@@ -20,11 +20,11 @@ import {
   useCheckboxLists,
   useDividers,
   useEditableListener,
-  useEditorConfig,
   useHeadings,
   useHistory,
   useMark,
   useMarks,
+  useMention,
   useNumberedLists,
   useParagraphs,
   useQuotes,
@@ -62,8 +62,10 @@ import {
   Underline,
   Undo2,
 } from 'lucide-react'
+import { useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
+import { Avatar, AvatarBadge, AvatarFallback } from '~/components/ui/avatar'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import {
@@ -76,6 +78,7 @@ import {
   DropdownMenuTrigger,
 } from '~/components/ui/dropdown-menu'
 import { Kbd } from '~/components/ui/kbd'
+import { Popover, PopoverContent, PopoverTitle } from '~/components/ui/popover'
 import { Separator } from '~/components/ui/separator'
 import { ThemeSwitcher } from '~/components/ui/theme-switcher'
 import { toast } from '~/components/ui/toast'
@@ -86,6 +89,71 @@ import {
   TooltipTrigger,
 } from '~/components/ui/tooltip'
 import { cn } from '~/lib/utils'
+
+const USERS = [
+  {
+    fullName: 'Aurélien',
+    id: 'aurelien@liveblocks.io',
+    role: 'Product Engineer',
+  },
+  {
+    fullName: 'Nimesh',
+    id: 'nimesh@liveblocks.io',
+    role: 'Product Engineer',
+  },
+  {
+    fullName: 'Pierre',
+    id: 'pierre@liveblocks.io',
+    role: 'Design Engineer',
+  },
+  {
+    fullName: 'Vincent',
+    id: 'vincent@liveblocks.io',
+    role: 'Product Engineer',
+  },
+  {
+    fullName: 'Marc',
+    id: 'marc@liveblocks.io',
+    role: 'Design Engineer',
+  },
+  {
+    fullName: 'Olivier',
+    id: 'olivier@liveblocks.io',
+    role: 'Product Engineer',
+  },
+  {
+    fullName: 'Florent',
+    id: 'florent@liveblocks.io',
+    role: 'Product Engineer',
+  },
+  {
+    fullName: 'Alicia',
+    id: 'alicia@liveblocks.io',
+    role: 'Head of People',
+  },
+  {
+    fullName: 'Stacy',
+    id: 'stacy@liveblocks.io',
+    role: 'Head of Sales',
+  },
+  {
+    fullName: 'Steven',
+    id: 'steven@liveblocks.io',
+    role: 'CEO',
+  },
+] as const
+
+export function getInitials(fullName: string): string {
+  const [first, ...rest] = fullName.split(' ').filter(Boolean)
+  if (!first) {
+    return '?'
+  }
+  const last = rest.at(-1)
+  if (!last) {
+    return first.slice(0, 2).toUpperCase()
+  }
+  return `${first[0]}${last[0]}`.toUpperCase()
+}
 
 export function MarkToggleButton({
   mark,
@@ -670,18 +738,176 @@ export function LinkNode(props: ComposerLinkNodeProps) {
 }
 
 export function MentionNode(props: ComposerMentionNodeProps) {
-  const { mentions } = useEditorConfig()
-
+  const { entity } = props.node
   return (
     <Composer.MentionNode
       {...props}
-      className='bg-muted inline-flex items-center gap-0.5 rounded-sm p-0.5'
+      className='bg-muted text-foreground inline-flex items-center gap-1.5 rounded-full border py-0.5 pr-1.5 pl-1 text-xs font-medium'
     >
-      <span className='text-cyan-500'>{mentions.character}</span>
-      <span className='text-muted-foreground text-xs'>
-        {props.node.entity.data.fullName}
-      </span>
+      <Avatar size='sm'>
+        <AvatarFallback className='bg-violet-100 text-violet-800'>
+          {getInitials(entity.data.fullName)}
+        </AvatarFallback>
+        <AvatarBadge className='bg-green-600 dark:bg-green-800' />
+      </Avatar>
+      <span className='text-foreground'>{entity.data.fullName}</span>
     </Composer.MentionNode>
+  )
+}
+
+export function MentionSuggestions() {
+  const { anchor, bufferedText, confirm, dismiss, isBuffering } = useMention()
+  const query = (bufferedText ?? '').trim().toLowerCase()
+  const suggestions =
+    query === ''
+      ? USERS
+      : USERS.filter(
+          (user) =>
+            user.fullName.toLowerCase().includes(query) ||
+            user.id.toLowerCase().includes(query),
+        )
+
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [highlightedQuery, setHighlightedQuery] = useState(query)
+
+  if (highlightedQuery !== query) {
+    setHighlightedQuery(query)
+    setActiveIndex(0)
+  }
+
+  const open = isBuffering && anchor !== null
+
+  const confirmPerson = (user: (typeof USERS)[number]) => {
+    confirm({
+      entity: {
+        data: {
+          email: user.id,
+          fullName: user.fullName,
+        },
+        id: user.id,
+      },
+    })
+  }
+
+  useHotkeys(
+    'enter',
+    (event) => {
+      event.preventDefault()
+      const person = suggestions[activeIndex]
+      if (!person) {
+        return
+      }
+      confirmPerson(person)
+    },
+    {
+      enableOnContentEditable: true,
+      enabled: isBuffering,
+      preventDefault: true,
+    },
+    [activeIndex, confirm, suggestions],
+  )
+
+  useHotkeys(
+    'down',
+    (event) => {
+      event.preventDefault()
+      if (suggestions.length === 0) {
+        return
+      }
+      setActiveIndex((index) => (index + 1) % suggestions.length)
+    },
+    {
+      enableOnContentEditable: true,
+      enabled: isBuffering,
+      preventDefault: true,
+    },
+    [suggestions],
+  )
+
+  useHotkeys(
+    'up',
+    (event) => {
+      event.preventDefault()
+      if (suggestions.length === 0) {
+        return
+      }
+      setActiveIndex(
+        (index) => (index - 1 + suggestions.length) % suggestions.length,
+      )
+    },
+    {
+      enableOnContentEditable: true,
+      enabled: isBuffering,
+      preventDefault: true,
+    },
+    [suggestions],
+  )
+
+  return (
+    <Popover
+      modal={false}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && isBuffering) {
+          dismiss()
+        }
+      }}
+      open={open}
+    >
+      <PopoverContent
+        align='start'
+        anchor={anchor}
+        className='w-72 gap-0 p-1'
+        finalFocus={false}
+        initialFocus={false}
+        side='bottom'
+        sideOffset={6}
+      >
+        <PopoverTitle className='sr-only'>Mention suggestions</PopoverTitle>
+        <p className='text-muted-foreground px-2 py-1 text-xs font-medium'>
+          Coworkers
+        </p>
+        {suggestions.length === 0 ? (
+          <p className='text-muted-foreground px-2 py-1.5 text-sm'>
+            No coworkers found
+          </p>
+        ) : (
+          <div className='flex flex-col' role='listbox'>
+            {suggestions.map((person, index) => {
+              const selected = index === activeIndex
+
+              return (
+                <button
+                  aria-selected={selected}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-hidden',
+                    'hover:bg-muted data-[selected=true]:bg-muted',
+                  )}
+                  data-selected={selected}
+                  key={person.id}
+                  onClick={() => confirmPerson(person)}
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                  }}
+                  role='option'
+                  type='button'
+                >
+                  <Avatar size='sm'>
+                    <AvatarFallback className='bg-violet-100 text-violet-800'>
+                      {getInitials(person.fullName)}
+                    </AvatarFallback>
+                    <AvatarBadge className='bg-green-600 dark:bg-green-800' />
+                  </Avatar>
+                  <span className='min-w-0 truncate'>{person.fullName}</span>
+                  <span className='text-muted-foreground text-xs'>
+                    {person.role}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -718,7 +944,9 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
             'selection:text-accent-foreground relative flex w-full flex-col px-6 py-2 whitespace-break-spaces selection:bg-cyan-500',
             '**:[[dactylo-blocks]]:flex **:[[dactylo-blocks]]:flex-col **:[[dactylo-blocks]]:gap-2',
           )}
-        />
+        >
+          <MentionSuggestions />
+        </Composer.Editable>
       </Composer.Root>
     </div>
   )
