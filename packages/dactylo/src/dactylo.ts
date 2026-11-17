@@ -34,7 +34,11 @@ import {
   DEFAULT_PARAGRAPH_PLACEHOLDER,
   DEFAULT_QUOTE_PLACEHOLDER,
 } from './internals/constants'
-import { isBlockWithInlineContentEmpty } from './internals/document'
+import {
+  getBlockSelectionCoverageTopology,
+  getInlineNodeSelectionCoverageTopology,
+  isBlockWithInlineContentEmpty,
+} from './internals/document'
 import { DOMManager } from './internals/dom-manager'
 import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
@@ -48,7 +52,7 @@ import { EventSource } from './internals/event-source'
 import type { HistoryEvent, HistoryStackOptions } from './internals/history'
 import type { InlineBufferPointer } from './internals/inline-buffer'
 import type { MarkKey } from './internals/marks'
-import type { InlineNode } from './internals/nodes'
+import type { InlineNode, NodeId } from './internals/nodes'
 import type { InsertOrMoveBlockPosition } from './internals/operations-builder'
 import {
   isBlockWithActiveCursor,
@@ -56,7 +60,10 @@ import {
   isBlockWithActiveSelection,
   isSelectionActive,
 } from './internals/selection'
-import type { Selection } from './internals/selection'
+import type {
+  Selection,
+  SelectionCoverageTopology,
+} from './internals/selection'
 import { TransactionPipeline } from './internals/transaction'
 import type {
   CommandTriggerBufferEvent,
@@ -266,6 +273,8 @@ export type DactyloTool =
   | 'marks/is-active'
 
   /** Selection tools */
+  | 'selection/get-block-selection-coverage'
+  | 'selection/get-node-selection-coverage'
   | 'selection/is-block-with-active-cursor'
   | 'selection/is-block-with-active-range'
   | 'selection/is-block-with-active-selection'
@@ -721,6 +730,38 @@ export interface DactyloSelectionTools {
    * ```
    */
   readonly isFocused: () => boolean
+
+  /**
+   * Whether the block with the given ID is fully (`total`) or partially
+   * (`partial`) covered by an active range selection, or `null` when it is
+   * not selected.
+   * A collapsed cursor is not a selection.
+   * This is a pure function that does not mutate the editor context.
+   *
+   * @example
+   * ```ts
+   * const coverage = editor.selection.tools.getBlockSelectionCoverageTopology(blockId)
+   * ```
+   */
+  readonly getBlockSelectionCoverageTopology: (
+    blockId: BlockId,
+  ) => SelectionCoverageTopology | null
+
+  /**
+   * Whether the inline node with the given ID is fully (`total`) or partially
+   * (`partial`) covered by an active range selection, or `null` when it is
+   * not selected.
+   * A collapsed cursor is not a selection.
+   * This is a pure function that does not mutate the editor context.
+   *
+   * @example
+   * ```ts
+   * const coverage = editor.selection.tools.getInlineNodeSelectionCoverageTopology(nodeId)
+   * ```
+   */
+  readonly getInlineNodeSelectionCoverageTopology: (
+    nodeId: NodeId,
+  ) => SelectionCoverageTopology | null
 }
 
 /** Commands to mutate the selection of the editor. */
@@ -2152,6 +2193,48 @@ export class Dactylo {
           ),
       },
       tools: {
+        /**
+         * Whether the block with the given ID is fully (`total`) or partially
+         * (`partial`) covered by an active range selection, or `null` when it
+         * is not selected.
+         *
+         * This is a pure function that does not mutate the editor context.
+         */
+        getBlockSelectionCoverageTopology: (
+          blockId: BlockId,
+        ): SelectionCoverageTopology | null =>
+          this.#safeExecuteTool(
+            'selection/get-block-selection-coverage',
+            () =>
+              getBlockSelectionCoverageTopology(
+                this.#pipeline.context.selection,
+                this.#pipeline.context.state,
+                blockId,
+              ),
+            nullish,
+          ),
+
+        /**
+         * Whether the inline node with the given ID is fully (`total`) or
+         * partially (`partial`) covered by an active range selection, or
+         * `null` when it is not selected.
+         *
+         * This is a pure function that does not mutate the editor context.
+         */
+        getInlineNodeSelectionCoverageTopology: (
+          nodeId: NodeId,
+        ): SelectionCoverageTopology | null =>
+          this.#safeExecuteTool(
+            'selection/get-node-selection-coverage',
+            () =>
+              getInlineNodeSelectionCoverageTopology(
+                this.#pipeline.context.selection,
+                this.#pipeline.context.state,
+                nodeId,
+              ),
+            nullish,
+          ),
+
         /**
          * Whether the block with the given ID is with an active cursor selection within.
          * This is a pure function that does not mutate the editor context.

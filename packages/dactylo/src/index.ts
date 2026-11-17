@@ -90,6 +90,7 @@ export type {
   CursorSelection,
   RangeSelection,
   Selection,
+  SelectionCoverageTopology,
 } from './internals/selection'
 export { shallow } from './internals/shallow'
 export type {

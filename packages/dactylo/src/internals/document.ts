@@ -1,7 +1,9 @@
 import type { PBM, TNM } from './augmentation'
 import {
   createParagraphBlock,
+  findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
+  isDividerBlock,
   isNumberedListItemBlock,
   sortBlockOrder,
 } from './blocks'
@@ -12,7 +14,12 @@ import type {
   NumberedListItemBlock,
 } from './blocks'
 import { DactyloError } from './errors'
-import { createTextNode, isInlineContentEmpty } from './nodes'
+import {
+  createTextNode,
+  getInlineNodeTextLength,
+  isInlineContentEmpty,
+} from './nodes'
+import type { InlineNode, NodeId } from './nodes'
 import {
   getDefaultMarkerNumbering,
   markerNumberingAfterNeighbor,
@@ -26,16 +33,21 @@ import {
   makePosition,
 } from './position'
 import type { PosKey } from './position'
+import type {
+  CursorSelection,
+  RangeSelection,
+  Selection,
+  SelectionCoverageTopology,
+  TextCursor,
+  TextSpanInRange,
+} from './selection'
 import {
   appendTextSpansInRangeFromBlock,
   createRange,
   cursorAtBlockEnd,
-} from './selection'
-import type {
-  CursorSelection,
-  RangeSelection,
-  TextCursor,
-  TextSpanInRange,
+  cursorAtInlineNodeEnd,
+  cursorAtInlineNodeStart,
+  isRangeSelection,
 } from './selection'
 import { assertNever } from './utils'
 
@@ -682,4 +694,176 @@ export function createCursorAtDocumentEnd(
   }
 
   return cursorAtBlockEnd(block.id, block)
+}
+
+/** Finds {@link NodeId} in blocks between the normalized range endpoints (inclusive). */
+export function findInlineNodeInNormalizedRange(
+  state: DocumentState,
+  range: RangeSelection,
+  nodeId: NodeId,
+): { blockId: BlockId; node: InlineNode } | null {
+  const order = state.blockOrderById
+  const startBi = order.indexOf(range.anchor.blockId)
+  const endBi = order.indexOf(range.focus.blockId)
+
+  if (startBi === -1 || endBi === -1) {
+    return null
+  }
+
+  for (let bi = startBi; bi <= endBi; bi += 1) {
+    const blockId = order[bi]
+    if (!blockId) {
+      continue
+    }
+
+    const block = state.blocks.get(blockId)
+    if (!block || !isBlockWithInlineContent(block)) {
+      continue
+    }
+
+    const found = findNodeInBlockWithInlineContent(block, nodeId)
+    if (found) {
+      return { blockId, node: found.node }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Coverage of one inline node against a normalized `[anchor, focus)` range.
+ *
+ * Text/link nodes use interval overlap on `[start, end)`:
+ * empty overlap → `null`, full node → `'total'`, otherwise `'partial'`.
+ *
+ * Zero-length nodes (mentions, line breaks, empty text) use point-in-range:
+ * `'total'` when `anchor ≤ p < focus`, otherwise `null`.
+ */
+export function getInlineNodeSelectionCoverageTopologyInRange(
+  state: DocumentState,
+  range: RangeSelection,
+  blockId: BlockId,
+  node: InlineNode,
+): SelectionCoverageTopology | null {
+  const start = cursorAtInlineNodeStart(blockId, node)
+  const end = cursorAtInlineNodeEnd(blockId, node)
+
+  if (getInlineNodeTextLength(node) <= 0) {
+    return compareTextCursors(state, start, range.anchor) >= 0 &&
+      compareTextCursors(state, start, range.focus) < 0
+      ? 'total'
+      : null
+  }
+
+  if (
+    compareTextCursors(state, end, range.anchor) <= 0 ||
+    compareTextCursors(state, start, range.focus) >= 0
+  ) {
+    return null
+  }
+
+  if (
+    compareTextCursors(state, start, range.anchor) >= 0 &&
+    compareTextCursors(state, end, range.focus) <= 0
+  ) {
+    return 'total'
+  }
+
+  return 'partial'
+}
+
+/**
+ * Whether the block with the given ID is fully (`total`) or partially (`partial`)
+ * covered by an active range selection, or `null` when it is not selected.
+ *
+ * A collapsed cursor is not a selection.
+ */
+export function getBlockSelectionCoverageTopology(
+  selection: Selection | null,
+  state: DocumentState,
+  blockId: BlockId,
+): SelectionCoverageTopology | null {
+  if (!isRangeSelection(selection)) {
+    return null
+  }
+
+  const block = state.blocks.get(blockId)
+  if (!block) {
+    return null
+  }
+
+  const range = normalizeRange(state, selection)
+  const order = state.blockOrderById
+  const startBi = order.indexOf(range.anchor.blockId)
+  const endBi = order.indexOf(range.focus.blockId)
+  const blockBi = order.indexOf(blockId)
+
+  if (startBi === -1 || endBi === -1 || blockBi === -1) {
+    return null
+  }
+
+  if (isDividerBlock(block)) {
+    return startBi < blockBi && blockBi < endBi ? 'total' : null
+  }
+
+  if (!isBlockWithInlineContent(block)) {
+    return null
+  }
+
+  let sawSelected = false
+  let allTotal = true
+
+  for (const node of block.content) {
+    const coverage = getInlineNodeSelectionCoverageTopologyInRange(
+      state,
+      range,
+      block.id,
+      node,
+    )
+    if (coverage === null) {
+      allTotal = false
+      continue
+    }
+
+    sawSelected = true
+    if (coverage !== 'total') {
+      allTotal = false
+    }
+  }
+
+  if (!sawSelected) {
+    return null
+  }
+
+  return allTotal ? 'total' : 'partial'
+}
+
+/**
+ * Whether the inline node with the given ID is fully (`total`) or partially
+ * (`partial`) covered by an active range selection, or `null` when it is not
+ * selected.
+ *
+ * A collapsed cursor is not a selection.
+ */
+export function getInlineNodeSelectionCoverageTopology(
+  selection: Selection | null,
+  state: DocumentState,
+  nodeId: NodeId,
+): SelectionCoverageTopology | null {
+  if (!isRangeSelection(selection)) {
+    return null
+  }
+
+  const range = normalizeRange(state, selection)
+  const found = findInlineNodeInNormalizedRange(state, range, nodeId)
+  if (!found) {
+    return null
+  }
+
+  return getInlineNodeSelectionCoverageTopologyInRange(
+    state,
+    range,
+    found.blockId,
+    found.node,
+  )
 }

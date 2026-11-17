@@ -121,6 +121,12 @@ export type Selection = CursorSelection | RangeSelection
 /** The topology of a range selection. */
 export type RangeSelectionTopology = 'same-node' | 'same-block' | 'cross-blocks'
 
+/**
+ * Topology of a selection coverage.
+ * 👉🏻 How of a {@link Block} or {@link InlineNode} is covered by an active range selection.
+ */
+export type SelectionCoverageTopology = 'total' | 'partial'
+
 /** Checks whether the selection is active or not. */
 export function isSelectionActive(
   selection: Selection | null,

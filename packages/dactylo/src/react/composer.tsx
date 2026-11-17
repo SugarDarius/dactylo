@@ -45,13 +45,18 @@ import { paintTextForDOM } from '../internals/dom'
 import type { EditorContext } from '../internals/editor-context'
 import { isMarkEnabled } from '../internals/marks'
 import type { MarkKey } from '../internals/marks'
-import type { InlineNode, InlineNodeWithEditableText } from '../internals/nodes'
+import type {
+  InlineNode,
+  InlineNodeWithEditableText,
+  NodeId,
+} from '../internals/nodes'
 import type { InsertOrMoveBlockPosition } from '../internals/operations-builder'
 import { isCursorSelection, isRangeSelection } from '../internals/selection'
 import type {
   CursorSelection,
   RangeSelection,
   Selection,
+  SelectionCoverageTopology,
 } from '../internals/selection'
 import { shallow } from '../internals/shallow'
 import type {
@@ -1359,6 +1364,40 @@ export function useEditable() {
 }
 
 /**
+ * Returns how much of the block is covered by an active range selection.
+ * @private
+ */
+export function useBlockSelectionCoverageTopology(
+  blockId: BlockId,
+): SelectionCoverageTopology | null {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.selection.tools.getBlockSelectionCoverageTopology(blockId),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns how much of the inline node is covered by an active range selection.
+ * @private
+ */
+export function useInlineNodeSelectionCoverageTopology(
+  nodeId: NodeId,
+): SelectionCoverageTopology | null {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.selection.tools.getInlineNodeSelectionCoverageTopology(nodeId),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
  * Wires a block's `contentEditable` surface to {@link Dactylo}.
  * Works only for blocks with inline content.
  *
@@ -1370,6 +1409,7 @@ export function useEditableBlock(block: BlockWithInlineContent) {
   const canEdit = useCanEdit()
 
   const withActiveSelection = useIsSelectedBlock(block.id)
+  const sct = useBlockSelectionCoverageTopology(block.id)
   const isEmpty = useIsBlockEmpty(block.id)
 
   const isActive = canEdit && withActiveSelection
@@ -1379,6 +1419,7 @@ export function useEditableBlock(block: BlockWithInlineContent) {
     editableId,
     isActive,
     isEmpty,
+    sct,
   } as const
 }
 
@@ -1389,9 +1430,10 @@ export function useEditableBlock(block: BlockWithInlineContent) {
  * @private
  */
 export function useEditableNode(node: InlineNodeWithEditableText) {
-  const renderedText = useMemo(() => paintTextForDOM(node.text), [node.text])
+  const sct = useInlineNodeSelectionCoverageTopology(node.id)
+  const text = useMemo(() => paintTextForDOM(node.text), [node.text])
 
-  const nodeAttributes = useMemo(
+  const attributes = useMemo(
     () => ({
       [EDITABLE_NODE_BOLD_MARK_DATA_NAME]: isMarkEnabled(node.marks, 'bold'),
       [EDITABLE_NODE_CODE_MARK_DATA_NAME]: isMarkEnabled(node.marks, 'code'),
@@ -1413,8 +1455,9 @@ export function useEditableNode(node: InlineNodeWithEditableText) {
   )
 
   return {
-    nodeAttributes,
-    renderedText,
+    attributes,
+    sct,
+    text,
   } as const
 }
 

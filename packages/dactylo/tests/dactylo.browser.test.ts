@@ -305,6 +305,17 @@ describe('Dactylo selection', () => {
     expect(editor.selection.tools.isBlockWithActiveSelection(block.id)).toBe(
       true,
     )
+    expect(
+      editor.selection.tools.getBlockSelectionCoverageTopology(block.id),
+    ).toBeNull()
+    const [caretNode] = block.content
+    expect(
+      caretNode
+        ? editor.selection.tools.getInlineNodeSelectionCoverageTopology(
+            caretNode.id,
+          )
+        : undefined,
+    ).toBeNull()
     expect(requireCursor(context)).toMatchObject({
       blockId: block.id,
       offset: 0,
@@ -486,13 +497,24 @@ describe('Dactylo keyboard shortcuts', () => {
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
 
-    const blockId = firstInlineBlock(editor.getContext()).id
+    const block = firstInlineBlock(editor.getContext())
+    const [textNode] = block.content
     expect(pressShortcut(editor, 'KeyA', { meta: true })).toBe(true)
 
     const { selection } = editor.getContext()
     expect(selection?.__type).toBe('range')
-    expect(editor.selection.tools.isBlockWithActiveRange(blockId)).toBe(true)
-    expect(editor.selection.tools.isBlockWithActiveCursor(blockId)).toBe(false)
+    expect(editor.selection.tools.isBlockWithActiveRange(block.id)).toBe(true)
+    expect(editor.selection.tools.isBlockWithActiveCursor(block.id)).toBe(false)
+    expect(
+      editor.selection.tools.getBlockSelectionCoverageTopology(block.id),
+    ).toBe('total')
+    expect(
+      textNode
+        ? editor.selection.tools.getInlineNodeSelectionCoverageTopology(
+            textNode.id,
+          )
+        : undefined,
+    ).toBe('total')
 
     typeText(editor, 'X')
 

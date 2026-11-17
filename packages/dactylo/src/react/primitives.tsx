@@ -51,6 +51,7 @@ import {
   createAnchorElementStore,
   useBlock,
   useBlockOrderById,
+  useBlockSelectionCoverageTopology,
   useCheckboxLists,
   useComposer,
   useComposerEditable,
@@ -59,6 +60,7 @@ import {
   useEditableNode,
   useEditorConfig,
   useFocus,
+  useInlineNodeSelectionCoverageTopology,
   useMentionBufferedText,
   useMentionPointer,
 } from './composer'
@@ -260,7 +262,7 @@ ComposerInlineQueryNode.displayName = COMPOSER_INLINE_QUERY_NODE_NAME
 const ComposerTextNode = memo(
   forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
     ({ node, ...props }, forwardedRef) => {
-      const { renderedText, nodeAttributes } = useEditableNode(node)
+      const { text, attributes, sct } = useEditableNode(node)
 
       return (
         <span
@@ -270,12 +272,14 @@ const ComposerTextNode = memo(
             [NODE_ATTR_NAME]: '',
             [NODE_ID_DATA_NAME]: node.id,
             [TEXT_NODE_ATTR_NAME]: '',
-            ...nodeAttributes,
+            ...attributes,
           }}
+          data-selected={sct ? true : undefined}
+          data-selected-coverage-topology={sct ?? undefined}
           aria-roledescription='text-node'
         >
           <ComposerInlineQueryNode nodeId={node.id} text={node.text}>
-            {renderedText}
+            {text}
           </ComposerInlineQueryNode>
         </span>
       )
@@ -289,7 +293,7 @@ const ComposerLinkNode = memo(
   forwardRef<HTMLAnchorElement, ComposerLinkNodeProps>(
     ({ node, ...props }, forwardedRef) => {
       const { link } = useEditorConfig()
-      const { renderedText, nodeAttributes } = useEditableNode(node)
+      const { text, attributes, sct } = useEditableNode(node)
 
       return (
         <a
@@ -304,13 +308,15 @@ const ComposerLinkNode = memo(
               : 'false',
             [NODE_ATTR_NAME]: '',
             [NODE_ID_DATA_NAME]: node.id,
-            ...nodeAttributes,
+            ...attributes,
           }}
+          data-selected={sct ? true : undefined}
+          data-selected-coverage-topology={sct ?? undefined}
           aria-roledescription='link-node'
           href={node.url.href}
           title={node.url.title}
         >
-          {renderedText}
+          {text}
         </a>
       )
     },
@@ -321,18 +327,24 @@ ComposerLinkNode.displayName = COMPOSER_LINK_NODE_NAME
 /** Adds a {@link LineBreakNode} to the composer. */
 export const ComposerLineBreakNode = memo(
   forwardRef<HTMLBRElement, ComposerLineBreakNodeProps>(
-    ({ node, ...props }, forwardedRef) => (
-      <br
-        {...props}
-        ref={forwardedRef}
-        {...{
-          [LINE_BREAK_NODE_ATTR_NAME]: '',
-          [NODE_ATTR_NAME]: '',
-          [NODE_ID_DATA_NAME]: node.id,
-        }}
-        aria-roledescription='line-break-node'
-      />
-    ),
+    ({ node, ...props }, forwardedRef) => {
+      const sct = useInlineNodeSelectionCoverageTopology(node.id)
+
+      return (
+        <br
+          {...props}
+          ref={forwardedRef}
+          {...{
+            [LINE_BREAK_NODE_ATTR_NAME]: '',
+            [NODE_ATTR_NAME]: '',
+            [NODE_ID_DATA_NAME]: node.id,
+          }}
+          data-selected={sct ? true : undefined}
+          data-selected-coverage-topology={sct ?? undefined}
+          aria-roledescription='line-break-node'
+        />
+      )
+    },
   ),
 )
 ComposerLineBreakNode.displayName = COMPOSER_LINE_BREAK_NODE_NAME
@@ -342,6 +354,7 @@ export const ComposerMentionNode = memo(
   forwardRef<HTMLSpanElement, ComposerMentionNodeProps>(
     ({ node, children, ...props }, forwardedRef) => {
       const { mentions } = useEditorConfig()
+      const sct = useInlineNodeSelectionCoverageTopology(node.id)
 
       return (
         <span
@@ -354,6 +367,8 @@ export const ComposerMentionNode = memo(
             [NODE_ATTR_NAME]: '',
             [NODE_ID_DATA_NAME]: node.id,
           }}
+          data-selected={sct ? true : undefined}
+          data-selected-coverage-topology={sct ?? undefined}
           aria-roledescription='mention-node'
         >
           {children ?? (
@@ -417,7 +432,8 @@ const ComposerParagraphBlock = forwardRef<
   ComposerParagraphBlockProps
 >(({ block, blockIndex, overrides, ...props }, forwardedRef) => {
   const { paragraph } = useEditorConfig()
-  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
+  const { canEdit, editableId, isActive, isEmpty, sct } =
+    useEditableBlock(block)
 
   const placeholder = overrides?.placeholder ?? paragraph.placeholder
 
@@ -432,6 +448,8 @@ const ComposerParagraphBlock = forwardRef<
         [PARAGRAPH_BLOCK_ATTR_NAME]: '',
       }}
       data-active={isActive ?? undefined}
+      data-selected={sct ? true : undefined}
+      data-selected-coverage-topology={sct ?? undefined}
       aria-roledescription='paragraph-block'
     >
       <div
@@ -442,6 +460,8 @@ const ComposerParagraphBlock = forwardRef<
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
         data-active={isActive ?? undefined}
+        data-selected={sct ? true : undefined}
+        data-selected-coverage-topology={sct ?? undefined}
         data-empty={isEmpty ?? undefined}
         {...{
           [BLOCK_CONTENT_ATTR_NAME]: '',
@@ -461,7 +481,8 @@ ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
   ({ block, blockIndex, overrides, ...props }, forwardedRef) => {
     const { quote } = useEditorConfig()
-    const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
+    const { canEdit, editableId, isActive, isEmpty, sct } =
+      useEditableBlock(block)
 
     const placeholder = overrides?.placeholder ?? quote.placeholder
 
@@ -476,6 +497,8 @@ const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
           [QUOTE_BLOCK_ATTR_NAME]: '',
         }}
         data-active={isActive ?? undefined}
+        data-selected={sct ? true : undefined}
+        data-selected-coverage-topology={sct ?? undefined}
         aria-roledescription='quote-block'
       >
         <div
@@ -496,6 +519,8 @@ const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
           contentEditable={canEdit ? 'true' : undefined}
           suppressContentEditableWarning
           data-active={isActive ?? undefined}
+          data-selected={sct ? true : undefined}
+          data-selected-coverage-topology={sct ?? undefined}
           data-empty={isEmpty ?? undefined}
           {...{
             [BLOCK_CONTENT_ATTR_NAME]: '',
@@ -539,7 +564,8 @@ const ComposerHeadingBlock = forwardRef<
   ComposerHeadingBlockProps
 >(({ block, blockIndex, overrides, ...props }, forwardedRef) => {
   const { heading } = useEditorConfig()
-  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
+  const { canEdit, editableId, isActive, isEmpty, sct } =
+    useEditableBlock(block)
 
   const Heading = ComposerHeadingsPrimitive[block.level]
   const placeholder = (overrides?.placeholder ?? heading.placeholder).replace(
@@ -559,6 +585,8 @@ const ComposerHeadingBlock = forwardRef<
         [HEADING_BLOCK_LEVEL_DATA_NAME]: block.level.toString(),
       }}
       data-active={isActive ?? undefined}
+      data-selected={sct ? true : undefined}
+      data-selected-coverage-topology={sct ?? undefined}
       aria-roledescription='heading-block'
     >
       <Heading
@@ -569,6 +597,8 @@ const ComposerHeadingBlock = forwardRef<
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
         data-active={isActive ?? undefined}
+        data-selected={sct ? true : undefined}
+        data-selected-coverage-topology={sct ?? undefined}
         data-empty={isEmpty ?? undefined}
         {...{
           [BLOCK_CONTENT_ATTR_NAME]: '',
@@ -590,7 +620,8 @@ const ComposerBulletListItemBlock = forwardRef<
   ComposerBulletListItemBlockProps
 >(({ block, blockIndex, overrides, ...props }, forwardedRef) => {
   const { bulletedList } = useEditorConfig()
-  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
+  const { canEdit, editableId, isActive, isEmpty, sct } =
+    useEditableBlock(block)
 
   const placeholder = overrides?.placeholder ?? bulletedList.placeholder
 
@@ -605,6 +636,8 @@ const ComposerBulletListItemBlock = forwardRef<
         [BULLET_LIST_ITEM_BLOCK_ATTR_NAME]: '',
       }}
       data-active={isActive ?? undefined}
+      data-selected={sct ? true : undefined}
+      data-selected-coverage-topology={sct ?? undefined}
       aria-roledescription='bullet-list-item-block'
     >
       <div
@@ -625,6 +658,8 @@ const ComposerBulletListItemBlock = forwardRef<
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
         data-active={isActive ?? undefined}
+        data-selected={sct ? true : undefined}
+        data-selected-coverage-topology={sct ?? undefined}
         data-empty={isEmpty ?? undefined}
         {...{
           [BLOCK_CONTENT_ATTR_NAME]: '',
@@ -646,7 +681,8 @@ const ComposerNumberedListItemBlock = forwardRef<
   ComposerNumberedListItemBlockProps
 >(({ block, blockIndex, ...props }, forwardedRef) => {
   const { numberedList } = useEditorConfig()
-  const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
+  const { canEdit, editableId, isActive, isEmpty, sct } =
+    useEditableBlock(block)
 
   return (
     <div
@@ -660,6 +696,8 @@ const ComposerNumberedListItemBlock = forwardRef<
         [NUMBERED_LIST_ITEM_VARIANT_DATA_NAME]: block.variant,
       }}
       data-active={isActive ?? undefined}
+      data-selected={sct ? true : undefined}
+      data-selected-coverage-topology={sct ?? undefined}
       aria-roledescription='numbered-list-item-block'
     >
       <div
@@ -681,6 +719,8 @@ const ComposerNumberedListItemBlock = forwardRef<
         contentEditable={canEdit ? 'true' : undefined}
         suppressContentEditableWarning
         data-active={isActive ?? undefined}
+        data-selected={sct ? true : undefined}
+        data-selected-coverage-topology={sct ?? undefined}
         data-empty={isEmpty ?? undefined}
         {...{
           [BLOCK_CONTENT_ATTR_NAME]: '',
@@ -707,7 +747,8 @@ const ComposerCheckboxListItemBlock = forwardRef<
     forwardedRef,
   ) => {
     const { checkboxList } = useEditorConfig()
-    const { canEdit, editableId, isActive, isEmpty } = useEditableBlock(block)
+    const { canEdit, editableId, isActive, isEmpty, sct } =
+      useEditableBlock(block)
     const { patch } = useCheckboxLists()
 
     const placeholder = overrides?.placeholder ?? checkboxList.placeholder
@@ -736,6 +777,8 @@ const ComposerCheckboxListItemBlock = forwardRef<
           [CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME]: block.checked.toString(),
         }}
         data-active={isActive ?? undefined}
+        data-selected={sct ? true : undefined}
+        data-selected-coverage-topology={sct ?? undefined}
         aria-roledescription='checkbox-list-item-block'
       >
         <div
@@ -761,6 +804,8 @@ const ComposerCheckboxListItemBlock = forwardRef<
           contentEditable={canEdit ? 'true' : undefined}
           suppressContentEditableWarning
           data-active={isActive ?? undefined}
+          data-selected={sct ? true : undefined}
+          data-selected-coverage-topology={sct ?? undefined}
           data-empty={isEmpty ?? undefined}
           {...{
             [BLOCK_CONTENT_ATTR_NAME]: '',
@@ -782,27 +827,33 @@ ComposerCheckboxListItemBlock.displayName =
 const ComposerDividerBlock = forwardRef<
   HTMLDivElement,
   ComposerDividerBlockProps
->(({ block, blockIndex, ...props }, forwardedRef) => (
-  <div
-    {...props}
-    ref={forwardedRef}
-    contentEditable={false}
-    {...{
-      [BLOCK_ATTR_NAME]: '',
-      [BLOCK_ID_DATA_NAME]: block.id,
-      [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
-      [DIVIDER_BLOCK_ATTR_NAME]: '',
-    }}
-    aria-roledescription='divider-block'
-  >
+>(({ block, blockIndex, ...props }, forwardedRef) => {
+  const sct = useBlockSelectionCoverageTopology(block.id)
+
+  return (
     <div
-      aria-roledescription='divider-block-content'
-      {...{ [BLOCK_CONTENT_ATTR_NAME]: '' }}
+      {...props}
+      ref={forwardedRef}
+      contentEditable={false}
+      {...{
+        [BLOCK_ATTR_NAME]: '',
+        [BLOCK_ID_DATA_NAME]: block.id,
+        [BLOCK_INDEX_DATA_NAME]: blockIndex.toString(),
+        [DIVIDER_BLOCK_ATTR_NAME]: '',
+      }}
+      data-selected={sct ? true : undefined}
+      data-selected-coverage-sct={sct ?? undefined}
+      aria-roledescription='divider-block'
     >
-      <div {...{ [DIVIDER_SEPARATOR_ATTR_NAME]: '' }} />
+      <div
+        aria-roledescription='divider-block-content'
+        {...{ [BLOCK_CONTENT_ATTR_NAME]: '' }}
+      >
+        <div {...{ [DIVIDER_SEPARATOR_ATTR_NAME]: '' }} />
+      </div>
     </div>
-  </div>
-))
+  )
+})
 ComposerDividerBlock.displayName = COMPOSER_DIVIDER_BLOCK_NAME
 
 /** Renders a block based on its type. */
