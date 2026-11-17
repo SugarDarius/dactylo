@@ -20,6 +20,7 @@ import {
   useCheckboxLists,
   useDividers,
   useEditableListener,
+  useEditorConfig,
   useHeadings,
   useHistory,
   useMark,
@@ -117,9 +118,19 @@ const USERS = [
     role: 'Design Engineer',
   },
   {
+    fullName: 'Chris',
+    id: 'chris@liveblocks.io',
+    role: 'Developer Relations',
+  },
+  {
     fullName: 'Olivier',
     id: 'olivier@liveblocks.io',
     role: 'Product Engineer',
+  },
+  {
+    fullName: 'Adrien',
+    id: 'adrien@liveblocks.io',
+    role: 'Head of Product',
   },
   {
     fullName: 'Florent',
@@ -738,19 +749,18 @@ export function LinkNode(props: ComposerLinkNodeProps) {
 }
 
 export function MentionNode(props: ComposerMentionNodeProps) {
+  const { mentions } = useEditorConfig()
   const { entity } = props.node
+
   return (
     <Composer.MentionNode
       {...props}
-      className='bg-muted text-foreground inline-flex items-center gap-1.5 rounded-full border py-0.5 pr-1.5 pl-1 text-xs font-medium'
+      className='bg-muted text-foreground font-sm inline-flex items-center gap-1 rounded-sm border p-0.5 text-xs'
     >
-      <Avatar size='sm'>
-        <AvatarFallback className='bg-violet-100 text-violet-800'>
-          {getInitials(entity.data.fullName)}
-        </AvatarFallback>
-        <AvatarBadge className='bg-green-600 dark:bg-green-800' />
-      </Avatar>
-      <span className='text-foreground'>{entity.data.fullName}</span>
+      <span className='text-foreground'>
+        {mentions.character}
+        {entity.data.fullName}
+      </span>
     </Composer.MentionNode>
   )
 }
