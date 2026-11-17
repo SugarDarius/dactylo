@@ -7,6 +7,7 @@ declare global {
     MentionNodeEntityData: {
       email: string
       fullName: string
+      role: string
     }
   }
 }

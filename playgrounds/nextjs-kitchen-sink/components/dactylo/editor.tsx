@@ -78,6 +78,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '~/components/ui/dropdown-menu'
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '~/components/ui/hover-card'
 import { Kbd } from '~/components/ui/kbd'
 import { Popover, PopoverContent, PopoverTitle } from '~/components/ui/popover'
 import { Separator } from '~/components/ui/separator'
@@ -753,14 +758,35 @@ export function MentionNode(props: ComposerMentionNodeProps) {
   const { entity } = props.node
 
   return (
-    <Composer.MentionNode
-      {...props}
-      className='bg-muted text-foreground font-sm inline-flex items-center gap-1 rounded-sm border p-0.5 text-xs'
-    >
-      <span className='text-foreground'>
-        {mentions.character}_{entity.data.fullName}
-      </span>
-    </Composer.MentionNode>
+    <HoverCard>
+      <Composer.MentionNode
+        {...props}
+        className={cn(
+          'bg-muted text-foreground font-sm relative inline-flex cursor-pointer items-center gap-1 rounded-sm border p-0.5 text-xs',
+          'data-[selected=true]:selection:bg-transparent',
+          'data-[selected=true]:selection:text-accent-foreground',
+          'data-[selected=true]:after:[content:""]',
+          'data-[selected=true]:after:absolute',
+          'data-[selected=true]:after:-top-1.5',
+          'data-[selected=true]:after:-left-1',
+          'data-[selected=true]:after:-right-1',
+          'data-[selected=true]:after:-bottom-1',
+          'data-[selected=true]:after:bg-cyan-500/70',
+        )}
+      >
+        <HoverCardTrigger>
+          <span className='text-foreground'>
+            {mentions.character}_{entity.data.fullName}
+          </span>
+        </HoverCardTrigger>
+      </Composer.MentionNode>
+      <HoverCardContent>
+        <div className='font-semibold'>{entity.id}</div>
+        <div className='text-muted-foreground mt-1 text-xs'>
+          {entity.data.role}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   )
 }
 
@@ -792,6 +818,7 @@ export function MentionSuggestions() {
         data: {
           email: user.id,
           fullName: user.fullName,
+          role: user.role,
         },
         id: user.id,
       },
