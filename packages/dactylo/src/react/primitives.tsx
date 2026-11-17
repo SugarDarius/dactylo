@@ -124,7 +124,7 @@ const EDITABLE_OUTLINE_STYLE: React.CSSProperties = {
  * Adds the root of the composers.
  * @example
  * ```tsx
- * import { Composer } from '@liveblocks/dactylo/react'
+ * import { Composer } from '@sugardarius/dactylo/react'
  *
  * <Composer.Root placeholder='Write something…'>
  *   {children}
@@ -905,7 +905,7 @@ ComposerBlocks.displayName = COMPOSER_BLOCKS_NAME
  * Adds the editable area of the composer.
  * @example
  * ```tsx
- * import { Composer } from '@liveblocks/dactylo/react'
+ * import { Composer } from '@sugardarius/dactylo/react'
  *
  * <Composer.Root placeholder='Write something…'>
  *   <Composer.Editable autoFocus>
