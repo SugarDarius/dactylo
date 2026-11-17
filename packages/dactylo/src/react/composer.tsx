@@ -54,7 +54,12 @@ import type {
   Selection,
 } from '../internals/selection'
 import { shallow } from '../internals/shallow'
-import type { Transaction, TransactionSource } from '../internals/transaction'
+import type {
+  CommandTriggerBufferEvent,
+  MentionBufferEvent,
+  Transaction,
+  TransactionSource,
+} from '../internals/transaction'
 import { noop } from '../internals/utils'
 import {
   COMPOSER_EDITABLE_NAME,
@@ -1535,6 +1540,50 @@ export function useTransactionDidRejectListener(
 
   useEffect(
     () => editor.events.transactionDidReject.subscribe(stableListener),
+    [editor, stableListener],
+  )
+}
+
+/**
+ * Get informed when the mention buffer is changing..
+ *
+ * @example
+ * ```tsx
+ * useMentionBufferListener((event) => {
+ *   console.log(event)
+ * })
+ * ```
+ */
+export function useMentionBufferListener(
+  listener: (event: MentionBufferEvent) => void,
+): void {
+  const { editor } = useComposer()
+  const stableListener = useStableCallback(listener)
+
+  useEffect(
+    () => editor.events.mentionBuffer.subscribe(stableListener),
+    [editor, stableListener],
+  )
+}
+
+/**
+ * Get informed when the command trigger buffer is changing.
+ *
+ * @example
+ * ```tsx
+ * useCommandTriggerBufferListener((event) => {
+ *   console.log(event)
+ * })
+ * ```
+ */
+export function useCommandTriggerBufferListener(
+  listener: (event: CommandTriggerBufferEvent) => void,
+): void {
+  const { editor } = useComposer()
+  const stableListener = useStableCallback(listener)
+
+  useEffect(
+    () => editor.events.commandTriggerBuffer.subscribe(stableListener),
     [editor, stableListener],
   )
 }

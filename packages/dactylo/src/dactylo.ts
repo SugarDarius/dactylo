@@ -46,10 +46,7 @@ import type {
 } from './internals/event-source'
 import { EventSource } from './internals/event-source'
 import type { HistoryEvent, HistoryStackOptions } from './internals/history'
-import type {
-  InlineBufferEvent,
-  InlineBufferPointer,
-} from './internals/inline-buffer'
+import type { InlineBufferPointer } from './internals/inline-buffer'
 import type { MarkKey } from './internals/marks'
 import type { InlineNode } from './internals/nodes'
 import type { InsertOrMoveBlockPosition } from './internals/operations-builder'
@@ -61,7 +58,12 @@ import {
 } from './internals/selection'
 import type { Selection } from './internals/selection'
 import { TransactionPipeline } from './internals/transaction'
-import type { Transaction, TransactionSource } from './internals/transaction'
+import type {
+  CommandTriggerBufferEvent,
+  MentionBufferEvent,
+  Transaction,
+  TransactionSource,
+} from './internals/transaction'
 import type {
   CancelCallback,
   OptionalTupleUnless,
@@ -467,7 +469,7 @@ export interface DactyloEventsApi {
    * })
    * ```
    */
-  readonly mentionBuffer: Observable<InlineBufferEvent<'mention'>>
+  readonly mentionBuffer: Observable<MentionBufferEvent>
 
   /**
    * Subscribes to the command trigger buffer changes.
@@ -480,9 +482,7 @@ export interface DactyloEventsApi {
    * })
    * ```
    */
-  readonly commandTriggerBuffer: Observable<
-    InlineBufferEvent<'command-trigger'>
-  >
+  readonly commandTriggerBuffer: Observable<CommandTriggerBufferEvent>
 
   /**
    * Subscribes to applied transactions.

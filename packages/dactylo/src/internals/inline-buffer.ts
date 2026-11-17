@@ -71,7 +71,7 @@ export class InlineBuffer<K extends string> extends EventSource<
   readonly #name: string
 
   /** Kind of event that will be emitted. */
-  readonly #eventKind: K
+  readonly #kind: K
 
   /** Whether to enable debug mode. */
   readonly #debug: boolean
@@ -89,7 +89,7 @@ export class InlineBuffer<K extends string> extends EventSource<
     super()
 
     this.#name = options.name ?? 'InlineBuffer'
-    this.#eventKind = options.eventKind
+    this.#kind = options.eventKind
 
     this.#debug = options.debug
     this.#enabled = options.enabled
@@ -132,7 +132,7 @@ export class InlineBuffer<K extends string> extends EventSource<
 
     this.notify({
       bufferedText: this.#bufferedText,
-      kind: this.#eventKind,
+      kind: this.#kind,
       pointer: this.#pointer,
       state: 'started',
     })
@@ -175,7 +175,7 @@ export class InlineBuffer<K extends string> extends EventSource<
 
     this.notify({
       bufferedText: this.#bufferedText,
-      kind: this.#eventKind,
+      kind: this.#kind,
       pointer: this.#pointer,
       state: 'buffering',
     })
@@ -198,7 +198,7 @@ export class InlineBuffer<K extends string> extends EventSource<
 
     this.notify({
       bufferedText: this.#bufferedText,
-      kind: this.#eventKind,
+      kind: this.#kind,
       pointer: this.#pointer,
       state: 'aborted',
     })
@@ -213,7 +213,7 @@ export class InlineBuffer<K extends string> extends EventSource<
 
     this.notify({
       bufferedText: this.#bufferedText,
-      kind: this.#eventKind,
+      kind: this.#kind,
       pointer: this.#pointer,
       state: 'released',
     })

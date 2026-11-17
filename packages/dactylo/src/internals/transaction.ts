@@ -321,6 +321,12 @@ export interface Transaction {
   readonly policy?: TransactionPolicy
 }
 
+/** Alias for the mention buffer event. */
+export type MentionBufferEvent = InlineBufferEvent<'mention'>
+
+/** Alias for the command trigger buffer event. */
+export type CommandTriggerBufferEvent = InlineBufferEvent<'command-trigger'>
+
 /** Events emitted by the transaction pipeline */
 export interface TransactionPipelineEvents {
   /**
@@ -339,15 +345,13 @@ export interface TransactionPipelineEvents {
    * Subscribes to the mention buffer changes.
    * 👉🏻 Fires anytime the inline buffer is updated.
    */
-  readonly mentionBuffer: Observable<InlineBufferEvent<'mention'>>
+  readonly mentionBuffer: Observable<MentionBufferEvent>
 
   /**
    * Subscribes to the command trigger buffer changes.
    * 👉🏻 Fires anytime the inline buffer is updated.
    */
-  readonly commandTriggerBuffer: Observable<
-    InlineBufferEvent<'command-trigger'>
-  >
+  readonly commandTriggerBuffer: Observable<CommandTriggerBufferEvent>
 
   /**
    * Subscribes to applied transactions.

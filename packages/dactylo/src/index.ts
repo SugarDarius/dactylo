@@ -61,10 +61,7 @@ export type {
 export type { DocumentState } from './internals/document'
 export type { EditorContext } from './internals/editor-context'
 export type { HistoryEvent, HistoryStackOptions } from './internals/history'
-export type {
-  InlineBufferEvent,
-  InlineBufferPointer,
-} from './internals/inline-buffer'
+export type { InlineBufferPointer } from './internals/inline-buffer'
 export type { MarkKey, Marks } from './internals/marks'
 export type {
   InlineNode,
@@ -99,6 +96,14 @@ export type {
   Transaction,
   TransactionPipelineOptions,
   TransactionSource,
+  MentionBufferEvent,
+  CommandTriggerBufferEvent,
 } from './internals/transaction'
-export type { Metadata } from './internals/types'
+export type {
+  Metadata,
+  JsonArray,
+  JsonObject,
+  JsonPrimitive,
+  JsonValue,
+} from './internals/types'
 export type { TypingBurstOptions } from './internals/typing'
