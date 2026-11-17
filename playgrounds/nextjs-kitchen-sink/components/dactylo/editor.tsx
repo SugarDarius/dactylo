@@ -758,8 +758,7 @@ export function MentionNode(props: ComposerMentionNodeProps) {
       className='bg-muted text-foreground font-sm inline-flex items-center gap-1 rounded-sm border p-0.5 text-xs'
     >
       <span className='text-foreground'>
-        {mentions.character}
-        {entity.data.fullName}
+        {mentions.character}_{entity.data.fullName}
       </span>
     </Composer.MentionNode>
   )

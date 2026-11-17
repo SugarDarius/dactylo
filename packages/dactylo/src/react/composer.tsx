@@ -398,18 +398,6 @@ export function useRangeSelection(): RangeSelection | null {
 export function useFocus() {
   const { editor } = useComposer()
 
-  const withCursorIn = useStableCallback((blockId: BlockId) =>
-    editor.selection.tools.isBlockWithActiveCursor(blockId),
-  )
-
-  const withRangeIn = useStableCallback((blockId: BlockId) =>
-    editor.selection.tools.isBlockWithActiveRange(blockId),
-  )
-
-  const isSelectedBlock = useStableCallback((blockId: BlockId) =>
-    editor.selection.tools.isBlockWithActiveSelection(blockId),
-  )
-
   const focus = useStableCallback(
     (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
       editor.selection.commands.focus(source),
@@ -423,9 +411,6 @@ export function useFocus() {
   return {
     blur,
     focus,
-    isSelectedBlock,
-    withCursorIn,
-    withRangeIn,
   } as const
 }
 
