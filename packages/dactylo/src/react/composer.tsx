@@ -69,24 +69,23 @@ import {
   useSyncExternalStoreWithSelector,
 } from './internals/hooks'
 import type {
+  AnchorElementStore,
   ComposerContext,
   ComposerEditableContext,
-  ComposerInlineQueryElementStore,
 } from './types'
 
-// --- Composer Inline Query Element Store ──────────────────────---
+// --- Anchor Element Store ──────────────────────-------------------
 
-/** Creates a {@link ComposerInlineQueryElementStore}. */
-export function createInlineQueryElementStore(
-  kind: 'mention' | 'command-trigger',
-): ComposerInlineQueryElementStore {
+/** Creates a {@link AnchorElementStore}. */
+export function createAnchorElementStore<
+  T extends HTMLElement,
+>(): AnchorElementStore<T> {
   const listeners = new Set<() => void>()
-  let element: HTMLSpanElement | null = null
+  let element: T | null = null
 
   return {
     getSnapshot: () => element,
-    kind,
-    setElement: (next: HTMLSpanElement | null) => {
+    setElement: (next: T | null) => {
       if (element === next) {
         return
       }
@@ -111,6 +110,48 @@ export const { Provider: ComposerProvider, useContext: useComposer } =
   createSafeContext<ComposerContext>({
     errorMsg: `\`<${COMPOSER_ROOT_NAME} />\` is missing. Did you forget to wrap your component within it?`,
   })
+
+/**
+ * Returns the inline mention query anchor element.
+ *
+ * @example
+ * ```tsx
+ * const anchor = useInlineMentionQueryAnchorElement()
+ * console.log(anchor)
+ * ```
+ *
+ * @private
+ */
+export function useInlineMentionQueryAnchorElement(): HTMLSpanElement | null {
+  const { imqaes } = useComposer()
+
+  return useSyncExternalStore(
+    imqaes.subscribe,
+    imqaes.getSnapshot,
+    imqaes.getSnapshot,
+  )
+}
+
+/**
+ * Returns the inline command trigger query anchor element.
+ *
+ * @example
+ * ```tsx
+ * const anchor = useInlineCommandTriggerQueryAnchorElement()
+ * console.log(anchor)
+ * ```
+ *
+ * @private
+ */
+export function useInlineCommandTriggerQueryAnchorElement(): HTMLSpanElement | null {
+  const { ictqaes } = useComposer()
+
+  return useSyncExternalStore(
+    ictqaes.subscribe,
+    ictqaes.getSnapshot,
+    ictqaes.getSnapshot,
+  )
+}
 
 // --- Editor Store ───────────────────────────────────--------------
 
@@ -988,7 +1029,47 @@ export function useIsBlockEmpty(blockId: BlockId): boolean {
  *
  * @example
  * ```tsx
- * const { isBuffering, bufferedText, confirm, dismiss } = useMention()
+ * const isBuffering = useIsMentionBuffering()
+ * console.log(isBuffering)
+ * ```
+ */
+export function useIsMentionBuffering(): boolean {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.mentions.tools.isBuffering(),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns the buffered text for the mention currently being buffered.
+ *
+ * @example
+ * ```tsx
+ * const bufferedText = useMentionBufferedText()
+ * console.log(bufferedText)
+ * ```
+ */
+export function useMentionBufferedText(): string | null {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.mentions.tools.getBufferedText(),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns whether a mention is currently being buffered.
+ *
+ * @example
+ * ```tsx
+ * const { isBuffering, bufferedText, confirm, dismiss, anchor } = useMention()
  * console.log(isBuffering, bufferedText)
  *
  * confirm({ entity: { id: 'user-123', data: { email: 'john@doe.dev', fullName: 'John Doe' } } })
@@ -996,35 +1077,11 @@ export function useIsBlockEmpty(blockId: BlockId): boolean {
  * ```
  */
 export function useMention() {
-  const { editor, imqes } = useComposer()
+  const { editor } = useComposer()
+  const anchor = useInlineMentionQueryAnchorElement()
 
-  const subscribe = useStableCallback(editor.subscribe.bind(editor))
-
-  const getIsBufferingSnapshot = useStableCallback(() =>
-    editor.mentions.tools.isBuffering(),
-  )
-
-  const getBufferedTextSnapshot = useStableCallback(() =>
-    editor.mentions.tools.getBufferedText(),
-  )
-
-  const isBuffering = useSyncExternalStore(
-    subscribe,
-    getIsBufferingSnapshot,
-    getIsBufferingSnapshot,
-  )
-
-  const bufferedText = useSyncExternalStore(
-    subscribe,
-    getBufferedTextSnapshot,
-    getBufferedTextSnapshot,
-  )
-
-  const anchor = useSyncExternalStore(
-    imqes.subscribe,
-    imqes.getSnapshot,
-    imqes.getSnapshot,
-  )
+  const isBuffering = useIsMentionBuffering()
+  const bufferedText = useMentionBufferedText()
 
   const confirm = useStableCallback(
     (

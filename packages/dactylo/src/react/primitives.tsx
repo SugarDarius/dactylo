@@ -49,7 +49,7 @@ import { paintTextForDOM } from '../internals/dom'
 import {
   ComposerEditableProvider,
   ComposerProvider,
-  createInlineQueryElementStore,
+  createAnchorElementStore,
   useBlock,
   useBlockOrderById,
   useCheckboxLists,
@@ -173,10 +173,10 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
         placeholder,
         quote,
       }),
-      /** Inline command trigger query element store. */
-      ictqes: createInlineQueryElementStore('command-trigger'),
-      /** Inline mention query element store. */
-      imqes: createInlineQueryElementStore('mention'),
+      /** Inline mention query anchor element store. */
+      ictqaes: createAnchorElementStore<HTMLSpanElement>(),
+      /** Inline command trigger query anchor element store. */
+      imqaes: createAnchorElementStore<HTMLSpanElement>(),
     })
 
     useDebugValue(ctx)
@@ -207,30 +207,37 @@ const ComposerTextNode = memo(
   forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
     ({ node, ...props }, forwardedRef) => {
       const { mentions, commandTrigger } = useEditorConfig()
-      const { imqes, ictqes } = useComposer()
+      const { imqaes, ictqaes } = useComposer()
       const inlineBuffer = useInlineBuffer()
 
       const { renderedText, nodeAttributes } = useEditableNode(node)
 
       let rendered: React.ReactNode = renderedText
+
       if (inlineBuffer !== null) {
         const isMention = inlineBuffer.kind === 'mention'
+
         const character = isMention
           ? mentions.character
           : commandTrigger.character
+        const setAnchorElement = isMention
+          ? imqaes.setElement
+          : ictqaes.setElement
+
         const from = inlineBuffer.pointer.triggerOffset
         const to = from + character.length + inlineBuffer.bufferedText.length
+
         rendered = (
           <>
             {from > 0 ? paintTextForDOM(node.text.slice(0, from)) : null}
             <span
+              ref={setAnchorElement}
               {...{
                 [INLINE_QUERY_NODE_ATTR_NAME]: '',
                 [isMention
                   ? MENTION_QUERY_DATA_NAME
                   : COMMAND_TRIGGER_QUERY_DATA_NAME]: inlineBuffer.bufferedText,
               }}
-              ref={isMention ? imqes.setElement : ictqes.setElement}
             >
               {paintTextForDOM(node.text.slice(from, to))}
             </span>

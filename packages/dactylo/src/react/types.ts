@@ -17,22 +17,18 @@ import type {
   TextNode,
 } from '../internals/nodes'
 
-// --- Composer Inline Query Element Store ──────────────────────---
+// --- Anchor Element Store ──────────────────────-------------------
+
 /**
- * Store for keeping in memory the DOM element for an
- * `[dactylo-inline-node-query]` being rendered while an {@link InlineBuffer} is active.
- *
+ * Store for keeping track of an anchor element in the DOM.
  * @private
  */
-export interface ComposerInlineQueryElementStore {
-  /** The kind of inline query node being rendered. */
-  kind: 'mention' | 'command-trigger'
-
+export interface AnchorElementStore<T extends HTMLElement> {
   /** Returns the DOM element. */
-  getSnapshot: () => HTMLSpanElement | null
+  getSnapshot: () => T | null
 
   /** Assigns the DOM element for being used externally. */
-  setElement: (element: HTMLSpanElement | null) => void
+  setElement: (element: T | null) => void
 
   /** Subscribes to React's tree changes for updating the DOM element reference. */
   subscribe: (listener: () => void) => () => void
@@ -46,16 +42,16 @@ export interface ComposerContext {
   editor: Dactylo
 
   /**
-   * Inline mention query element store.
+   * Inline mention query anchor element store.
    * @internal
    */
-  imqes: ComposerInlineQueryElementStore
+  imqaes: AnchorElementStore<HTMLSpanElement>
 
   /**
-   * Inline command trigger query element store.
+   * Inline command trigger query anchor element store.
    * @internal
    */
-  ictqes: ComposerInlineQueryElementStore
+  ictqaes: AnchorElementStore<HTMLSpanElement>
 }
 
 // --- Composer.Root ─────────────────────────────────────────-------
