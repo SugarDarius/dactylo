@@ -18,7 +18,6 @@ import {
   CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME,
   CHECKBOX_LIST_ITEM_MARKER_ATTR_NAME,
   CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME,
-  COMMAND_TRIGGER_QUERY_DATA_NAME,
   DIVIDER_BLOCK_ATTR_NAME,
   DIVIDER_SEPARATOR_ATTR_NAME,
   EDITABLE_ATTR_NAME,
@@ -60,7 +59,8 @@ import {
   useEditableNode,
   useEditorConfig,
   useFocus,
-  useInlineBuffer,
+  useMentionBufferedText,
+  useMentionPointer,
 } from './composer'
 import {
   COMPOSER_BLOCKS_NAME,
@@ -72,6 +72,7 @@ import {
   COMPOSER_HEADING_LEVELS,
   COMPOSER_HEADING_NAME,
   COMPOSER_HEADING_TAGS,
+  COMPOSER_INLINE_QUERY_NODE_NAME,
   COMPOSER_LINE_BREAK_NODE_NAME,
   COMPOSER_LINK_NODE_NAME,
   COMPOSER_MENTION_NODE_NAME,
@@ -98,6 +99,7 @@ import type {
   ComposerEditableContext,
   ComposerEditableProps,
   ComposerHeadingBlockProps,
+  ComposerInlineQueryNodeProps,
   ComposerLineBreakNodeProps,
   ComposerLinkNodeProps,
   ComposerMentionNodeProps,
@@ -202,51 +204,63 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 
 // --- Composer.Editable ─────────────────────────────────────────---
 
+/**
+ * Adds an inline query node to the composer.
+ *
+ * Renders the buffered text for a mention or command trigger query.
+ * This component cannot be overridden with a custom component and is not exported as primitive
+ * because it is an integral and internal part of `<Composer.TextNode />`.
+ *
+ * It can be customized though through attributes names:
+ *  - `[dactylo-inline-query-node=""]`
+ *  - `[data-dactylo-command-trigger-query="…"]`
+ *  - `[data-dactylo-mention-query="…"]`
+ */
+const ComposerInlineQueryNode = memo<
+  React.PropsWithChildren<ComposerInlineQueryNodeProps>
+>(({ nodeId, text, children }) => {
+  const { mentions } = useEditorConfig()
+  const { imqaes } = useComposer()
+
+  const mentionPointer = useMentionPointer()
+  const mentionBufferedText = useMentionBufferedText()
+
+  const isMentionBufferActive =
+    mentionPointer !== null && mentionBufferedText !== null
+
+  if (isMentionBufferActive && nodeId === mentionPointer.nodeId) {
+    const from = mentionPointer.triggerOffset
+    const to = from + mentions.character.length + mentionBufferedText.length
+
+    return (
+      <>
+        {from > 0 ? paintTextForDOM(text.slice(0, from)) : null}
+        <span
+          ref={imqaes.setElement}
+          {...{
+            [INLINE_QUERY_NODE_ATTR_NAME]: '',
+            [MENTION_QUERY_DATA_NAME]: mentionBufferedText,
+          }}
+          aria-roledescription='inline-query-node'
+        >
+          {paintTextForDOM(text.slice(from, to))}
+        </span>
+        {to < text.length ? paintTextForDOM(text.slice(to)) : null}
+      </>
+    )
+  }
+
+  // @todo: handle command trigger buffer
+
+  return children
+})
+ComposerInlineQueryNode.displayName = COMPOSER_INLINE_QUERY_NODE_NAME
+
 /** Adds a {@link TextNode} to the composer. */
 const ComposerTextNode = memo(
   forwardRef<HTMLSpanElement, ComposerTextNodeProps>(
     ({ node, ...props }, forwardedRef) => {
-      const { mentions, commandTrigger } = useEditorConfig()
-      const { imqaes, ictqaes } = useComposer()
-      const inlineBuffer = useInlineBuffer()
-
       const { renderedText, nodeAttributes } = useEditableNode(node)
-
-      let rendered: React.ReactNode = renderedText
-
-      if (inlineBuffer !== null) {
-        const isMention = inlineBuffer.kind === 'mention'
-
-        const character = isMention
-          ? mentions.character
-          : commandTrigger.character
-        const setAnchorElement = isMention
-          ? imqaes.setElement
-          : ictqaes.setElement
-
-        const from = inlineBuffer.pointer.triggerOffset
-        const to = from + character.length + inlineBuffer.bufferedText.length
-
-        rendered = (
-          <>
-            {from > 0 ? paintTextForDOM(node.text.slice(0, from)) : null}
-            <span
-              ref={setAnchorElement}
-              {...{
-                [INLINE_QUERY_NODE_ATTR_NAME]: '',
-                [isMention
-                  ? MENTION_QUERY_DATA_NAME
-                  : COMMAND_TRIGGER_QUERY_DATA_NAME]: inlineBuffer.bufferedText,
-              }}
-            >
-              {paintTextForDOM(node.text.slice(from, to))}
-            </span>
-            {to < node.text.length
-              ? paintTextForDOM(node.text.slice(to))
-              : null}
-          </>
-        )
-      }
 
       return (
         <span
@@ -260,7 +274,9 @@ const ComposerTextNode = memo(
           }}
           aria-roledescription='text-node'
         >
-          {rendered}
+          <ComposerInlineQueryNode nodeId={node.id} text={node.text}>
+            {renderedText}
+          </ComposerInlineQueryNode>
         </span>
       )
     },

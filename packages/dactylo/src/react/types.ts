@@ -14,6 +14,7 @@ import type {
   LineBreakNode,
   LinkNode,
   MentionNode,
+  NodeId,
   TextNode,
 } from '../internals/nodes'
 
@@ -70,6 +71,15 @@ export interface ComposerRootProps
 }
 
 // --- Composer.Editable ─────────────────────────────────────────---
+
+/** Props for declaring an inline query node component. */
+export interface ComposerInlineQueryNodeProps {
+  /** Unique identifier for the node. */
+  nodeId: NodeId
+
+  /** Text content of the node. */
+  text: string
+}
 
 /** Props for declaring a text node component. */
 export interface ComposerTextNodeProps extends Omit<

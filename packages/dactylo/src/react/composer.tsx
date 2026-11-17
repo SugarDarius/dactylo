@@ -1033,7 +1033,7 @@ export function useIsBlockEmpty(blockId: BlockId): boolean {
  * console.log(isBuffering)
  * ```
  */
-export function useIsMentionBuffering(): boolean {
+export function useIsMentionBuffering() {
   const { editor } = useComposer()
 
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
@@ -1053,12 +1053,32 @@ export function useIsMentionBuffering(): boolean {
  * console.log(bufferedText)
  * ```
  */
-export function useMentionBufferedText(): string | null {
+export function useMentionBufferedText() {
   const { editor } = useComposer()
 
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useStableCallback(() =>
     editor.mentions.tools.getBufferedText(),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns the pointer for the mention currently being buffered.
+ *
+ * @example
+ * ```tsx
+ * const pointer = useMentionBuffer()
+ * console.log(pointer)
+ * ```
+ */
+export function useMentionPointer() {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.mentions.tools.getPointer(),
   )
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
@@ -1369,50 +1389,6 @@ export function useEditableBlock(block: BlockWithInlineContent) {
     isActive,
     isEmpty,
   } as const
-}
-
-/**
- * Returns the current state of an inline buffer (mention or command trigger).
- * @private
- */
-export function useInlineBuffer() {
-  const { editor } = useComposer()
-
-  const subscribe = useStableCallback(editor.subscribe.bind(editor))
-
-  const getMentionPointerSnapshot = useStableCallback(() =>
-    editor.mentions.tools.getPointer(),
-  )
-
-  const getMentionBufferedTextSnapshot = useStableCallback(() =>
-    editor.mentions.tools.getBufferedText(),
-  )
-
-  const mPointer = useSyncExternalStore(
-    subscribe,
-    getMentionPointerSnapshot,
-    getMentionPointerSnapshot,
-  )
-  const mBufferedText = useSyncExternalStore(
-    subscribe,
-    getMentionBufferedTextSnapshot,
-    getMentionBufferedTextSnapshot,
-  )
-
-  // @todo: handle command trigger
-  const inlineBuffer = useMemo(() => {
-    if (mPointer !== null && mBufferedText !== null) {
-      return {
-        bufferedText: mBufferedText,
-        kind: 'mention',
-        pointer: mPointer,
-      }
-    }
-
-    return null
-  }, [mPointer, mBufferedText])
-
-  return inlineBuffer
 }
 
 /**

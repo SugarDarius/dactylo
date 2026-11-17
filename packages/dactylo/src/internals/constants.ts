@@ -194,7 +194,7 @@ export const MENTION_NODE_ENTITY_ID_DATA_NAME =
   'data-dactylo-mention-node-entity-id' as const
 
 /** Inline query node attribute name. */
-export const INLINE_QUERY_NODE_ATTR_NAME = 'dactylo-inline-node-query' as const
+export const INLINE_QUERY_NODE_ATTR_NAME = 'dactylo-inline-query-node' as const
 
 /** Mention query data name. */
 export const MENTION_QUERY_DATA_NAME = 'data-dactylo-mention-query' as const

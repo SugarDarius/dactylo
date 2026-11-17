@@ -61,6 +61,9 @@ export const COMPOSER_CHECKBOX_LIST_ITEM_BLOCK_NAME =
 /** Slot inline content component name. */
 export const COMPOSER_SLOT_INLINE_CONTENT_NAME = 'Composer.SlotInlineContent'
 
+/** Inline query node component name. */
+export const COMPOSER_INLINE_QUERY_NODE_NAME = 'Composer.InlineQueryNode'
+
 /** Text node component name. */
 export const COMPOSER_TEXT_NODE_NAME = 'Composer.TextNode'
 

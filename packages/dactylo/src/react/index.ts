@@ -27,6 +27,7 @@ export {
   useMarks,
   useMention,
   useMentionBufferedText,
+  useMentionPointer,
   useNumberedLists,
   useParagraphs,
   useQuotes,

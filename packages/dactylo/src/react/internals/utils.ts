@@ -1,5 +1,5 @@
 /** Merges multiple refs into a single ref. */
-export function mergeRefs<T extends HTMLDivElement>(
+export function mergeRefs<T extends HTMLElement>(
   ...refs: (React.MutableRefObject<T> | React.LegacyRef<T> | undefined)[]
 ) {
   return (node: T) => {
