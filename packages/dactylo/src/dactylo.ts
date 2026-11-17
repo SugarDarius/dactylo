@@ -401,42 +401,112 @@ export interface DactyloEditableEvent {
 
 /** Api to interact with the events of the editor. */
 export interface DactyloEventsApi {
-  /** Subscribes to the `editable` changes */
+  /**
+   * Subscribes to the `editable` changes
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.editable.subscribe((event) => {
+   *  console.log(event.editable)
+   * })
+   */
   readonly editable: Observable<DactyloEditableEvent>
 
-  /** Subscribes to the commands executed by the user/ai-agent. */
+  /**
+   * Subscribes to the commands executed by the user/ai-agent.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.commands.subscribe((event) => {
+   *  console.log(event.command)
+   * })
+   */
   readonly commands: Observable<DactyloCommandEvent>
 
-  /** Subscribes to the tools executed by the user/ai-agent. */
+  /**
+   * Subscribes to the tools executed by the user/ai-agent.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.tools.subscribe((event) => {
+   *  console.log(event.tool)
+   * })
+   */
   readonly tools: Observable<DactyloToolEvent>
 
-  /** Subscribes to the errors thrown from commands or tools. */
+  /**
+   * Subscribes to the errors thrown from commands or tools.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.errors.subscribe((event) => {
+   *  console.log(event.error)
+   * })
+   */
   readonly errors: Observable<DactyloErrorEvent>
 
-  /** Subscribes to the history stack changes. */
+  /**
+   * Subscribes to the history stack changes.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.history.subscribe((event) => {
+   *  console.log(event.history)
+   * })
+   */
   readonly history: Observable<HistoryEvent>
 
   /**
    * Subscribes to the mention buffer changes.
    * 👉🏻 Fires anytime the inline buffer is updated.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.mentionBuffer.subscribe((event) => {
+   *  console.log(event.bufferedText)
+   * })
+   * ```
    */
-  readonly mention: Observable<InlineBufferEvent<'mention'>>
+  readonly mentionBuffer: Observable<InlineBufferEvent<'mention'>>
 
   /**
    * Subscribes to the command trigger buffer changes.
    * 👉🏻 Fires anytime the inline buffer is updated.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.commandTriggerBuffer.subscribe((event) => {
+   *  console.log(event.bufferedText)
+   * })
+   * ```
    */
-  readonly commandTrigger: Observable<InlineBufferEvent<'command-trigger'>>
+  readonly commandTriggerBuffer: Observable<
+    InlineBufferEvent<'command-trigger'>
+  >
 
   /**
    * Subscribes to applied transactions.
    * 👉🏻 Useful for low-level debugging and tracing.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.transactionDidApply.subscribe((event) => {
+   *  console.log(event.transaction)
+   * })
+   * ```
    */
   readonly transactionDidApply: Observable<Transaction>
 
   /**
    * Subscribes to rejected transactions.
    * 👉🏻 Useful for low-level debugging and tracing.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.transactionDidReject.subscribe((event) => {
+   *  console.log(event.transaction)
+   * })
+   * ```
    */
   readonly transactionDidReject: Observable<Transaction>
 }
@@ -1821,112 +1891,39 @@ export class Dactylo {
       /**
        * Subscribes to the command trigger buffer changes.
        * 👉🏻 Fires anytime the inline buffer is updated.
-       *
-       * @example
-       * ```ts
-       * const unsub = editor.events.commandTrigger.subscribe(({ bufferedText, state, }) => {
-       *  console.log({ bufferedText, state })
-       * })
-       * ```
        */
-      commandTrigger: this.#pipeline.events.commandTrigger,
+      commandTriggerBuffer: this.#pipeline.events.commandTriggerBuffer,
 
-      /**
-       * Subscribes to the commands executed by the user/ai-agent.
-       *
-       * @example
-       * ```ts
-       * const unsub = editor.events.commands.subscribe((event) => {
-       *  console.log(event.command, event.status)
-       * })
-       * ```
-       */
+      /** Subscribes to the commands executed by the user/ai-agent. */
       commands: this.#eventSources.commands.observable,
 
-      /**
-       * Subscribe to the `editable` changes.
-       *
-       * @example
-       * ```ts
-       * const unsub = editor.events.editable.subscribe((event) => {
-       *  console.log(event.editable)
-       * })
-       * ```
-       */
+      /** Subscribe to the `editable` changes. */
       editable: this.#eventSources.editable.observable,
 
-      /**
-       * Subscribes to the errors thrown from executed commands.
-       *
-       * @example
-       * ```ts
-       * const unsub = editor.events.errors.subscribe((event) => {
-       *  console.log(event.command, event.error)
-       * })
-       * ```
-       */
+      /** Subscribes to the errors thrown from executed commands. */
       errors: this.#eventSources.errors.observable,
 
-      /**
-       * Subscribes to the history stack changes.
-       *
-       * @example
-       * ```ts
-       * const unsub = editor.events.history.subscribe((event) => {
-       *  console.log(event.canUndo, event.canRedo)
-       * })
-       * ```
-       */
+      /** Subscribes to the history stack changes. */
       history: this.#pipeline.events.history,
 
       /**
        * Subscribes to the mention buffer changes.
        * 👉🏻 Fires anytime the inline buffer is updated.
-       *
-       * @example
-       * ```ts
-       * const unsub = editor.events.mention.subscribe(({ bufferedText, state, }) => {
-       *  console.log({ bufferedText, state })
-       * })
-       * ```
        */
-      mention: this.#pipeline.events.mention,
+      mentionBuffer: this.#pipeline.events.mentionBuffer,
 
-      /**
-       * Subscribes to the tools executed by the user/ai-agent.
-       *
-       * @example
-       * ```ts
-       * const unsub = editor.events.tools.subscribe((event) => {
-       *  console.log(event.tool, event.status)
-       * })
-       * ```
-       */
+      /** Subscribes to the tools executed by the user/ai-agent.*/
       tools: this.#eventSources.tools.observable,
 
       /**
        * Subscribes to applied transactions.
        * 👉🏻 Useful for low-level debugging and tracing.
-       *
-       * @example
-       * ```ts
-       * const unsub = editor.events.transactionDidApply.subscribe((event) => {
-       *  console.log(event.transaction)
-       * })
-       * ```
        */
       transactionDidApply: this.#pipeline.events.transactionDidApply,
 
       /**
        * Subscribes to rejected transactions.
        * 👉🏻 Useful for low-level debugging and tracing.
-       *
-       * @example
-       * ```ts
-       * const unsub = editor.events.transactionDidReject.subscribe((event) => {
-       *  console.log(event.transaction)
-       * })
-       * ```
        */
       transactionDidReject: this.#pipeline.events.transactionDidReject,
     }

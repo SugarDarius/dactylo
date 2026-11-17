@@ -1200,7 +1200,7 @@ describe('Dactylo mentions', () => {
   test('undo while buffering aborts when the opener is removed', () => {
     const editor = makeMentionsEditor()
     const states: string[] = []
-    editor.events.mention.subscribe((event) => {
+    editor.events.mentionBuffer.subscribe((event) => {
       states.push(event.state)
     })
     editor.selection.commands.focus()
@@ -1363,7 +1363,7 @@ describe('Dactylo mentions', () => {
   test('events.mention tracks started, buffering, released, and aborted', () => {
     const confirmed = makeMentionsEditor()
     const confirmEvents: string[] = []
-    confirmed.events.mention.subscribe((event) => {
+    confirmed.events.mentionBuffer.subscribe((event) => {
       confirmEvents.push(`${event.state}:${event.bufferedText ?? ''}`)
     })
     confirmed.selection.commands.focus()
@@ -1374,7 +1374,7 @@ describe('Dactylo mentions', () => {
 
     const dismissed = makeMentionsEditor()
     const dismissEvents: string[] = []
-    dismissed.events.mention.subscribe((event) => {
+    dismissed.events.mentionBuffer.subscribe((event) => {
       dismissEvents.push(event.state)
     })
     dismissed.selection.commands.focus()
@@ -1424,7 +1424,7 @@ describe('Dactylo command trigger', () => {
   test('undo while buffering keeps the buffer when the opener remains', () => {
     const editor = makeCommandTriggerEditor()
     const events: { bufferedText: string | null; state: string }[] = []
-    editor.events.commandTrigger.subscribe((event) => {
+    editor.events.commandTriggerBuffer.subscribe((event) => {
       events.push({ bufferedText: event.bufferedText, state: event.state })
     })
     editor.selection.commands.focus()
@@ -1439,7 +1439,7 @@ describe('Dactylo command trigger', () => {
   test('undo while buffering aborts when the opener is removed', () => {
     const editor = makeCommandTriggerEditor()
     const states: string[] = []
-    editor.events.commandTrigger.subscribe((event) => {
+    editor.events.commandTriggerBuffer.subscribe((event) => {
       states.push(event.state)
     })
     editor.selection.commands.focus()
@@ -1455,7 +1455,7 @@ describe('Dactylo command trigger', () => {
   test('Backspace trims the command trigger query', () => {
     const editor = makeCommandTriggerEditor()
     const events: { bufferedText: string | null; state: string }[] = []
-    editor.events.commandTrigger.subscribe((event) => {
+    editor.events.commandTriggerBuffer.subscribe((event) => {
       events.push({ bufferedText: event.bufferedText, state: event.state })
     })
     editor.selection.commands.focus()

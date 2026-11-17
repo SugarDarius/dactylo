@@ -115,6 +115,7 @@ export function transactionPolicyLabel(...parts: string[]): string {
 export type BatchFlushCallback = (
   /** The operations that were flushed. */
   ops: readonly Operation[],
+
   /** The policy that was used for the flush. */
   policy?: TransactionPolicy,
 ) => void
@@ -338,13 +339,15 @@ export interface TransactionPipelineEvents {
    * Subscribes to the mention buffer changes.
    * 👉🏻 Fires anytime the inline buffer is updated.
    */
-  readonly mention: Observable<InlineBufferEvent<'mention'>>
+  readonly mentionBuffer: Observable<InlineBufferEvent<'mention'>>
 
   /**
    * Subscribes to the command trigger buffer changes.
    * 👉🏻 Fires anytime the inline buffer is updated.
    */
-  readonly commandTrigger: Observable<InlineBufferEvent<'command-trigger'>>
+  readonly commandTriggerBuffer: Observable<
+    InlineBufferEvent<'command-trigger'>
+  >
 
   /**
    * Subscribes to applied transactions.
@@ -843,10 +846,10 @@ export class TransactionPipeline {
   /** Returns the events emitted by the transaction pipeline. */
   get events(): TransactionPipelineEvents {
     return {
-      commandTrigger: this.#commandTriggerBuffer.observable,
+      commandTriggerBuffer: this.#commandTriggerBuffer.observable,
       context: this.#eventSources.context.observable,
       history: this.#eventSources.history.observable,
-      mention: this.#mentionBuffer.observable,
+      mentionBuffer: this.#mentionBuffer.observable,
       transactionDidApply: this.#eventSources.transactionDidApply.observable,
       transactionDidReject: this.#eventSources.transactionDidReject.observable,
     }
