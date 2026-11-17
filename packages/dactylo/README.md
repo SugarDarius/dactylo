@@ -276,6 +276,13 @@ export function Editor() {
 | Primitives | 🚧 **In Progress** | Exposes React primitives for building a Dactylo editor |
 | Hooks      | 🚧 **In Progress** | Exposes external hooks to work with Dactylo            |
 
+### UI Libraries integration (📆 **Planned**)
+
+| Feature                         | Status         | Description                                            |
+| ------------------------------- | -------------- | ------------------------------------------------------ |
+| Default css file                | 📆 **Planned** | Providing a default css                                |
+| shadcn/ui like React components | 📆 **Planned** | Already made components distributed through a registry |
+
 ### DevTools extension (📆 **Planned**)
 
 Chrome-based extension that integrates with Dactylo and local development environment.
