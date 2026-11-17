@@ -641,7 +641,17 @@ export function DividerBlock(props: ComposerDividerBlockProps) {
 }
 
 export function TextNode(props: ComposerTextNodeProps) {
-  return <Composer.TextNode {...props} className={markClassName} />
+  return (
+    <Composer.TextNode
+      {...props}
+      className={cn(
+        markClassName,
+        '**:[[dactylo-inline-query-node]]:bg-muted/90',
+        '**:[[dactylo-inline-query-node]]:rounded-sm',
+        '**:[[dactylo-inline-query-node]]:p-1',
+      )}
+    />
+  )
 }
 
 export function LinkNode(props: ComposerLinkNodeProps) {
