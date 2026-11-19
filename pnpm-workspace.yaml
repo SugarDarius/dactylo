@@ -10,15 +10,15 @@ catalog:
   '@arethetypeswrong/core': ^0.18.5
   '@types/node': ^26.6.6
   happy-dom: ^21.0.4
-  oxfmt: ^0.78.0
-  oxlint: ^1.91.0
+  oxfmt: ^0.79.0
+  oxlint: ^1.94.0
   publint: ^0.3.25
   syncpack: ^15.3.3
   tsdown: ^0.23.1
-  turbo: ^2.11.11
+  turbo: ^2.11.12
   typescript: ^7.0.2
-  ultracite: ^8.2.1
-  vitest: ^5.0.5
+  ultracite: ^8.3.0
+  vitest: ^5.1.1
 catalogs:
   react19:
     '@types/react': ^19.3.0
