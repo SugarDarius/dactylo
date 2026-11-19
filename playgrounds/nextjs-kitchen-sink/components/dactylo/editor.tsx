@@ -18,6 +18,7 @@ import {
   useBulletLists,
   useCanEdit,
   useCheckboxLists,
+  useCommandTrigger,
   useDividers,
   useEditableListener,
   useEditorConfig,
@@ -65,7 +66,7 @@ import {
   Undo2,
   UserRoundPlus,
 } from 'lucide-react'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { Avatar, AvatarBadge, AvatarFallback } from '~/components/ui/avatar'
@@ -964,6 +965,324 @@ export function MentionSuggestions() {
   )
 }
 
+const COMMAND_GROUPS = ['Basic Blocks', 'Lists', 'Advanced'] as const
+
+type CommandItem = {
+  disabled?: boolean
+  extra?: string
+  group: (typeof COMMAND_GROUPS)[number]
+  icon: typeof Pilcrow
+  id: string
+  label: string
+  run?: () => void
+  search: string
+}
+
+export function CommandTriggerSuggestions() {
+  const { commandTrigger } = useEditorConfig()
+  const { anchor, bufferedText, confirm, dismiss, isBuffering } =
+    useCommandTrigger()
+  const { insert: insertParagraph } = useParagraphs()
+  const { insert: insertHeading } = useHeadings()
+  const { insert: insertDivider } = useDividers()
+  const { insert: insertBulletListItem } = useBulletLists()
+  const { insert: insertNumberedListItem } = useNumberedLists()
+  const { insert: insertCheckboxListItem } = useCheckboxLists()
+  const { insert: insertQuote } = useQuotes()
+
+  const commands: CommandItem[] = [
+    {
+      group: 'Basic Blocks',
+      icon: Pilcrow,
+      id: 'paragraph',
+      label: 'Paragraph',
+      run: () => insertParagraph(),
+      search: 'paragraph',
+    },
+    {
+      group: 'Basic Blocks',
+      icon: Quote,
+      id: 'quote',
+      label: 'Quote',
+      run: () => insertQuote(),
+      search: 'quote',
+    },
+    {
+      group: 'Basic Blocks',
+      icon: Heading1,
+      id: 'heading-1',
+      label: 'Heading 1',
+      run: () => insertHeading(1),
+      search: 'heading 1',
+    },
+    {
+      group: 'Basic Blocks',
+      icon: Heading2,
+      id: 'heading-2',
+      label: 'Heading 2',
+      run: () => insertHeading(2),
+      search: 'heading 2',
+    },
+    {
+      group: 'Basic Blocks',
+      icon: Heading3,
+      id: 'heading-3',
+      label: 'Heading 3',
+      run: () => insertHeading(3),
+      search: 'heading 3',
+    },
+    {
+      group: 'Basic Blocks',
+      icon: Heading4,
+      id: 'heading-4',
+      label: 'Heading 4',
+      run: () => insertHeading(4),
+      search: 'heading 4',
+    },
+    {
+      group: 'Basic Blocks',
+      icon: Heading5,
+      id: 'heading-5',
+      label: 'Heading 5',
+      run: () => insertHeading(5),
+      search: 'heading 5',
+    },
+    {
+      group: 'Basic Blocks',
+      icon: Heading6,
+      id: 'heading-6',
+      label: 'Heading 6',
+      run: () => insertHeading(6),
+      search: 'heading 6',
+    },
+    {
+      group: 'Basic Blocks',
+      icon: Minus,
+      id: 'divider',
+      label: 'Divider',
+      run: () => insertDivider(),
+      search: 'divider',
+    },
+    {
+      group: 'Lists',
+      icon: List,
+      id: 'bullet-list',
+      label: 'Bulleted List',
+      run: () => insertBulletListItem(),
+      search: 'bulleted list',
+    },
+    {
+      group: 'Lists',
+      icon: ListOrdered,
+      id: 'numbered-list',
+      label: 'Numbered List',
+      run: () => insertNumberedListItem(),
+      search: 'numbered list',
+    },
+    {
+      extra: '(alpha)',
+      group: 'Lists',
+      icon: ListOrdered,
+      id: 'numbered-list-alpha',
+      label: 'Numbered List',
+      run: () => insertNumberedListItem({ variant: 'alpha' }),
+      search: 'numbered list alpha',
+    },
+    {
+      extra: '(roman)',
+      group: 'Lists',
+      icon: ListOrdered,
+      id: 'numbered-list-roman',
+      label: 'Numbered List',
+      run: () => insertNumberedListItem({ variant: 'roman' }),
+      search: 'numbered list roman',
+    },
+    {
+      group: 'Lists',
+      icon: SquareCheck,
+      id: 'checkbox-list',
+      label: 'Checkbox List',
+      run: () => insertCheckboxListItem(),
+      search: 'checkbox list',
+    },
+    {
+      disabled: true,
+      group: 'Advanced',
+      icon: Code,
+      id: 'code',
+      label: 'Code',
+      search: 'code',
+    },
+  ]
+
+  const query = (bufferedText ?? '').trim().toLowerCase()
+  const suggestions =
+    query === ''
+      ? commands
+      : commands.filter((command) => command.search.includes(query))
+  const enabledSuggestions = suggestions.filter((command) => !command.disabled)
+
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [highlightedQuery, setHighlightedQuery] = useState(query)
+
+  if (highlightedQuery !== query) {
+    setHighlightedQuery(query)
+    setActiveIndex(0)
+  }
+
+  const open = isBuffering && anchor !== null
+  const activeCommand = enabledSuggestions[activeIndex]
+
+  const applyCommand = (command: CommandItem) => {
+    if (command.disabled || !command.run) {
+      return
+    }
+    if (!confirm()) {
+      return
+    }
+    command.run()
+  }
+
+  useHotkeys(
+    'enter',
+    (event) => {
+      event.preventDefault()
+      if (!activeCommand) {
+        return
+      }
+      applyCommand(activeCommand)
+    },
+    {
+      enableOnContentEditable: true,
+      enabled: isBuffering,
+      preventDefault: true,
+    },
+    [activeCommand, confirm],
+  )
+
+  useHotkeys(
+    'down',
+    (event) => {
+      event.preventDefault()
+      if (enabledSuggestions.length === 0) {
+        return
+      }
+      setActiveIndex((index) => (index + 1) % enabledSuggestions.length)
+    },
+    {
+      enableOnContentEditable: true,
+      enabled: isBuffering,
+      preventDefault: true,
+    },
+    [enabledSuggestions],
+  )
+
+  useHotkeys(
+    'up',
+    (event) => {
+      event.preventDefault()
+      if (enabledSuggestions.length === 0) {
+        return
+      }
+      setActiveIndex(
+        (index) =>
+          (index - 1 + enabledSuggestions.length) % enabledSuggestions.length,
+      )
+    },
+    {
+      enableOnContentEditable: true,
+      enabled: isBuffering,
+      preventDefault: true,
+    },
+    [enabledSuggestions],
+  )
+
+  return (
+    <DropdownMenu
+      modal={false}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && isBuffering) {
+          dismiss()
+        }
+      }}
+      open={open}
+    >
+      <DropdownMenuContent
+        align='start'
+        anchor={anchor}
+        className='w-48'
+        finalFocus={false}
+        initialFocus={false}
+        side='bottom'
+        sideOffset={6}
+      >
+        <DropdownMenuGroup>
+          <DropdownMenuItem disabled>
+            <span className='text-muted-foreground text-sm font-medium'>
+              {commandTrigger.character}
+              {bufferedText}&hellip;
+            </span>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        {suggestions.length === 0 ? (
+          <DropdownMenuItem disabled>No commands found</DropdownMenuItem>
+        ) : (
+          COMMAND_GROUPS.map((group, groupIndex) => {
+            const items = suggestions.filter(
+              (command) => command.group === group,
+            )
+            if (items.length === 0) {
+              return null
+            }
+
+            const hasPreviousGroup = COMMAND_GROUPS.slice(0, groupIndex).some(
+              (previousGroup) =>
+                suggestions.some((command) => command.group === previousGroup),
+            )
+
+            return (
+              <Fragment key={group}>
+                {hasPreviousGroup ? <DropdownMenuSeparator /> : null}
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>{group}</DropdownMenuLabel>
+                  {items.map((command) => {
+                    const Icon = command.icon
+                    const selected = command.id === activeCommand?.id
+
+                    return (
+                      <DropdownMenuItem
+                        className={cn(selected && 'bg-muted')}
+                        disabled={command.disabled}
+                        key={command.id}
+                        onClick={() => applyCommand(command)}
+                        onMouseDown={(event) => {
+                          event.preventDefault()
+                        }}
+                      >
+                        <Icon className='size-3.5' />
+                        {command.label}
+                        {command.extra ? (
+                          <>
+                            {' '}
+                            <span className='text-muted-foreground text-xs'>
+                              {command.extra}
+                            </span>
+                          </>
+                        ) : null}
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuGroup>
+              </Fragment>
+            )
+          })
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -977,6 +1296,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         className='dark:shadow-accent relative flex w-full flex-col gap-2 rounded-md shadow-xs'
         paragraph={{ initialMetadata: { fontSize: '16px' } }}
         mentions={{ enabled: true }}
+        commandTrigger={{ enabled: true }}
       >
         <Toolbar />
         <EditableListener />
@@ -1001,6 +1321,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
           )}
         >
           <MentionSuggestions />
+          <CommandTriggerSuggestions />
         </Composer.Editable>
       </Composer.Root>
     </div>

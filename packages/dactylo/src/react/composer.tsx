@@ -1122,6 +1122,105 @@ export function useMention() {
   } as const
 }
 
+/**
+ * Returns whether a command trigger is currently being buffered.
+ *
+ * @example
+ * ```tsx
+ * const isBuffering = useIsCommandTriggerBuffering()
+ * console.log(isBuffering)
+ * ```
+ */
+export function useIsCommandTriggerBuffering() {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.commandTrigger.tools.isBuffering(),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns the buffered text for the command trigger currently being buffered.
+ *
+ * @example
+ * ```tsx
+ * const bufferedText = useCommandTriggerBufferedText()
+ * console.log(bufferedText)
+ * ```
+ */
+export function useCommandTriggerBufferedText() {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.commandTrigger.tools.getBufferedText(),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns the pointer for the command trigger currently being buffered.
+ *
+ * @example
+ * ```tsx
+ * const pointer = useCommandTriggerPointer()
+ * console.log(pointer)
+ * ```
+ */
+export function useCommandTriggerPointer() {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.commandTrigger.tools.getPointer(),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns whether a command trigger is currently being buffered.
+ *
+ * @example
+ * ```tsx
+ * const { isBuffering, bufferedText, confirm, dismiss, anchor } =
+ *   useCommandTrigger()
+ * console.log(isBuffering, bufferedText)
+ *
+ * confirm()
+ * dismiss()
+ * ```
+ */
+export function useCommandTrigger() {
+  const { editor } = useComposer()
+  const anchor = useInlineCommandTriggerQueryAnchorElement()
+
+  const isBuffering = useIsCommandTriggerBuffering()
+  const bufferedText = useCommandTriggerBufferedText()
+
+  const confirm = useStableCallback(
+    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.commandTrigger.commands.confirm(source),
+  )
+
+  const dismiss = useStableCallback(
+    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.commandTrigger.commands.dismiss(source),
+  )
+
+  return {
+    anchor,
+    bufferedText,
+    confirm,
+    dismiss,
+    isBuffering,
+  } as const
+}
+
 // --- History ------─────────────────────────────────────────-------
 
 /**

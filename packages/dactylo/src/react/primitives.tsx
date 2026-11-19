@@ -25,6 +25,7 @@ import {
   CHECKBOX_LIST_ITEM_CHECKED_DATA_NAME,
   CHECKBOX_LIST_ITEM_MARKER_ATTR_NAME,
   CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME,
+  COMMAND_TRIGGER_QUERY_DATA_NAME,
   DIVIDER_BLOCK_ATTR_NAME,
   DIVIDER_SEPARATOR_ATTR_NAME,
   EDITABLE_ATTR_NAME,
@@ -62,6 +63,8 @@ import {
   useBlockOrderById,
   useBlockSelectionCoverageTopology,
   useCheckboxLists,
+  useCommandTriggerBufferedText,
+  useCommandTriggerPointer,
   useComposer,
   useComposerEditable,
   useEditable,
@@ -230,14 +233,20 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
 const ComposerInlineQueryNode = memo<
   React.PropsWithChildren<ComposerInlineQueryNodeProps>
 >(({ nodeId, text, children }) => {
-  const { mentions } = useEditorConfig()
-  const { imqaes } = useComposer()
+  const { commandTrigger, mentions } = useEditorConfig()
+  const { ictqaes, imqaes } = useComposer()
 
   const mentionPointer = useMentionPointer()
   const mentionBufferedText = useMentionBufferedText()
 
+  const commandTriggerPointer = useCommandTriggerPointer()
+  const commandTriggerBufferedText = useCommandTriggerBufferedText()
+
   const isMentionBufferActive =
     mentionPointer !== null && mentionBufferedText !== null
+
+  const isCommandTriggerBufferActive =
+    commandTriggerPointer !== null && commandTriggerBufferedText !== null
 
   if (isMentionBufferActive && nodeId === mentionPointer.nodeId) {
     const from = mentionPointer.triggerOffset
@@ -261,7 +270,28 @@ const ComposerInlineQueryNode = memo<
     )
   }
 
-  // @todo: handle command trigger buffer
+  if (isCommandTriggerBufferActive && nodeId === commandTriggerPointer.nodeId) {
+    const from = commandTriggerPointer.triggerOffset
+    const to =
+      from + commandTrigger.character.length + commandTriggerBufferedText.length
+
+    return (
+      <>
+        {from > 0 ? paintTextForDOM(text.slice(0, from)) : null}
+        <span
+          ref={ictqaes.setElement}
+          {...{
+            [COMMAND_TRIGGER_QUERY_DATA_NAME]: commandTriggerBufferedText,
+            [INLINE_QUERY_NODE_ATTR_NAME]: '',
+          }}
+          aria-roledescription='inline-query-node'
+        >
+          {paintTextForDOM(text.slice(from, to))}
+        </span>
+        {to < text.length ? paintTextForDOM(text.slice(to)) : null}
+      </>
+    )
+  }
 
   return children
 })
