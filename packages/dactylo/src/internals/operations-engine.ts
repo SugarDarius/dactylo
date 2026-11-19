@@ -246,11 +246,11 @@ export class OperationsEngine {
   /**
    * Builds operations to insert a mention node after a mention buffer is confirmed.
    * Returns a tuple containing the operations and the created mention node.
-   * Returns `null` if the mention buffer is not confirmed.
+   * Returns `null` when we cannot create the mention.
    */
   buildInsertMentionAfterBufferConfirmOps(
     context: EditorContext,
-    /** Spec for inserting a mention after confirming a {@link MentionBuffer}. */
+    /** Spec for inserting a mention after confirming buffer. */
     spec: {
       /** Entity related to the mention. */
       entity: { id: string; data: MNED }
@@ -372,6 +372,82 @@ export class OperationsEngine {
     )
 
     return [{ label: 'insert-after-buffer-confirm', ops }, mention]
+  }
+
+  /**
+   * Builds operations to delete a command trigger buffer opener character and query span.
+   * Returns `null` when the opener and query no longer match the document.
+   */
+  buildDeleteCommandTriggerInlineBufferSpanOps(
+    context: EditorContext,
+    /** Spec for deleting opener and query span after confirming buffer.  */
+    spec: {
+      /** Block ID where the command trigger buffer was opened. */
+      blockId: BlockId
+      /** Node ID where the command trigger buffer was opened. */
+      nodeId: NodeId
+      /** Trigger offset where the command trigger buffer was opened. */
+      triggerOffset: number
+      /** Buffered query text after the opener. */
+      bufferedText: string
+      /** Character that opened the command trigger buffer. */
+      character: string
+    },
+  ): BuilderOpsIntent | null {
+    if (!isCursorSelection(context.selection)) {
+      return null
+    }
+
+    const { state } = context
+    const { blockId, nodeId, triggerOffset, character, bufferedText } = spec
+
+    const block = getBlockWithInlineContent(state, blockId)
+    const found = findNodeInBlockWithInlineContent(block, nodeId)
+
+    if (!found || !isTextNode(found.node)) {
+      return null
+    }
+
+    const { node } = found
+
+    const opener = node.text.slice(
+      triggerOffset,
+      triggerOffset + character.length,
+    )
+
+    if (opener !== character) {
+      return null
+    }
+
+    const qLen = character.length + bufferedText.length
+    const query = node.text.slice(triggerOffset, triggerOffset + qLen)
+
+    if (query !== character + bufferedText) {
+      return null
+    }
+
+    let ops: Operation[] = [
+      {
+        __type: 'delete_text',
+        blockId: block.id,
+        length: qLen,
+        nodeId: node.id,
+        offset: triggerOffset,
+        snapshot: { text: query },
+      },
+    ]
+
+    ops = withTrailingSelectionOp(
+      ops,
+      createCursor({
+        blockId: block.id,
+        nodeId: node.id,
+        offset: triggerOffset,
+      }),
+      context.selection,
+    )
+
+    return { label: 'delete-command-trigger-inline-buffer-span', ops }
   }
 
   /** Builds operations to insert a text (char or emoji). */

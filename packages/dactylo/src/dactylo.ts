@@ -297,6 +297,11 @@ export type DactyloTool =
   | 'mentions/get-pointer'
   | 'mentions/extract'
 
+  /** Command trigger tools. */
+  | 'command-trigger/is-buffering'
+  | 'command-trigger/get-buffered-text'
+  | 'command-trigger/get-pointer'
+
 /** Discriminated union of commands that can be executed by the user/ai-agent. */
 export type DactyloCommand =
   /** History commands. */
@@ -347,6 +352,10 @@ export type DactyloCommand =
   /** Mentions commands. */
   | 'mentions/confirm-buffer'
   | 'mentions/dismiss-buffer'
+
+  /** Command trigger commands. */
+  | 'command-trigger/confirm'
+  | 'command-trigger/dismiss'
 
 /** Event emitted when a command is executed. */
 export interface DactyloCommandEvent {
@@ -1383,6 +1392,83 @@ export interface DactyloMentionsCommands {
 export type DactyloMentionsApi = DactyloAspectApi<
   DactyloMentionsTools,
   DactyloMentionsCommands
+>
+
+/** Tools to query command trigger in the editor. */
+export interface DactyloCommandTriggerTools {
+  /**
+   * Whether a command trigger is currently being buffered.
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * const isBuffering = editor.commandTrigger.tools.isBuffering()
+   * ```
+   */
+  readonly isBuffering: () => boolean
+
+  /**
+   * Returns the text that's being typed into the current command trigger buffer.
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * const bufferedText = editor.commandTrigger.tools.getBufferedText()
+   * ```
+   */
+  readonly getBufferedText: () => string | null
+
+  /**
+   * Returns the current pointer related to the command trigger buffer.
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * const pointer = editor.commandTrigger.tools.getPointer()
+   * ```
+   */
+  readonly getPointer: () => InlineBufferPointer | null
+}
+
+/** Commands to mutate command trigger in the editor. */
+export interface DactyloCommandTriggerCommands {
+  /**
+   * Confirms the current command trigger buffer. Does not mutate the document.
+   * Returns a boolean indicating whether the confirm command was successful.
+   *
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * editor.commandTrigger.commands.confirm()
+   * editor.commandTrigger.commands.confirm('ai-agent')
+   * ```
+   */
+  readonly confirm: (
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => boolean
+
+  /**
+   * Dismisses the current command trigger buffer by cancelling the inline buffer
+   * Returns a boolean indicating whether the dismiss command was successful.
+   *
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * editor.commandTrigger.commands.dismiss()
+   * editor.commandTrigger.commands.dismiss('ai-agent')
+   * ```
+   */
+  readonly dismiss: (
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => boolean
+}
+
+/** Api to interact with the command trigger {@link InlineBuffer} of the editor. */
+export type DactyloCommandTriggerApi = DactyloAspectApi<
+  DactyloCommandTriggerTools,
+  DactyloCommandTriggerCommands
 >
 
 /** Base options for constructing a {@link Dactylo} instance. */
@@ -2907,7 +2993,7 @@ export class Dactylo {
             'mentions/dismiss-buffer',
             () => this.#pipeline.dismissBufferedInlineMention(source),
             negate,
-            { payload: { source } },
+            { clientOnly: true, payload: { source } },
           ),
       },
       tools: {
@@ -2962,6 +3048,88 @@ export class Dactylo {
           this.#safeExecuteTool(
             'mentions/is-buffering',
             () => this.#pipeline.mentionInlineBuffer.isBuffering,
+            negate,
+            { clientOnly: true },
+          ),
+      },
+    }
+  }
+
+  /** Returns the api to interact with the command trigger {@link InlineBuffer} of the editor. */
+  get commandTrigger(): DactyloCommandTriggerApi {
+    return {
+      commands: {
+        /**
+         * Confirms the current command trigger buffer. Does not mutate the document.
+         * Returns a boolean indicating whether the confirm command was successful.
+         *
+         * Client only.
+         */
+        confirm: (
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'command-trigger/confirm',
+            () => this.#pipeline.confirmBufferedInlineCommandTrigger(source),
+            negate,
+            { clientOnly: true, payload: { source } },
+          ),
+
+        /**
+         * Dismisses the current command trigger buffer by cancelling the inline buffer
+         * Returns a boolean indicating whether the dismiss command was successful.
+         *
+         * Client only.
+         *
+         * @example
+         * ```ts
+         * editor.commandTrigger.commands.dismiss()
+         * editor.commandTrigger.commands.dismiss('ai-agent')
+         * ```
+         */
+        dismiss: (
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'command-trigger/dismiss',
+            () => this.#pipeline.dismissBufferedInlineCommandTrigger(source),
+            negate,
+            { clientOnly: true, payload: { source } },
+          ),
+      },
+      tools: {
+        /**
+         * Returns the text that's being typed into the current command trigger buffer.
+         * Client only.
+         */
+        getBufferedText: () =>
+          this.#safeExecuteTool(
+            'command-trigger/get-buffered-text',
+            () => this.#pipeline.commandTriggerInlineBuffer.bufferedText,
+            nullish,
+            { clientOnly: true },
+          ),
+
+        /**
+         * Returns the current pointer related to the command trigger buffer.
+         * Client only.
+         */
+        getPointer: () =>
+          this.#safeExecuteTool(
+            'command-trigger/get-pointer',
+            () => this.#pipeline.commandTriggerInlineBuffer.pointer,
+            nullish,
+            { clientOnly: true },
+          ),
+
+        /**
+         * Whether a command trigger is currently being buffered.
+         * Client only.
+         */
+        isBuffering: () =>
+          this.#safeExecuteTool(
+            'command-trigger/is-buffering',
+            () => this.#pipeline.commandTriggerInlineBuffer.isBuffering,
             negate,
             { clientOnly: true },
           ),

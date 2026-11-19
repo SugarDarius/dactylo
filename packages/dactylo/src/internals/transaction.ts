@@ -984,12 +984,13 @@ export class TransactionPipeline {
 
   /**
    * Confirms a mention buffer by inserting a mention node into the document.
+   *
    * Enforces core constraints invariants:
    *  - A mention is currently being buffered.
    *  - The mention buffer is confirmed by a user action.
    *  - When the mention buffer is confirmed, the mention is inserted into the document and the buffer is released
    *    and we notify that the mention buffer is confirmed.
-   *  - Otherwise, the buffer is aborted and wwe notify that the mention buffer is aborted,
+   *  - Otherwise, the buffer is aborted and we notify that the mention buffer is aborted,
    *  - The created mention is pushed to the {@link HistoryStack}.
    *
    *  Returns a boolean indicating whether the mention buffer was confirmed or not.
@@ -1034,7 +1035,7 @@ export class TransactionPipeline {
       )
 
     if (tuple === null) {
-      /** When no intent we need to abort the buffer to clear up the state and notify the UI. */
+      /** When no tuple with intent we need to abort the buffer to clear up the state and notify the UI. */
       this.#mentionBuffer.abort()
       return false
     }
@@ -1059,6 +1060,74 @@ export class TransactionPipeline {
       entity: mention.entity,
       metadata: mention.metadata,
       nodeId: mention.id,
+    })
+
+    return true
+  }
+
+  /**
+   * Confirms a command trigger buffer by removing the opener character and the quey text
+   * from the current {@link TextNode}.
+   *
+   * Enforces core constraints invariants:
+   *  - A command trigger is currently being buffered.
+   *  - The command trigger buffer is confirmed by a user action.
+   *  - When the command trigger buffer is confirmed, the opened character and the query text are removed
+   *    from the current {@link TextNode} and the buffer is released and we notify that the command trigger
+   *    buffer is confirmed.
+   *  - Otherwise, the buffer is aborted and we notify that the command trigger buffer is aborted,
+   *  - The deletion is pushed to the {@link HistoryStack}.
+   *
+   * Returns a boolean indicating whether the command trigger buffer was confirmed or not.
+   */
+  confirmBufferedInlineCommandTrigger(
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): boolean {
+    if (!this.#commandTriggerBuffer.isBuffering) {
+      warn(
+        `Cannot confirm command trigger as there is no command trigger buffer active.`,
+      )
+      return false
+    }
+
+    const [pointer, bufferedText] = this.#commandTriggerBuffer.get()
+    /**
+     * Should not happen as we check if the buffer is being buffered before calling this method.
+     * But we return `null` for UI libraries to let render what they need based on this state
+     * and not break the UI with an error.
+     */
+    if (pointer === null || bufferedText === null) {
+      /** When no pointer or buffered text, we need to abort the buffer to clear up the state and notify the UI. */
+      this.#commandTriggerBuffer.abort()
+      return false
+    }
+
+    const intent =
+      this.#operationsEngine.buildDeleteCommandTriggerInlineBufferSpanOps(
+        this.#context,
+        {
+          ...pointer,
+          bufferedText,
+          character: this.#commandTrigger.character,
+        },
+      )
+
+    if (intent === null) {
+      /** When no intent we need to abort the buffer to clear up the state and notify the UI. */
+      this.#commandTriggerBuffer.abort()
+      return false
+    }
+
+    /** When the command trigger is confirmed, we release the buffer to clear up the state and notify the UI. */
+    this.#commandTriggerBuffer.release()
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('command-trigger', 'confirm', label),
+      pushToHistory: true,
+      source,
+      /** When the command trigger is confirmed, we don't need to sync the inline buffers as the buffer is released. */
+      syncInlineBuffers: false,
     })
 
     return true

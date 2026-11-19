@@ -1712,6 +1712,111 @@ describe('Dactylo command trigger', () => {
     expect(editor.getContext().selection).not.toBeNull()
     expect(requireCursor(editor.getContext()).offset).toBe(4)
   })
+
+  test('confirm deletes the query and releases the buffer', () => {
+    const editor = makeCommandTriggerEditor()
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+
+    expect(editor.commandTrigger.commands.confirm()).toBe(true)
+
+    expect(editor.commandTrigger.tools.isBuffering()).toBe(false)
+    expect(editor.commandTrigger.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(requireCursor(editor.getContext()).offset).toBe(0)
+  })
+
+  test('confirm deletes only the opener and query after a prefix', () => {
+    const editor = makeCommandTriggerEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'hello ')
+    typeCommandQuery(editor, 'foo')
+
+    expect(editor.commandTrigger.commands.confirm()).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual(['hello '])
+    expect(requireCursor(editor.getContext()).offset).toBe(6)
+  })
+
+  test('confirm deletes a bare opener', () => {
+    const editor = makeCommandTriggerEditor()
+    editor.selection.commands.focus()
+    typeCommandQuery(editor)
+
+    expect(editor.commandTrigger.commands.confirm()).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(editor.commandTrigger.tools.isBuffering()).toBe(false)
+    expect(requireCursor(editor.getContext()).offset).toBe(0)
+  })
+
+  test('confirm and dismiss return false when no buffer is active', () => {
+    const editor = makeCommandTriggerEditor()
+    editor.selection.commands.focus()
+
+    expect(editor.commandTrigger.commands.confirm()).toBe(false)
+    expect(editor.commandTrigger.commands.dismiss()).toBe(false)
+    expect(blockTexts(editor.getContext())).toEqual([''])
+  })
+
+  test('undo after confirm restores the query without restarting the buffer', () => {
+    const editor = makeCommandTriggerEditor()
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+    editor.commandTrigger.commands.confirm()
+
+    editor.history.commands.undo()
+
+    expect(blockTexts(editor.getContext())).toEqual(['/foo'])
+    expect(editor.commandTrigger.tools.isBuffering()).toBe(false)
+  })
+
+  test('events.commandTriggerBuffer fires released after confirm', () => {
+    const editor = makeCommandTriggerEditor()
+    const events: string[] = []
+    editor.events.commandTriggerBuffer.subscribe((event) => {
+      events.push(`${event.state}:${event.bufferedText ?? ''}`)
+    })
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+    editor.commandTrigger.commands.confirm()
+
+    expect(events).toEqual(['started:', 'buffering:foo', 'released:'])
+  })
+
+  test('confirm records the transaction source', () => {
+    const editor = makeCommandTriggerEditor()
+    const applied: Transaction[] = []
+    editor.events.transactionDidApply.subscribe((transaction) => {
+      applied.push(transaction)
+    })
+
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+    editor.commandTrigger.commands.confirm('ai-agent')
+
+    expect(applied.at(-1)?.policy).toEqual(
+      expect.objectContaining({
+        source: 'ai-agent',
+      }),
+    )
+  })
+
+  test('confirm is a no-op while read-only', () => {
+    const editor = makeCommandTriggerEditor()
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+    editor.setEditable(false)
+
+    expect(editor.commandTrigger.tools.isBuffering()).toBe(false)
+    expect(editor.commandTrigger.tools.getBufferedText()).toBeNull()
+    expect(editor.commandTrigger.commands.confirm()).toBe(false)
+    expect(blockTexts(editor.getContext())).toEqual(['/foo'])
+
+    editor.setEditable(true)
+    expect(editor.commandTrigger.tools.isBuffering()).toBe(true)
+    expect(editor.commandTrigger.tools.getBufferedText()).toBe('foo')
+  })
 })
 
 describe('Dactylo markdown and autolink', () => {
