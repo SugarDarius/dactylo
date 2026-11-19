@@ -26,6 +26,7 @@ import {
   useMark,
   useMarks,
   useMention,
+  useMentionDidCreatedListener,
   useNumberedLists,
   useParagraphs,
   useQuotes,
@@ -171,6 +172,28 @@ export function getInitials(fullName: string): string {
   return `${first[0]}${last[0]}`.toUpperCase()
 }
 
+export function EditableListener() {
+  useEditableListener(({ editable }) => {
+    toast.add({
+      title: `Editor is now ${editable ? 'editable' : 'read-only'}.`,
+      type: 'info',
+    })
+  })
+
+  return null
+}
+
+export function MentionDidCreatedListener() {
+  useMentionDidCreatedListener(({ entity }) => {
+    toast.add({
+      title: `Mention created: ${entity.data.fullName}.`,
+      type: 'info',
+    })
+  })
+
+  return null
+}
+
 export function MarkToggleButton({
   mark,
   tooltipContent,
@@ -247,13 +270,6 @@ export function Toolbar() {
   const { insert: insertQuote } = useQuotes()
 
   const { toggle } = useMarks()
-
-  useEditableListener(({ editable }) => {
-    toast.add({
-      title: `Editor is now ${editable ? 'editable' : 'read-only'}.`,
-      type: 'info',
-    })
-  })
 
   useHotkeys(
     'mod+b',
@@ -962,6 +978,8 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         mentions={{ enabled: true }}
       >
         <Toolbar />
+        <EditableListener />
+        <MentionDidCreatedListener />
         <Composer.Editable
           autoFocus
           components={{
