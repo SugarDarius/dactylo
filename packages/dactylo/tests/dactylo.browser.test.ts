@@ -1193,6 +1193,53 @@ describe('Dactylo mentions', () => {
     expect(
       firstInlineBlock(editor.getContext()).content.some(isMentionNode),
     ).toBe(false)
+
+    const block = firstInlineBlock(editor.getContext())
+    const [node] = block.content
+    if (!node || !isTextNode(node)) {
+      throw new Error('Expected a text node')
+    }
+    expect(requireCursor(editor.getContext())).toMatchObject({
+      blockId: block.id,
+      nodeId: node.id,
+      offset: 5,
+    })
+  })
+
+  test('dismiss pins the caret at the query end after a prefix', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'hello ')
+    typeMentionQuery(editor, 'john')
+
+    expect(editor.mentions.commands.dismiss()).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual(['hello @john'])
+    expect(requireCursor(editor.getContext()).offset).toBe(11)
+  })
+
+  test('dismiss pins the caret after an empty query opener', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor)
+
+    expect(editor.mentions.commands.dismiss()).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual(['@'])
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+    expect(requireCursor(editor.getContext()).offset).toBe(1)
+  })
+
+  test('undo after dismiss restores the last typing step without restarting the buffer', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+    editor.mentions.commands.dismiss()
+
+    editor.history.commands.undo()
+
+    expect(blockTexts(editor.getContext())).toEqual(['@'])
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
   })
 
   test('undo after confirm restores the query without restarting the buffer', () => {
@@ -1313,6 +1360,8 @@ describe('Dactylo mentions', () => {
 
     expect(blockTexts(editor.getContext())).toEqual(['@john'])
     expect(editor.mentions.tools.isBuffering()).toBe(false)
+    expect(editor.getContext().selection).not.toBeNull()
+    expect(requireCursor(editor.getContext()).offset).toBe(5)
   })
 
   test('Mod+A while buffering aborts the buffer', () => {
@@ -1547,6 +1596,23 @@ describe('Dactylo command trigger', () => {
 
     expect(blockTexts(editor.getContext())).toEqual(['/fo'])
     expect(events.at(-1)).toEqual({ bufferedText: 'fo', state: 'buffering' })
+  })
+
+  test('Escape while buffering aborts and pins the caret at the query end', () => {
+    const editor = makeCommandTriggerEditor()
+    const states: string[] = []
+    editor.events.commandTriggerBuffer.subscribe((event) => {
+      states.push(event.state)
+    })
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+
+    expect(pressShortcut(editor, 'Escape')).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual(['/foo'])
+    expect(states.at(-1)).toBe('aborted')
+    expect(editor.getContext().selection).not.toBeNull()
+    expect(requireCursor(editor.getContext()).offset).toBe(4)
   })
 })
 

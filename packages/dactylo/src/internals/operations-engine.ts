@@ -530,6 +530,70 @@ export class OperationsEngine {
     return { label: 'clear', ops }
   }
 
+  /**
+   * Builds operations to put the caret at the end of an inline-buffer span.
+   * Returns `null` when the opener and query no longer match the document.
+   */
+  buildPutCursorAfterInlineBufferOps(
+    context: EditorContext,
+    spec: {
+      /** Block ID where the inline buffer was opened. */
+      blockId: BlockId
+      /** Node ID where the inline buffer was opened. */
+      nodeId: NodeId
+      /** Offset inside the {@link TextNode} where the opener is located. */
+      triggerOffset: number
+      /** Buffered query text after the opener. */
+      bufferedText: string
+      /** Character that opened the inline buffer. */
+      character: string
+    },
+  ): BuilderOpsIntent | null {
+    const { state } = context
+    const { blockId, nodeId, triggerOffset, bufferedText, character } = spec
+
+    const block = state.blocks.get(blockId)
+    if (!block || !isBlockWithInlineContent(block)) {
+      return null
+    }
+
+    const found = findNodeInBlockWithInlineContent(block, nodeId)
+    if (!found || !isTextNode(found.node)) {
+      return null
+    }
+
+    const { node } = found
+    const opener = node.text.slice(
+      triggerOffset,
+      triggerOffset + character.length,
+    )
+
+    if (opener !== character) {
+      return null
+    }
+
+    const qLen = character.length + bufferedText.length
+    const query = node.text.slice(triggerOffset, triggerOffset + qLen)
+
+    if (query !== character + bufferedText) {
+      return null
+    }
+
+    const ops: Operation[] = [
+      {
+        __type: 'set_selection',
+        next: createCursor({
+          blockId: block.id,
+          nodeId: node.id,
+          offset: triggerOffset + qLen,
+        }),
+        prev: context.selection,
+      },
+    ]
+
+    return { label: 'put-cursor-after-inline-buffer', ops }
+  }
+
   // --- Blocks operations ─────────────────────────────────────────---
 
   /**

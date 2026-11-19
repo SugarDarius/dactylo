@@ -1065,6 +1065,88 @@ export class TransactionPipeline {
   }
 
   /**
+   * Dismisses an inline buffer by aborting it and pinning the caret at the
+   * end of the opener + query span. Does not mutate the document.
+   */
+  #dismissInlineBuffer<K extends string>(
+    buffer: InlineBuffer<K>,
+    character: string,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    kind: K,
+  ): boolean {
+    if (!buffer.isBuffering) {
+      warn(`Cannot dismiss ${kind} inline buffer as there is no buffer active.`)
+      return false
+    }
+
+    const [pointer, bufferedText] = buffer.get()
+    if (pointer === null || bufferedText === null) {
+      buffer.abort()
+      return false
+    }
+
+    const intent = this.#operationsEngine.buildPutCursorAfterInlineBufferOps(
+      this.#context,
+      {
+        ...pointer,
+        bufferedText,
+        character,
+      },
+    )
+
+    if (intent === null) {
+      buffer.abort()
+      return false
+    }
+
+    buffer.abort()
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('inline-buffer', 'dismiss', kind, label),
+      pushToHistory: false,
+      source,
+      syncInlineBuffers: false,
+    })
+
+    return true
+  }
+
+  /**
+   * Dismisses a mention buffer by aborting it and pinning the caret at the
+   * end of the query. Leaves the opener and query as ordinary text.
+   *
+   * Returns a boolean indicating whether the mention buffer was dismissed.
+   */
+  dismissBufferedInlineMention(
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): boolean {
+    return this.#dismissInlineBuffer(
+      this.#mentionBuffer,
+      this.#mentions.character,
+      source,
+      'mention',
+    )
+  }
+
+  /**
+   * Dismisses a command trigger buffer by aborting it and pinning the caret at the
+   * end of the query. Leaves the opener and query as ordinary text.
+   *
+   * Returns a boolean indicating whether the command trigger buffer was dismissed.
+   */
+  dismissBufferedInlineCommandTrigger(
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): boolean {
+    return this.#dismissInlineBuffer(
+      this.#commandTriggerBuffer,
+      this.#commandTrigger.character,
+      source,
+      'command-trigger',
+    )
+  }
+
+  /**
    * Digests and translates an input event into operations.
    * Enforces core constraints invariants:
    * - `Enter` → new block
@@ -1524,6 +1606,14 @@ export class TransactionPipeline {
         }
         case 'escape': {
           prevent()
+          if (this.#mentionBuffer.isBuffering) {
+            return this.dismissBufferedInlineMention('user')
+          }
+
+          if (this.#commandTriggerBuffer.isBuffering) {
+            return this.dismissBufferedInlineCommandTrigger('user')
+          }
+
           const intent = this.#operationsEngine.buildClearSelectionOps(
             this.#context,
           )

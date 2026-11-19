@@ -2863,7 +2863,7 @@ export class Dactylo {
         ) =>
           this.#safeExecuteCommand(
             'mentions/dismiss-buffer',
-            () => this.#pipeline.mentionInlineBuffer.abort(),
+            () => this.#pipeline.dismissBufferedInlineMention(source),
             negate,
             { payload: { source } },
           ),
