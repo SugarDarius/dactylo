@@ -54,7 +54,7 @@ import {
 } from './numbered-list-marker'
 import type { Operation, UpdateBlockOp } from './operations'
 import type { RangeSelection, Selection, TextCursor } from './selection'
-import type { Metadata, Relax } from './types'
+import type { Relax } from './types'
 import { assertNever } from './utils'
 
 // --- Interfaces -───────────────────────────────────---------------
@@ -188,13 +188,13 @@ export type InsertBlockSpec = Relax<
       readonly type: 'paragraph'
 
       /** Metadata to attach to the {@link ParagraphBlock}. */
-      readonly metadata?: Metadata
+      readonly metadata?: PBM
     }
   | {
       readonly type: 'quote'
 
       /** Metadata to attach to the {@link QuoteBlock}. */
-      readonly metadata?: Metadata
+      readonly metadata?: QBM
     }
   | {
       readonly type: 'heading'
@@ -203,13 +203,13 @@ export type InsertBlockSpec = Relax<
       readonly level: HeadingBlock['level']
 
       /** Metadata to attach to the {@link HeadingBlock}. */
-      readonly metadata?: Metadata
+      readonly metadata?: HBM
     }
   | {
       readonly type: 'bullet_list_item'
 
       /** Metadata to attach to the {@link BulletListItemBlock}. */
-      readonly metadata?: Metadata
+      readonly metadata?: BBM
     }
   | {
       readonly type: 'numbered_list_item'
@@ -218,7 +218,7 @@ export type InsertBlockSpec = Relax<
       readonly variant?: NumberedListItemBlock['variant']
 
       /** Metadata to attach to the {@link NumberedListItemBlock}. */
-      readonly metadata?: Metadata
+      readonly metadata?: NBM
     }
   | {
       readonly type: 'checkbox_list_item'
@@ -227,13 +227,13 @@ export type InsertBlockSpec = Relax<
       readonly checked?: boolean
 
       /** Metadata to attach to the {@link CheckboxListItemBlock}. */
-      readonly metadata?: Metadata
+      readonly metadata?: CBM
     }
   | {
       readonly type: 'divider'
 
       /** Metadata to attach to the {@link DividerBlock}. */
-      readonly metadata?: Metadata
+      readonly metadata?: DBM
     }
 >
 
