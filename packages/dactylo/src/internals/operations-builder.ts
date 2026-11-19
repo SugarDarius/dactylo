@@ -238,21 +238,24 @@ export type InsertBlockSpec = Relax<
 >
 
 /** Describes which block to patch. */
-export type PatchBlockSpec = {
-  /** Replaces the block metadata record when provided. */
-  readonly metadata?: Metadata
-} & Relax<
+export type PatchBlockSpec = Relax<
   | {
       readonly type: 'paragraph'
 
       /** {@link ParagraphBlock}'s  content.  */
       readonly content?: InlineNode[]
+
+      /** {@link ParagraphBlock}'s metadata. */
+      readonly metadata?: PBM
     }
   | {
       readonly type: 'quote'
 
       /** {@link QuoteBlock}'s content. */
       readonly content?: InlineNode[]
+
+      /** {@link QuoteBlock}'s metadata. */
+      readonly metadata?: QBM
     }
   | {
       readonly type: 'heading'
@@ -262,12 +265,18 @@ export type PatchBlockSpec = {
 
       /** {@link HeadingBlock}'s content. */
       readonly content?: InlineNode[]
+
+      /** {@link HeadingBlock}'s metadata. */
+      readonly metadata?: HBM
     }
   | {
       readonly type: 'bullet_list_item'
 
       /** {@link BulletListItemBlock}'s content. */
       readonly content?: InlineNode[]
+
+      /** {@link BulletListItemBlock}'s metadata. */
+      readonly metadata?: BBM
     }
   | {
       readonly type: 'numbered_list_item'
@@ -277,6 +286,9 @@ export type PatchBlockSpec = {
 
       /** {@link NumberedListItemBlock}'s content. */
       readonly content?: InlineNode[]
+
+      /** {@link NumberedListItemBlock}'s metadata. */
+      readonly metadata?: NBM
     }
   | {
       readonly type: 'checkbox_list_item'
@@ -286,9 +298,15 @@ export type PatchBlockSpec = {
 
       /** {@link CheckboxListItemBlock}'s content. */
       readonly content?: InlineNode[]
+
+      /** {@link CheckboxListItemBlock}'s metadata. */
+      readonly metadata?: CBM
     }
   | {
       readonly type: 'divider'
+
+      /** {@link DividerBlock}'s metadata. */
+      readonly metadata?: DBM
     }
 >
 
