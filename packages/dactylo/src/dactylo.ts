@@ -1792,8 +1792,11 @@ export class Dactylo {
     executor: () => T,
     fallback: () => T,
     opts?: {
-      payload?: Record<string, unknown>
+      /** Whether the command should be executed only on the client side. */
       clientOnly?: true
+
+      /** Payload used to execute the command.  */
+      payload?: Record<string, unknown>
     },
   ): T {
     const startedAt = Date.now()
@@ -1867,7 +1870,13 @@ export class Dactylo {
     tool: DactyloTool,
     executor: () => T,
     fallback: () => T,
-    opts?: { payload?: Record<string, unknown>; clientOnly?: true },
+    opts?: {
+      /** Whether the tool should be executed only on the client side. */
+      clientOnly?: true
+
+      /** Payload used to execute the tool. */
+      payload?: Record<string, unknown>
+    },
   ): T {
     const startedAt = Date.now()
 
