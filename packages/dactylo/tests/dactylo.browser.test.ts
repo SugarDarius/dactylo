@@ -1,11 +1,13 @@
 // @vitest-environment happy-dom
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 
 import type {
   DactyloCommandEvent,
+  DactyloErrorEvent,
   DactyloOptions,
   DactyloToolEvent,
 } from '../src/dactylo'
+import type { BlockId } from '../src/internals/blocks'
 import {
   isBulletListItemBlock,
   isCheckboxListItemBlock,
@@ -31,6 +33,7 @@ import {
   DEFAULT_PARAGRAPH_PLACEHOLDER,
   DEFAULT_QUOTE_PLACEHOLDER,
 } from '../src/internals/constants'
+import { DactyloError } from '../src/internals/errors'
 import type { HistoryEvent } from '../src/internals/history'
 import { isMarkEnabled } from '../src/internals/marks'
 import {
@@ -130,6 +133,18 @@ function makeCommandTriggerEditor(options: DactyloOptions = {}) {
     ...options,
     commandTrigger: { enabled: true, ...options.commandTrigger },
   })
+}
+
+function withUnavailableDOM(run: () => void): void {
+  Object.defineProperty(document, 'createElement', {
+    configurable: true,
+    value: undefined,
+  })
+  try {
+    run()
+  } finally {
+    Reflect.deleteProperty(document, 'createElement')
+  }
 }
 
 describe('Dactylo construction', () => {
@@ -2184,5 +2199,244 @@ describe('Dactylo subscribe and events', () => {
 
     expect(applied.length).toBeGreaterThan(afterFocus)
     expect(applied.at(-1)?.ops.length).toBeGreaterThan(0)
+  })
+})
+
+describe('Dactylo safe-execute opts', () => {
+  test('forwards command payload on success, read-only fallback, and error', () => {
+    const editor = makeTypingEditor()
+    const commands: DactyloCommandEvent[] = []
+    const errors: DactyloErrorEvent[] = []
+    editor.events.commands.subscribe((event) => {
+      commands.push(event)
+    })
+    editor.events.errors.subscribe((event) => {
+      errors.push(event)
+    })
+
+    editor.marks.commands.toggle('bold', 'ai-agent')
+    expect(commands.at(-1)).toEqual(
+      expect.objectContaining({
+        command: 'marks/toggle',
+        payload: { mark: 'bold', source: 'ai-agent' },
+        status: 'success',
+      }),
+    )
+
+    editor.setEditable(false)
+    editor.marks.commands.toggle('italic')
+    expect(commands.at(-1)).toEqual(
+      expect.objectContaining({
+        command: 'marks/toggle',
+        payload: { mark: 'italic', source: 'user' },
+        status: 'success',
+      }),
+    )
+
+    editor.setEditable(true)
+    const missingId = 'bl_missing' as BlockId
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+      /* silence expected DactyloError log */
+    })
+    try {
+      expect(() =>
+        editor.blocks.commands.patchParagraph(missingId, {}),
+      ).toThrow(DactyloError)
+    } finally {
+      errorSpy.mockRestore()
+    }
+
+    expect(commands.at(-1)).toEqual(
+      expect.objectContaining({
+        command: 'blocks/patch-paragraph',
+        payload: { blockId: missingId, source: 'user' },
+        status: 'error',
+      }),
+    )
+    expect(errors).toEqual([
+      expect.objectContaining({
+        command: 'blocks/patch-paragraph',
+        payload: { blockId: missingId, source: 'user' },
+      }),
+    ])
+    expect(commands.at(-1)?.error).toBe(errors[0]?.error)
+  })
+
+  test('forwards tool payload on success and read-only fallback', () => {
+    const editor = makeTypingEditor()
+    const tools: DactyloToolEvent[] = []
+    editor.events.tools.subscribe((event) => {
+      tools.push(event)
+    })
+
+    expect(editor.marks.tools.isActive('bold')).toBe(false)
+    expect(tools.at(-1)).toEqual(
+      expect.objectContaining({
+        payload: { mark: 'bold' },
+        result: false,
+        status: 'success',
+        tool: 'marks/is-active',
+      }),
+    )
+
+    editor.setEditable(false)
+    expect(editor.marks.tools.isActive('italic')).toBe(false)
+    expect(tools.at(-1)).toEqual(
+      expect.objectContaining({
+        payload: { mark: 'italic' },
+        result: false,
+        status: 'success',
+        tool: 'marks/is-active',
+      }),
+    )
+  })
+
+  test('omits payload from events when the call has none', () => {
+    const editor = makeTypingEditor()
+    const commands: DactyloCommandEvent[] = []
+    const tools: DactyloToolEvent[] = []
+    editor.events.commands.subscribe((event) => {
+      commands.push(event)
+    })
+    editor.events.tools.subscribe((event) => {
+      tools.push(event)
+    })
+
+    editor.selection.commands.focus()
+    expect(editor.history.tools.canUndo()).toBe(false)
+
+    expect(commands).toEqual([
+      expect.objectContaining({
+        command: 'selection/focus',
+        payload: undefined,
+        status: 'success',
+      }),
+    ])
+    expect(tools).toEqual([
+      expect.objectContaining({
+        payload: undefined,
+        result: false,
+        status: 'success',
+        tool: 'history/can-undo',
+      }),
+    ])
+  })
+
+  test('client-only command falls back without DOM and still forwards payload', () => {
+    const editor = makeTypingEditor()
+    const commands: DactyloCommandEvent[] = []
+    editor.events.commands.subscribe((event) => {
+      commands.push(event)
+    })
+    editor.selection.commands.focus()
+
+    withUnavailableDOM(() => {
+      expect(sendInput(editor, 'insertText', 'x')).toBe(false)
+    })
+
+    expect(commands.at(-1)).toEqual(
+      expect.objectContaining({
+        command: 'composer/send-input',
+        payload: expect.objectContaining({ event: expect.anything() }),
+        result: false,
+        status: 'success',
+      }),
+    )
+    expect(blockTexts(editor.getContext())).toEqual([''])
+  })
+
+  test('client-only tool falls back without DOM', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+    expect(editor.mentions.tools.isBuffering()).toBe(true)
+    expect(editor.mentions.tools.getBufferedText()).toBe('john')
+
+    const tools: DactyloToolEvent[] = []
+    editor.events.tools.subscribe((event) => {
+      tools.push(event)
+    })
+
+    withUnavailableDOM(() => {
+      expect(editor.mentions.tools.isBuffering()).toBe(false)
+      expect(editor.mentions.tools.getBufferedText()).toBeNull()
+    })
+
+    expect(tools).toEqual([
+      expect.objectContaining({
+        result: false,
+        status: 'success',
+        tool: 'mentions/is-buffering',
+      }),
+      expect.objectContaining({
+        result: null,
+        status: 'success',
+        tool: 'mentions/get-buffered-text',
+      }),
+    ])
+  })
+
+  test('client-only command still runs when DOM is available', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    expect(sendInput(editor, 'insertText', 'Hello')).toBe(true)
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+  })
+
+  test('`alwaysExecute` tools still run while read-only', () => {
+    const empty = makeTypingEditor()
+    const emptyId = firstInlineBlock(empty.getContext()).id
+    empty.setEditable(false)
+    expect(empty.blocks.tools.isWithEmptyInlineContent(emptyId)).toBe(true)
+    expect(empty.history.tools.canUndo()).toBe(false)
+
+    const filled = makeTypingEditor()
+    filled.selection.commands.focus()
+    typeText(filled, 'Hello')
+    const filledId = firstInlineBlock(filled.getContext()).id
+    filled.setEditable(false)
+    expect(filled.blocks.tools.isWithEmptyInlineContent(filledId)).toBe(false)
+  })
+
+  test('tool errors omit payload when none was given', () => {
+    const editor = makeTypingEditor()
+    const missingId = 'bl_missing' as BlockId
+
+    const tools: DactyloToolEvent[] = []
+    const errors: DactyloErrorEvent[] = []
+    editor.events.tools.subscribe((event) => {
+      tools.push(event)
+    })
+    editor.events.errors.subscribe((event) => {
+      errors.push(event)
+    })
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+      /* silence expected DactyloError log */
+    })
+    try {
+      expect(() =>
+        editor.blocks.tools.isWithEmptyInlineContent(missingId),
+      ).toThrow(DactyloError)
+    } finally {
+      errorSpy.mockRestore()
+    }
+
+    expect(tools.at(-1)).toEqual(
+      expect.objectContaining({
+        payload: undefined,
+        status: 'error',
+        tool: 'blocks/is-with-empty-inline-content',
+      }),
+    )
+    expect(errors).toEqual([
+      expect.objectContaining({
+        payload: undefined,
+        tool: 'blocks/is-with-empty-inline-content',
+      }),
+    ])
+    expect(tools.at(-1)?.error).toBe(errors[0]?.error)
   })
 })

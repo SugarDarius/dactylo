@@ -1871,6 +1871,9 @@ export class Dactylo {
     executor: () => T,
     fallback: () => T,
     opts?: {
+      /** Whether the tool should be executed even if the editor is not editable. */
+      alwaysExecute?: true
+
       /** Whether the tool should be executed only on the client side. */
       clientOnly?: true
 
@@ -1881,7 +1884,7 @@ export class Dactylo {
     const startedAt = Date.now()
 
     let $executor = executor
-    if (!this.#editable) {
+    if (!this.#editable && !opts?.alwaysExecute) {
       warnOnceIf(
         this.#debug,
         `Tool \`${tool}\` cannot be executed as editor is not editable. To make it editable please call the method \`.setEditable(true)\`. Fallback executor is used instead.`,
@@ -2809,6 +2812,7 @@ export class Dactylo {
                 blockId,
               ),
             negate,
+            { alwaysExecute: true },
           ),
       },
     }
