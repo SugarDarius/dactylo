@@ -14,8 +14,8 @@ import type { MentionNode } from '../../src/internals/nodes'
 function mention(): MentionNode {
   return {
     __type: 'mention',
-    artefact: { key: 'user', type: 'user' },
     createdAt: new Date(),
+    entity: { data: { email: 'john.doe@example.com' }, id: 'user' },
     id: generateNodeId(),
     metadata: {},
     updatedAt: null,
