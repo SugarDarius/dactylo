@@ -17,6 +17,7 @@ export interface TextHtmlData {
   readonly content: string
 }
 
+/** Data type for Dactylo data from the clipboard. */
 export interface DactyloData {
   readonly __type: 'dactylo'
 
