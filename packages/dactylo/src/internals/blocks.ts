@@ -178,9 +178,7 @@ export function createParagraphBlock(opts: {
 }
 
 /** Whether the block is a {@link ParagraphBlock}. */
-export function isParagraphBlock<B extends Block>(
-  block: B,
-): block is Extract<B, { readonly __type: 'paragraph' }> {
+export function isParagraphBlock(block: Block): block is ParagraphBlock {
   return block.__type === 'paragraph'
 }
 
@@ -222,9 +220,7 @@ export function createQuoteBlock(opts: {
 }
 
 /** Whether the block is a {@link QuoteBlock}. */
-export function isQuoteBlock<B extends Block>(
-  block: B,
-): block is Extract<B, { readonly __type: 'quote' }> {
+export function isQuoteBlock(block: Block): block is QuoteBlock {
   return block.__type === 'quote'
 }
 
@@ -250,9 +246,7 @@ export function createHeadingBlock(opts: {
 }
 
 /** Whether the block is a {@link HeadingBlock}. */
-export function isHeadingBlock<B extends Block>(
-  block: B,
-): block is Extract<B, { readonly __type: 'heading' }> {
+export function isHeadingBlock(block: Block): block is HeadingBlock {
   return block.__type === 'heading'
 }
 
@@ -276,9 +270,9 @@ export function createBulletListItemBlock(opts: {
 }
 
 /** Whether the block is a {@link BulletListItemBlock}. */
-export function isBulletListItemBlock<B extends Block>(
-  block: B,
-): block is Extract<B, { readonly __type: 'bullet_list_item' }> {
+export function isBulletListItemBlock(
+  block: Block,
+): block is BulletListItemBlock {
   return block.__type === 'bullet_list_item'
 }
 
@@ -311,9 +305,9 @@ export function createNumberedListItemBlock(opts: {
 }
 
 /** Whether the blocks is a {@link NumberedListItemBlock}. */
-export function isNumberedListItemBlock<B extends Block>(
-  block: B,
-): block is Extract<B, { readonly __type: 'numbered_list_item' }> {
+export function isNumberedListItemBlock(
+  block: Block,
+): block is NumberedListItemBlock {
   return block.__type === 'numbered_list_item'
 }
 
@@ -339,9 +333,9 @@ export function createCheckboxListItemBlock(opts: {
 }
 
 /** Whether the block is a {@link CheckboxListItemBlock}. */
-export function isCheckboxListItemBlock<B extends Block>(
-  block: B,
-): block is Extract<B, { readonly __type: 'checkbox_list_item' }> {
+export function isCheckboxListItemBlock(
+  block: Block,
+): block is CheckboxListItemBlock {
   return block.__type === 'checkbox_list_item'
 }
 
@@ -363,16 +357,14 @@ export function createDividerBlock(opts: {
 }
 
 /** Whether the block is a {@link DividerBlock}. */
-export function isDividerBlock<B extends Block>(
-  block: B,
-): block is Extract<B, { readonly __type: 'divider' }> {
+export function isDividerBlock(block: Block): block is DividerBlock {
   return block.__type === 'divider'
 }
 
 /** Whether the block is allowed to have inline content. */
-export function isBlockWithInlineContent<B extends Block>(
-  block: B,
-): block is Extract<B, BlockWithInlineContent> {
+export function isBlockWithInlineContent(
+  block: Block,
+): block is BlockWithInlineContent {
   return (
     isHeadingBlock(block) ||
     isParagraphBlock(block) ||
