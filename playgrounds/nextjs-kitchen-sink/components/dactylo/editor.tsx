@@ -158,6 +158,11 @@ const USERS = [
     id: 'steven@liveblocks.io',
     role: 'CEO',
   },
+  {
+    fullName: 'Nico',
+    id: 'nico@sfeir.com',
+    role: 'Developer Advocate',
+  },
 ] as const
 
 export function getInitials(fullName: string): string {
@@ -714,6 +719,7 @@ export function CheckboxListItemBlock(
         'data-[dactylo-checkbox-list-item-checked=true]:**:[[dactylo-checkbox-list-item-marker-input]]:bg-current',
         'data-[dactylo-checkbox-list-item-checked=true]:**:[[dactylo-block-content]]:text-muted-foreground',
         'data-[dactylo-checkbox-list-item-checked=true]:**:[[dactylo-block-content]]:line-through',
+        'data-[dactylo-checkbox-list-item-checked=true]:**:[[dactylo-mention-node]]:line-through',
         '**:[[dactylo-block-content]]:min-w-0',
         '**:[[dactylo-block-content]]:flex-1',
         editableBlockContentClassName,
