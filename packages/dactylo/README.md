@@ -183,9 +183,9 @@ export function Editor() {
 
 | Feature                                          | Status             | Description                                                                             |
 | ------------------------------------------------ | ------------------ | --------------------------------------------------------------------------------------- |
-| Transaction pipeline (validate · apply · invert) | 🚧 **In Progress** | Single path for keyboard, commands, and agents                                          |
-| Operations Runtime, Builder, and Engine          | 🚧 **In Progress** | Builds operations for each blocks/inline nodes                                          |
-| Blocks and inline nodes split & merge            | 🚧 **In Progress** | Built-in merge / and or split logic                                                     |
+| Transaction pipeline (validate · apply · invert) | ✅ **Done**        | Single path for keyboard, commands, and agents                                          |
+| Operations Runtime, Builder, and Engine          | ✅ **Done**        | Builds operations for each blocks/inline nodes                                          |
+| Blocks and inline nodes split & merge            | ✅ **Done**        | Built-in merge / and or split logic                                                     |
 | History (undo / redo, typing coalescing)         | ✅ **Done**        | Build-in history                                                                        |
 | Native keys for composing                        | 🚧 **In Progress** | Handling native composing keys like `Enter`, `shift+enter`, `backspace`, `ArrowLeft`, … |
 | Context subscriptions                            | ✅ **Done**        | Subscribe and listen to context changes natively                                        |
@@ -199,8 +199,8 @@ export function Editor() {
 | Clipboard (paste / cut / copy)                   | 🚧 **In Progress** | Clipboard events management                                                             |
 | Browser native shortcuts                         | 🚧 **In Progress** | Shortcuts management like `mod+z`, `mod+a`                                              |
 | Fractional index for blocks ordering             | ✅ **Done**        | Fast blocks ordering using a factional index                                            |
-| Block / inline node metadata                     | 🚧 **In Progress** | Defines metadata on blocks and inline nodes for rendering and / or external operations  |
-| Placeholders                                     | 🚧 **In Progress** | config for blocks' placeholders                                                         |
+| Block / inline node metadata                     | ✅ **Done**        | Defines metadata on blocks and inline nodes for rendering and / or external operations  |
+| Placeholders                                     | ✅ **Done**        | config for blocks' placeholders                                                         |
 | Read-only mode                                   | ✅ **Done**        | Editor cannot be edited                                                                 |
 | Locales                                          | 🚧 **In Progress** | Set the locales in the current language                                                 |
 | Spellcheck config                                | 📆 **Planned**     | Enable or disable spellcheck                                                            |
@@ -225,7 +225,7 @@ export function Editor() {
 | Checkbox list item   | ✅ **Done**        | Checkbox list item with block inline content                                                                    |
 | Toggle list item     | 📆 **Planned**     | Toggle list item block with inline content                                                                      |
 | Code                 | 🚧 **In Progress** | Safe code block rendering code with inline content                                                              |
-| File                 | 🚧 **In Progress** | File block with no inline content for rendering files                                                           |
+| File                 | 📆 **Planned**     | File block with no inline content for rendering files                                                           |
 | Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
 | Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
 | Callout              | 📆 **Planned**     | Callout parent block with icon + sub blocks                                                                     |
@@ -236,14 +236,14 @@ export function Editor() {
 
 ### Inline Nodes (🚧 **In Progress**)
 
-| Feature       | Status             | Notes                                                                                         |
-| ------------- | ------------------ | --------------------------------------------------------------------------------------------- |
-| TextNode      | ✅ **Done**        | Inline text with marks                                                                        |
-| LineBreakNode | ✅ **Done**        | Soft break using `shift+enter` keys                                                           |
-| LinkNode      | ✅ **Done**        | Inline links with marks                                                                       |
-| MentionNode   | 🚧 **In Progress** | Inline mention containing artefact data                                                       |
-| HashtagNode   | 📆 **Planned**     | Inline hashtag containing artefact data                                                       |
-| Isolation     | 📆 **Planned**     | Apply node isolation for specific use case like UI rendering (comments, background colors, …) |
+| Feature       | Status         | Notes                                                                                         |
+| ------------- | -------------- | --------------------------------------------------------------------------------------------- |
+| TextNode      | ✅ **Done**    | Inline text with marks                                                                        |
+| LineBreakNode | ✅ **Done**    | Soft break using `shift+enter` keys                                                           |
+| LinkNode      | ✅ **Done**    | Inline links with marks                                                                       |
+| MentionNode   | ✅ **Done**    | Inline mention containing artefact data                                                       |
+| HashtagNode   | 📆 **Planned** | Inline hashtag containing artefact data                                                       |
+| Isolation     | 📆 **Planned** | Apply node isolation for specific use case like UI rendering (comments, background colors, …) |
 
 ### API (🚧 **In Progress**)
 
