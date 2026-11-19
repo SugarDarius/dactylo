@@ -63,6 +63,7 @@ import {
   TextAlignStart,
   Underline,
   Undo2,
+  UserRoundPlus,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -85,7 +86,6 @@ import {
   HoverCardTrigger,
 } from '~/components/ui/hover-card'
 import { Kbd } from '~/components/ui/kbd'
-import { Popover, PopoverContent, PopoverTitle } from '~/components/ui/popover'
 import { Separator } from '~/components/ui/separator'
 import { ThemeSwitcher } from '~/components/ui/theme-switcher'
 import { toast } from '~/components/ui/toast'
@@ -902,7 +902,7 @@ export function MentionSuggestions() {
   )
 
   return (
-    <Popover
+    <DropdownMenu
       modal={false}
       onOpenChange={(nextOpen) => {
         if (!nextOpen && isBuffering) {
@@ -911,43 +911,38 @@ export function MentionSuggestions() {
       }}
       open={open}
     >
-      <PopoverContent
+      <DropdownMenuContent
         align='start'
         anchor={anchor}
-        className='w-72 gap-0 p-1'
+        className='w-72'
         finalFocus={false}
         initialFocus={false}
         side='bottom'
         sideOffset={6}
       >
-        <PopoverTitle className='sr-only'>Mention suggestions</PopoverTitle>
-        <p className='text-muted-foreground px-2 py-1 text-xs font-medium'>
-          Coworkers
-        </p>
-        {suggestions.length === 0 ? (
-          <p className='text-muted-foreground px-2 py-1.5 text-sm'>
-            No coworkers found
-          </p>
-        ) : (
-          <div className='flex flex-col' role='listbox'>
-            {suggestions.map((person, index) => {
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Coworkers</DropdownMenuLabel>
+          <DropdownMenuItem disabled>
+            <UserRoundPlus className='size-4' />
+            <span className='text-muted-foreground text-sm font-medium'>
+              {bufferedText}&hellip;
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {suggestions.length === 0 ? (
+            <DropdownMenuItem disabled>No coworkers found</DropdownMenuItem>
+          ) : (
+            suggestions.map((person, index) => {
               const selected = index === activeIndex
 
               return (
-                <button
-                  aria-selected={selected}
-                  className={cn(
-                    'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-hidden',
-                    'hover:bg-muted data-[selected=true]:bg-muted',
-                  )}
-                  data-selected={selected}
+                <DropdownMenuItem
+                  className={cn('gap-2', selected && 'bg-muted')}
                   key={person.id}
                   onClick={() => confirmPerson(person)}
                   onMouseDown={(event) => {
                     event.preventDefault()
                   }}
-                  role='option'
-                  type='button'
                 >
                   <Avatar size='sm'>
                     <AvatarFallback className='bg-violet-100 text-violet-800'>
@@ -959,13 +954,13 @@ export function MentionSuggestions() {
                   <span className='text-muted-foreground text-xs'>
                     {person.role}
                   </span>
-                </button>
+                </DropdownMenuItem>
               )
-            })}
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
+            })
+          )}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
