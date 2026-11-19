@@ -37,6 +37,11 @@ export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
+/** Ensures a number is non-negative. */
+export function nonNegativeNumber(value: number): number {
+  return Math.max(0, value)
+}
+
 /** Checks whether DOM is available. */
 export function canUseDOM(): boolean {
   return (
@@ -68,4 +73,14 @@ export function isPlainObject(blob: unknown): blob is Record<string, unknown> {
     typeof blob === 'object' &&
     Object.prototype.toString.call(blob) === '[object Object]'
   )
+}
+
+/** Omits the given keys from an object. */
+export function omit<T extends object, K extends keyof T>(
+  obj: T,
+  keys: K[],
+): Omit<T, K> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([key]) => !keys.includes(key as K)),
+  ) as Omit<T, K>
 }
