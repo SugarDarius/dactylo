@@ -18,10 +18,12 @@ function inputEvent(
   inputType: string,
   data?: string,
   dataTransfer: DataTransfer | null = null,
+  defaultPrevented = false,
 ): InputEvent {
   return {
     data: data ?? null,
     dataTransfer,
+    defaultPrevented,
     inputType,
     preventDefault: () => {
       /* InputEvent stub */
@@ -38,9 +40,10 @@ export function sendInput(
   inputType: string,
   data?: string,
   dataTransfer: DataTransfer | null = null,
+  defaultPrevented = false,
 ): boolean {
   return editor.composer.commands.sendInput(
-    inputEvent(inputType, data, dataTransfer),
+    inputEvent(inputType, data, dataTransfer, defaultPrevented),
   )
 }
 
@@ -115,12 +118,14 @@ export function pressShortcut(
     ctrl?: boolean
     meta?: boolean
     shift?: boolean
+    defaultPrevented?: boolean
   } = {},
 ): boolean {
   return editor.composer.commands.sendKeydown({
     altKey: false,
     code,
     ctrlKey: mods.ctrl ?? false,
+    defaultPrevented: mods.defaultPrevented ?? false,
     key: code === 'Escape' ? 'Escape' : code,
     metaKey: mods.meta ?? false,
     preventDefault: () => {

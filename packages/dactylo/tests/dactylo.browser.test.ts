@@ -373,6 +373,18 @@ describe('Dactylo selection', () => {
     expect(editor.selection.tools.isFocused()).toBe(false)
     expect(blockTexts(editor.getContext())).toEqual(['Hello'])
   })
+
+  test('already-prevented Escape does not clear the selection', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    const handled = pressShortcut(editor, 'Escape', { defaultPrevented: true })
+
+    expect(handled).toBe(false)
+    expect(requireCursor(editor.getContext()).offset).toBe(5)
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+  })
 })
 
 describe('Dactylo composer', () => {
@@ -393,6 +405,16 @@ describe('Dactylo composer', () => {
     const before = snapshot(editor.getContext())
 
     expect(sendInput(editor, 'insertText', '')).toBe(false)
+    expect(snapshot(editor.getContext())).toEqual(before)
+  })
+
+  test('already-prevented insertText is a no-op', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    const before = snapshot(editor.getContext())
+
+    expect(sendInput(editor, 'insertText', 'x', null, true)).toBe(false)
     expect(snapshot(editor.getContext())).toEqual(before)
   })
 
@@ -1361,6 +1383,19 @@ describe('Dactylo mentions', () => {
     expect(blockTexts(editor.getContext())).toEqual(['@john'])
     expect(editor.mentions.tools.isBuffering()).toBe(false)
     expect(editor.getContext().selection).not.toBeNull()
+    expect(requireCursor(editor.getContext()).offset).toBe(5)
+  })
+
+  test('already-prevented Escape after dismiss does not clear the caret', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+    editor.mentions.commands.dismiss()
+
+    const handled = pressShortcut(editor, 'Escape', { defaultPrevented: true })
+
+    expect(handled).toBe(false)
+    expect(blockTexts(editor.getContext())).toEqual(['@john'])
     expect(requireCursor(editor.getContext()).offset).toBe(5)
   })
 

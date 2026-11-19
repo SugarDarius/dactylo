@@ -1193,6 +1193,14 @@ export class TransactionPipeline {
    * Returns a boolean indicating whether the event was handled or not.
    */
   digestInputEvent(event: InputEvent): boolean {
+    /**
+     * When the event is already prevented, do not process it
+     * as it's a no-op at transaction level.
+     */
+    if (event.defaultPrevented) {
+      return false
+    }
+
     const { inputType } = event
 
     const prevent = () => {
@@ -1563,6 +1571,14 @@ export class TransactionPipeline {
    * Returns a boolean indicating whether the event was handled or not.
    */
   digestKeydownEvent(event: KeyboardEvent): boolean {
+    /**
+     * When the event is already prevented, do not process it
+     * as it's a no-op at transaction level.
+     */
+    if (event.defaultPrevented) {
+      return false
+    }
+
     const prevent = () => {
       event.preventDefault()
       event.stopPropagation()
@@ -1606,6 +1622,7 @@ export class TransactionPipeline {
         }
         case 'escape': {
           prevent()
+
           if (this.#mentionBuffer.isBuffering) {
             return this.dismissBufferedInlineMention('user')
           }
@@ -1617,6 +1634,7 @@ export class TransactionPipeline {
           const intent = this.#operationsEngine.buildClearSelectionOps(
             this.#context,
           )
+
           if (intent === null) {
             return false
           }
