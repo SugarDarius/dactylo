@@ -89,7 +89,7 @@ export interface MentionNode extends INode<MNM> {
     readonly id: string
 
     /**
-     * Developer-provided additional data to store with the mention's entity.
+     * Developer-provided additional JSON structured data to store with the mention's entity.
      * Defaults to `{}`.
      */
     readonly data: MNED

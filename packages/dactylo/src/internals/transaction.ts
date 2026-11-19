@@ -340,7 +340,7 @@ export interface MentionDidCreatedEvent {
     /** Id referencing the mention's entity in the code. */
     readonly id: string
 
-    /** Developer-provided additional data stored with the mention's entity. */
+    /** Developer-provided additional JSON structured data stored with the mention's entity. */
     readonly data: MNED
   }
 
