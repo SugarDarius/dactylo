@@ -37,6 +37,7 @@ import { DactyloError } from '../src/internals/errors'
 import type { HistoryEvent } from '../src/internals/history'
 import { isMarkEnabled } from '../src/internals/marks'
 import {
+  generateNodeId,
   isInlineNodeWithEditableText,
   isLineBreakNode,
   isLinkNode,
@@ -1206,6 +1207,53 @@ describe('Dactylo mentions', () => {
       throw new Error('Expected a mention node')
     }
     expect(mention.metadata).toEqual({ bgColor: 'magenta' })
+  })
+
+  test('extract returns the confirmed mention and works while read-only', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+    expect(editor.mentions.commands.confirm({ entity })).toBe(true)
+
+    const node = firstInlineBlock(editor.getContext()).content.find(
+      isMentionNode,
+    )
+    if (!node) {
+      throw new Error('Expected a mention node')
+    }
+
+    const extracted = editor.mentions.tools.extract(node.id)
+    expect(extracted?.id).toBe(node.id)
+    expect(extracted?.entity).toEqual(entity)
+    expect(extracted?.neighbors).toEqual({ next: [], prev: [] })
+
+    editor.setEditable(false)
+    expect(editor.mentions.tools.extract(node.id)?.id).toBe(node.id)
+    expect(editor.mentions.tools.extract(generateNodeId())).toBeNull()
+  })
+
+  test('extract includes neighboring blocks when requested', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+    expect(editor.mentions.commands.confirm({ entity })).toBe(true)
+
+    const node = firstInlineBlock(editor.getContext()).content.find(
+      isMentionNode,
+    )
+    if (!node) {
+      throw new Error('Expected a mention node')
+    }
+
+    hardBreak(editor)
+    typeText(editor, 'after')
+
+    const extracted = editor.mentions.tools.extract(node.id, { neighbors: 1 })
+    const afterBlock = nthInlineBlock(editor.getContext(), 1)
+
+    expect(extracted?.neighbors.prev).toEqual([])
+    expect(extracted?.neighbors.next).toHaveLength(1)
+    expect(extracted?.neighbors.next[0]?.id).toBe(afterBlock.id)
   })
 
   test('confirm and dismiss return false when no buffer is active', () => {

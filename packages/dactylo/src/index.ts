@@ -64,6 +64,10 @@ export type { HistoryEvent, HistoryStackOptions } from './internals/history'
 export type { InlineBufferPointer } from './internals/inline-buffer'
 export type { MarkKey, Marks } from './internals/marks'
 export type {
+  ExtractMentionQuery,
+  MentionWithContext,
+} from './internals/mention'
+export type {
   InlineNode,
   LinkNode,
   MentionNode,

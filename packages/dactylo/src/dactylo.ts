@@ -52,6 +52,11 @@ import { EventSource } from './internals/event-source'
 import type { HistoryEvent, HistoryStackOptions } from './internals/history'
 import type { InlineBufferPointer } from './internals/inline-buffer'
 import type { MarkKey } from './internals/marks'
+import { extractMention } from './internals/mention'
+import type {
+  ExtractMentionQuery,
+  MentionWithContext,
+} from './internals/mention'
 import type { InlineNode, NodeId } from './internals/nodes'
 import type { InsertOrMoveBlockPosition } from './internals/operations-builder'
 import {
@@ -290,6 +295,7 @@ export type DactyloTool =
   | 'mentions/is-buffering'
   | 'mentions/get-buffered-text'
   | 'mentions/get-pointer'
+  | 'mentions/extract'
 
 /** Discriminated union of commands that can be executed by the user/ai-agent. */
 export type DactyloCommand =
@@ -1305,6 +1311,29 @@ export interface DactyloMentionsTools {
    * ```
    */
   readonly getPointer: () => InlineBufferPointer | null
+
+  /**
+   * Extracts a mention by it's node id from the {@link DocumentState}.
+   *
+   * Returns a {@link MentionWithContext} if found with the context around it.
+   * Otherwise returns `null` if the mention is not found.
+   *
+   * 👉🏻 Use this tool if you want to get the mention's content and the context
+   * around it to display in an email notification.
+   *
+   * Always executable: you can extract a mention no matter if the editor is editable or not.
+   *
+   * @example
+   * ```ts
+   * const mention = editor.mentions.tools.extract(nodeId)
+   * const mention = editor.mentions.tools.extract(nodeId, { neighbors: 1 })
+   * const mention = editor.mentions.tools.extract(nodeId, { neighbors: { prev: 1, next: 2 } })
+   * ```
+   */
+  readonly extract: (
+    nodeId: NodeId,
+    query?: ExtractMentionQuery,
+  ) => MentionWithContext | null
 }
 
 /** Commands to mutate {@link DocumentState} mentions of the editor. */
@@ -2882,6 +2911,25 @@ export class Dactylo {
           ),
       },
       tools: {
+        /**
+         * Extracts a mention by it's node id from the {@link DocumentState}.
+         *
+         * Returns a {@link MentionWithContext} if found with the context around it.
+         * Otherwise returns `null` if the mention is not found.
+         *
+         * Always executable: you can extract a mention no matter if the editor is editable or not.
+         *
+         * 👉🏻 Use this tool if you want to get the mention's content and the context
+         * around it to display in an email notification.
+         */
+        extract: (nodeId: NodeId, query: ExtractMentionQuery = {}) =>
+          this.#safeExecuteTool(
+            'mentions/extract',
+            () => extractMention(this.#pipeline.context.state, nodeId, query),
+            nullish,
+            { alwaysExecute: true },
+          ),
+
         /**
          * Returns the text that's being typed into the current mention buffer.
          * Client only.
