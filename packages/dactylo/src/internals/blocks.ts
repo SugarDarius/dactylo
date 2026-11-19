@@ -376,7 +376,7 @@ export function isBlockWithInlineContent(
 }
 
 /** Returns a shallow copy of a block with a fresh `updatedAt` timestamp. */
-export function touchBlock<B extends Block>(block: B): B {
+export function touchBlock(block: Block): Block {
   return { ...block, updatedAt: new Date() }
 }
 
