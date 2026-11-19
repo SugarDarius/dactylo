@@ -96,7 +96,7 @@ export interface OperationsBuilderInitialMetadata {
 }
 
 /** Intent when building ops to delete text. */
-export interface BuilderDeleteIntent {
+export interface BuilderDeleteTextIntent {
   /** The operations to apply. */
   readonly ops: Operation[]
 
@@ -702,7 +702,7 @@ export function resolvesMergeBlocksUndoFields(
 /** Resolved editable inline node for caret after a delete intent */
 export function resolvesCaretNode(
   block: BlockWithInlineContent,
-  intent: BuilderDeleteIntent,
+  intent: BuilderDeleteTextIntent,
 ): InlineNodeWithEditableText {
   const { ops, caret } = intent
 
@@ -782,7 +782,7 @@ export function buildDeleteOpsIntent(
   node: InlineNodeWithEditableText,
   from: number,
   to: number,
-): BuilderDeleteIntent {
+): BuilderDeleteTextIntent {
   const length = to - from
   if (length <= 0) {
     rangeCollapsedError(
@@ -817,7 +817,7 @@ export function buildDeleteTextRunIntent(
   from: number,
   /** Exclusive end offset. */
   to: number,
-): BuilderDeleteIntent {
+): BuilderDeleteTextIntent {
   const length = to - from
   if (length <= 0) {
     rangeCollapsedError(
@@ -1164,9 +1164,9 @@ export function buildCollapseEmptyBlockOps(
 export function buildApplyCollapseIfNeededIntent(
   block: BlockWithInlineContent,
   remaining: InlineNode[],
-  intent: BuilderDeleteIntent,
+  intent: BuilderDeleteTextIntent,
   textMetadata?: TNM,
-): BuilderDeleteIntent {
+): BuilderDeleteTextIntent {
   const collapsed = buildCollapseEmptyBlockOps(block, remaining, textMetadata)
   if (!collapsed) {
     return intent
@@ -1194,7 +1194,7 @@ export function buildDeleteRangeWithinBlockIntent(
     /** Initial text metadata for a collapse placeholder. */
     textMetadata?: TNM
   } = {},
-): BuilderDeleteIntent {
+): BuilderDeleteTextIntent {
   const { joinSurvivors = true, textMetadata } = opts
 
   const anchorFound = findNodeInBlockWithInlineContent(block, anchor.nodeId)
@@ -1358,7 +1358,7 @@ export function buildDeleteRangeCrossBlockIntent(
   startBlock: BlockWithInlineContent,
   endBlock: BlockWithInlineContent,
   textMetadata?: TNM,
-): BuilderDeleteIntent {
+): BuilderDeleteTextIntent {
   const ops: Operation[] = [
     ...buildForwardTrimBlockOps(startBlock, range.anchor),
     ...buildDeleteBlocksBetweenOps(context, startBlock.id, endBlock.id),
