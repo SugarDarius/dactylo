@@ -282,7 +282,8 @@ export function Editor() {
 
 | Feature                         | Status         | Description                                            |
 | ------------------------------- | -------------- | ------------------------------------------------------ |
-| Default Tailwind css file       | 📆 **Planned** | Providing a default tailwind css                       |
+| Default CSS file                | 📆 **Planned** | Providing a default css file                           |
+| Default Tailwind css file       | 📆 **Planned** | Providing a default tailwind css file                  |
 | shadcn/ui like React components | 📆 **Planned** | Already made components distributed through a registry |
 
 ### DevTools extension (📆 **Planned**)
