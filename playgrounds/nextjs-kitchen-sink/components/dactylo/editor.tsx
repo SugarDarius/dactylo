@@ -712,10 +712,14 @@ const markClassName = cn(
 )
 
 export function ParagraphBlock(props: ComposerParagraphBlockProps) {
+  const { block } = props
+
   return (
     <Composer.ParagraphBlock
       {...props}
-      className={cn('flex flex-col px-1.5', editableBlockContentClassName)}
+      className={cn('flex flex-col px-1.5', editableBlockContentClassName, {
+        'text-base': block.metadata.fontSize === '16px',
+      })}
     />
   )
 }
