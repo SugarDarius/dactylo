@@ -38,6 +38,7 @@ import type { InlineNode, NodeId } from './nodes'
 import type { Operation } from './operations'
 import type {
   InsertOrMoveBlockPosition,
+  MutateBlockSpec,
   OperationsBuilderInitialMetadata,
 } from './operations-builder'
 import { OperationsEngine } from './operations-engine'
@@ -2309,6 +2310,32 @@ export class TransactionPipeline {
 
     this.#commit(reindexIntent.ops, {
       label: transactionPolicyLabel('blocks', reindexIntent.label),
+      pushToHistory: true,
+      source,
+    })
+
+    return true
+  }
+
+  /** Mutates a {@link Block} type into another one by ID. */
+  mutateBlock(
+    blockId: BlockId,
+    spec: MutateBlockSpec,
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): boolean {
+    const intent = this.#operationsEngine.buildMutateBlockTypeOps(
+      this.#context,
+      blockId,
+      spec,
+    )
+
+    if (intent === null) {
+      return false
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('blocks', label),
       pushToHistory: true,
       source,
     })

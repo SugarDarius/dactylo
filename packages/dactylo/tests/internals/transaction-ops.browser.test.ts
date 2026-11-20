@@ -1,10 +1,12 @@
 import { describe, expect, test } from 'vitest'
 
 import type { BlockId } from '../../src/internals/blocks'
+import { isNumberedListItemBlock } from '../../src/internals/blocks'
 import {
   assertUndoRedo,
   blockTexts,
   focus,
+  hardBreak,
   makePipeline,
   requireCursor,
   selectOffsetsInCurrentNode,
@@ -335,6 +337,141 @@ describe('TransactionPipeline block commands', () => {
     expect(() =>
       pipeline.moveBlock('bl_unknown' as BlockId, { type: 'end' }, 'user'),
     ).toThrow()
+  })
+
+  test('mutateBlock converts a paragraph to a heading and undo/redo round-trip', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'Hello')
+
+    const [paragraphId] = pipeline.context.state.blockOrderById
+    if (!paragraphId) {
+      throw new Error('Expected the initial paragraph')
+    }
+
+    const before = snapshot(pipeline.context)
+
+    expect(
+      pipeline.mutateBlock(
+        paragraphId,
+        { kind: 'to_heading', level: 2 },
+        'user',
+      ),
+    ).toBe(true)
+
+    const mutated = pipeline.context.state.blocks.get(paragraphId)
+    expect(mutated?.id).toBe(paragraphId)
+    expect(mutated?.__type).toBe('heading')
+    expect(mutated).toMatchObject({ level: 2 })
+    expect(blockTexts(pipeline.context)).toEqual(['Hello'])
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('mutateBlock returns false for a divider', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    const dividerId = pipeline.insertDividerBlock({}, 'user')
+    if (!dividerId) {
+      throw new Error('Expected an inserted divider')
+    }
+    const before = snapshot(pipeline.context)
+
+    expect(
+      pipeline.mutateBlock(dividerId, { kind: 'to_paragraph' }, 'user'),
+    ).toBe(false)
+    expect(snapshot(pipeline.context)).toEqual(before)
+  })
+
+  test('mutateBlock of a numbered item compactifies leftover markers', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    const [leftoverId] = pipeline.context.state.blockOrderById
+    if (!leftoverId) {
+      throw new Error('Expected the initial paragraph')
+    }
+    pipeline.insertNumberedListItemBlock({ pos: { type: 'start' } }, 'user')
+    pipeline.deleteBlock(leftoverId, 'user')
+    focus(pipeline)
+    typeText(pipeline, 'A')
+    hardBreak(pipeline)
+    typeText(pipeline, 'B')
+    hardBreak(pipeline)
+    typeText(pipeline, 'C')
+
+    const [, middleId] = pipeline.context.state.blockOrderById
+    if (!middleId) {
+      throw new Error('Expected a middle numbered item')
+    }
+    const before = snapshot(pipeline.context)
+
+    expect(
+      pipeline.mutateBlock(middleId, { kind: 'to_paragraph' }, 'user'),
+    ).toBe(true)
+
+    expect(pipeline.context.state.blocks.get(middleId)?.__type).toBe(
+      'paragraph',
+    )
+    expect(blockTexts(pipeline.context)).toEqual(['A', 'B', 'C'])
+    expect(
+      pipeline.context.state.blockOrderById.map((id) => {
+        const block = pipeline.context.state.blocks.get(id)
+        return block && isNumberedListItemBlock(block)
+          ? block.markerNumbering
+          : ''
+      }),
+    ).toEqual(['1.', '', '2.'])
+    assertUndoRedo(pipeline, before)
+  })
+
+  test('mutateBlock of a paragraph into a numbered run continues the suffix', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    const [leftoverId] = pipeline.context.state.blockOrderById
+    if (!leftoverId) {
+      throw new Error('Expected the initial paragraph')
+    }
+    pipeline.insertNumberedListItemBlock({ pos: { type: 'start' } }, 'user')
+    pipeline.deleteBlock(leftoverId, 'user')
+    focus(pipeline)
+    typeText(pipeline, 'A')
+    hardBreak(pipeline)
+    typeText(pipeline, 'B')
+    hardBreak(pipeline)
+    typeText(pipeline, 'C')
+
+    const [firstId] = pipeline.context.state.blockOrderById
+    if (!firstId) {
+      throw new Error('Expected a first numbered item')
+    }
+    const paragraphId = pipeline.insertParagraphBlock(
+      { pos: { blockId: firstId, type: 'after' } },
+      'user',
+    )
+    if (!paragraphId) {
+      throw new Error('Expected an inserted paragraph')
+    }
+    const before = snapshot(pipeline.context)
+
+    expect(
+      pipeline.mutateBlock(
+        paragraphId,
+        { kind: 'to_numbered_list_item' },
+        'user',
+      ),
+    ).toBe(true)
+
+    expect(pipeline.context.state.blocks.get(paragraphId)?.__type).toBe(
+      'numbered_list_item',
+    )
+    expect(
+      pipeline.context.state.blockOrderById.map((id) => {
+        const block = pipeline.context.state.blocks.get(id)
+        return block && isNumberedListItemBlock(block)
+          ? block.markerNumbering
+          : ''
+      }),
+    ).toEqual(['1.', '2.', '3.', '4.'])
+    assertUndoRedo(pipeline, before)
   })
 
   test('patch block commands return true when applied', () => {

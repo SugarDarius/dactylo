@@ -887,6 +887,85 @@ describe('Dactylo blocks', () => {
     expect(blockTexts(editor.getContext())).toEqual(['Hello'])
   })
 
+  test('mutate converts a paragraph to a heading and keeps id and content', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    const paragraphId = firstInlineBlock(editor.getContext()).id
+
+    expect(
+      editor.blocks.commands.mutate(paragraphId, {
+        kind: 'to_heading',
+        level: 2,
+      }),
+    ).toBe(true)
+
+    const heading = firstInlineBlock(editor.getContext())
+    expect(heading.id).toBe(paragraphId)
+    expect(isHeadingBlock(heading)).toBe(true)
+    if (isHeadingBlock(heading)) {
+      expect(heading.level).toBe(2)
+    }
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+  })
+
+  test('mutate converts a paragraph to quote, list, and checkbox', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    const blockId = firstInlineBlock(editor.getContext()).id
+
+    expect(editor.blocks.commands.mutate(blockId, { kind: 'to_quote' })).toBe(
+      true,
+    )
+    expect(isQuoteBlock(firstInlineBlock(editor.getContext()))).toBe(true)
+
+    expect(
+      editor.blocks.commands.mutate(blockId, { kind: 'to_bullet_list_item' }),
+    ).toBe(true)
+    expect(isBulletListItemBlock(firstInlineBlock(editor.getContext()))).toBe(
+      true,
+    )
+
+    expect(
+      editor.blocks.commands.mutate(blockId, {
+        kind: 'to_numbered_list_item',
+      }),
+    ).toBe(true)
+    expect(isNumberedListItemBlock(firstInlineBlock(editor.getContext()))).toBe(
+      true,
+    )
+
+    expect(
+      editor.blocks.commands.mutate(blockId, {
+        kind: 'to_checkbox_list_item',
+        checked: true,
+      }),
+    ).toBe(true)
+    const checkbox = firstInlineBlock(editor.getContext())
+    expect(checkbox.id).toBe(blockId)
+    expect(isCheckboxListItemBlock(checkbox)).toBe(true)
+    if (isCheckboxListItemBlock(checkbox)) {
+      expect(checkbox.checked).toBe(true)
+    }
+    expect(blockTexts(editor.getContext())).toEqual(['Hello'])
+  })
+
+  test('mutate of a divider is a no-op', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const dividerId = editor.blocks.commands.insertDivider()
+    if (!dividerId) {
+      throw new Error('Expected an inserted divider')
+    }
+    const before = snapshot(editor.getContext())
+
+    expect(
+      editor.blocks.commands.mutate(dividerId, { kind: 'to_paragraph' }),
+    ).toBe(false)
+    expect(snapshot(editor.getContext())).toEqual(before)
+  })
+
   test('patchCheckboxListItem sets checked and keeps the same id', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
@@ -2128,6 +2207,57 @@ describe('Dactylo initial metadata', () => {
     expect(firstInlineBlock(editor.getContext()).metadata).toEqual({ k: 'p' })
   })
 
+  test('mutate to heading stamps heading initial metadata, not the paragraph bag', () => {
+    const editor = makeEditor(initials)
+    editor.selection.commands.focus()
+    const paragraphId = firstInlineBlock(editor.getContext()).id
+
+    expect(
+      editor.blocks.commands.mutate(paragraphId, {
+        kind: 'to_heading',
+        level: 1,
+      }),
+    ).toBe(true)
+
+    const heading = firstInlineBlock(editor.getContext())
+    expect(isHeadingBlock(heading)).toBe(true)
+    expect(heading.metadata).toEqual({ k: 'h' })
+  })
+
+  test('undo of mutate restores the paragraph initial bag', () => {
+    const editor = makeEditor(initials)
+    editor.selection.commands.focus()
+    const paragraphId = firstInlineBlock(editor.getContext()).id
+
+    editor.blocks.commands.mutate(paragraphId, {
+      kind: 'to_heading',
+      level: 1,
+    })
+    editor.history.commands.undo()
+
+    const paragraph = firstInlineBlock(editor.getContext())
+    expect(isParagraphBlock(paragraph)).toBe(true)
+    expect(paragraph.metadata).toEqual({ k: 'p' })
+  })
+
+  test('mutate metadata override wins over the target initial bag', () => {
+    const editor = makeEditor(initials)
+    editor.selection.commands.focus()
+    const paragraphId = firstInlineBlock(editor.getContext()).id
+
+    expect(
+      editor.blocks.commands.mutate(paragraphId, {
+        kind: 'to_heading',
+        level: 1,
+        metadata: { k: 'custom' },
+      }),
+    ).toBe(true)
+
+    const heading = firstInlineBlock(editor.getContext())
+    expect(isHeadingBlock(heading)).toBe(true)
+    expect(heading.metadata).toEqual({ k: 'custom' })
+  })
+
   test('Enter at the end of a paragraph copies the source bag', () => {
     const editor = makeEditor(initials)
     editor.selection.commands.focus()
@@ -2235,6 +2365,12 @@ describe('Dactylo read-only mode', () => {
     expect(editor.blocks.commands.move(paragraphId, { type: 'end' })).toBe(
       false,
     )
+    expect(
+      editor.blocks.commands.mutate(paragraphId, {
+        kind: 'to_heading',
+        level: 1,
+      }),
+    ).toBe(false)
     expect(
       editor.blocks.commands.patchParagraph(paragraphId, {
         metadata: { a: 1 },

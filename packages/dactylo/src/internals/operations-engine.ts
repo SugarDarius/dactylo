@@ -31,6 +31,7 @@ import {
   createCursorAtDocumentEnd,
   getBlock,
   getBlockIndex,
+  getBlockNeighbors,
   getBlockWithInlineContent,
   isBlockWithInlineContentEmpty,
   isMoveBlockNoOp,
@@ -69,6 +70,7 @@ import type {
   BuilderOpsIntent,
   InsertBlockSpec,
   InsertOrMoveBlockPosition,
+  MutateBlockSpec,
   OperationsBuilderInitialMetadata,
   PatchBlockSpec,
 } from './operations-builder'
@@ -1437,6 +1439,179 @@ export class OperationsEngine {
     ]
 
     return { label: 'move', ops }
+  }
+
+  /** Builds operations to mutate a {@link Block} type into another one by ID. */
+  buildMutateBlockTypeOps(
+    context: EditorContext,
+    blockId: BlockId,
+    spec: MutateBlockSpec,
+  ): BuilderOpsIntent | null {
+    const source = getBlock(context.state, blockId)
+
+    if (!isBlockWithInlineContent(source)) {
+      warnIf(
+        this.#debug,
+        `Cannot mutate block ${blockId} because source type is ${source.__type}`,
+        'OperationsEngine/buildMutateBlockTypeOps',
+      )
+      return null
+    }
+
+    const { kind } = spec
+    switch (kind) {
+      case 'to_paragraph': {
+        const ops: Operation[] = [
+          {
+            __type: 'mutate_block_type',
+            blockId: source.id,
+            snapshot: source,
+            spec: {
+              kind: 'to_paragraph',
+              metadata: spec.metadata ?? this.#initialMetadata.paragraph,
+            },
+          },
+        ]
+
+        if (isNumberedListItemBlock(source)) {
+          ops.push(
+            ...buildReindexAfterRemovedNumberedItemOps(context.state, source),
+          )
+        }
+
+        return { label: 'mutate-paragraph', ops }
+      }
+      case 'to_quote': {
+        const ops: Operation[] = [
+          {
+            __type: 'mutate_block_type',
+            blockId: source.id,
+            snapshot: source,
+            spec: {
+              kind: 'to_quote',
+              metadata: spec.metadata ?? this.#initialMetadata.quote,
+            },
+          },
+        ]
+
+        if (isNumberedListItemBlock(source)) {
+          ops.push(
+            ...buildReindexAfterRemovedNumberedItemOps(context.state, source),
+          )
+        }
+
+        return { label: 'mutate-quote', ops }
+      }
+      case 'to_heading': {
+        const ops: Operation[] = [
+          {
+            __type: 'mutate_block_type',
+            blockId: source.id,
+            snapshot: source,
+            spec: {
+              kind: 'to_heading',
+              level: spec.level,
+              metadata: spec.metadata ?? this.#initialMetadata.heading,
+            },
+          },
+        ]
+
+        if (isNumberedListItemBlock(source)) {
+          ops.push(
+            ...buildReindexAfterRemovedNumberedItemOps(context.state, source),
+          )
+        }
+
+        return { label: 'mutate-heading', ops }
+      }
+      case 'to_bullet_list_item': {
+        const ops: Operation[] = [
+          {
+            __type: 'mutate_block_type',
+            blockId: source.id,
+            snapshot: source,
+            spec: {
+              kind: 'to_bullet_list_item',
+              metadata: spec.metadata ?? this.#initialMetadata.bulletedList,
+            },
+          },
+        ]
+
+        if (isNumberedListItemBlock(source)) {
+          ops.push(
+            ...buildReindexAfterRemovedNumberedItemOps(context.state, source),
+          )
+        }
+
+        return { label: 'mutate-bullet-list-item', ops }
+      }
+      case 'to_numbered_list_item': {
+        const variant = spec.variant ?? 'default'
+        const { prev } = getBlockNeighbors(context.state, source.id)
+        const markerNumbering = resolveMarkerNumberingForInsert(
+          context.state,
+          prev,
+          variant,
+        )
+
+        const ops: Operation[] = [
+          {
+            __type: 'mutate_block_type',
+            blockId: source.id,
+            snapshot: source,
+            spec: {
+              kind: 'to_numbered_list_item',
+              markerNumbering,
+              metadata: spec.metadata ?? this.#initialMetadata.numberedList,
+              variant,
+            },
+          },
+          ...buildReindexNumberedListSuffixOps(context.state, source.id, {
+            kind: 'continue',
+            markerNumbering,
+            variant,
+          }),
+        ]
+
+        if (isNumberedListItemBlock(source) && source.variant !== variant) {
+          ops.push(
+            ...buildReindexNumberedListSuffixOps(context.state, source.id, {
+              kind: 'restart',
+              variant: source.variant,
+            }),
+          )
+        }
+
+        return { label: 'mutate-numbered-list-item', ops }
+      }
+      case 'to_checkbox_list_item': {
+        const ops: Operation[] = [
+          {
+            __type: 'mutate_block_type',
+            blockId: source.id,
+            snapshot: source,
+            spec: {
+              checked: spec.checked,
+              kind: 'to_checkbox_list_item',
+              metadata: spec.metadata ?? this.#initialMetadata.checkboxList,
+            },
+          },
+        ]
+
+        if (isNumberedListItemBlock(source)) {
+          ops.push(
+            ...buildReindexAfterRemovedNumberedItemOps(context.state, source),
+          )
+        }
+
+        return { label: 'mutate-checkbox-list-item', ops }
+      }
+      default: {
+        assertNever(kind, {
+          hint: 'OperationsEngine/buildMutateBlockTypeOps',
+        })
+      }
+    }
   }
 
   /** Builds operations to delete a {@link Block} by ID. */

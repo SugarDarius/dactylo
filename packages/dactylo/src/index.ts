@@ -90,6 +90,7 @@ export type {
   SplitBlockOp,
   UpdateBlockOp,
 } from './internals/operations'
+export type { MutateBlockSpec } from './internals/operations-builder'
 export type {
   CursorSelection,
   RangeSelection,

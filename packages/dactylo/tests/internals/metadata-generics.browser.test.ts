@@ -35,6 +35,15 @@ describe('metadata aliases', () => {
       editor.blocks.commands.duplicate,
     ).returns.toEqualTypeOf<boolean>()
     expectTypeOf(editor.blocks.commands.move).returns.toEqualTypeOf<boolean>()
+    expectTypeOf(editor.blocks.commands.mutate)
+      .parameter(1)
+      .extract<{ kind: 'to_paragraph' }>()
+      .toExtend<{ kind: 'to_paragraph'; metadata?: PBM }>()
+    expectTypeOf(editor.blocks.commands.mutate)
+      .parameter(1)
+      .extract<{ kind: 'to_heading' }>()
+      .toExtend<{ kind: 'to_heading'; level: unknown; metadata?: HBM }>()
+    expectTypeOf(editor.blocks.commands.mutate).returns.toEqualTypeOf<boolean>()
     expectTypeOf(
       editor.blocks.commands.patchParagraph,
     ).returns.toEqualTypeOf<boolean>()

@@ -310,6 +310,55 @@ export type PatchBlockSpec = Relax<
     }
 >
 
+/** Describes which block type to mutate into. */
+export type MutateBlockSpec = Relax<
+  | {
+      readonly kind: 'to_paragraph'
+
+      /** Metadata to associate with the {@link ParagraphBlock}. */
+      readonly metadata?: PBM
+    }
+  | {
+      readonly kind: 'to_quote'
+
+      /** Metadata to associate with the {@link QuoteBlock}. */
+      readonly metadata?: QBM
+    }
+  | {
+      readonly kind: 'to_heading'
+
+      /** Level of the heading. */
+      readonly level: HeadingBlock['level']
+
+      /** Metadata to associate with the {@link HeadingBlock}. */
+      readonly metadata?: HBM
+    }
+  | {
+      readonly kind: 'to_bullet_list_item'
+
+      /** Metadata to associate with the {@link BulletListItemBlock}. */
+      readonly metadata?: BBM
+    }
+  | {
+      readonly kind: 'to_numbered_list_item'
+
+      /** Variant to use in order to display item marker. */
+      readonly variant?: NumberedListItemBlock['variant']
+
+      /** Metadata to associate with the {@link NumberedListItemBlock}. */
+      readonly metadata?: NBM
+    }
+  | {
+      readonly kind: 'to_checkbox_list_item'
+
+      /** Whether the item is checked. */
+      readonly checked?: boolean
+
+      /** Metadata to associate with the {@link CheckboxListItemBlock}. */
+      readonly metadata?: CBM
+    }
+>
+
 /**
  * Describes spec location about a markdown shortcut mark.
  * All offset are in the string before delimiter removal.

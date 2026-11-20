@@ -58,7 +58,10 @@ import type {
   MentionWithContext,
 } from './internals/mention'
 import type { InlineNode, NodeId } from './internals/nodes'
-import type { InsertOrMoveBlockPosition } from './internals/operations-builder'
+import type {
+  InsertOrMoveBlockPosition,
+  MutateBlockSpec,
+} from './internals/operations-builder'
 import {
   isBlockWithActiveCursor,
   isBlockWithActiveRange,
@@ -341,6 +344,7 @@ export type DactyloCommand =
   | 'blocks/duplicate'
   | 'blocks/delete'
   | 'blocks/move'
+  | 'blocks/mutate'
   | 'blocks/patch-paragraph'
   | 'blocks/patch-quote'
   | 'blocks/patch-heading'
@@ -1152,6 +1156,26 @@ export interface DactyloBlocksCommands {
   readonly move: (
     blockId: BlockId,
     pos: InsertOrMoveBlockPosition,
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => boolean
+
+  /**
+   * Mutates a {@link Block} type into another one by ID.
+   * Applies only to blocks with inline content.
+   * By defaults metadata is reset to the initial metadata of the new block type.
+   *
+   * Returns a boolean indicating whether the mutate command was successful.
+   *
+   * @example
+   * ```ts
+   * const mutated = editor.blocks.commands.mutate(blockId, { kind: 'to_heading', level: 2 })
+   * const mutated = editor.blocks.commands.mutate(blockId, { kind: 'to_quote' })
+   * const mutated = editor.blocks.commands.mutate(blockId, { kind: 'to_paragraph' }, 'ai-agent')
+   * ```
+   */
+  readonly mutate: (
+    blockId: BlockId,
+    spec: MutateBlockSpec,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => boolean
 
@@ -2775,6 +2799,25 @@ export class Dactylo {
             () => this.#pipeline.moveBlock(blockId, pos, source),
             negate,
             { payload: { blockId, pos, source } },
+          ),
+
+        /**
+         * Mutates a {@link Block} type into another one by ID.
+         * Applies only to blocks with inline content.
+         * By defaults metadata is reset to the initial metadata of the new block type.
+         *
+         * Returns a boolean indicating whether the mutate command was successful.
+         */
+        mutate: (
+          blockId: BlockId,
+          spec: MutateBlockSpec,
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'blocks/mutate',
+            () => this.#pipeline.mutateBlock(blockId, spec, source),
+            negate,
+            { payload: { blockId, source } },
           ),
 
         /**
