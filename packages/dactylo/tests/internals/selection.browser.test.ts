@@ -175,7 +175,7 @@ describe('getBlockSelectionCoverage / getNodeSelectionCoverage', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
     typeText(pipeline, 'Hello')
-    if (!pipeline.insertDividerBlock({}, 'user')) {
+    if (!pipeline.insertBlock({ spec: { type: 'divider' } }, 'user')) {
       throw new Error('Expected a divider')
     }
     typeText(pipeline, 'World')

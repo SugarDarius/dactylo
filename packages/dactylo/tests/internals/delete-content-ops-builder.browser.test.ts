@@ -469,7 +469,10 @@ describe('TransactionPipeline delete content', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
     const leftoverId = firstInlineBlock(pipeline.context).id
-    pipeline.insertNumberedListItemBlock({ pos: { type: 'start' } }, 'user')
+    pipeline.insertBlock(
+      { pos: { type: 'start' }, spec: { type: 'numbered_list_item' } },
+      'user',
+    )
     pipeline.deleteBlock(leftoverId, 'user')
     focus(pipeline)
     typeText(pipeline, 'Hello')
@@ -493,7 +496,10 @@ describe('TransactionPipeline delete content', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
     const leftoverId = firstInlineBlock(pipeline.context).id
-    pipeline.insertNumberedListItemBlock({ pos: { type: 'start' } }, 'user')
+    pipeline.insertBlock(
+      { pos: { type: 'start' }, spec: { type: 'numbered_list_item' } },
+      'user',
+    )
     pipeline.deleteBlock(leftoverId, 'user')
     focus(pipeline)
     const itemId = firstInlineBlock(pipeline.context).id
@@ -512,7 +518,10 @@ describe('TransactionPipeline delete content', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
     const leftoverId = firstInlineBlock(pipeline.context).id
-    pipeline.insertNumberedListItemBlock({ pos: { type: 'start' } }, 'user')
+    pipeline.insertBlock(
+      { pos: { type: 'start' }, spec: { type: 'numbered_list_item' } },
+      'user',
+    )
     pipeline.deleteBlock(leftoverId, 'user')
     focus(pipeline)
     typeText(pipeline, 'Hello')

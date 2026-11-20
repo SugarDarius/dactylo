@@ -187,13 +187,19 @@ export type InsertBlockSpec = Relax<
   | {
       readonly type: 'paragraph'
 
-      /** Metadata to attach to the {@link ParagraphBlock}. */
+      /** Initial content. */
+      readonly content?: InlineNode[]
+
+      /** Metadata to attach. */
       readonly metadata?: PBM
     }
   | {
       readonly type: 'quote'
 
-      /** Metadata to attach to the {@link QuoteBlock}. */
+      /** Initial content. */
+      readonly content?: InlineNode[]
+
+      /** Metadata to attach. */
       readonly metadata?: QBM
     }
   | {
@@ -202,13 +208,19 @@ export type InsertBlockSpec = Relax<
       /** Level of the heading. */
       readonly level: HeadingBlock['level']
 
-      /** Metadata to attach to the {@link HeadingBlock}. */
+      /** Initial content. */
+      readonly content?: InlineNode[]
+
+      /** Metadata to attach. */
       readonly metadata?: HBM
     }
   | {
       readonly type: 'bullet_list_item'
 
-      /** Metadata to attach to the {@link BulletListItemBlock}. */
+      /** Initial content. */
+      readonly content?: InlineNode[]
+
+      /** Metadata to attach. */
       readonly metadata?: BBM
     }
   | {
@@ -217,7 +229,10 @@ export type InsertBlockSpec = Relax<
       /** Variant to use in order to display item marker. */
       readonly variant?: NumberedListItemBlock['variant']
 
-      /** Metadata to attach to the {@link NumberedListItemBlock}. */
+      /** Initial content. */
+      readonly content?: InlineNode[]
+
+      /** Metadata to attach. */
       readonly metadata?: NBM
     }
   | {
@@ -226,13 +241,16 @@ export type InsertBlockSpec = Relax<
       /** Whether the item is checked. */
       readonly checked?: boolean
 
-      /** Metadata to attach to the {@link CheckboxListItemBlock}. */
+      /** Initial content. */
+      readonly content?: InlineNode[]
+
+      /** Metadata to attach. */
       readonly metadata?: CBM
     }
   | {
       readonly type: 'divider'
 
-      /** Metadata to attach to the {@link DividerBlock}. */
+      /** Metadata to attach. */
       readonly metadata?: DBM
     }
 >

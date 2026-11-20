@@ -2,7 +2,7 @@ import { describe, expectTypeOf, test } from 'vitest'
 
 import { Dactylo } from '../../src/dactylo'
 import type { DactyloOptions } from '../../src/dactylo'
-import type { HBM, Metadata, PBM, TNM } from '../../src/index'
+import type { HBM, InsertBlockSpec, Metadata, PBM, TNM } from '../../src/index'
 import { isParagraphBlock } from '../../src/internals/blocks'
 import type { BlockId, ParagraphBlock } from '../../src/internals/blocks'
 import { createTextNode, isTextNode } from '../../src/internals/nodes'
@@ -20,12 +20,17 @@ describe('metadata aliases', () => {
   test('block commands use the per-type metadata aliases', () => {
     const editor = new Dactylo()
 
-    expectTypeOf(editor.blocks.commands.insertParagraph)
+    expectTypeOf(editor.blocks.commands.insert)
       .parameter(0)
-      .toExtend<{ pos?: unknown; metadata?: PBM } | undefined>()
+      .toExtend<{ spec: InsertBlockSpec; pos?: unknown }>()
     expectTypeOf(
-      editor.blocks.commands.insertParagraph,
+      editor.blocks.commands.insert,
     ).returns.toEqualTypeOf<BlockId | null>()
+    expectTypeOf<Extract<InsertBlockSpec, { type: 'paragraph' }>>().toExtend<{
+      type: 'paragraph'
+      content?: unknown
+      metadata?: PBM
+    }>()
     expectTypeOf(editor.blocks.commands.patchParagraph).parameter(1).toExtend<{
       content?: unknown
       metadata?: PBM
@@ -48,12 +53,11 @@ describe('metadata aliases', () => {
       editor.blocks.commands.patchParagraph,
     ).returns.toEqualTypeOf<boolean>()
 
-    expectTypeOf(editor.blocks.commands.insertHeading)
-      .parameter(1)
-      .toExtend<{ pos?: unknown; metadata?: HBM } | undefined>()
-    expectTypeOf(
-      editor.blocks.commands.insertHeading,
-    ).returns.toEqualTypeOf<BlockId | null>()
+    expectTypeOf<Extract<InsertBlockSpec, { type: 'heading' }>>().toExtend<{
+      type: 'heading'
+      level: unknown
+      metadata?: HBM
+    }>()
     expectTypeOf(editor.blocks.commands.patchHeading).parameter(1).toExtend<{
       level?: unknown
       content?: unknown
@@ -63,24 +67,23 @@ describe('metadata aliases', () => {
       editor.blocks.commands.patchHeading,
     ).returns.toEqualTypeOf<boolean>()
 
-    expectTypeOf(editor.blocks.commands.insertQuote)
-      .parameter(0)
-      .toExtend<{ pos?: unknown; metadata?: Metadata } | undefined>()
-    expectTypeOf(
-      editor.blocks.commands.insertQuote,
-    ).returns.toEqualTypeOf<BlockId | null>()
-    expectTypeOf(
-      editor.blocks.commands.insertBulletListItem,
-    ).returns.toEqualTypeOf<BlockId | null>()
-    expectTypeOf(
-      editor.blocks.commands.insertNumberedListItem,
-    ).returns.toEqualTypeOf<BlockId | null>()
-    expectTypeOf(
-      editor.blocks.commands.insertCheckboxListItem,
-    ).returns.toEqualTypeOf<BlockId | null>()
-    expectTypeOf(
-      editor.blocks.commands.insertDivider,
-    ).returns.toEqualTypeOf<BlockId | null>()
+    expectTypeOf<Extract<InsertBlockSpec, { type: 'quote' }>>().toExtend<{
+      type: 'quote'
+      metadata?: Metadata
+    }>()
+    expectTypeOf<
+      Extract<InsertBlockSpec, { type: 'bullet_list_item' }>
+    >().toExtend<{ type: 'bullet_list_item' }>()
+    expectTypeOf<
+      Extract<InsertBlockSpec, { type: 'numbered_list_item' }>
+    >().toExtend<{ type: 'numbered_list_item' }>()
+    expectTypeOf<
+      Extract<InsertBlockSpec, { type: 'checkbox_list_item' }>
+    >().toExtend<{ type: 'checkbox_list_item' }>()
+    expectTypeOf<Extract<InsertBlockSpec, { type: 'divider' }>>().toExtend<{
+      type: 'divider'
+      metadata?: Metadata
+    }>()
     expectTypeOf(
       editor.blocks.commands.patchQuote,
     ).returns.toEqualTypeOf<boolean>()
@@ -114,12 +117,15 @@ describe('metadata aliases', () => {
     }
   })
 
-  test('invalid metadata is rejected on insertParagraph', () => {
+  test('invalid metadata is rejected on insert', () => {
     const editor = new Dactylo()
 
-    editor.blocks.commands.insertParagraph({
-      // @ts-expect-error nested objects are not a valid Metadata value
-      metadata: { fontSize: { nested: true } },
+    editor.blocks.commands.insert({
+      spec: {
+        type: 'paragraph',
+        // @ts-expect-error nested objects are not a valid Metadata value
+        metadata: { fontSize: { nested: true } },
+      },
     })
   })
 })

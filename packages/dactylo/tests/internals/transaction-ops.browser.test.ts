@@ -3,6 +3,11 @@ import { describe, expect, test } from 'vitest'
 import type { BlockId } from '../../src/internals/blocks'
 import { isNumberedListItemBlock } from '../../src/internals/blocks'
 import {
+  createLineBreakNode,
+  createTextNode,
+  isTextNode,
+} from '../../src/internals/nodes'
+import {
   assertUndoRedo,
   blockTexts,
   focus,
@@ -16,12 +21,15 @@ import {
 } from '../utils/pipeline'
 
 describe('TransactionPipeline block commands', () => {
-  test('insertParagraphBlock and undo/redo round-trip', () => {
+  test('insertBlock paragraph and undo/redo round-trip', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
     const before = snapshot(pipeline.context)
 
-    const blockId = pipeline.insertParagraphBlock({}, 'user')
+    const blockId = pipeline.insertBlock(
+      { spec: { type: 'paragraph' } },
+      'user',
+    )
     if (!blockId) {
       throw new Error('Expected an inserted paragraph')
     }
@@ -31,12 +39,15 @@ describe('TransactionPipeline block commands', () => {
     assertUndoRedo(pipeline, before)
   })
 
-  test('insertHeadingBlock and undo/redo round-trip', () => {
+  test('insertBlock heading and undo/redo round-trip', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
     const before = snapshot(pipeline.context)
 
-    const blockId = pipeline.insertHeadingBlock(1, {}, 'user')
+    const blockId = pipeline.insertBlock(
+      { spec: { level: 1, type: 'heading' } },
+      'user',
+    )
     if (!blockId) {
       throw new Error('Expected an inserted heading')
     }
@@ -45,11 +56,11 @@ describe('TransactionPipeline block commands', () => {
     assertUndoRedo(pipeline, before)
   })
 
-  test('insertQuoteBlock returns the inserted block id', () => {
+  test('insertBlock quote returns the inserted block id', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
 
-    const blockId = pipeline.insertQuoteBlock({}, 'user')
+    const blockId = pipeline.insertBlock({ spec: { type: 'quote' } }, 'user')
     if (!blockId) {
       throw new Error('Expected an inserted quote')
     }
@@ -57,11 +68,14 @@ describe('TransactionPipeline block commands', () => {
     expect(pipeline.context.state.blocks.get(blockId)?.__type).toBe('quote')
   })
 
-  test('insertBulletListItemBlock returns the inserted block id', () => {
+  test('insertBlock bullet list item returns the inserted block id', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
 
-    const blockId = pipeline.insertBulletListItemBlock({}, 'user')
+    const blockId = pipeline.insertBlock(
+      { spec: { type: 'bullet_list_item' } },
+      'user',
+    )
     if (!blockId) {
       throw new Error('Expected an inserted bullet list item')
     }
@@ -71,11 +85,14 @@ describe('TransactionPipeline block commands', () => {
     )
   })
 
-  test('insertNumberedListItemBlock returns the inserted block id', () => {
+  test('insertBlock numbered list item returns the inserted block id', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
 
-    const blockId = pipeline.insertNumberedListItemBlock({}, 'user')
+    const blockId = pipeline.insertBlock(
+      { spec: { type: 'numbered_list_item' } },
+      'user',
+    )
     if (!blockId) {
       throw new Error('Expected an inserted numbered list item')
     }
@@ -85,11 +102,14 @@ describe('TransactionPipeline block commands', () => {
     )
   })
 
-  test('insertCheckboxListItemBlock returns the inserted block id', () => {
+  test('insertBlock checkbox list item returns the inserted block id', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
 
-    const blockId = pipeline.insertCheckboxListItemBlock({}, 'user')
+    const blockId = pipeline.insertBlock(
+      { spec: { type: 'checkbox_list_item' } },
+      'user',
+    )
     if (!blockId) {
       throw new Error('Expected an inserted checkbox list item')
     }
@@ -99,12 +119,12 @@ describe('TransactionPipeline block commands', () => {
     )
   })
 
-  test('insertDividerBlock and undo/redo round-trip', () => {
+  test('insertBlock divider and undo/redo round-trip', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
     const before = snapshot(pipeline.context)
 
-    const blockId = pipeline.insertDividerBlock({}, 'user')
+    const blockId = pipeline.insertBlock({ spec: { type: 'divider' } }, 'user')
     if (!blockId) {
       throw new Error('Expected an inserted divider')
     }
@@ -113,24 +133,94 @@ describe('TransactionPipeline block commands', () => {
     assertUndoRedo(pipeline, before)
   })
 
+  test('insertBlock uses the given spec content', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    const text = createTextNode({ text: 'Hello' })
+
+    const blockId = pipeline.insertBlock(
+      { spec: { content: [text], level: 2, type: 'heading' } },
+      'user',
+    )
+    if (!blockId) {
+      throw new Error('Expected an inserted heading')
+    }
+
+    const inserted = pipeline.context.state.blocks.get(blockId)
+    expect(inserted?.__type).toBe('heading')
+    expect(inserted).toMatchObject({ content: [text], level: 2 })
+    expect(blockTexts(pipeline.context)).toEqual(['', 'Hello'])
+    expect(requireCursor(pipeline.context)).toMatchObject({
+      blockId,
+      nodeId: text.id,
+      offset: text.text.length,
+    })
+  })
+
+  test('insertBlock appends an empty text node when spec content ends without editable text', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    const hello = createTextNode({ text: 'Hello' })
+    const lineBreak = createLineBreakNode()
+
+    const blockId = pipeline.insertBlock(
+      { spec: { content: [hello, lineBreak], type: 'quote' } },
+      'user',
+    )
+    if (!blockId) {
+      throw new Error('Expected an inserted quote')
+    }
+
+    const inserted = pipeline.context.state.blocks.get(blockId)
+    if (inserted?.__type !== 'quote') {
+      throw new Error('Expected a quote block')
+    }
+    const [first, second, trailing] = inserted.content
+    expect(inserted.content).toHaveLength(3)
+    expect(first).toEqual(hello)
+    expect(second).toEqual(lineBreak)
+    expect(isTextNode(trailing)).toBe(true)
+    if (!isTextNode(trailing)) {
+      throw new Error('Expected a trailing empty text node')
+    }
+    expect(trailing.text).toBe('')
+    expect(requireCursor(pipeline.context)).toMatchObject({
+      blockId,
+      nodeId: trailing.id,
+      offset: 0,
+    })
+  })
+
   test('insert block commands return null without a position or selection', () => {
     const pipeline = makePipeline({ markdown: false })
 
-    expect(pipeline.insertParagraphBlock({}, 'user')).toBeNull()
-    expect(pipeline.insertQuoteBlock({}, 'user')).toBeNull()
-    expect(pipeline.insertHeadingBlock(1, {}, 'user')).toBeNull()
-    expect(pipeline.insertBulletListItemBlock({}, 'user')).toBeNull()
-    expect(pipeline.insertNumberedListItemBlock({}, 'user')).toBeNull()
-    expect(pipeline.insertCheckboxListItemBlock({}, 'user')).toBeNull()
-    expect(pipeline.insertDividerBlock({}, 'user')).toBeNull()
+    expect(
+      pipeline.insertBlock({ spec: { type: 'paragraph' } }, 'user'),
+    ).toBeNull()
+    expect(pipeline.insertBlock({ spec: { type: 'quote' } }, 'user')).toBeNull()
+    expect(
+      pipeline.insertBlock({ spec: { level: 1, type: 'heading' } }, 'user'),
+    ).toBeNull()
+    expect(
+      pipeline.insertBlock({ spec: { type: 'bullet_list_item' } }, 'user'),
+    ).toBeNull()
+    expect(
+      pipeline.insertBlock({ spec: { type: 'numbered_list_item' } }, 'user'),
+    ).toBeNull()
+    expect(
+      pipeline.insertBlock({ spec: { type: 'checkbox_list_item' } }, 'user'),
+    ).toBeNull()
+    expect(
+      pipeline.insertBlock({ spec: { type: 'divider' } }, 'user'),
+    ).toBeNull()
     expect(pipeline.context.state.blockOrderById).toHaveLength(1)
   })
 
   test('deleteBlock and undo/redo round-trip', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
-    const extraId = pipeline.insertParagraphBlock(
-      { pos: { type: 'end' } },
+    const extraId = pipeline.insertBlock(
+      { pos: { type: 'end' }, spec: { type: 'paragraph' } },
       'user',
     )
     if (!extraId) {
@@ -370,7 +460,10 @@ describe('TransactionPipeline block commands', () => {
   test('mutateBlock returns false for a divider', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
-    const dividerId = pipeline.insertDividerBlock({}, 'user')
+    const dividerId = pipeline.insertBlock(
+      { spec: { type: 'divider' } },
+      'user',
+    )
     if (!dividerId) {
       throw new Error('Expected an inserted divider')
     }
@@ -389,7 +482,10 @@ describe('TransactionPipeline block commands', () => {
     if (!leftoverId) {
       throw new Error('Expected the initial paragraph')
     }
-    pipeline.insertNumberedListItemBlock({ pos: { type: 'start' } }, 'user')
+    pipeline.insertBlock(
+      { pos: { type: 'start' }, spec: { type: 'numbered_list_item' } },
+      'user',
+    )
     pipeline.deleteBlock(leftoverId, 'user')
     focus(pipeline)
     typeText(pipeline, 'A')
@@ -430,7 +526,10 @@ describe('TransactionPipeline block commands', () => {
     if (!leftoverId) {
       throw new Error('Expected the initial paragraph')
     }
-    pipeline.insertNumberedListItemBlock({ pos: { type: 'start' } }, 'user')
+    pipeline.insertBlock(
+      { pos: { type: 'start' }, spec: { type: 'numbered_list_item' } },
+      'user',
+    )
     pipeline.deleteBlock(leftoverId, 'user')
     focus(pipeline)
     typeText(pipeline, 'A')
@@ -443,8 +542,11 @@ describe('TransactionPipeline block commands', () => {
     if (!firstId) {
       throw new Error('Expected a first numbered item')
     }
-    const paragraphId = pipeline.insertParagraphBlock(
-      { pos: { blockId: firstId, type: 'after' } },
+    const paragraphId = pipeline.insertBlock(
+      {
+        pos: { blockId: firstId, type: 'after' },
+        spec: { type: 'paragraph' },
+      },
       'user',
     )
     if (!paragraphId) {
@@ -491,10 +593,19 @@ describe('TransactionPipeline block commands', () => {
       a: 1,
     })
 
-    const quoteId = pipeline.insertQuoteBlock({}, 'user')
-    const headingId = pipeline.insertHeadingBlock(1, {}, 'user')
-    const bulletId = pipeline.insertBulletListItemBlock({}, 'user')
-    const numberedId = pipeline.insertNumberedListItemBlock({}, 'user')
+    const quoteId = pipeline.insertBlock({ spec: { type: 'quote' } }, 'user')
+    const headingId = pipeline.insertBlock(
+      { spec: { level: 1, type: 'heading' } },
+      'user',
+    )
+    const bulletId = pipeline.insertBlock(
+      { spec: { type: 'bullet_list_item' } },
+      'user',
+    )
+    const numberedId = pipeline.insertBlock(
+      { spec: { type: 'numbered_list_item' } },
+      'user',
+    )
     if (!(quoteId && headingId && bulletId && numberedId)) {
       throw new Error('Expected inserted blocks to patch')
     }
@@ -557,7 +668,10 @@ describe('TransactionPipeline block commands', () => {
     )
     expect(snapshot(pipeline.context)).toEqual(before)
 
-    const headingId = pipeline.insertHeadingBlock(1, {}, 'user')
+    const headingId = pipeline.insertBlock(
+      { spec: { level: 1, type: 'heading' } },
+      'user',
+    )
     if (!headingId) {
       throw new Error('Expected an inserted heading')
     }

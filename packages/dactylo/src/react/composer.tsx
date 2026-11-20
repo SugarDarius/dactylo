@@ -664,7 +664,14 @@ export function useParagraphs() {
         metadata?: PBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insertParagraph(opts, source),
+    ) =>
+      editor.blocks.commands.insert(
+        {
+          pos: opts?.pos,
+          spec: { metadata: opts?.metadata, type: 'paragraph' },
+        },
+        source,
+      ),
   )
 
   const patch = useStableCallback(
@@ -712,7 +719,11 @@ export function useQuotes() {
         metadata?: QBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insertQuote(opts, source),
+    ) =>
+      editor.blocks.commands.insert(
+        { pos: opts?.pos, spec: { metadata: opts?.metadata, type: 'quote' } },
+        source,
+      ),
   )
 
   const patch = useStableCallback(
@@ -762,7 +773,14 @@ export function useHeadings() {
         metadata?: HBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insertHeading(level, opts, source),
+    ) =>
+      editor.blocks.commands.insert(
+        {
+          pos: opts?.pos,
+          spec: { level, metadata: opts?.metadata, type: 'heading' },
+        },
+        source,
+      ),
   )
 
   const patch = useStableCallback(
@@ -815,7 +833,11 @@ export function useDividers() {
         metadata?: DBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insertDivider(opts, source),
+    ) =>
+      editor.blocks.commands.insert(
+        { pos: opts?.pos, spec: { metadata: opts?.metadata, type: 'divider' } },
+        source,
+      ),
   )
 
   const patch = useStableCallback(
@@ -863,7 +885,14 @@ export function useBulletLists() {
         metadata?: BBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insertBulletListItem(opts, source),
+    ) =>
+      editor.blocks.commands.insert(
+        {
+          pos: opts?.pos,
+          spec: { metadata: opts?.metadata, type: 'bullet_list_item' },
+        },
+        source,
+      ),
   )
 
   const patch = useStableCallback(
@@ -918,7 +947,18 @@ export function useNumberedLists() {
         metadata?: NBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insertNumberedListItem(opts, source),
+    ) =>
+      editor.blocks.commands.insert(
+        {
+          pos: opts?.pos,
+          spec: {
+            metadata: opts?.metadata,
+            type: 'numbered_list_item',
+            variant: opts?.variant,
+          },
+        },
+        source,
+      ),
   )
 
   const patch = useStableCallback(
@@ -976,7 +1016,14 @@ export function useCheckboxLists() {
         metadata?: CBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insertCheckboxListItem(opts, source),
+    ) =>
+      editor.blocks.commands.insert(
+        {
+          pos: opts?.pos,
+          spec: { metadata: opts?.metadata, type: 'checkbox_list_item' },
+        },
+        source,
+      ),
   )
 
   const patch = useStableCallback(

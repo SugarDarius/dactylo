@@ -37,6 +37,7 @@ import type { MarkKey } from './marks'
 import type { InlineNode, NodeId } from './nodes'
 import type { Operation } from './operations'
 import type {
+  InsertBlockSpec,
   InsertOrMoveBlockPosition,
   MutateBlockSpec,
   OperationsBuilderInitialMetadata,
@@ -1831,221 +1832,23 @@ export class TransactionPipeline {
 
   // ─── Block operations ───────────────────────────────────────------
 
-  /** Inserts a paragraph block at the given document position. */
-  insertParagraphBlock(
+  /**
+   * Inserts a {@link Block} into the the document
+   * based on the given spec an position
+   */
+  insertBlock(
     opts: {
       /** Where to insert the paragraph block. */
       pos?: InsertOrMoveBlockPosition
-      /** Metadata to associate with the paragraph block. */
-      metadata?: Metadata
+      /** Spec for inserting the paragraph block. */
+      spec: InsertBlockSpec
     },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): BlockId | null {
-    const tuple = this.#operationsEngine.buildInsertParagraphBlockOps(
+    const tuple = this.#operationsEngine.buildInsertBlockOps(
       this.#context,
+      opts.spec,
       opts.pos,
-      opts.metadata,
-    )
-
-    if (tuple === null) {
-      return null
-    }
-
-    const [intent, blockId] = tuple
-
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
-      pushToHistory: true,
-      source,
-    })
-
-    return blockId
-  }
-
-  /** Inserts a {@link QuoteBlock} at the given document position. */
-  insertQuoteBlock(
-    opts: {
-      /** Where to insert the quote block. */
-      pos?: InsertOrMoveBlockPosition
-      /** Metadata to associate with the quote block. */
-      metadata?: Metadata
-    },
-    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): BlockId | null {
-    const tuple = this.#operationsEngine.buildInsertQuoteBlockOps(
-      this.#context,
-      opts.pos,
-      opts.metadata,
-    )
-
-    if (tuple === null) {
-      return null
-    }
-
-    const [intent, blockId] = tuple
-
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
-      pushToHistory: true,
-      source,
-    })
-
-    return blockId
-  }
-
-  /** Inserts a {@link HeadingBlock} at the given document position. */
-  insertHeadingBlock(
-    /** Level of the heading. */
-    level: HeadingBlock['level'],
-    opts: {
-      /** Where to insert the heading block. */
-      pos?: InsertOrMoveBlockPosition
-      /** Metadata to associate with the heading block. */
-      metadata?: Metadata
-    },
-    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): BlockId | null {
-    const tuple = this.#operationsEngine.buildInsertHeadingBlockOps(
-      this.#context,
-      level,
-      opts.pos,
-      opts.metadata,
-    )
-
-    if (tuple === null) {
-      return null
-    }
-
-    const [intent, blockId] = tuple
-
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
-      pushToHistory: true,
-      source,
-    })
-
-    return blockId
-  }
-
-  /** Inserts a {@link BulletListItemBlock} at the given document position. */
-  insertBulletListItemBlock(
-    opts: {
-      /** Where to insert the bullet list item block. */
-      pos?: InsertOrMoveBlockPosition
-      /** Metadata to associate with the bullet list item block. */
-      metadata?: Metadata
-    },
-    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): BlockId | null {
-    const tuple = this.#operationsEngine.buildInsertBulletListItemBlockOps(
-      this.#context,
-      opts.pos,
-      opts.metadata,
-    )
-
-    if (tuple === null) {
-      return null
-    }
-
-    const [intent, blockId] = tuple
-
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
-      pushToHistory: true,
-      source,
-    })
-
-    return blockId
-  }
-
-  /** Inserts a {@link NumberedListItemBlock} at the given document position. */
-  insertNumberedListItemBlock(
-    opts: {
-      /** Where to insert the numbered list item block. */
-      pos?: InsertOrMoveBlockPosition
-      /** Variant to use in order to display item marker. */
-      variant?: NumberedListItemBlock['variant']
-      /** Metadata to associate with the numbered list item block. */
-      metadata?: Metadata
-    },
-    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): BlockId | null {
-    const tuple = this.#operationsEngine.buildInsertNumberedListItemBlockOps(
-      this.#context,
-      opts.variant,
-      opts.pos,
-      opts.metadata,
-    )
-
-    if (tuple === null) {
-      return null
-    }
-
-    const [intent, blockId] = tuple
-
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
-      pushToHistory: true,
-      source,
-    })
-
-    return blockId
-  }
-
-  /** Inserts a {@link CheckboxListItemBlock} at the given document position. */
-  insertCheckboxListItemBlock(
-    opts: {
-      /** Whether the item is checked. */
-      checked?: boolean
-      /** Where to insert the checkbox list item block. */
-      pos?: InsertOrMoveBlockPosition
-      /** Metadata to associate with the checkbox list item block. */
-      metadata?: Metadata
-    },
-    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): BlockId | null {
-    const tuple = this.#operationsEngine.buildInsertCheckboxListItemBlockOps(
-      this.#context,
-      opts.checked,
-      opts.pos,
-      opts.metadata,
-    )
-
-    if (tuple === null) {
-      return null
-    }
-
-    const [intent, blockId] = tuple
-
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
-      pushToHistory: true,
-      source,
-    })
-
-    return blockId
-  }
-
-  /** Inserts a {@link DividerBlock} at the given document position. */
-  insertDividerBlock(
-    opts: {
-      /** Where to insert the divider block. */
-      pos?: InsertOrMoveBlockPosition
-      /** Metadata to associate with the divider block. */
-      metadata?: Metadata
-    },
-    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): BlockId | null {
-    const tuple = this.#operationsEngine.buildInsertDividerBlockOps(
-      this.#context,
-      opts.pos,
-      opts.metadata,
     )
 
     if (tuple === null) {
@@ -2320,6 +2123,7 @@ export class TransactionPipeline {
   /** Mutates a {@link Block} type into another one by ID. */
   mutateBlock(
     blockId: BlockId,
+    /** Spec for mutating the block type. */
     spec: MutateBlockSpec,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): boolean {

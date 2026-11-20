@@ -59,6 +59,7 @@ import type {
 } from './internals/mention'
 import type { InlineNode, NodeId } from './internals/nodes'
 import type {
+  InsertBlockSpec,
   InsertOrMoveBlockPosition,
   MutateBlockSpec,
 } from './internals/operations-builder'
@@ -334,13 +335,7 @@ export type DactyloCommand =
   | 'dom/get-active-range'
 
   /** Blocks commands. */
-  | 'blocks/insert-paragraph'
-  | 'blocks/insert-quote'
-  | 'blocks/insert-heading'
-  | 'blocks/insert-bullet-list-item'
-  | 'blocks/insert-numbered-list-item'
-  | 'blocks/insert-checkbox-list-item'
-  | 'blocks/insert-divider'
+  | 'blocks/insert'
   | 'blocks/duplicate'
   | 'blocks/delete'
   | 'blocks/move'
@@ -931,7 +926,7 @@ export interface DactyloBlocksTools {
 /** Commands to mutate the {@link DocumentState} blocks of the editor. */
 export interface DactyloBlocksCommands {
   /**
-   * Inserts a {@link ParagraphBlock} at the given position with metadata.
+   * Inserts a {@link Block} into the document based on the given spec and position.
    * By defaults it inserts after the current selection.
    *
    * Returns the {@link BlockId} of the inserted block on success,
@@ -939,177 +934,13 @@ export interface DactyloBlocksCommands {
    *
    * @example
    * ```ts
-   * const blockId = editor.blocks.commands.insertParagraph()
-   * const blockId = editor.blocks.commands.insertParagraph({ pos: 'end' })
-   * const blockId = editor.blocks.commands.insertParagraph({}, 'ai-agent')
-   * const blockId = editor.blocks.commands.insertParagraph({}, 'ai-agent')
+   * const blockId = editor.blocks.commands.insert({ spec: { type: 'paragraph' } })
+   * const blockId = editor.blocks.commands.insert({ spec: { type: 'paragraph' }, pos: { type: 'after', blockId: targetId } })
+   * const blockId = editor.blocks.commands.insert({ spec: { type: 'paragraph' }, pos: { type: 'start' } }, 'ai-agent')
    * ```
    */
-  readonly insertParagraph: (
-    opts?: {
-      /** Where to insert the {@link ParagraphBlock}. */
-      pos?: InsertOrMoveBlockPosition
-
-      /** Metadata to associate with the {@link ParagraphBlock}. */
-      metadata?: PBM
-    },
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => BlockId | null
-
-  /**
-   * Inserts a {@link QuoteBlock} at the given position with metadata.
-   * By defaults it inserts after the current selection.
-   *
-   * Returns the {@link BlockId} of the inserted block on success,
-   * or `null` if no ops were applied.
-   *
-   * @example
-   * ```ts
-   * const blockId = editor.blocks.commands.insertQuote()
-   * const blockId = editor.blocks.commands.insertQuote({ pos: 'end' })
-   * const blockId = editor.blocks.commands.insertQuote({}, 'ai-agent')
-   * ```
-   */
-  readonly insertQuote: (
-    opts?: {
-      /** Where to insert the {@link QuoteBlock}. */
-      pos?: InsertOrMoveBlockPosition
-
-      /** Metadata to associate with the {@link QuoteBlock}. */
-      metadata?: QBM
-    },
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => BlockId | null
-
-  /**
-   * Inserts a {@link HeadingBlock} at the given position with metadata.
-   * By defaults it inserts after the current selection.
-   *
-   * Returns the {@link BlockId} of the inserted block on success,
-   * or `null` if no ops were applied.
-   *
-   * @example
-   * ```ts
-   * const blockId = editor.blocks.commands.insertHeading(1)
-   * const blockId = editor.blocks.commands.insertHeading(2, { pos: 'end' })
-   * const blockId = editor.blocks.commands.insertHeading(3, {}, 'ai-agent')
-   * ```
-   */
-  readonly insertHeading: (
-    /** Level of the heading. */
-    level: HeadingBlock['level'],
-
-    opts?: {
-      /** Where to insert the {@link HeadingBlock}. */
-      pos?: InsertOrMoveBlockPosition
-
-      /** Metadata to associate with the {@link HeadingBlock}. */
-      metadata?: HBM
-    },
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => BlockId | null
-
-  /**
-   * Inserts a {@link BulletListItemBlock} at the given position with metadata.
-   * By defaults it inserts after the current selection.
-   *
-   * Returns the {@link BlockId} of the inserted block on success,
-   * or `null` if no ops were applied.
-   *
-   * @example
-   * ```ts
-   * const blockId = editor.blocks.commands.insertBulletListItem()
-   * const blockId = editor.blocks.commands.insertBulletListItem({ pos: 'end' })
-   * const blockId = editor.blocks.commands.insertBulletListItem({}, 'ai-agent')
-   * ```
-   */
-  readonly insertBulletListItem: (
-    opts?: {
-      /** Where to insert the {@link BulletListItemBlock}. */
-      pos?: InsertOrMoveBlockPosition
-
-      /** Metadata to associate with the {@link BulletListItemBlock}. */
-      metadata?: BBM
-    },
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => BlockId | null
-
-  /**
-   * Inserts a {@link NumberedListItemBlock} at the given position with metadata.
-   * By defaults it inserts after the current selection.
-   *
-   * Returns the {@link BlockId} of the inserted block on success,
-   * or `null` if no ops were applied.
-   *
-   * @example
-   * ```ts
-   * const blockId = editor.blocks.commands.insertNumberedListItem()
-   * const blockId = editor.blocks.commands.insertNumberedListItem({ pos: 'end' })
-   * const blockId = editor.blocks.commands.insertNumberedListItem({}, 'ai-agent')
-   * ```
-   */
-  readonly insertNumberedListItem: (
-    opts?: {
-      /** Where to insert the {@link NumberedListItemBlock}. */
-      pos?: InsertOrMoveBlockPosition
-      /** Variant to use in order to display item marker. */
-      variant?: NumberedListItemBlock['variant']
-      /** Metadata to associate with the numbered list item block. */
-      metadata?: NBM
-    },
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => BlockId | null
-
-  /**
-   * Inserts a {@link CheckboxListItemBlock} at the given position with metadata.
-   * By defaults it inserts after the current selection.
-   *
-   * Returns the {@link BlockId} of the inserted block on success,
-   * or `null` if no ops were applied.
-   *
-   * @example
-   * ```ts
-   * const blockId = editor.blocks.commands.insertCheckboxListItem()
-   * const blockId = editor.blocks.commands.insertCheckboxListItem({ checked: true, pos: 'end' })
-   * const blockId = editor.blocks.commands.insertCheckboxListItem({ checked: true, pos: 'end' }, 'ai-agent')
-   * ```
-   */
-  readonly insertCheckboxListItem: (
-    opts?: {
-      /** Whether the item is checked. */
-      checked?: boolean
-
-      /** Where to insert the {@link CheckboxListItemBlock}. */
-      pos?: InsertOrMoveBlockPosition
-
-      /** Metadata to associate with the {@link CheckboxListItemBlock}. */
-      metadata?: CBM
-    },
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => BlockId | null
-
-  /**
-   * Inserts a {@link DividerBlock} at the given position with metadata.
-   * By defaults it inserts after the current selection.
-   *
-   * Returns the {@link BlockId} of the inserted block on success,
-   * or `null` if no ops were applied.
-   *
-   * @example
-   * ```ts
-   * const blockId = editor.blocks.commands.insertDivider()
-   * const blockId = editor.blocks.commands.insertDivider({ pos: 'end' })
-   * const blockId = editor.blocks.commands.insertDivider({}, 'ai-agent')
-   * ```
-   */
-  readonly insertDivider: (
-    opts?: {
-      /** Where to insert the {@link DividerBlock}. */
-      pos?: InsertOrMoveBlockPosition
-
-      /** Metadata to associate with the {@link DividerBlock}. */
-      metadata?: DBM
-    },
+  readonly insert: (
+    opts: { spec: InsertBlockSpec; pos?: InsertOrMoveBlockPosition },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => BlockId | null
 
@@ -2577,212 +2408,21 @@ export class Dactylo {
           ),
 
         /**
-         * Inserts a {@link BulletListItemBlock} at the given position with metadata.
+         * Inserts a {@link Block} into the document based on the given spec and position.
          * By defaults it inserts after the current selection.
          *
          * Returns the {@link BlockId} of the inserted block on success,
          * or `null` if no ops were applied.
          */
-        insertBulletListItem: (
-          opts: {
-            pos?: InsertOrMoveBlockPosition
-            metadata?: BBM
-          } = {},
+        insert: (
+          opts: { spec: InsertBlockSpec; pos?: InsertOrMoveBlockPosition },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ): BlockId | null =>
+        ) =>
           this.#safeExecuteCommand(
-            'blocks/insert-bullet-list-item',
-            () =>
-              this.#pipeline.insertBulletListItemBlock(
-                {
-                  ...opts,
-                  metadata:
-                    opts.metadata ?? this.#config.bulletedList.initialMetadata,
-                },
-                source,
-              ),
+            'blocks/insert',
+            () => this.#pipeline.insertBlock(opts, source),
             nullish,
-            { payload: { source } },
-          ),
-
-        /**
-         * Inserts a {@link CheckboxListItemBlock} at the given position with metadata.
-         * By defaults it inserts after the current selection.
-         *
-         * Returns the {@link BlockId} of the inserted block on success,
-         * or `null` if no ops were applied.
-         */
-        insertCheckboxListItem: (
-          opts: {
-            /** Whether the item is checked. */
-            checked?: boolean
-            pos?: InsertOrMoveBlockPosition
-            metadata?: CBM
-          } = {},
-          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ): BlockId | null =>
-          this.#safeExecuteCommand(
-            'blocks/insert-checkbox-list-item',
-            () =>
-              this.#pipeline.insertCheckboxListItemBlock(
-                {
-                  ...opts,
-                  metadata:
-                    opts.metadata ?? this.#config.checkboxList.initialMetadata,
-                },
-                source,
-              ),
-            nullish,
-            { payload: { source } },
-          ),
-
-        /**
-         * Inserts a {@link DividerBlock} at the given position with metadata.
-         * By defaults it inserts after the current selection.
-         *
-         * Returns the {@link BlockId} of the inserted block on success,
-         * or `null` if no ops were applied.
-         */
-        insertDivider: (
-          opts: {
-            pos?: InsertOrMoveBlockPosition
-            metadata?: DBM
-          } = {},
-          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ): BlockId | null =>
-          this.#safeExecuteCommand(
-            'blocks/insert-divider',
-            () =>
-              this.#pipeline.insertDividerBlock(
-                {
-                  ...opts,
-                  metadata:
-                    opts.metadata ?? this.#config.divider.initialMetadata,
-                },
-                source,
-              ),
-            nullish,
-            { payload: { source } },
-          ),
-
-        /**
-         * Inserts a {@link HeadingBlock} at the given position with metadata.
-         * By defaults it inserts after the current selection.
-         *
-         * Returns the {@link BlockId} of the inserted block on success,
-         * or `null` if no ops were applied.
-         */
-        insertHeading: (
-          /** Level of the heading. */
-          level: HeadingBlock['level'],
-
-          opts: {
-            pos?: InsertOrMoveBlockPosition
-            metadata?: HBM
-          } = {},
-          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ): BlockId | null =>
-          this.#safeExecuteCommand(
-            'blocks/insert-heading',
-            () =>
-              this.#pipeline.insertHeadingBlock(
-                level,
-                {
-                  ...opts,
-                  metadata:
-                    opts.metadata ?? this.#config.heading.initialMetadata,
-                },
-                source,
-              ),
-            nullish,
-            { payload: { source } },
-          ),
-
-        /**
-         * Inserts a {@link NumberedListItemBlock} at the given position with metadata.
-         * By defaults it inserts after the current selection.
-         *
-         * Returns the {@link BlockId} of the inserted block on success,
-         * or `null` if no ops were applied.
-         */
-        insertNumberedListItem: (
-          opts: {
-            pos?: InsertOrMoveBlockPosition
-            variant?: NumberedListItemBlock['variant']
-            metadata?: NBM
-          } = {},
-          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ): BlockId | null =>
-          this.#safeExecuteCommand(
-            'blocks/insert-numbered-list-item',
-            () =>
-              this.#pipeline.insertNumberedListItemBlock(
-                {
-                  ...opts,
-                  metadata:
-                    opts.metadata ?? this.#config.numberedList.initialMetadata,
-                },
-                source,
-              ),
-            nullish,
-            { payload: { source } },
-          ),
-
-        /**
-         * Inserts a {@link ParagraphBlock} at the given position with metadata.
-         * By defaults it inserts after the current selection.
-         *
-         * Returns the {@link BlockId} of the inserted block on success,
-         * or `null` if no ops were applied.
-         */
-        insertParagraph: (
-          opts: {
-            pos?: InsertOrMoveBlockPosition
-            metadata?: PBM
-          } = {},
-          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ): BlockId | null =>
-          this.#safeExecuteCommand(
-            'blocks/insert-paragraph',
-            () =>
-              this.#pipeline.insertParagraphBlock(
-                {
-                  ...opts,
-                  metadata:
-                    opts.metadata ?? this.#config.paragraph.initialMetadata,
-                },
-                source,
-              ),
-            nullish,
-            { payload: { source } },
-          ),
-
-        /**
-         * Inserts a {@link QuoteBlock} at the given position with metadata.
-         * By defaults it inserts after the current selection.
-         *
-         * Returns the {@link BlockId} of the inserted block on success,
-         * or `null` if no ops were applied.
-         */
-        insertQuote: (
-          opts: {
-            pos?: InsertOrMoveBlockPosition
-            metadata?: QBM
-          } = {},
-          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ): BlockId | null =>
-          this.#safeExecuteCommand(
-            'blocks/insert-quote',
-            () =>
-              this.#pipeline.insertQuoteBlock(
-                {
-                  ...opts,
-                  metadata: opts.metadata ?? this.#config.quote.initialMetadata,
-                },
-                source,
-              ),
-            nullish,
-            { payload: { source } },
+            { payload: { opts, source } },
           ),
 
         /**

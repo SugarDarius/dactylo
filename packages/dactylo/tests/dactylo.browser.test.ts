@@ -37,6 +37,8 @@ import { DactyloError } from '../src/internals/errors'
 import type { HistoryEvent } from '../src/internals/history'
 import { isMarkEnabled } from '../src/internals/marks'
 import {
+  createLineBreakNode,
+  createTextNode,
   generateNodeId,
   isInlineNodeWithEditableText,
   isLineBreakNode,
@@ -72,7 +74,10 @@ function threeNumberedEditor() {
   const editor = makeTypingEditor()
   const leftoverId = firstInlineBlock(editor.getContext()).id
   if (
-    !editor.blocks.commands.insertNumberedListItem({ pos: { type: 'start' } })
+    !editor.blocks.commands.insert({
+      pos: { type: 'start' },
+      spec: { type: 'numbered_list_item' },
+    })
   ) {
     throw new Error('Expected an inserted numbered list item')
   }
@@ -351,9 +356,9 @@ describe('Dactylo selection', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
-    editor.blocks.commands.insertDivider()
+    editor.blocks.commands.insert({ spec: { type: 'divider' } })
     typeText(editor, 'World')
-    editor.blocks.commands.insertDivider()
+    editor.blocks.commands.insert({ spec: { type: 'divider' } })
 
     const trailingParagraphId = editor.getContext().state.blockOrderById.at(-1)
     if (!trailingParagraphId) {
@@ -692,12 +697,14 @@ describe('Dactylo blocks', () => {
     expect(blockTexts(editor.getContext())).toEqual(['  '])
   })
 
-  test('insertHeading adds a heading after the current paragraph', () => {
+  test('insert heading adds a heading after the current paragraph', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
 
-    const blockId = editor.blocks.commands.insertHeading(2)
+    const blockId = editor.blocks.commands.insert({
+      spec: { type: 'heading', level: 2 },
+    })
     if (!blockId) {
       throw new Error('Expected an inserted heading')
     }
@@ -715,12 +722,12 @@ describe('Dactylo blocks', () => {
     expect(editor.blocks.tools.isWithEmptyInlineContent(heading.id)).toBe(true)
   })
 
-  test('insertQuote adds a quote after the current paragraph', () => {
+  test('insert quote adds a quote after the current paragraph', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
 
-    const blockId = editor.blocks.commands.insertQuote()
+    const blockId = editor.blocks.commands.insert({ spec: { type: 'quote' } })
     if (!blockId) {
       throw new Error('Expected an inserted quote')
     }
@@ -735,12 +742,14 @@ describe('Dactylo blocks', () => {
     expect(editor.blocks.tools.isWithEmptyInlineContent(quote.id)).toBe(true)
   })
 
-  test('insertNumberedListItem adds a numbered item after the current paragraph', () => {
+  test('insert numbered list item adds a numbered item after the current paragraph', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
 
-    const blockId = editor.blocks.commands.insertNumberedListItem()
+    const blockId = editor.blocks.commands.insert({
+      spec: { type: 'numbered_list_item' },
+    })
     if (!blockId) {
       throw new Error('Expected an inserted numbered list item')
     }
@@ -759,15 +768,131 @@ describe('Dactylo blocks', () => {
     expect(editor.blocks.tools.isWithEmptyInlineContent(item.id)).toBe(true)
   })
 
+  test('insert uses the given spec content', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const text = createTextNode({ text: 'Hello' })
+
+    const blockId = editor.blocks.commands.insert({
+      spec: { content: [text], type: 'paragraph' },
+    })
+    if (!blockId) {
+      throw new Error('Expected an inserted paragraph')
+    }
+
+    const inserted = nthInlineBlock(editor.getContext(), 1)
+    expect(inserted.id).toBe(blockId)
+    expect(isParagraphBlock(inserted)).toBe(true)
+    expect(inserted.content).toEqual([text])
+    expect(blockTexts(editor.getContext())).toEqual(['', 'Hello'])
+    expect(requireCursor(editor.getContext())).toMatchObject({
+      blockId,
+      nodeId: text.id,
+      offset: text.text.length,
+    })
+  })
+
+  test('insert appends an empty text node when spec content ends without editable text', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const hello = createTextNode({ text: 'Hello' })
+    const lineBreak = createLineBreakNode()
+
+    const blockId = editor.blocks.commands.insert({
+      spec: { content: [hello, lineBreak], type: 'paragraph' },
+    })
+    if (!blockId) {
+      throw new Error('Expected an inserted paragraph')
+    }
+
+    const inserted = nthInlineBlock(editor.getContext(), 1)
+    const [first, second, trailing] = inserted.content
+    expect(inserted.id).toBe(blockId)
+    expect(inserted.content).toHaveLength(3)
+    expect(first).toEqual(hello)
+    expect(second).toEqual(lineBreak)
+    expect(isTextNode(trailing)).toBe(true)
+    if (!isTextNode(trailing)) {
+      throw new Error('Expected a trailing empty text node')
+    }
+    expect(trailing.text).toBe('')
+    expect(requireCursor(editor.getContext())).toMatchObject({
+      blockId,
+      nodeId: trailing.id,
+      offset: 0,
+    })
+  })
+
+  test('insert checkbox list item respects checked', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    const blockId = editor.blocks.commands.insert({
+      spec: { checked: true, type: 'checkbox_list_item' },
+    })
+    if (!blockId) {
+      throw new Error('Expected an inserted checkbox list item')
+    }
+
+    const item = nthInlineBlock(editor.getContext(), 1)
+    expect(item.id).toBe(blockId)
+    expect(isCheckboxListItemBlock(item)).toBe(true)
+    if (isCheckboxListItemBlock(item)) {
+      expect(item.checked).toBe(true)
+    }
+  })
+
+  test('insert numbered list item respects variant', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    const blockId = editor.blocks.commands.insert({
+      spec: { type: 'numbered_list_item', variant: 'roman' },
+    })
+    if (!blockId) {
+      throw new Error('Expected an inserted numbered list item')
+    }
+
+    const item = nthInlineBlock(editor.getContext(), 1)
+    expect(item.id).toBe(blockId)
+    expect(isNumberedListItemBlock(item)).toBe(true)
+    if (isNumberedListItemBlock(item)) {
+      expect(item.variant).toBe('roman')
+      expect(item.markerNumbering).toBe('i.')
+    }
+  })
+
+  test('insert stamps spec metadata', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    const blockId = editor.blocks.commands.insert({
+      spec: { metadata: { source: 'import' }, type: 'quote' },
+    })
+    if (!blockId) {
+      throw new Error('Expected an inserted quote')
+    }
+
+    const quote = nthInlineBlock(editor.getContext(), 1)
+    expect(quote.id).toBe(blockId)
+    expect(isQuoteBlock(quote)).toBe(true)
+    expect(quote.metadata).toEqual({ source: 'import' })
+  })
+
   test('inserts a list item, divider, and trailing paragraph', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
 
-    const bulletId = editor.blocks.commands.insertBulletListItem()
-    const dividerId = editor.blocks.commands.insertDivider()
-    const paragraphId = editor.blocks.commands.insertParagraph({
+    const bulletId = editor.blocks.commands.insert({
+      spec: { type: 'bullet_list_item' },
+    })
+    const dividerId = editor.blocks.commands.insert({
+      spec: { type: 'divider' },
+    })
+    const paragraphId = editor.blocks.commands.insert({
       pos: { type: 'end' },
+      spec: { type: 'paragraph' },
     })
     if (!(bulletId && dividerId && paragraphId)) {
       throw new Error('Expected inserted bullet, divider, and paragraph')
@@ -803,7 +928,7 @@ describe('Dactylo blocks', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
-    editor.blocks.commands.insertHeading(1)
+    editor.blocks.commands.insert({ spec: { type: 'heading', level: 1 } })
 
     const paragraphId = nthInlineBlock(editor.getContext(), 0).id
     expect(editor.blocks.commands.duplicate(paragraphId)).toBe(true)
@@ -828,8 +953,9 @@ describe('Dactylo blocks', () => {
 
   test('move compactifies leftover numbered markers after splitting a run', () => {
     const editor = threeNumberedEditor()
-    const paragraphId = editor.blocks.commands.insertParagraph({
+    const paragraphId = editor.blocks.commands.insert({
       pos: { type: 'end' },
+      spec: { type: 'paragraph' },
     })
     if (!paragraphId) {
       throw new Error('Expected an inserted paragraph')
@@ -850,8 +976,9 @@ describe('Dactylo blocks', () => {
 
   test('move of a paragraph into a numbered run reindexes the split suffix', () => {
     const editor = threeNumberedEditor()
-    const paragraphId = editor.blocks.commands.insertParagraph({
+    const paragraphId = editor.blocks.commands.insert({
       pos: { type: 'end' },
+      spec: { type: 'paragraph' },
     })
     if (!paragraphId) {
       throw new Error('Expected an inserted paragraph')
@@ -878,7 +1005,7 @@ describe('Dactylo blocks', () => {
 
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
-    editor.blocks.commands.insertHeading(2)
+    editor.blocks.commands.insert({ spec: { type: 'heading', level: 2 } })
     const headingId = nthInlineBlock(editor.getContext(), 1).id
 
     expect(editor.blocks.commands.delete(headingId)).toBe(true)
@@ -954,7 +1081,9 @@ describe('Dactylo blocks', () => {
   test('mutate of a divider is a no-op', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
-    const dividerId = editor.blocks.commands.insertDivider()
+    const dividerId = editor.blocks.commands.insert({
+      spec: { type: 'divider' },
+    })
     if (!dividerId) {
       throw new Error('Expected an inserted divider')
     }
@@ -969,7 +1098,7 @@ describe('Dactylo blocks', () => {
   test('patchCheckboxListItem sets checked and keeps the same id', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
-    editor.blocks.commands.insertCheckboxListItem()
+    editor.blocks.commands.insert({ spec: { type: 'checkbox_list_item' } })
 
     const checkbox = nthInlineBlock(editor.getContext(), 1)
     expect(isCheckboxListItemBlock(checkbox)).toBe(true)
@@ -987,7 +1116,7 @@ describe('Dactylo blocks', () => {
   test('undo restores unchecked and redo restores checked', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
-    editor.blocks.commands.insertCheckboxListItem()
+    editor.blocks.commands.insert({ spec: { type: 'checkbox_list_item' } })
     const checkboxId = nthInlineBlock(editor.getContext(), 1).id
 
     editor.blocks.commands.patchCheckboxListItem(checkboxId, { checked: true })
@@ -1011,7 +1140,7 @@ describe('Dactylo blocks', () => {
   test('patchCheckboxListItem metadata keeps checked', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
-    editor.blocks.commands.insertCheckboxListItem()
+    editor.blocks.commands.insert({ spec: { type: 'checkbox_list_item' } })
     const checkboxId = nthInlineBlock(editor.getContext(), 1).id
 
     editor.blocks.commands.patchCheckboxListItem(checkboxId, { checked: true })
@@ -1030,7 +1159,7 @@ describe('Dactylo blocks', () => {
   test('patchDivider sets metadata', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
-    editor.blocks.commands.insertDivider()
+    editor.blocks.commands.insert({ spec: { type: 'divider' } })
 
     const { state } = editor.getContext()
     const dividerId = state.blockOrderById.find((id) => {
@@ -1065,7 +1194,7 @@ describe('Dactylo blocks', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
-    editor.blocks.commands.insertHeading(2)
+    editor.blocks.commands.insert({ spec: { type: 'heading', level: 2 } })
 
     const heading = nthInlineBlock(editor.getContext(), 1)
     expect(isHeadingBlock(heading)).toBe(true)
@@ -1106,7 +1235,7 @@ describe('Dactylo blocks', () => {
   test('patchQuote sets metadata', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
-    editor.blocks.commands.insertQuote()
+    editor.blocks.commands.insert({ spec: { type: 'quote' } })
     const quote = nthInlineBlock(editor.getContext(), 1)
 
     expect(
@@ -1122,7 +1251,7 @@ describe('Dactylo blocks', () => {
   test('patchBulletListItem sets metadata', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
-    editor.blocks.commands.insertBulletListItem()
+    editor.blocks.commands.insert({ spec: { type: 'bullet_list_item' } })
     const item = nthInlineBlock(editor.getContext(), 1)
 
     expect(
@@ -1140,7 +1269,7 @@ describe('Dactylo blocks', () => {
   test('patchNumberedListItem changes variant only', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
-    editor.blocks.commands.insertNumberedListItem()
+    editor.blocks.commands.insert({ spec: { type: 'numbered_list_item' } })
 
     const item = nthInlineBlock(editor.getContext(), 1)
     expect(isNumberedListItemBlock(item)).toBe(true)
@@ -2195,11 +2324,11 @@ describe('Dactylo initial metadata', () => {
     expect(emptyText?.metadata).toEqual({ k: 't' })
   })
 
-  test('insertHeading uses heading initial metadata', () => {
+  test('insert heading uses heading initial metadata', () => {
     const editor = makeEditor(initials)
     editor.selection.commands.focus()
 
-    editor.blocks.commands.insertHeading(1)
+    editor.blocks.commands.insert({ spec: { type: 'heading', level: 1 } })
 
     const heading = nthInlineBlock(editor.getContext(), 1)
     expect(isHeadingBlock(heading)).toBe(true)
@@ -2353,13 +2482,27 @@ describe('Dactylo read-only mode', () => {
     expect(sendInput(editor, 'insertText', 'x')).toBe(false)
     editor.marks.commands.toggle('bold')
     editor.history.commands.undo()
-    expect(editor.blocks.commands.insertParagraph()).toBeNull()
-    expect(editor.blocks.commands.insertQuote()).toBeNull()
-    expect(editor.blocks.commands.insertHeading(1)).toBeNull()
-    expect(editor.blocks.commands.insertBulletListItem()).toBeNull()
-    expect(editor.blocks.commands.insertNumberedListItem()).toBeNull()
-    expect(editor.blocks.commands.insertCheckboxListItem()).toBeNull()
-    expect(editor.blocks.commands.insertDivider()).toBeNull()
+    expect(
+      editor.blocks.commands.insert({ spec: { type: 'paragraph' } }),
+    ).toBeNull()
+    expect(
+      editor.blocks.commands.insert({ spec: { type: 'quote' } }),
+    ).toBeNull()
+    expect(
+      editor.blocks.commands.insert({ spec: { type: 'heading', level: 1 } }),
+    ).toBeNull()
+    expect(
+      editor.blocks.commands.insert({ spec: { type: 'bullet_list_item' } }),
+    ).toBeNull()
+    expect(
+      editor.blocks.commands.insert({ spec: { type: 'numbered_list_item' } }),
+    ).toBeNull()
+    expect(
+      editor.blocks.commands.insert({ spec: { type: 'checkbox_list_item' } }),
+    ).toBeNull()
+    expect(
+      editor.blocks.commands.insert({ spec: { type: 'divider' } }),
+    ).toBeNull()
     expect(editor.blocks.commands.delete(paragraphId)).toBe(false)
     expect(editor.blocks.commands.duplicate(paragraphId)).toBe(false)
     expect(editor.blocks.commands.move(paragraphId, { type: 'end' })).toBe(
@@ -2550,6 +2693,29 @@ describe('Dactylo safe-execute opts', () => {
       }),
     ])
     expect(commands.at(-1)?.error).toBe(errors[0]?.error)
+  })
+
+  test('insert emits blocks/insert with the spec payload', () => {
+    const editor = makeTypingEditor()
+    const commands: DactyloCommandEvent[] = []
+    editor.events.commands.subscribe((event) => {
+      commands.push(event)
+    })
+
+    editor.selection.commands.focus()
+    const opts = { spec: { type: 'paragraph' as const } }
+    const blockId = editor.blocks.commands.insert(opts, 'ai-agent')
+    if (!blockId) {
+      throw new Error('Expected an inserted paragraph')
+    }
+
+    expect(commands.at(-1)).toEqual(
+      expect.objectContaining({
+        command: 'blocks/insert',
+        payload: { opts, source: 'ai-agent' },
+        status: 'success',
+      }),
+    )
   })
 
   test('forwards tool payload on success and read-only fallback', () => {

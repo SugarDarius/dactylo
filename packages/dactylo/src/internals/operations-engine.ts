@@ -50,6 +50,8 @@ import {
   createFromInlineWithEditableText,
   createMentionNode,
   createTextNode,
+  getInlineNodeTextLength,
+  isInlineNodeWithEditableText,
   isTextNode,
 } from './nodes'
 import type { InlineNode, MentionNode, NodeId } from './nodes'
@@ -691,7 +693,7 @@ export class OperationsEngine {
   }
 
   /** Builds operations to insert a {@link Block} according to the given specification and position. */
-  #buildInsertBlockOps(
+  buildInsertBlockOps(
     context: EditorContext,
     spec: InsertBlockSpec,
     pos?: InsertOrMoveBlockPosition,
@@ -725,12 +727,39 @@ export class OperationsEngine {
       text: '',
     })
 
+    let content: InlineNode[] = [insertedText]
+    let lastNode: InlineNode = insertedText
+    let offset = 0
+
+    if (spec.content !== undefined) {
+      const last = spec.content[spec.content.length - 1]
+      if (last !== undefined) {
+        content = [...spec.content]
+
+        /** If the last node is an editable text node, use its text length as the offset. */
+        if (isInlineNodeWithEditableText(last)) {
+          offset = getInlineNodeTextLength(last)
+          lastNode = last
+        }
+        /** Otherwise, we create a new text node and set the offset to 0. */
+        else {
+          lastNode = createTextNode({
+            metadata: this.#initialMetadata.text,
+            text: '',
+          })
+
+          content.push(lastNode)
+          offset = 0
+        }
+      }
+    }
+
     const { type } = spec
     switch (type) {
       case 'paragraph': {
         const paragraph = createParagraphBlock({
-          content: [insertedText],
-          metadata: spec.metadata,
+          content,
+          metadata: spec.metadata ?? this.#initialMetadata.paragraph,
           posKey,
         })
 
@@ -744,8 +773,8 @@ export class OperationsEngine {
             __type: 'set_selection',
             next: createCursor({
               blockId: paragraph.id,
-              nodeId: insertedText.id,
-              offset: 0,
+              nodeId: lastNode.id,
+              offset,
             }),
             prev: selection,
           },
@@ -755,8 +784,8 @@ export class OperationsEngine {
       }
       case 'quote': {
         const quote = createQuoteBlock({
-          content: [insertedText],
-          metadata: spec.metadata,
+          content,
+          metadata: spec.metadata ?? this.#initialMetadata.quote,
           posKey,
         })
 
@@ -770,8 +799,8 @@ export class OperationsEngine {
             __type: 'set_selection',
             next: createCursor({
               blockId: quote.id,
-              nodeId: insertedText.id,
-              offset: 0,
+              nodeId: lastNode.id,
+              offset,
             }),
             prev: selection,
           },
@@ -781,9 +810,9 @@ export class OperationsEngine {
       }
       case 'heading': {
         const heading = createHeadingBlock({
-          content: [insertedText],
+          content,
           level: spec.level,
-          metadata: spec.metadata,
+          metadata: spec.metadata ?? this.#initialMetadata.heading,
           posKey,
         })
 
@@ -797,8 +826,8 @@ export class OperationsEngine {
             __type: 'set_selection',
             next: createCursor({
               blockId: heading.id,
-              nodeId: insertedText.id,
-              offset: 0,
+              nodeId: lastNode.id,
+              offset,
             }),
             prev: selection,
           },
@@ -808,8 +837,8 @@ export class OperationsEngine {
       }
       case 'bullet_list_item': {
         const bulletListItem = createBulletListItemBlock({
-          content: [insertedText],
-          metadata: spec.metadata,
+          content,
+          metadata: spec.metadata ?? this.#initialMetadata.bulletedList,
           posKey,
         })
 
@@ -823,8 +852,8 @@ export class OperationsEngine {
             __type: 'set_selection',
             next: createCursor({
               blockId: bulletListItem.id,
-              nodeId: insertedText.id,
-              offset: 0,
+              nodeId: lastNode.id,
+              offset,
             }),
             prev: selection,
           },
@@ -835,13 +864,13 @@ export class OperationsEngine {
       case 'numbered_list_item': {
         const variant = spec.variant ?? 'default'
         const numberedListItem = createNumberedListItemBlock({
-          content: [insertedText],
+          content,
           markerNumbering: resolveMarkerNumberingForInsert(
             state,
             afterBlockId,
             variant,
           ),
-          metadata: spec.metadata,
+          metadata: spec.metadata ?? this.#initialMetadata.numberedList,
           posKey,
           variant,
         })
@@ -861,8 +890,8 @@ export class OperationsEngine {
             __type: 'set_selection',
             next: createCursor({
               blockId: numberedListItem.id,
-              nodeId: insertedText.id,
-              offset: 0,
+              nodeId: lastNode.id,
+              offset,
             }),
             prev: selection,
           },
@@ -876,8 +905,8 @@ export class OperationsEngine {
       case 'checkbox_list_item': {
         const checkboxListItem = createCheckboxListItemBlock({
           checked: spec.checked,
-          content: [insertedText],
-          metadata: spec.metadata,
+          content,
+          metadata: spec.metadata ?? this.#initialMetadata.checkboxList,
           posKey,
         })
 
@@ -891,8 +920,8 @@ export class OperationsEngine {
             __type: 'set_selection',
             next: createCursor({
               blockId: checkboxListItem.id,
-              nodeId: insertedText.id,
-              offset: 0,
+              nodeId: lastNode.id,
+              offset,
             }),
             prev: selection,
           },
@@ -905,7 +934,7 @@ export class OperationsEngine {
       }
       case 'divider': {
         const divider = createDividerBlock({
-          metadata: spec.metadata,
+          metadata: spec.metadata ?? this.#initialMetadata.divider,
           posKey,
         })
 
@@ -951,96 +980,6 @@ export class OperationsEngine {
         assertNever(type, { hint: 'OperationsEngine/buildInsertBlockOps' })
       }
     }
-  }
-
-  /** Builds operations to insert a {@link ParagraphBlock}. */
-  buildInsertParagraphBlockOps(
-    context: EditorContext,
-    pos?: InsertOrMoveBlockPosition,
-    metadata?: Metadata,
-  ): [BuilderOpsIntent, BlockId] | null {
-    return this.#buildInsertBlockOps(
-      context,
-      { metadata, type: 'paragraph' },
-      pos,
-    )
-  }
-
-  /** Builds operations to insert a {@link QuoteBlock}. */
-  buildInsertQuoteBlockOps(
-    context: EditorContext,
-    pos?: InsertOrMoveBlockPosition,
-    metadata?: Metadata,
-  ): [BuilderOpsIntent, BlockId] | null {
-    return this.#buildInsertBlockOps(context, { metadata, type: 'quote' }, pos)
-  }
-
-  /** Builds operations to insert an {@link HeadingBlock}. */
-  buildInsertHeadingBlockOps(
-    context: EditorContext,
-    level: HeadingBlock['level'],
-    pos?: InsertOrMoveBlockPosition,
-    metadata?: Metadata,
-  ): [BuilderOpsIntent, BlockId] | null {
-    return this.#buildInsertBlockOps(
-      context,
-      { level, metadata, type: 'heading' },
-      pos,
-    )
-  }
-
-  /** Builds operations to insert a {@link BulletListItemBlock}. */
-  buildInsertBulletListItemBlockOps(
-    context: EditorContext,
-    pos?: InsertOrMoveBlockPosition,
-    metadata?: Metadata,
-  ): [BuilderOpsIntent, BlockId] | null {
-    return this.#buildInsertBlockOps(
-      context,
-      { metadata, type: 'bullet_list_item' },
-      pos,
-    )
-  }
-
-  /** Builds operations to insert a {@link NumberedListItemBlock}. */
-  buildInsertNumberedListItemBlockOps(
-    context: EditorContext,
-    variant?: NumberedListItemBlock['variant'],
-    pos?: InsertOrMoveBlockPosition,
-    metadata?: Metadata,
-  ): [BuilderOpsIntent, BlockId] | null {
-    return this.#buildInsertBlockOps(
-      context,
-      { metadata, type: 'numbered_list_item', variant },
-      pos,
-    )
-  }
-
-  /** Builds operations to insert a {@link CheckboxListItemBlock}. */
-  buildInsertCheckboxListItemBlockOps(
-    context: EditorContext,
-    checked?: boolean,
-    pos?: InsertOrMoveBlockPosition,
-    metadata?: Metadata,
-  ): [BuilderOpsIntent, BlockId] | null {
-    return this.#buildInsertBlockOps(
-      context,
-      { checked, metadata, type: 'checkbox_list_item' },
-      pos,
-    )
-  }
-
-  /** Builds operations to insert a {@link DividerBlock}. */
-  buildInsertDividerBlockOps(
-    context: EditorContext,
-    pos?: InsertOrMoveBlockPosition,
-    metadata?: Metadata,
-  ): [BuilderOpsIntent, BlockId] | null {
-    return this.#buildInsertBlockOps(
-      context,
-      { metadata, type: 'divider' },
-      pos,
-    )
   }
 
   /** Builds operations to patch an existing block in place. */

@@ -39,8 +39,8 @@ function replaceDocWithNumbered(
   const pipeline = makePipeline({ markdown: false })
   focus(pipeline)
   const leftoverId = firstInlineBlock(pipeline.context).id
-  pipeline.insertNumberedListItemBlock(
-    { pos: { type: 'start' }, variant },
+  pipeline.insertBlock(
+    { pos: { type: 'start' }, spec: { type: 'numbered_list_item', variant } },
     'user',
   )
   pipeline.deleteBlock(leftoverId, 'user')
@@ -65,17 +65,19 @@ describe('numbered list markerNumbering', () => {
       requireNumbered(firstInlineBlock(pipeline.context)).markerNumbering,
     ).toBe('1.')
 
-    pipeline.insertNumberedListItemBlock(
+    pipeline.insertBlock(
       {
         pos: { blockId: firstInlineBlock(pipeline.context).id, type: 'after' },
+        spec: { type: 'numbered_list_item' },
       },
       'user',
     )
     expect(markers(pipeline)).toEqual(['1.', '2.'])
 
-    pipeline.insertNumberedListItemBlock(
+    pipeline.insertBlock(
       {
         pos: { blockId: nthInlineBlock(pipeline.context, 0).id, type: 'after' },
+        spec: { type: 'numbered_list_item' },
       },
       'user',
     )
@@ -315,7 +317,10 @@ describe('numbered list markerNumbering', () => {
 
   test('move middle item after a paragraph compactifies the leftover run', () => {
     const pipeline = threeNumbered()
-    pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
+    pipeline.insertBlock(
+      { pos: { type: 'end' }, spec: { type: 'paragraph' } },
+      'user',
+    )
     expect(
       pipeline.moveBlock(
         nthInlineBlock(pipeline.context, 1).id,
@@ -343,7 +348,10 @@ describe('numbered list markerNumbering', () => {
     typeText(pipeline, 'C')
     expect(markers(pipeline)).toEqual(['2.', '3.', '4.'])
 
-    pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
+    pipeline.insertBlock(
+      { pos: { type: 'end' }, spec: { type: 'paragraph' } },
+      'user',
+    )
     expect(
       pipeline.moveBlock(
         nthInlineBlock(pipeline.context, 0).id,
@@ -360,7 +368,10 @@ describe('numbered list markerNumbering', () => {
 
   test('moving a paragraph into 1. 2. 3. splits with keep-start', () => {
     const pipeline = threeNumbered()
-    pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
+    pipeline.insertBlock(
+      { pos: { type: 'end' }, spec: { type: 'paragraph' } },
+      'user',
+    )
     expect(
       pipeline.moveBlock(
         nthInlineBlock(pipeline.context, 3).id,
@@ -378,7 +389,10 @@ describe('numbered list markerNumbering', () => {
 
   test('moving a paragraph out of a split list joins to 1. 2. 3.', () => {
     const pipeline = threeNumbered()
-    pipeline.insertParagraphBlock({ pos: { type: 'end' } }, 'user')
+    pipeline.insertBlock(
+      { pos: { type: 'end' }, spec: { type: 'paragraph' } },
+      'user',
+    )
     const paragraphId = nthInlineBlock(pipeline.context, 3).id
     expect(
       pipeline.moveBlock(
@@ -401,8 +415,11 @@ describe('numbered list markerNumbering', () => {
     typeText(pipeline, 'A')
     hardBreak(pipeline)
     typeText(pipeline, 'B')
-    pipeline.insertNumberedListItemBlock(
-      { pos: { type: 'end' }, variant: 'default' },
+    pipeline.insertBlock(
+      {
+        pos: { type: 'end' },
+        spec: { type: 'numbered_list_item', variant: 'default' },
+      },
       'user',
     )
     expect(markers(pipeline)).toEqual(['i.', 'ii.', '1.'])
@@ -433,14 +450,15 @@ describe('numbered list markerNumbering', () => {
   })
 
   test('insert and patch commands do not accept markerNumbering', () => {
-    type InsertOpts = NonNullable<
-      Parameters<DactyloBlocksCommands['insertNumberedListItem']>[0]
+    type InsertSpec = Extract<
+      Parameters<DactyloBlocksCommands['insert']>[0]['spec'],
+      { type: 'numbered_list_item' }
     >
     type PatchOpts = Parameters<
       DactyloBlocksCommands['patchNumberedListItem']
     >[1]
 
-    expectTypeOf<InsertOpts>().not.toHaveProperty('markerNumbering')
+    expectTypeOf<InsertSpec>().not.toHaveProperty('markerNumbering')
     expectTypeOf<PatchOpts>().not.toHaveProperty('markerNumbering')
   })
 })
