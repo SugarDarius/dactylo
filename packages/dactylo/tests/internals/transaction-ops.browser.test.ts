@@ -176,16 +176,16 @@ describe('TransactionPipeline block commands', () => {
       throw new Error('Expected a quote block')
     }
     const [first, second, trailing] = inserted.content
-    if (trailing === undefined) {
-      throw new Error('Expected a trailing empty text node')
-    }
+
     expect(inserted.content).toHaveLength(3)
     expect(first).toEqual(hello)
     expect(second).toEqual(lineBreak)
-    expect(isTextNode(trailing)).toBe(true)
-    if (!isTextNode(trailing)) {
+
+    if (trailing === undefined || !isTextNode(trailing)) {
       throw new Error('Expected a trailing empty text node')
     }
+
+    expect(isTextNode(trailing)).toBe(true)
     expect(trailing.text).toBe('')
     expect(requireCursor(pipeline.context)).toMatchObject({
       blockId,
