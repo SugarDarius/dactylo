@@ -140,10 +140,35 @@ export interface ComposerParagraphBlockProps extends ComposerBlockBaseProps {
   block: ParagraphBlock
 }
 
+/** Props for declaring a quote block marker border component. */
+export type ComposerQuoteBlockMarkerBorderProps =
+  React.HTMLAttributes<HTMLElement>
+
 /** Props for declaring a quote block component. */
 export interface ComposerQuoteBlockProps extends ComposerBlockBaseProps {
   /** The quote block to render. */
   block: QuoteBlock
+
+  /**
+   * Slot overrides for `<Composer.QuoteBlock />`.
+   *
+   * @example
+   * ```tsx
+   * import { QuoteMarkerBorder } from '~/component/ui/quote-marker-border'
+   *
+   * <Composer.QuoteBlock
+   *   components={{
+   *     MarkerBorder: (attributes) => (
+   *       <QuoteMarkerBorder {...attributes} />
+   *     ),
+   *   }}
+   * />
+   * ```
+   */
+  components?: {
+    /** Slot override for the quote block marker border. */
+    MarkerBorder: React.ComponentType<ComposerQuoteBlockMarkerBorderProps>
+  }
 }
 
 /** Props for declaring a heading block component. */
@@ -151,6 +176,10 @@ export interface ComposerHeadingBlockProps extends ComposerBlockBaseProps {
   /** The heading block to render. */
   block: HeadingBlock
 }
+
+/** Props for declaring a bullet list item block marker dot component. */
+export type ComposerBulletListItemBlockMarkerDotProps =
+  React.HTMLAttributes<HTMLElement>
 
 /** Props for declaring a bullet list item block component. */
 export interface ComposerBulletListItemBlockProps extends ComposerBlockBaseProps {
@@ -174,24 +203,88 @@ export interface ComposerBulletListItemBlockProps extends ComposerBlockBaseProps
    * ```
    */
   components?: {
-    MarkerDot?: React.ComponentType<React.HTMLAttributes<HTMLElement>>
+    /** Slot override for the bullet list item marker dot. */
+    MarkerDot?: React.ComponentType<ComposerBulletListItemBlockMarkerDotProps>
   }
+}
+
+/** Props for declaring a numbered list item block marker numbering component. */
+export interface ComposerNumberedListItemBlockMarkerNumberingProps extends React.HTMLAttributes<HTMLElement> {
+  /** The numbered list item block marker numbering to render. */
+  numbering: string
 }
 
 /** Props for declaring a numbered list item block component. */
 export interface ComposerNumberedListItemBlockProps extends ComposerBlockBaseProps {
   /** The numbered list item block to render. */
   block: NumberedListItemBlock
+
+  /**
+   * Slot overrides for `<Composer.NumberedListItemBlock />`.
+   *
+   * @example
+   * ```tsx
+   * import { NumberedListItemMarkerNumbering } from '~/component/ui/numbered-list-item-marker-numbering'
+   *
+   * <Composer.NumberedListItemBlock
+   *   components={{
+   *     MarkerNumbering: ({ numbering, ...props }) => (
+   *       <NumberedListItemMarkerNumbering numbering={numbering} {...props} />
+   *     ),
+   *   }}
+   * />
+   * ```
+   */
+  components?: {
+    /** Slot override for the numbered list item marker numbering. */
+    MarkerNumbering: React.ComponentType<ComposerNumberedListItemBlockMarkerNumberingProps>
+  }
 }
 
+/** Props for declaring a checkbox list item block checkbox component. */
+export interface ComposerCheckboxListItemCheckboxProps extends React.HTMLAttributes<HTMLElement> {
+  /** Whether the checkbox is disabled because the editor is read-only. */
+  disabled: boolean
+
+  /** Whether the checkbox is checked. */
+  checked: boolean
+
+  /** An internal callback function that is called when the checkbox is checked or unchecked. */
+  onCheckedChange: (checked: boolean) => void
+}
 /** Props for declaring a checkbox list item block component. */
 export interface ComposerCheckboxListItemBlockProps extends ComposerBlockBaseProps {
   /** The checkbox list item block to render. */
   block: CheckboxListItemBlock
 
-  /** A callback function that is called when the checkbox list item block is checked or unchecked. */
+  /** An external callback function that is called when the checkbox list item block is checked or unchecked. */
   onCheckedChange?: (checked: boolean) => void
+
+  /**
+   * Slot overrides for `<Composer.CheckboxListItemBlock />`.
+   *
+   * @example
+   * ```tsx
+   * import { Checkbox } from '~/component/ui/checkbox'
+   *
+   * <Composer.CheckboxListItemBlock
+   *   components={{
+   *     Checkbox: ({ disabled, checked, onCheckedChange, ...props }) => (
+   *       <Checkbox disabled={disabled} checked={checked} onCheckedChange={onCheckedChange} {...props} />
+   *     ),
+   *   }}
+   * />
+   * ```
+   */
+  components?: {
+    /** Slot override for the checkbox list item block checkbox. */
+    Checkbox: React.ComponentType<ComposerCheckboxListItemCheckboxProps>
+  }
 }
+
+/** Props for declaring a divider block separator component. */
+export type ComposerDividerBlockSeparatorProps =
+  React.HTMLAttributes<HTMLElement>
 
 /** Props for declaring a divider block component. */
 export interface ComposerDividerBlockProps extends Omit<
@@ -200,6 +293,27 @@ export interface ComposerDividerBlockProps extends Omit<
 > {
   /** The divider block to render. */
   block: DividerBlock
+
+  /**
+   * Slot overrides for `<Composer.DividerBlock />`.
+   *
+   * @example
+   * ```tsx
+   * import { DividerBlockSeparator } from '~/component/ui/divider-block-separator'
+   *
+   * <Composer.DividerBlock
+   *   components={{
+   *     Separator: (attributes) => (
+   *       <DividerBlockSeparator {...attributes} />
+   *     ),
+   *   }}
+   * />
+   * ```
+   */
+  components?: {
+    /** Slot override for the divider block separator. */
+    Separator: React.ComponentType<ComposerDividerBlockSeparatorProps>
+  }
 }
 
 /** Props for declaring a slot block component. */

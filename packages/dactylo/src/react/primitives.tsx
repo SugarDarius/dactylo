@@ -81,7 +81,9 @@ import {
   COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME,
   COMPOSER_BULLET_LIST_ITEM_MARKER_DOT_NAME,
   COMPOSER_CHECKBOX_LIST_ITEM_BLOCK_NAME,
+  COMPOSER_CHECKBOX_LIST_ITEM_CHECKBOX_NAME,
   COMPOSER_DIVIDER_BLOCK_NAME,
+  COMPOSER_DIVIDER_BLOCK_SEPARATOR_NAME,
   COMPOSER_EDITABLE_NAME,
   COMPOSER_HEADING_BLOCK_NAME,
   COMPOSER_HEADING_LEVELS,
@@ -92,7 +94,9 @@ import {
   COMPOSER_LINK_NODE_NAME,
   COMPOSER_MENTION_NODE_NAME,
   COMPOSER_NUMBERED_LIST_ITEM_BLOCK_NAME,
+  COMPOSER_NUMBERED_LIST_ITEM_MARKER_NUMBERING_NAME,
   COMPOSER_PARAGRAPH_BLOCK_NAME,
+  COMPOSER_QUOTE_BLOCK_MARKER_BORDER_NAME,
   COMPOSER_QUOTE_BLOCK_NAME,
   COMPOSER_ROOT_NAME,
   COMPOSER_SLOT_BLOCK_NAME,
@@ -107,10 +111,13 @@ import {
 } from './internals/hooks'
 import { mergeRefs } from './internals/utils'
 import type {
+  ComposerBulletListItemBlockMarkerDotProps,
   ComposerBulletListItemBlockProps,
   ComposerCheckboxListItemBlockProps,
+  ComposerCheckboxListItemCheckboxProps,
   ComposerContext,
   ComposerDividerBlockProps,
+  ComposerDividerBlockSeparatorProps,
   ComposerEditableContext,
   ComposerEditableProps,
   ComposerHeadingBlockProps,
@@ -118,8 +125,10 @@ import type {
   ComposerLineBreakNodeProps,
   ComposerLinkNodeProps,
   ComposerMentionNodeProps,
+  ComposerNumberedListItemBlockMarkerNumberingProps,
   ComposerNumberedListItemBlockProps,
   ComposerParagraphBlockProps,
+  ComposerQuoteBlockMarkerBorderProps,
   ComposerQuoteBlockProps,
   ComposerRootProps,
   ComposerSlotBlockProps,
@@ -518,14 +527,22 @@ const ComposerParagraphBlock = forwardRef<
 })
 ComposerParagraphBlock.displayName = COMPOSER_PARAGRAPH_BLOCK_NAME
 
+/** Quote block marker border primitive for the composer. */
+const ComposerQuoteBlockMarkerBorder =
+  memo<ComposerQuoteBlockMarkerBorderProps>((props) => <div {...props} />)
+ComposerQuoteBlockMarkerBorder.displayName =
+  COMPOSER_QUOTE_BLOCK_MARKER_BORDER_NAME
+
 /** Adds a {@link QuoteBlock} to the composer. */
 const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
-  ({ block, blockIndex, overrides, ...props }, forwardedRef) => {
+  ({ block, blockIndex, overrides, components, ...props }, forwardedRef) => {
     const { quote } = useEditorConfig()
     const { canEdit, editableId, isActive, isEmpty, sct } =
       useEditableBlock(block)
 
     const placeholder = overrides?.placeholder ?? quote.placeholder
+    const MarkerBorderComp =
+      components?.MarkerBorder ?? ComposerQuoteBlockMarkerBorder
 
     return (
       <div
@@ -547,7 +564,7 @@ const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
           aria-roledescription='quote-block-marker'
           {...{ [QUOTE_BLOCK_MARKER_ATTR_NAME]: '' }}
         >
-          <div
+          <MarkerBorderComp
             aria-roledescription='quote-block-marker-border'
             {...{ [QUOTE_BLOCK_MARKER_BORDER_ATTR_NAME]: '' }}
           />
@@ -658,9 +675,8 @@ const ComposerHeadingBlock = forwardRef<
 ComposerHeadingBlock.displayName = COMPOSER_HEADING_BLOCK_NAME
 
 /** Bullet list item marker dot primitive for the composer. */
-const ComposerBulletListItemMarkerDot = memo<
-  React.HTMLAttributes<HTMLDivElement>
->((props) => <div {...props} />)
+const ComposerBulletListItemMarkerDot =
+  memo<ComposerBulletListItemBlockMarkerDotProps>((props) => <div {...props} />)
 ComposerBulletListItemMarkerDot.displayName =
   COMPOSER_BULLET_LIST_ITEM_MARKER_DOT_NAME
 
@@ -727,14 +743,26 @@ const ComposerBulletListItemBlock = forwardRef<
 })
 ComposerBulletListItemBlock.displayName = COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME
 
+/** Numbered list item marker numbering primitive for the composer. */
+const ComposerNumberedListItemMarkerNumbering =
+  memo<ComposerNumberedListItemBlockMarkerNumberingProps>(
+    ({ numbering, ...props }) => <div {...props}>{numbering}</div>,
+  )
+ComposerNumberedListItemMarkerNumbering.displayName =
+  COMPOSER_NUMBERED_LIST_ITEM_MARKER_NUMBERING_NAME
+
 /** Adds a {@link NumberedListItemBlock} to the composer. */
 const ComposerNumberedListItemBlock = forwardRef<
   HTMLDivElement,
   ComposerNumberedListItemBlockProps
->(({ block, blockIndex, ...props }, forwardedRef) => {
+>(({ block, blockIndex, overrides, components, ...props }, forwardedRef) => {
   const { numberedList } = useEditorConfig()
   const { canEdit, editableId, isActive, isEmpty, sct } =
     useEditableBlock(block)
+
+  const placeholder = overrides?.placeholder ?? numberedList.placeholder
+  const MarkerNumberingComp =
+    components?.MarkerNumbering ?? ComposerNumberedListItemMarkerNumbering
 
   return (
     <div
@@ -757,12 +785,11 @@ const ComposerNumberedListItemBlock = forwardRef<
         aria-roledescription='numbered-list-item-marker'
         {...{ [NUMBERED_LIST_ITEM_MARKER_ATTR_NAME]: '' }}
       >
-        <div
+        <MarkerNumberingComp
           aria-roledescription='numbered-list-item-marker-numbering'
           {...{ [NUMBERED_LIST_ITEM_MARKER_NUMBERING_ATTR_NAME]: '' }}
-        >
-          {block.markerNumbering}
-        </div>
+          numbering={block.markerNumbering}
+        />
       </div>
       <div
         id={editableId}
@@ -778,7 +805,7 @@ const ComposerNumberedListItemBlock = forwardRef<
           [BLOCK_CONTENT_SELECTED_COVERAGE_TOPOLOGY_DATA_NAME]:
             sct ?? undefined,
           [BLOCK_CONTENT_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
-          [BLOCK_PLACEHOLDER_ATTR_NAME]: numberedList.placeholder,
+          [BLOCK_PLACEHOLDER_ATTR_NAME]: placeholder,
         }}
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
@@ -790,13 +817,43 @@ const ComposerNumberedListItemBlock = forwardRef<
 ComposerNumberedListItemBlock.displayName =
   COMPOSER_NUMBERED_LIST_ITEM_BLOCK_NAME
 
+/** Checkbox list item block checkbox primitive for the composer. */
+const ComposerCheckboxListItemCheckbox =
+  memo<ComposerCheckboxListItemCheckboxProps>(
+    ({ disabled, checked, onCheckedChange, ...props }) => {
+      const handleClick = useStableCallback(
+        (e: React.MouseEvent<HTMLButtonElement>) => {
+          e.preventDefault()
+          e.stopPropagation()
+
+          const nextChecked = !checked
+
+          onCheckedChange(nextChecked)
+        },
+      )
+
+      return (
+        <button
+          {...props}
+          disabled={disabled}
+          type='button'
+          role='checkbox'
+          onClick={handleClick}
+          aria-checked={checked ? 'true' : 'false'}
+        />
+      )
+    },
+  )
+ComposerCheckboxListItemCheckbox.displayName =
+  COMPOSER_CHECKBOX_LIST_ITEM_CHECKBOX_NAME
+
 /** Adds a {@link CheckboxListItemBlock} to the composer. */
 const ComposerCheckboxListItemBlock = forwardRef<
   HTMLDivElement,
   ComposerCheckboxListItemBlockProps
 >(
   (
-    { block, blockIndex, overrides, onCheckedChange, ...props },
+    { block, blockIndex, overrides, components, onCheckedChange, ...props },
     forwardedRef,
   ) => {
     const { checkboxList } = useEditorConfig()
@@ -806,17 +863,13 @@ const ComposerCheckboxListItemBlock = forwardRef<
 
     const placeholder = overrides?.placeholder ?? checkboxList.placeholder
 
-    const handleClick = useStableCallback(
-      (e: React.MouseEvent<HTMLButtonElement>) => {
-        e.preventDefault()
-        e.stopPropagation()
+    const handleCheckedChange = useStableCallback((checked: boolean) => {
+      patch(block.id, { checked })
+      onCheckedChange?.(checked)
+    })
 
-        const checked = !block.checked
-
-        patch(block.id, { checked })
-        onCheckedChange?.(checked)
-      },
-    )
+    const CheckboxComp =
+      components?.Checkbox ?? ComposerCheckboxListItemCheckbox
 
     return (
       <div
@@ -839,12 +892,10 @@ const ComposerCheckboxListItemBlock = forwardRef<
           aria-roledescription='checkbox-list-item-marker'
           {...{ [CHECKBOX_LIST_ITEM_MARKER_ATTR_NAME]: '' }}
         >
-          <button
-            type='button'
-            role='checkbox'
+          <CheckboxComp
             disabled={!canEdit}
-            onClick={handleClick}
-            aria-checked={block.checked ? 'true' : 'false'}
+            onCheckedChange={handleCheckedChange}
+            checked={block.checked}
             aria-roledescription='checkbox-list-item-marker-input'
             {...{ [CHECKBOX_LIST_ITEM_MARKER_INPUT_ATTR_NAME]: '' }}
           />
@@ -877,12 +928,21 @@ const ComposerCheckboxListItemBlock = forwardRef<
 ComposerCheckboxListItemBlock.displayName =
   COMPOSER_CHECKBOX_LIST_ITEM_BLOCK_NAME
 
+/** Divider block separator primitive for the composer. */
+const ComposerDividerBlockSeparator = memo<ComposerDividerBlockSeparatorProps>(
+  (props) => <div {...props} />,
+)
+ComposerDividerBlockSeparator.displayName =
+  COMPOSER_DIVIDER_BLOCK_SEPARATOR_NAME
+
 /** Adds a {@link DividerBlock} to the composer. */
 const ComposerDividerBlock = forwardRef<
   HTMLDivElement,
   ComposerDividerBlockProps
->(({ block, blockIndex, ...props }, forwardedRef) => {
+>(({ block, blockIndex, components, ...props }, forwardedRef) => {
   const sct = useBlockSelectionCoverageTopology(block.id)
+
+  const SeparatorComp = components?.Separator ?? ComposerDividerBlockSeparator
 
   return (
     <div
@@ -908,7 +968,7 @@ const ComposerDividerBlock = forwardRef<
           [BLOCK_CONTENT_SELECTED_DATA_NAME]: sct ? 'true' : undefined,
         }}
       >
-        <div {...{ [DIVIDER_SEPARATOR_ATTR_NAME]: '' }} />
+        <SeparatorComp {...{ [DIVIDER_SEPARATOR_ATTR_NAME]: '' }} />
       </div>
     </div>
   )

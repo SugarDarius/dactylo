@@ -44,16 +44,21 @@ export {
 } from './composer'
 export * as Composer from './primitives'
 export type {
+  ComposerBulletListItemBlockMarkerDotProps,
   ComposerBulletListItemBlockProps,
   ComposerCheckboxListItemBlockProps,
+  ComposerCheckboxListItemCheckboxProps,
   ComposerDividerBlockProps,
+  ComposerDividerBlockSeparatorProps,
   ComposerEditableProps,
   ComposerHeadingBlockProps,
   ComposerLineBreakNodeProps,
   ComposerLinkNodeProps,
   ComposerMentionNodeProps,
+  ComposerNumberedListItemBlockMarkerNumberingProps,
   ComposerNumberedListItemBlockProps,
   ComposerParagraphBlockProps,
+  ComposerQuoteBlockMarkerBorderProps,
   ComposerQuoteBlockProps,
   ComposerRootProps,
   ComposerTextNodeProps,

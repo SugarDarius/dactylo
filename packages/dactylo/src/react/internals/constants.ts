@@ -15,8 +15,16 @@ export const COMPOSER_SLOT_BLOCK_NAME = 'Composer.SlotBlock'
 /** Paragraph block component name. */
 export const COMPOSER_PARAGRAPH_BLOCK_NAME = 'Composer.ParagraphBlock'
 
+/** Quote block marker border component name. */
+export const COMPOSER_QUOTE_BLOCK_MARKER_BORDER_NAME =
+  'Composer.QuoteBlockMarkerBorder'
+
 /** Quote block component name. */
 export const COMPOSER_QUOTE_BLOCK_NAME = 'Composer.QuoteBlock'
+
+/** Divider block separator component name. */
+export const COMPOSER_DIVIDER_BLOCK_SEPARATOR_NAME =
+  'Composer.DividerBlockSeparator'
 
 /** Divider block component name. */
 export const COMPOSER_DIVIDER_BLOCK_NAME = 'Composer.DividerBlock'
@@ -46,17 +54,25 @@ export const COMPOSER_HEADING_TAGS: Record<
 export const COMPOSER_HEADING_NAME = (level: HeadingBlock['level']) =>
   `Composer.Heading${level}`
 
-/** Bullet list item block component name. */
-export const COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME =
-  'Composer.BulletListItemBlock'
-
 /** Bullet list item marker dot component name. */
 export const COMPOSER_BULLET_LIST_ITEM_MARKER_DOT_NAME =
   'Composer.BulletListItemMarkerDot'
 
+/** Bullet list item block component name. */
+export const COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME =
+  'Composer.BulletListItemBlock'
+
+/** Numbered list item marker numbering component name. */
+export const COMPOSER_NUMBERED_LIST_ITEM_MARKER_NUMBERING_NAME =
+  'Composer.NumberedListItemMarkerNumbering'
+
 /** Numbered list item block component name. */
 export const COMPOSER_NUMBERED_LIST_ITEM_BLOCK_NAME =
   'Composer.NumberedListItemBlock'
+
+/** Checkbox list item block checkbox component name. */
+export const COMPOSER_CHECKBOX_LIST_ITEM_CHECKBOX_NAME =
+  'Composer.CheckboxListItemCheckbox'
 
 /** Checkbox list item block component name. */
 export const COMPOSER_CHECKBOX_LIST_ITEM_BLOCK_NAME =

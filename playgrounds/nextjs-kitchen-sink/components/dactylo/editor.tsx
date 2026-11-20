@@ -2,14 +2,19 @@
 
 import type { MarkKey } from '@sugardarius/dactylo'
 import type {
+  ComposerBulletListItemBlockMarkerDotProps,
   ComposerBulletListItemBlockProps,
   ComposerCheckboxListItemBlockProps,
+  ComposerCheckboxListItemCheckboxProps,
   ComposerDividerBlockProps,
+  ComposerDividerBlockSeparatorProps,
   ComposerHeadingBlockProps,
   ComposerLinkNodeProps,
   ComposerMentionNodeProps,
+  ComposerNumberedListItemBlockMarkerNumberingProps,
   ComposerNumberedListItemBlockProps,
   ComposerParagraphBlockProps,
+  ComposerQuoteBlockMarkerBorderProps,
   ComposerQuoteBlockProps,
   ComposerTextNodeProps,
 } from '@sugardarius/dactylo/react'
@@ -72,6 +77,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { Avatar, AvatarBadge, AvatarFallback } from '~/components/ui/avatar'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
+import { Checkbox } from '~/components/ui/checkbox'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -724,19 +730,24 @@ export function ParagraphBlock(props: ComposerParagraphBlockProps) {
   )
 }
 
+export function QuoteBlockMarkerBorder(
+  props: ComposerQuoteBlockMarkerBorderProps,
+) {
+  return <Separator {...props} orientation='vertical' className='w-0.5!' />
+}
+
 export function QuoteBlock(props: ComposerQuoteBlockProps) {
   return (
     <Composer.QuoteBlock
       {...props}
+      components={{
+        MarkerBorder: QuoteBlockMarkerBorder,
+      }}
       className={cn(
         'flex flex-row items-stretch gap-2 px-1.5',
         '**:[[dactylo-quote-block-marker]]:flex',
         '**:[[dactylo-quote-block-marker]]:shrink-0',
         '**:[[dactylo-quote-block-marker]]:items-stretch',
-        '**:[[dactylo-quote-block-marker-border]]:w-0.5',
-        '**:[[dactylo-quote-block-marker-border]]:self-stretch',
-        '**:[[dactylo-quote-block-marker-border]]:rounded-full',
-        '**:[[dactylo-quote-block-marker-border]]:bg-border',
         '**:[[dactylo-block-content]]:min-w-0',
         '**:[[dactylo-block-content]]:flex-1',
         '**:[[dactylo-block-content]]:text-muted-foreground',
@@ -782,18 +793,20 @@ export function HeadingBlock(props: ComposerHeadingBlockProps) {
   )
 }
 
+export function BulletListItemBlockMarkerDot(
+  props: ComposerBulletListItemBlockMarkerDotProps,
+) {
+  return (
+    <div {...props} className='size-1.5 shrink-0 rounded-full bg-current' />
+  )
+}
+
 export function BulletListItemBlock(props: ComposerBulletListItemBlockProps) {
   return (
     <Composer.BulletListItemBlock
       {...props}
       components={{
-        // oxlint-disable-next-line react/no-unstable-nested-components
-        MarkerDot: (attributes) => (
-          <div
-            {...attributes}
-            className='size-1.5 shrink-0 rounded-full bg-current'
-          />
-        ),
+        MarkerDot: BulletListItemBlockMarkerDot,
       }}
       className={cn(
         'flex flex-row items-center gap-2 px-1.5',
@@ -810,12 +823,26 @@ export function BulletListItemBlock(props: ComposerBulletListItemBlockProps) {
   )
 }
 
+export function NumberedListItemBlockMarkerNumbering({
+  numbering,
+  ...props
+}: ComposerNumberedListItemBlockMarkerNumberingProps) {
+  return (
+    <div {...props} className='shrink-0 select-none'>
+      {numbering}
+    </div>
+  )
+}
+
 export function NumberedListItemBlock(
   props: ComposerNumberedListItemBlockProps,
 ) {
   return (
     <Composer.NumberedListItemBlock
       {...props}
+      components={{
+        MarkerNumbering: NumberedListItemBlockMarkerNumbering,
+      }}
       className={cn(
         'flex flex-row items-center gap-2 px-1.5',
         '**:[[dactylo-numbered-list-item-marker]]:flex',
@@ -823,12 +850,27 @@ export function NumberedListItemBlock(
         '**:[[dactylo-numbered-list-item-marker]]:justify-center',
         '**:[[dactylo-numbered-list-item-marker]]:items-center',
         '**:[[dactylo-numbered-list-item-marker]]:p-1',
-        '**:[[dactylo-numbered-list-item-marker-numbering]]:shrink-0',
-        '**:[[dactylo-numbered-list-item-marker-numbering]]:select-none',
         '**:[[dactylo-block-content]]:min-w-0',
         '**:[[dactylo-block-content]]:flex-1',
         editableBlockContentClassName,
       )}
+    />
+  )
+}
+
+export function CheckboxListItemCheckbox({
+  disabled,
+  checked,
+  onCheckedChange,
+  ...props
+}: ComposerCheckboxListItemCheckboxProps) {
+  return (
+    <Checkbox
+      {...props}
+      className='size-4.5 cursor-pointer rounded-md'
+      checked={checked}
+      onCheckedChange={onCheckedChange}
+      disabled={disabled}
     />
   )
 }
@@ -839,20 +881,16 @@ export function CheckboxListItemBlock(
   return (
     <Composer.CheckboxListItemBlock
       {...props}
+      components={{
+        Checkbox: CheckboxListItemCheckbox,
+      }}
       className={cn(
-        'flex flex-row items-start gap-2 px-1.5',
+        'flex flex-row items-center gap-2 px-1.5',
         '**:[[dactylo-checkbox-list-item-marker]]:flex',
         '**:[[dactylo-checkbox-list-item-marker]]:flex-col',
         '**:[[dactylo-checkbox-list-item-marker]]:justify-center',
         '**:[[dactylo-checkbox-list-item-marker]]:items-center',
         '**:[[dactylo-checkbox-list-item-marker]]:p-1.5',
-        '**:[[dactylo-checkbox-list-item-marker-input]]:size-3.5',
-        '**:[[dactylo-checkbox-list-item-marker-input]]:shrink-0',
-        '**:[[dactylo-checkbox-list-item-marker-input]]:rounded-sm',
-        '**:[[dactylo-checkbox-list-item-marker-input]]:border',
-        '**:[[dactylo-checkbox-list-item-marker-input]]:border-current',
-        '**:[[dactylo-checkbox-list-item-marker-input]]:cursor-pointer',
-        'data-[dactylo-checkbox-list-item-checked=true]:**:[[dactylo-checkbox-list-item-marker-input]]:bg-current',
         'data-[dactylo-checkbox-list-item-checked=true]:**:[[dactylo-block-content]]:text-muted-foreground',
         'data-[dactylo-checkbox-list-item-checked=true]:**:[[dactylo-block-content]]:line-through',
         'data-[dactylo-checkbox-list-item-checked=true]:**:[[dactylo-mention-node]]:line-through',
@@ -864,19 +902,24 @@ export function CheckboxListItemBlock(
   )
 }
 
+export function DividerBlockSeparator(
+  props: ComposerDividerBlockSeparatorProps,
+) {
+  return <Separator {...props} className='shrink-0' />
+}
+
 export function DividerBlock(props: ComposerDividerBlockProps) {
   return (
     <Composer.DividerBlock
       {...props}
+      components={{
+        Separator: DividerBlockSeparator,
+      }}
       className={cn(
         'flex w-full flex-col',
         '**:[[dactylo-block-content]]:flex **:[[dactylo-block-content]]:flex-col',
         '**:[[dactylo-block-content]]:items-center **:[[dactylo-block-content]]:justify-center',
         '**:[[dactylo-block-content]]:py-2',
-        '**:[[dactylo-divider-separator]]:bg-border',
-        '**:[[dactylo-divider-separator]]:h-px',
-        '**:[[dactylo-divider-separator]]:w-full',
-        '**:[[dactylo-divider-separator]]:shrink-0',
       )}
     />
   )
