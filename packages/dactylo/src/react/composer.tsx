@@ -50,7 +50,10 @@ import type {
   InlineNodeWithEditableText,
   NodeId,
 } from '../internals/nodes'
-import type { InsertOrMoveBlockPosition } from '../internals/operations-builder'
+import type {
+  InsertOrMoveBlockPosition,
+  MutateBlockSpec,
+} from '../internals/operations-builder'
 import { isCursorSelection, isRangeSelection } from '../internals/selection'
 import type {
   CursorSelection,
@@ -572,6 +575,7 @@ export function useDomActiveRange(): Range | null {
  * const {
  *   isEmpty,
  *   move,
+ *   mutate,
  *   remove,
  *   duplicate,
  * } = useBlocks()
@@ -617,10 +621,19 @@ export function useBlocks() {
     ) => editor.blocks.commands.move(blockId, pos, source),
   )
 
+  const mutate = useStableCallback(
+    (
+      blockId: BlockId,
+      spec: MutateBlockSpec,
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.mutate(blockId, spec, source),
+  )
+
   return {
     duplicate,
     isEmpty,
     move,
+    mutate,
     remove,
   } as const
 }
@@ -631,7 +644,7 @@ export function useBlocks() {
  *
  * @example
  * ```tsx
- * const { insert, patch } = useParagraphs()
+ * const { insert, patch, ...rest } = useParagraphs()
  *
  * insertParagraph({ pos: { type: 'end'}, metadata: { fontColor: 'purple' } })
  * insertParagraph({}, 'ai-agent')
@@ -642,7 +655,7 @@ export function useBlocks() {
  */
 export function useParagraphs() {
   const { editor } = useComposer()
-  const { isEmpty, duplicate, move, remove } = useBlocks()
+  const { duplicate, isEmpty, move, mutate, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -667,6 +680,7 @@ export function useParagraphs() {
     insert,
     isEmpty,
     move,
+    mutate,
     patch,
     remove,
   } as const
@@ -678,7 +692,7 @@ export function useParagraphs() {
  *
  * @example
  * ```tsx
- * const { insert, patch } = useQuotes()
+ * const { insert, patch, ...rest } = useQuotes()
  *
  * insertQuote({ pos: { type: 'end' } })
  * insertQuote({}, 'ai-agent')
@@ -689,7 +703,7 @@ export function useParagraphs() {
  */
 export function useQuotes() {
   const { editor } = useComposer()
-  const { isEmpty, duplicate, move, remove } = useBlocks()
+  const { isEmpty, duplicate, move, mutate, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -714,6 +728,7 @@ export function useQuotes() {
     insert,
     isEmpty,
     move,
+    mutate,
     patch,
     remove,
   } as const
@@ -737,7 +752,7 @@ export function useQuotes() {
  */
 export function useHeadings() {
   const { editor } = useComposer()
-  const { isEmpty, duplicate, move, remove } = useBlocks()
+  const { duplicate, isEmpty, move, mutate, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -767,6 +782,7 @@ export function useHeadings() {
     insert,
     isEmpty,
     move,
+    mutate,
     patch,
     remove,
   } as const
@@ -778,7 +794,7 @@ export function useHeadings() {
  *
  * @example
  * ```tsx
- * const { insert, patch } = useDividers()
+ * const { insert, patch, ...rest } = useDividers()
  *
  * insertDivider()
  * insertDivider({ pos: { type: 'end' } })
@@ -790,7 +806,7 @@ export function useHeadings() {
  */
 export function useDividers() {
   const { editor } = useComposer()
-  const { isEmpty, duplicate, move, remove } = useBlocks()
+  const { duplicate, isEmpty, move, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -826,7 +842,7 @@ export function useDividers() {
  *
  * @example
  * ```tsx
- * const { insert, patch } = useBulletLists()
+ * const { insert, patch, ...rest } = useBulletLists()
  *
  * insertBulletListItem()
  * insertBulletListItem({ pos: { type: 'end' } })
@@ -838,7 +854,7 @@ export function useDividers() {
  */
 export function useBulletLists() {
   const { editor } = useComposer()
-  const { isEmpty, duplicate, move, remove } = useBlocks()
+  const { duplicate, isEmpty, move, mutate, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -868,6 +884,7 @@ export function useBulletLists() {
     insert,
     isEmpty,
     move,
+    mutate,
     patch,
     remove,
   } as const
@@ -879,7 +896,7 @@ export function useBulletLists() {
  *
  * @example
  * ```tsx
- * const { insert, patch } = useNumberedLists()
+ * const { insert, patch, ...rest } = useNumberedLists()
  *
  * insertNumberedListItem()
  * insertNumberedListItem({ pos: { type: 'end' } })
@@ -891,7 +908,7 @@ export function useBulletLists() {
  */
 export function useNumberedLists() {
   const { editor } = useComposer()
-  const { isEmpty, duplicate, move, remove } = useBlocks()
+  const { duplicate, isEmpty, move, mutate, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -926,6 +943,7 @@ export function useNumberedLists() {
     insert,
     isEmpty,
     move,
+    mutate,
     patch,
     remove,
   } as const
@@ -937,7 +955,7 @@ export function useNumberedLists() {
  *
  * @example
  * ```tsx
- * const { insert, patch } = useCheckboxLists()
+ * const { insert, patch, ...rest } = useCheckboxLists()
  *
  * insertCheckboxListItem()
  * insertCheckboxListItem({ pos: { type: 'end' } })
@@ -949,7 +967,7 @@ export function useNumberedLists() {
  */
 export function useCheckboxLists() {
   const { editor } = useComposer()
-  const { isEmpty, duplicate, move, remove } = useBlocks()
+  const { duplicate, isEmpty, move, mutate, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -983,6 +1001,7 @@ export function useCheckboxLists() {
     insert,
     isEmpty,
     move,
+    mutate,
     patch,
     remove,
   } as const
