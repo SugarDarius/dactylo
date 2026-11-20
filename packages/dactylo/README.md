@@ -191,6 +191,7 @@ export function Editor() {
 | Context subscriptions                            | ✅ **Done**        | Subscribe and listen to context changes natively                                        |
 | Command & tool events                            | ✅ **Done**        | Subscribe and listen to dactylo aspect changes natively                                 |
 | Marks                                            | ✅ **Done**        | Apply marks in the editor (bold, code, italic, strikethrough,… )                        |
+| Comment decorator                                | 🚧 **In Progress** | Apply decorator on InlineNode for adding comments                                       |
 | Markdown inline shortcuts                        | 🚧 **In Progress** | Use Build-in markdown inline shortcuts for headings, divider, links, lists and marks    |
 | Autolink detection                               | ✅ **Done**        | Automatically transform links from pastes into inline nodes (configurable)              |
 | Mentions (`@…`)                                  | 🚧 **In Progress** | Enables build-in inline composition for inserting mentions (configurable)               |
@@ -224,7 +225,7 @@ export function Editor() {
 | Numbered list item   | ✅ **Done**        | Numbered list item block with inline content with variants (lower or upper alpha, lower or upper roman)         |
 | Checkbox list item   | ✅ **Done**        | Checkbox list item with block inline content                                                                    |
 | Toggle list item     | 📆 **Planned**     | Toggle list item block with inline content                                                                      |
-| Code                 | 🚧 **In Progress** | Safe code block rendering code with inline content                                                              |
+| Code                 | 🚧 **In Progress** | Safe code block rendering code with simplified inline content                                                   |
 | File                 | 📆 **Planned**     | File block with no inline content for rendering files                                                           |
 | Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
 | Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
@@ -236,14 +237,14 @@ export function Editor() {
 
 ### Inline Nodes (🚧 **In Progress**)
 
-| Feature       | Status         | Notes                                                                                         |
-| ------------- | -------------- | --------------------------------------------------------------------------------------------- |
-| TextNode      | ✅ **Done**    | Inline text with marks                                                                        |
-| LineBreakNode | ✅ **Done**    | Soft break using `shift+enter` keys                                                           |
-| LinkNode      | ✅ **Done**    | Inline links with marks                                                                       |
-| MentionNode   | ✅ **Done**    | Inline mention containing artefact data                                                       |
-| HashtagNode   | 📆 **Planned** | Inline hashtag containing artefact data                                                       |
-| Isolation     | 📆 **Planned** | Apply node isolation for specific use case like UI rendering (comments, background colors, …) |
+| Feature       | Status         | Notes                                                                               |
+| ------------- | -------------- | ----------------------------------------------------------------------------------- |
+| TextNode      | ✅ **Done**    | Inline text with marks                                                              |
+| LineBreakNode | ✅ **Done**    | Soft break using `shift+enter` keys                                                 |
+| LinkNode      | ✅ **Done**    | Inline links with marks                                                             |
+| MentionNode   | ✅ **Done**    | Inline mention containing artefact data                                             |
+| HashtagNode   | 📆 **Planned** | Inline hashtag containing artefact data                                             |
+| Isolation     | 📆 **Planned** | Apply node isolation for specific use case like UI rendering (background colors, …) |
 
 ### API (🚧 **In Progress**)
 
@@ -253,12 +254,13 @@ export function Editor() {
 | Tools API                    | 🚧 **In Progress** | Exposes tools api to read document state                                                        |
 | Commands API                 | 🚧 **In Progress** | Exposes commands api to mutate document state                                                   |
 | Marks API                    | ✅ **Done**        | Apply marks on eligible inline nodes                                                            |
+| Comments API                 | 🚧 **In Progress** | Reads and mutate comments data on comments decorator                                            |
 | Document API                 | 🚧 **In Progress** | Init (with JSON or Markdown), replace, and reset document state                                 |
 | History API                  | ✅ **Done**        | Work with build-in history                                                                      |
 | Composer API                 | 🚧 **In Progress** | Sends and reads composing events                                                                |
 | Selection API                | 🚧 **In Progress** | Mutate and reads Dactylo's selection                                                            |
 | DOM API                      | 🚧 **In Progress** | Sync browser DOM native selection with Dactylo's selection                                      |
-| Blocks API                   | 🚧 **In Progress** | Mutate and reads blocks                                                                         |
+| Blocks API                   | ✅ **Done**        | Mutate and reads blocks                                                                         |
 | Inline nodes API             | 🚧 **In Progress** | Mutate and reads inline nodes                                                                   |
 | Metadata API                 | 🚧 **In Progress** | Mutate and reads blocks and inline nodes metadata (config for globals metadata)                 |
 | Mentions API                 | 🚧 **In Progress** | Mutate and reads mentions as first-class citizen                                                |
