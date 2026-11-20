@@ -703,7 +703,7 @@ describe('Dactylo blocks', () => {
     typeText(editor, 'Hello')
 
     const blockId = editor.blocks.commands.insert({
-      spec: { type: 'heading', level: 2 },
+      spec: { level: 2, type: 'heading' },
     })
     if (!blockId) {
       throw new Error('Expected an inserted heading')
@@ -807,14 +807,18 @@ describe('Dactylo blocks', () => {
 
     const inserted = nthInlineBlock(editor.getContext(), 1)
     const [first, second, trailing] = inserted.content
+
     expect(inserted.id).toBe(blockId)
     expect(inserted.content).toHaveLength(3)
     expect(first).toEqual(hello)
     expect(second).toEqual(lineBreak)
-    expect(isTextNode(trailing)).toBe(true)
-    if (!isTextNode(trailing)) {
+
+    if (trailing === undefined || !isTextNode(trailing)) {
       throw new Error('Expected a trailing empty text node')
     }
+
+    expect(isTextNode(trailing)).toBe(true)
+
     expect(trailing.text).toBe('')
     expect(requireCursor(editor.getContext())).toMatchObject({
       blockId,
@@ -928,7 +932,7 @@ describe('Dactylo blocks', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
-    editor.blocks.commands.insert({ spec: { type: 'heading', level: 1 } })
+    editor.blocks.commands.insert({ spec: { level: 1, type: 'heading' } })
 
     const paragraphId = nthInlineBlock(editor.getContext(), 0).id
     expect(editor.blocks.commands.duplicate(paragraphId)).toBe(true)
@@ -1005,7 +1009,7 @@ describe('Dactylo blocks', () => {
 
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
-    editor.blocks.commands.insert({ spec: { type: 'heading', level: 2 } })
+    editor.blocks.commands.insert({ spec: { level: 2, type: 'heading' } })
     const headingId = nthInlineBlock(editor.getContext(), 1).id
 
     expect(editor.blocks.commands.delete(headingId)).toBe(true)
@@ -1065,8 +1069,8 @@ describe('Dactylo blocks', () => {
 
     expect(
       editor.blocks.commands.mutate(blockId, {
-        kind: 'to_checkbox_list_item',
         checked: true,
+        kind: 'to_checkbox_list_item',
       }),
     ).toBe(true)
     const checkbox = firstInlineBlock(editor.getContext())
@@ -1216,7 +1220,7 @@ describe('Dactylo blocks', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
-    editor.blocks.commands.insert({ spec: { type: 'heading', level: 2 } })
+    editor.blocks.commands.insert({ spec: { level: 2, type: 'heading' } })
 
     const heading = nthInlineBlock(editor.getContext(), 1)
     expect(isHeadingBlock(heading)).toBe(true)
@@ -2359,7 +2363,7 @@ describe('Dactylo initial metadata', () => {
     const editor = makeEditor(initials)
     editor.selection.commands.focus()
 
-    editor.blocks.commands.insert({ spec: { type: 'heading', level: 1 } })
+    editor.blocks.commands.insert({ spec: { level: 1, type: 'heading' } })
 
     const heading = nthInlineBlock(editor.getContext(), 1)
     expect(isHeadingBlock(heading)).toBe(true)
@@ -2522,7 +2526,7 @@ describe('Dactylo read-only mode', () => {
       editor.blocks.commands.insert({ spec: { type: 'quote' } }),
     ).toBeNull()
     expect(
-      editor.blocks.commands.insert({ spec: { type: 'heading', level: 1 } }),
+      editor.blocks.commands.insert({ spec: { level: 1, type: 'heading' } }),
     ).toBeNull()
     expect(
       editor.blocks.commands.insert({ spec: { type: 'bullet_list_item' } }),
