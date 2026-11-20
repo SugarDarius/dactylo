@@ -104,7 +104,7 @@ import {
 } from '~/components/ui/tooltip'
 import { cn } from '~/lib/utils'
 
-export const USERS = [
+const USERS = [
   {
     fullName: 'Aurélien',
     id: 'aurelien@liveblocks.io',
@@ -172,7 +172,7 @@ export const USERS = [
   },
 ] as const
 
-export function getInitials(fullName: string): string {
+function getInitials(fullName: string): string {
   const [first, ...rest] = fullName.split(' ').filter(Boolean)
   if (!first) {
     return '?'
@@ -267,7 +267,7 @@ export function ActionButton({
   )
 }
 
-export const COMMAND_GROUPS = ['Basic Blocks', 'Lists', 'Advanced'] as const
+const COMMAND_GROUPS = ['Basic Blocks', 'Lists', 'Advanced'] as const
 
 export type CommandItem = {
   disabled?: boolean
@@ -280,7 +280,7 @@ export type CommandItem = {
   search: string
 }
 
-export function useInsertCommands(): CommandItem[] {
+function useInsertCommands(): CommandItem[] {
   const { insert: insertParagraph } = useParagraphs()
   const { insert: insertHeading } = useHeadings()
   const { insert: insertDivider } = useDividers()
