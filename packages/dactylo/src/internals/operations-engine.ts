@@ -21,7 +21,7 @@ import {
   isQuoteBlock,
   touchBlock,
 } from './blocks'
-import type { BlockId, HeadingBlock, NumberedListItemBlock } from './blocks'
+import type { BlockId } from './blocks'
 import type { TextPlainData } from './clipboard'
 import { warn, warnIf, warnOnceIf } from './console'
 import { DeleteContentForwardOpsBuilder } from './delete-content-forward-ops-builder'
@@ -90,7 +90,6 @@ import {
 } from './selection'
 import type { Selection } from './selection'
 import { SoftBreakOpsBuilder } from './soft-break-ops-builder'
-import type { Metadata } from './types'
 import { assertNever } from './utils'
 
 /** Options for constructing a {@link OperationsEngine} instance. */
@@ -982,8 +981,8 @@ export class OperationsEngine {
     }
   }
 
-  /** Builds operations to patch an existing block in place. */
-  #buildPatchBlockOps(
+  /** Builds operations to patch an existing {@link Block} in place. */
+  buildPatchBlockOps(
     context: EditorContext,
     blockId: BlockId,
     spec: PatchBlockSpec,
@@ -1187,105 +1186,9 @@ export class OperationsEngine {
         return { label: 'patch-divider', ops }
       }
       default: {
-        assertNever(type, { hint: 'OperationsEngine/buildPathBlockOps' })
+        assertNever(type, { hint: 'OperationsEngine/buildPatchBlockOps' })
       }
     }
-  }
-
-  /** Builds operations to patch a {@link ParagraphBlock}. */
-  buildPatchParagraphBlockOps(
-    context: EditorContext,
-    blockId: BlockId,
-    opts?: { content?: InlineNode[]; metadata?: Metadata },
-  ): BuilderOpsIntent | null {
-    return this.#buildPatchBlockOps(context, blockId, {
-      ...opts,
-      type: 'paragraph',
-    })
-  }
-
-  /** Builds operations to patch a {@link QuoteBlock}. */
-  buildPatchQuoteBlockOps(
-    context: EditorContext,
-    blockId: BlockId,
-    opts?: { content?: InlineNode[]; metadata?: Metadata },
-  ): BuilderOpsIntent | null {
-    return this.#buildPatchBlockOps(context, blockId, {
-      ...opts,
-      type: 'quote',
-    })
-  }
-
-  /** Builds operations to patch an {@link HeadingBlock}. */
-  buildPatchHeadingBlockOps(
-    context: EditorContext,
-    blockId: BlockId,
-    opts?: {
-      level?: HeadingBlock['level']
-      content?: InlineNode[]
-      metadata?: Metadata
-    },
-  ): BuilderOpsIntent | null {
-    return this.#buildPatchBlockOps(context, blockId, {
-      ...opts,
-      type: 'heading',
-    })
-  }
-
-  /** Builds operations to patch a {@link BulletListItemBlock}. */
-  buildPatchBulletListItemBlockOps(
-    context: EditorContext,
-    blockId: BlockId,
-    opts?: { content?: InlineNode[]; metadata?: Metadata },
-  ): BuilderOpsIntent | null {
-    return this.#buildPatchBlockOps(context, blockId, {
-      ...opts,
-      type: 'bullet_list_item',
-    })
-  }
-
-  /** Builds operations to patch a {@link NumberedListItemBlock}. */
-  buildPatchNumberedListItemBlockOps(
-    context: EditorContext,
-    blockId: BlockId,
-    opts?: {
-      variant?: NumberedListItemBlock['variant']
-      content?: InlineNode[]
-      metadata?: Metadata
-    },
-  ): BuilderOpsIntent | null {
-    return this.#buildPatchBlockOps(context, blockId, {
-      ...opts,
-      type: 'numbered_list_item',
-    })
-  }
-
-  /** Builds operations to patch a {@link CheckboxListItemBlock}. */
-  buildPatchCheckboxListItemBlockOps(
-    context: EditorContext,
-    blockId: BlockId,
-    opts?: {
-      checked?: boolean
-      content?: InlineNode[]
-      metadata?: Metadata
-    },
-  ): BuilderOpsIntent | null {
-    return this.#buildPatchBlockOps(context, blockId, {
-      ...opts,
-      type: 'checkbox_list_item',
-    })
-  }
-
-  /** Builds operations to patch a {@link DividerBlock}. */
-  buildPatchDividerBlockOps(
-    context: EditorContext,
-    blockId: BlockId,
-    opts?: { metadata?: Metadata },
-  ): BuilderOpsIntent | null {
-    return this.#buildPatchBlockOps(context, blockId, {
-      ...opts,
-      type: 'divider',
-    })
   }
 
   /** Builds operations to duplicate a {@link Block} by ID. */

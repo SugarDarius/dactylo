@@ -45,11 +45,7 @@ import { paintTextForDOM } from '../internals/dom'
 import type { EditorContext } from '../internals/editor-context'
 import { isMarkEnabled } from '../internals/marks'
 import type { MarkKey } from '../internals/marks'
-import type {
-  InlineNode,
-  InlineNodeWithEditableText,
-  NodeId,
-} from '../internals/nodes'
+import type { InlineNodeWithEditableText, NodeId } from '../internals/nodes'
 import type {
   InsertOrMoveBlockPosition,
   MutateBlockSpec,
@@ -677,9 +673,13 @@ export function useParagraphs() {
   const patch = useStableCallback(
     (
       paragraphBlockId: BlockId,
-      opts: { content?: InlineNode[]; metadata?: PBM },
+      opts: { metadata?: PBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.patchParagraph(paragraphBlockId, opts, source),
+    ) =>
+      editor.blocks.commands.patch(
+        { blockId: paragraphBlockId, spec: { ...opts, type: 'paragraph' } },
+        source,
+      ),
   )
 
   return {
@@ -729,9 +729,13 @@ export function useQuotes() {
   const patch = useStableCallback(
     (
       quoteBlockId: BlockId,
-      opts: { content?: InlineNode[]; metadata?: QBM },
+      opts: { metadata?: QBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.patchQuote(quoteBlockId, opts, source),
+    ) =>
+      editor.blocks.commands.patch(
+        { blockId: quoteBlockId, spec: { ...opts, type: 'quote' } },
+        source,
+      ),
   )
 
   return {
@@ -788,11 +792,14 @@ export function useHeadings() {
       headingBlockId: BlockId,
       opts: {
         level?: HeadingBlock['level']
-        content?: InlineNode[]
         metadata?: HBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.patchHeading(headingBlockId, opts, source),
+    ) =>
+      editor.blocks.commands.patch(
+        { blockId: headingBlockId, spec: { ...opts, type: 'heading' } },
+        source,
+      ),
   )
 
   return {
@@ -845,7 +852,11 @@ export function useDividers() {
       dividerBlockId: BlockId,
       opts: { metadata?: DBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.patchDivider(dividerBlockId, opts, source),
+    ) =>
+      editor.blocks.commands.patch(
+        { blockId: dividerBlockId, spec: { ...opts, type: 'divider' } },
+        source,
+      ),
   )
 
   return {
@@ -898,12 +909,14 @@ export function useBulletLists() {
   const patch = useStableCallback(
     (
       bulletListItemBlockId: BlockId,
-      opts: { content?: InlineNode[]; metadata?: BBM },
+      opts: { metadata?: BBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.patchBulletListItem(
-        bulletListItemBlockId,
-        opts,
+      editor.blocks.commands.patch(
+        {
+          blockId: bulletListItemBlockId,
+          spec: { ...opts, type: 'bullet_list_item' },
+        },
         source,
       ),
   )
@@ -966,14 +979,15 @@ export function useNumberedLists() {
       numberedListItemBlockId: BlockId,
       opts: {
         variant?: NumberedListItemBlock['variant']
-        content?: InlineNode[]
         metadata?: NBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.patchNumberedListItem(
-        numberedListItemBlockId,
-        opts,
+      editor.blocks.commands.patch(
+        {
+          blockId: numberedListItemBlockId,
+          spec: { ...opts, type: 'numbered_list_item' },
+        },
         source,
       ),
   )
@@ -1031,14 +1045,15 @@ export function useCheckboxLists() {
       checkboxListItemBlockId: BlockId,
       opts: {
         checked?: boolean
-        content?: InlineNode[]
         metadata?: CBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.patchCheckboxListItem(
-        checkboxListItemBlockId,
-        opts,
+      editor.blocks.commands.patch(
+        {
+          blockId: checkboxListItemBlockId,
+          spec: { ...opts, type: 'checkbox_list_item' },
+        },
         source,
       ),
   )

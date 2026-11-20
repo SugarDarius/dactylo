@@ -587,7 +587,13 @@ describe('TransactionPipeline block commands', () => {
     }
 
     expect(
-      pipeline.patchParagraphBlock(paragraphId, { metadata: { a: 1 } }, 'user'),
+      pipeline.patchBlock(
+        {
+          blockId: paragraphId,
+          spec: { metadata: { a: 1 }, type: 'paragraph' },
+        },
+        'user',
+      ),
     ).toBe(true)
     expect(pipeline.context.state.blocks.get(paragraphId)?.metadata).toEqual({
       a: 1,
@@ -606,27 +612,69 @@ describe('TransactionPipeline block commands', () => {
       { spec: { type: 'numbered_list_item' } },
       'user',
     )
-    if (!(quoteId && headingId && bulletId && numberedId)) {
+    const checkboxId = pipeline.insertBlock(
+      { spec: { type: 'checkbox_list_item' } },
+      'user',
+    )
+    const dividerId = pipeline.insertBlock(
+      { spec: { type: 'divider' } },
+      'user',
+    )
+    if (
+      !(
+        quoteId &&
+        headingId &&
+        bulletId &&
+        numberedId &&
+        checkboxId &&
+        dividerId
+      )
+    ) {
       throw new Error('Expected inserted blocks to patch')
     }
 
     expect(
-      pipeline.patchQuoteBlock(quoteId, { metadata: { a: 1 } }, 'user'),
-    ).toBe(true)
-    expect(pipeline.patchHeadingBlock(headingId, { level: 3 }, 'user')).toBe(
-      true,
-    )
-    expect(
-      pipeline.patchBulletListItemBlock(
-        bulletId,
-        { metadata: { a: 1 } },
+      pipeline.patchBlock(
+        { blockId: quoteId, spec: { metadata: { a: 1 }, type: 'quote' } },
         'user',
       ),
     ).toBe(true)
     expect(
-      pipeline.patchNumberedListItemBlock(
-        numberedId,
-        { variant: 'alpha' },
+      pipeline.patchBlock(
+        { blockId: headingId, spec: { level: 3, type: 'heading' } },
+        'user',
+      ),
+    ).toBe(true)
+    expect(
+      pipeline.patchBlock(
+        {
+          blockId: bulletId,
+          spec: { metadata: { a: 1 }, type: 'bullet_list_item' },
+        },
+        'user',
+      ),
+    ).toBe(true)
+    expect(
+      pipeline.patchBlock(
+        {
+          blockId: numberedId,
+          spec: { type: 'numbered_list_item', variant: 'alpha' },
+        },
+        'user',
+      ),
+    ).toBe(true)
+    expect(
+      pipeline.patchBlock(
+        {
+          blockId: checkboxId,
+          spec: { checked: true, type: 'checkbox_list_item' },
+        },
+        'user',
+      ),
+    ).toBe(true)
+    expect(
+      pipeline.patchBlock(
+        { blockId: dividerId, spec: { metadata: { a: 1 }, type: 'divider' } },
         'user',
       ),
     ).toBe(true)
@@ -643,6 +691,12 @@ describe('TransactionPipeline block commands', () => {
     expect(pipeline.context.state.blocks.get(numberedId)).toMatchObject({
       variant: 'alpha',
     })
+    expect(pipeline.context.state.blocks.get(checkboxId)).toMatchObject({
+      checked: true,
+    })
+    expect(pipeline.context.state.blocks.get(dividerId)?.metadata).toEqual({
+      a: 1,
+    })
   })
 
   test('patch block commands return false when the block type does not match', () => {
@@ -656,16 +710,42 @@ describe('TransactionPipeline block commands', () => {
     }
     const before = snapshot(pipeline.context)
 
-    expect(pipeline.patchQuoteBlock(paragraphId, {}, 'user')).toBe(false)
-    expect(pipeline.patchHeadingBlock(paragraphId, { level: 2 }, 'user')).toBe(
-      false,
-    )
-    expect(pipeline.patchBulletListItemBlock(paragraphId, {}, 'user')).toBe(
-      false,
-    )
-    expect(pipeline.patchNumberedListItemBlock(paragraphId, {}, 'user')).toBe(
-      false,
-    )
+    expect(
+      pipeline.patchBlock(
+        { blockId: paragraphId, spec: { type: 'quote' } },
+        'user',
+      ),
+    ).toBe(false)
+    expect(
+      pipeline.patchBlock(
+        { blockId: paragraphId, spec: { level: 2, type: 'heading' } },
+        'user',
+      ),
+    ).toBe(false)
+    expect(
+      pipeline.patchBlock(
+        { blockId: paragraphId, spec: { type: 'bullet_list_item' } },
+        'user',
+      ),
+    ).toBe(false)
+    expect(
+      pipeline.patchBlock(
+        { blockId: paragraphId, spec: { type: 'numbered_list_item' } },
+        'user',
+      ),
+    ).toBe(false)
+    expect(
+      pipeline.patchBlock(
+        { blockId: paragraphId, spec: { type: 'checkbox_list_item' } },
+        'user',
+      ),
+    ).toBe(false)
+    expect(
+      pipeline.patchBlock(
+        { blockId: paragraphId, spec: { type: 'divider' } },
+        'user',
+      ),
+    ).toBe(false)
     expect(snapshot(pipeline.context)).toEqual(before)
 
     const headingId = pipeline.insertBlock(
@@ -677,7 +757,12 @@ describe('TransactionPipeline block commands', () => {
     }
     const afterInsert = snapshot(pipeline.context)
 
-    expect(pipeline.patchParagraphBlock(headingId, {}, 'user')).toBe(false)
+    expect(
+      pipeline.patchBlock(
+        { blockId: headingId, spec: { type: 'paragraph' } },
+        'user',
+      ),
+    ).toBe(false)
     expect(snapshot(pipeline.context)).toEqual(afterInsert)
   })
 })

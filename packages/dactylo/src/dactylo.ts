@@ -12,11 +12,7 @@ import type {
   QBM,
   TNM,
 } from './internals/augmentation'
-import type {
-  BlockId,
-  HeadingBlock,
-  NumberedListItemBlock,
-} from './internals/blocks'
+import type { BlockId } from './internals/blocks'
 import { error, warnOnceIf } from './internals/console'
 import {
   DEFAULT_AUTOLINK_ENABLED,
@@ -57,11 +53,12 @@ import type {
   ExtractMentionQuery,
   MentionWithContext,
 } from './internals/mention'
-import type { InlineNode, NodeId } from './internals/nodes'
+import type { NodeId } from './internals/nodes'
 import type {
   InsertBlockSpec,
   InsertOrMoveBlockPosition,
   MutateBlockSpec,
+  PatchBlockSpec,
 } from './internals/operations-builder'
 import {
   isBlockWithActiveCursor,
@@ -340,13 +337,7 @@ export type DactyloCommand =
   | 'blocks/delete'
   | 'blocks/move'
   | 'blocks/mutate'
-  | 'blocks/patch-paragraph'
-  | 'blocks/patch-quote'
-  | 'blocks/patch-heading'
-  | 'blocks/patch-bullet-list-item'
-  | 'blocks/patch-numbered-list-item'
-  | 'blocks/patch-checkbox-list-item'
-  | 'blocks/patch-divider'
+  | 'blocks/patch'
 
   /** Mentions commands. */
   | 'mentions/confirm-buffer'
@@ -1011,128 +1002,20 @@ export interface DactyloBlocksCommands {
   ) => boolean
 
   /**
-   * Patches a {@link ParagraphBlock} in place with the given options.
+   * Patches a {@link Block} in place based on the given spec.
    * Returns a boolean indicating whether the patch command was successful.
    *
    * @example
    * ```ts
-   * const patched = editor.blocks.commands.patchParagraph(blockId, { metadata: { fontColor: 'purple' } })
-   * const patched = editor.blocks.commands.patchParagraph(blockId, { content }, 'ai-agent')
+   * const patched = editor.blocks.commands.patch({ spec: { type: 'paragraph', metadata: { fontColor: 'purple' } }, blockId })
+   * const patched = editor.blocks.commands.patch({ spec: { type: 'heading', level: 3 }, blockId })
+   * const patched = editor.blocks.commands.patch({ spec: { type: 'paragraph', content }, blockId }, 'ai-agent')
    * ```
    */
-  readonly patchParagraph: (
-    blockId: BlockId,
-    opts: { content?: InlineNode[]; metadata?: PBM },
+  readonly patch: (
+    opts: { spec: PatchBlockSpec; blockId: BlockId },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => boolean
-
-  /**
-   * Patches a {@link QuoteBlock} in place with the given options.
-   * Returns a boolean indicating whether the patch command was successful.
-   *
-   * @example
-   * ```ts
-   * const patched = editor.blocks.commands.patchQuote(blockId, { content })
-   * const patched = editor.blocks.commands.patchQuote(blockId, { content }, 'ai-agent')
-   * ```
-   */
-  readonly patchQuote: (
-    blockId: BlockId,
-    opts: { content?: InlineNode[]; metadata?: QBM },
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => boolean
-
-  /**
-   * Patches a {@link HeadingBlock} in place with the given options.
-   * Returns a boolean indicating whether the patch command was successful.
-   *
-   * @example
-   * ```ts
-   * const patched = editor.blocks.commands.patchHeading(blockId, { level: 3 })
-   * const patched = editor.blocks.commands.patchHeading(blockId, { level: 2 }, 'ai-agent')
-   * ```
-   */
-  readonly patchHeading: (
-    blockId: BlockId,
-    opts: {
-      level?: HeadingBlock['level']
-      content?: InlineNode[]
-      metadata?: HBM
-    },
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => boolean
-
-  /**
-   * Patches a {@link BulletListItemBlock} in place with the given options.
-   * Returns a boolean indicating whether the patch command was successful.
-   *
-   * @example
-   * ```ts
-   * const patched = editor.blocks.commands.patchBulletListItem(blockId, { metadata: { source: 'import' } })
-   * const patched = editor.blocks.commands.patchBulletListItem(blockId, { metadata: { source: 'import' } }, 'ai-agent')
-   * ```
-   */
-  readonly patchBulletListItem: (
-    blockId: BlockId,
-    opts: { content?: InlineNode[]; metadata?: BBM },
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => boolean
-
-  /**
-   * Patches a {@link NumberedListItemBlock} in place with the given options.
-   * Returns a boolean indicating whether the patch command was successful.
-   *
-   * @example
-   * ```ts
-   * const patched = editor.blocks.commands.patchNumberedListItem(blockId, { variant: 'alpha' })
-   * const patched = editor.blocks.commands.patchNumberedListItem(blockId, { variant: 'alpha' }, 'ai-agent')
-   * ```
-   */
-  readonly patchNumberedListItem: (
-    blockId: BlockId,
-    opts: {
-      variant?: NumberedListItemBlock['variant']
-      content?: InlineNode[]
-      metadata?: NBM
-    },
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => boolean
-
-  /**
-   * Patches a {@link CheckboxListItemBlock} in place with the given options.
-   * Returns a boolean indicating whether the patch command was successful.
-   *
-   * @example
-   * ```ts
-   * const patched = editor.blocks.commands.patchCheckboxListItem(blockId, { checked: true })
-   * const patched = editor.blocks.commands.patchCheckboxListItem(blockId, { checked: true }, 'ai-agent')
-   * ```
-   */
-  readonly patchCheckboxListItem: (
-    blockId: BlockId,
-    opts: {
-      checked?: boolean
-      content?: InlineNode[]
-      metadata?: CBM
-    },
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
-
-  /**
-   * Patches a {@link DividerBlock} in place with the given options.
-   * Returns a boolean indicating whether the patch command was successful.
-   *
-   * @example
-   * ```ts
-   * const patched = editor.blocks.commands.patchDivider(blockId, { metadata: { source: 'import' } })
-   * const patched = editor.blocks.commands.patchDivider(blockId, { metadata: { source: 'import' } }, 'ai-agent')
-   * ```
-   */
-  readonly patchDivider: (
-    blockId: BlockId,
-    opts: { metadata?: DBM },
-    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ) => void
 }
 
 /** Api to interact with the {@link DocumentState} blocks of the editor. */
@@ -2461,139 +2344,18 @@ export class Dactylo {
           ),
 
         /**
-         * Patches a {@link BulletListItemBlock} in place with the given options.
+         * Patches a {@link Block} in place based on the given spec.
          * Returns a boolean indicating whether the patch command was successful.
          */
-        patchBulletListItem: (
-          blockId: BlockId,
-          opts: {
-            content?: InlineNode[]
-            metadata?: BBM
-          },
+        patch: (
+          opts: { spec: PatchBlockSpec; blockId: BlockId },
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
           this.#safeExecuteCommand(
-            'blocks/patch-bullet-list-item',
-            () =>
-              this.#pipeline.patchBulletListItemBlock(blockId, opts, source),
+            'blocks/patch',
+            () => this.#pipeline.patchBlock(opts, source),
             negate,
-            { payload: { blockId, source } },
-          ),
-
-        /**
-         * Patches a {@link CheckboxListItemBlock} in place with the given options.
-         * Returns a boolean indicating whether the patch command was successful.
-         */
-        patchCheckboxListItem: (
-          blockId: BlockId,
-          opts: {
-            checked?: boolean
-            content?: InlineNode[]
-            metadata?: CBM
-          },
-          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
-          this.#safeExecuteCommand(
-            'blocks/patch-checkbox-list-item',
-            () =>
-              this.#pipeline.patchCheckboxListItemBlock(blockId, opts, source),
-            negate,
-            { payload: { blockId, source } },
-          ),
-
-        /**
-         * Patches a {@link DividerBlock} in place with the given options.
-         * Returns a boolean indicating whether the patch command was successful.
-         */
-        patchDivider: (
-          blockId: BlockId,
-          opts: { metadata?: DBM },
-          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
-          this.#safeExecuteCommand(
-            'blocks/patch-divider',
-            () => this.#pipeline.patchDividerBlock(blockId, opts, source),
-            negate,
-            { payload: { blockId, source } },
-          ),
-
-        /**
-         * Patches a {@link HeadingBlock} in place with the given options.
-         * Returns a boolean indicating whether the patch command was successful.
-         */
-        patchHeading: (
-          blockId: BlockId,
-          opts: {
-            level?: HeadingBlock['level']
-            content?: InlineNode[]
-            metadata?: HBM
-          },
-          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
-          this.#safeExecuteCommand(
-            'blocks/patch-heading',
-            () => this.#pipeline.patchHeadingBlock(blockId, opts, source),
-            negate,
-            { payload: { blockId, source } },
-          ),
-
-        /**
-         * Patches a {@link NumberedListItemBlock} in place with the given options.
-         * Returns a boolean indicating whether the patch command was successful.
-         */
-        patchNumberedListItem: (
-          blockId: BlockId,
-          opts: {
-            variant?: NumberedListItemBlock['variant']
-            content?: InlineNode[]
-            metadata?: NBM
-          },
-          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
-          this.#safeExecuteCommand(
-            'blocks/patch-numbered-list-item',
-            () =>
-              this.#pipeline.patchNumberedListItemBlock(blockId, opts, source),
-            negate,
-            { payload: { blockId, source } },
-          ),
-
-        /**
-         * Patches a {@link ParagraphBlock} in place with the given options.
-         * Returns a boolean indicating whether the patch command was successful.
-         */
-        patchParagraph: (
-          blockId: BlockId,
-          opts: {
-            content?: InlineNode[]
-            metadata?: PBM
-          },
-          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
-          this.#safeExecuteCommand(
-            'blocks/patch-paragraph',
-            () => this.#pipeline.patchParagraphBlock(blockId, opts, source),
-            negate,
-            { payload: { blockId, source } },
-          ),
-
-        /**
-         * Patches a {@link QuoteBlock} in place with the given options.
-         * Returns a boolean indicating whether the patch command was successful.
-         */
-        patchQuote: (
-          blockId: BlockId,
-          opts: {
-            content?: InlineNode[]
-            metadata?: QBM
-          },
-          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
-        ) =>
-          this.#safeExecuteCommand(
-            'blocks/patch-quote',
-            () => this.#pipeline.patchQuoteBlock(blockId, opts, source),
-            negate,
-            { payload: { blockId, source } },
+            { payload: { opts, source } },
           ),
       },
       tools: {

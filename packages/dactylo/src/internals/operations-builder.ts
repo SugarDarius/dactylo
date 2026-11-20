@@ -260,7 +260,7 @@ export type PatchBlockSpec = Relax<
   | {
       readonly type: 'paragraph'
 
-      /** {@link ParagraphBlock}'s  content.  */
+      /** {@link ParagraphBlock}'s content.  */
       readonly content?: InlineNode[]
 
       /** {@link ParagraphBlock}'s metadata. */

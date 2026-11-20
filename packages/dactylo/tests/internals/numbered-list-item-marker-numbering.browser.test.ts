@@ -228,9 +228,11 @@ describe('numbered list markerNumbering', () => {
     hardBreak(pipeline)
     typeText(pipeline, 'C')
 
-    pipeline.patchNumberedListItemBlock(
-      nthInlineBlock(pipeline.context, 1).id,
-      { variant: 'roman' },
+    pipeline.patchBlock(
+      {
+        blockId: nthInlineBlock(pipeline.context, 1).id,
+        spec: { type: 'numbered_list_item', variant: 'roman' },
+      },
       'user',
     )
 
@@ -454,12 +456,13 @@ describe('numbered list markerNumbering', () => {
       Parameters<DactyloBlocksCommands['insert']>[0]['spec'],
       { type: 'numbered_list_item' }
     >
-    type PatchOpts = Parameters<
-      DactyloBlocksCommands['patchNumberedListItem']
-    >[1]
+    type PatchSpec = Extract<
+      Parameters<DactyloBlocksCommands['patch']>[0]['spec'],
+      { type: 'numbered_list_item' }
+    >
 
     expectTypeOf<InsertSpec>().not.toHaveProperty('markerNumbering')
-    expectTypeOf<PatchOpts>().not.toHaveProperty('markerNumbering')
+    expectTypeOf<PatchSpec>().not.toHaveProperty('markerNumbering')
   })
 })
 

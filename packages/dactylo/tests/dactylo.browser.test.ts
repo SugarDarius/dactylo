@@ -1095,7 +1095,7 @@ describe('Dactylo blocks', () => {
     expect(snapshot(editor.getContext())).toEqual(before)
   })
 
-  test('patchCheckboxListItem sets checked and keeps the same id', () => {
+  test('patch checkbox list item sets checked and keeps the same id', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     editor.blocks.commands.insert({ spec: { type: 'checkbox_list_item' } })
@@ -1103,7 +1103,12 @@ describe('Dactylo blocks', () => {
     const checkbox = nthInlineBlock(editor.getContext(), 1)
     expect(isCheckboxListItemBlock(checkbox)).toBe(true)
 
-    editor.blocks.commands.patchCheckboxListItem(checkbox.id, { checked: true })
+    expect(
+      editor.blocks.commands.patch({
+        blockId: checkbox.id,
+        spec: { checked: true, type: 'checkbox_list_item' },
+      }),
+    ).toBe(true)
 
     const patched = nthInlineBlock(editor.getContext(), 1)
     expect(patched.id).toBe(checkbox.id)
@@ -1119,7 +1124,10 @@ describe('Dactylo blocks', () => {
     editor.blocks.commands.insert({ spec: { type: 'checkbox_list_item' } })
     const checkboxId = nthInlineBlock(editor.getContext(), 1).id
 
-    editor.blocks.commands.patchCheckboxListItem(checkboxId, { checked: true })
+    editor.blocks.commands.patch({
+      blockId: checkboxId,
+      spec: { checked: true, type: 'checkbox_list_item' },
+    })
     editor.history.commands.undo()
 
     const afterUndo = nthInlineBlock(editor.getContext(), 1)
@@ -1137,16 +1145,22 @@ describe('Dactylo blocks', () => {
     }
   })
 
-  test('patchCheckboxListItem metadata keeps checked', () => {
+  test('patch checkbox list item metadata keeps checked', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     editor.blocks.commands.insert({ spec: { type: 'checkbox_list_item' } })
     const checkboxId = nthInlineBlock(editor.getContext(), 1).id
 
-    editor.blocks.commands.patchCheckboxListItem(checkboxId, { checked: true })
-    editor.blocks.commands.patchCheckboxListItem(checkboxId, {
-      metadata: { a: 1 },
+    editor.blocks.commands.patch({
+      blockId: checkboxId,
+      spec: { checked: true, type: 'checkbox_list_item' },
     })
+    expect(
+      editor.blocks.commands.patch({
+        blockId: checkboxId,
+        spec: { metadata: { a: 1 }, type: 'checkbox_list_item' },
+      }),
+    ).toBe(true)
 
     const patched = nthInlineBlock(editor.getContext(), 1)
     expect(isCheckboxListItemBlock(patched)).toBe(true)
@@ -1156,7 +1170,7 @@ describe('Dactylo blocks', () => {
     }
   })
 
-  test('patchDivider sets metadata', () => {
+  test('patch divider sets metadata', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     editor.blocks.commands.insert({ spec: { type: 'divider' } })
@@ -1170,27 +1184,35 @@ describe('Dactylo blocks', () => {
       throw new Error('Expected a divider block')
     }
 
-    editor.blocks.commands.patchDivider(dividerId, { metadata: { a: 1 } })
+    expect(
+      editor.blocks.commands.patch({
+        blockId: dividerId,
+        spec: { metadata: { a: 1 }, type: 'divider' },
+      }),
+    ).toBe(true)
 
     const patched = editor.getContext().state.blocks.get(dividerId)
     expect(patched?.__type).toBe('divider')
     expect(patched?.metadata).toEqual({ a: 1 })
   })
 
-  test('patchCheckboxListItem on a paragraph is a no-op and leaves the document unchanged', () => {
+  test('patch checkbox list item on a paragraph is a no-op and leaves the document unchanged', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
     const paragraphId = firstInlineBlock(editor.getContext()).id
     const before = snapshot(editor.getContext())
 
-    editor.blocks.commands.patchCheckboxListItem(paragraphId, {
-      checked: true,
-    })
+    expect(
+      editor.blocks.commands.patch({
+        blockId: paragraphId,
+        spec: { checked: true, type: 'checkbox_list_item' },
+      }),
+    ).toBe(false)
     expect(snapshot(editor.getContext())).toEqual(before)
   })
 
-  test('patchHeading changes level only', () => {
+  test('patch heading changes level only', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
@@ -1200,9 +1222,12 @@ describe('Dactylo blocks', () => {
     expect(isHeadingBlock(heading)).toBe(true)
     const { content } = heading
 
-    expect(editor.blocks.commands.patchHeading(heading.id, { level: 3 })).toBe(
-      true,
-    )
+    expect(
+      editor.blocks.commands.patch({
+        blockId: heading.id,
+        spec: { level: 3, type: 'heading' },
+      }),
+    ).toBe(true)
 
     const patched = nthInlineBlock(editor.getContext(), 1)
     expect(patched.id).toBe(heading.id)
@@ -1213,15 +1238,16 @@ describe('Dactylo blocks', () => {
     }
   })
 
-  test('patchParagraph sets metadata', () => {
+  test('patch paragraph sets metadata', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     typeText(editor, 'Hello')
     const paragraphId = firstInlineBlock(editor.getContext()).id
 
     expect(
-      editor.blocks.commands.patchParagraph(paragraphId, {
-        metadata: { a: 1 },
+      editor.blocks.commands.patch({
+        blockId: paragraphId,
+        spec: { metadata: { a: 1 }, type: 'paragraph' },
       }),
     ).toBe(true)
 
@@ -1232,14 +1258,17 @@ describe('Dactylo blocks', () => {
     expect(blockTexts(editor.getContext())).toEqual(['Hello'])
   })
 
-  test('patchQuote sets metadata', () => {
+  test('patch quote sets metadata', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     editor.blocks.commands.insert({ spec: { type: 'quote' } })
     const quote = nthInlineBlock(editor.getContext(), 1)
 
     expect(
-      editor.blocks.commands.patchQuote(quote.id, { metadata: { a: 1 } }),
+      editor.blocks.commands.patch({
+        blockId: quote.id,
+        spec: { metadata: { a: 1 }, type: 'quote' },
+      }),
     ).toBe(true)
 
     const patched = nthInlineBlock(editor.getContext(), 1)
@@ -1248,15 +1277,16 @@ describe('Dactylo blocks', () => {
     expect(patched.metadata).toEqual({ a: 1 })
   })
 
-  test('patchBulletListItem sets metadata', () => {
+  test('patch bullet list item sets metadata', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     editor.blocks.commands.insert({ spec: { type: 'bullet_list_item' } })
     const item = nthInlineBlock(editor.getContext(), 1)
 
     expect(
-      editor.blocks.commands.patchBulletListItem(item.id, {
-        metadata: { a: 1 },
+      editor.blocks.commands.patch({
+        blockId: item.id,
+        spec: { metadata: { a: 1 }, type: 'bullet_list_item' },
       }),
     ).toBe(true)
 
@@ -1266,7 +1296,7 @@ describe('Dactylo blocks', () => {
     expect(patched.metadata).toEqual({ a: 1 })
   })
 
-  test('patchNumberedListItem changes variant only', () => {
+  test('patch numbered list item changes variant only', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     editor.blocks.commands.insert({ spec: { type: 'numbered_list_item' } })
@@ -1276,8 +1306,9 @@ describe('Dactylo blocks', () => {
     const { content } = item
 
     expect(
-      editor.blocks.commands.patchNumberedListItem(item.id, {
-        variant: 'alpha',
+      editor.blocks.commands.patch({
+        blockId: item.id,
+        spec: { type: 'numbered_list_item', variant: 'alpha' },
       }),
     ).toBe(true)
 
@@ -2392,8 +2423,9 @@ describe('Dactylo initial metadata', () => {
     editor.selection.commands.focus()
     const paragraphId = firstInlineBlock(editor.getContext()).id
 
-    editor.blocks.commands.patchParagraph(paragraphId, {
-      metadata: { k: 'patched' },
+    editor.blocks.commands.patch({
+      blockId: paragraphId,
+      spec: { metadata: { k: 'patched' }, type: 'paragraph' },
     })
     typeText(editor, 'Hello')
     hardBreak(editor)
@@ -2415,8 +2447,9 @@ describe('Dactylo initial metadata', () => {
     const item = firstInlineBlock(editor.getContext())
     expect(isBulletListItemBlock(item)).toBe(true)
 
-    editor.blocks.commands.patchBulletListItem(item.id, {
-      metadata: { k: 'item' },
+    editor.blocks.commands.patch({
+      blockId: item.id,
+      spec: { metadata: { k: 'item' }, type: 'bullet_list_item' },
     })
     typeText(editor, 'Hello')
     hardBreak(editor)
@@ -2515,24 +2548,45 @@ describe('Dactylo read-only mode', () => {
       }),
     ).toBe(false)
     expect(
-      editor.blocks.commands.patchParagraph(paragraphId, {
-        metadata: { a: 1 },
+      editor.blocks.commands.patch({
+        blockId: paragraphId,
+        spec: { metadata: { a: 1 }, type: 'paragraph' },
       }),
     ).toBe(false)
     expect(
-      editor.blocks.commands.patchQuote(paragraphId, { metadata: { a: 1 } }),
-    ).toBe(false)
-    expect(editor.blocks.commands.patchHeading(paragraphId, { level: 2 })).toBe(
-      false,
-    )
-    expect(
-      editor.blocks.commands.patchBulletListItem(paragraphId, {
-        metadata: { a: 1 },
+      editor.blocks.commands.patch({
+        blockId: paragraphId,
+        spec: { metadata: { a: 1 }, type: 'quote' },
       }),
     ).toBe(false)
     expect(
-      editor.blocks.commands.patchNumberedListItem(paragraphId, {
-        variant: 'alpha',
+      editor.blocks.commands.patch({
+        blockId: paragraphId,
+        spec: { level: 2, type: 'heading' },
+      }),
+    ).toBe(false)
+    expect(
+      editor.blocks.commands.patch({
+        blockId: paragraphId,
+        spec: { metadata: { a: 1 }, type: 'bullet_list_item' },
+      }),
+    ).toBe(false)
+    expect(
+      editor.blocks.commands.patch({
+        blockId: paragraphId,
+        spec: { type: 'numbered_list_item', variant: 'alpha' },
+      }),
+    ).toBe(false)
+    expect(
+      editor.blocks.commands.patch({
+        blockId: paragraphId,
+        spec: { checked: true, type: 'checkbox_list_item' },
+      }),
+    ).toBe(false)
+    expect(
+      editor.blocks.commands.patch({
+        blockId: paragraphId,
+        spec: { metadata: { a: 1 }, type: 'divider' },
       }),
     ).toBe(false)
 
@@ -2671,25 +2725,24 @@ describe('Dactylo safe-execute opts', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
       /* silence expected DactyloError log */
     })
+    const opts = { blockId: missingId, spec: { type: 'paragraph' as const } }
     try {
-      expect(() =>
-        editor.blocks.commands.patchParagraph(missingId, {}),
-      ).toThrow(DactyloError)
+      expect(() => editor.blocks.commands.patch(opts)).toThrow(DactyloError)
     } finally {
       errorSpy.mockRestore()
     }
 
     expect(commands.at(-1)).toEqual(
       expect.objectContaining({
-        command: 'blocks/patch-paragraph',
-        payload: { blockId: missingId, source: 'user' },
+        command: 'blocks/patch',
+        payload: { opts, source: 'user' },
         status: 'error',
       }),
     )
     expect(errors).toEqual([
       expect.objectContaining({
-        command: 'blocks/patch-paragraph',
-        payload: { blockId: missingId, source: 'user' },
+        command: 'blocks/patch',
+        payload: { opts, source: 'user' },
       }),
     ])
     expect(commands.at(-1)?.error).toBe(errors[0]?.error)
@@ -2712,6 +2765,32 @@ describe('Dactylo safe-execute opts', () => {
     expect(commands.at(-1)).toEqual(
       expect.objectContaining({
         command: 'blocks/insert',
+        payload: { opts, source: 'ai-agent' },
+        status: 'success',
+      }),
+    )
+  })
+
+  test('patch emits blocks/patch with the spec payload', () => {
+    const editor = makeTypingEditor()
+    const commands: DactyloCommandEvent[] = []
+    editor.events.commands.subscribe((event) => {
+      commands.push(event)
+    })
+
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    const blockId = firstInlineBlock(editor.getContext()).id
+    const opts = {
+      blockId,
+      spec: { metadata: { a: 1 }, type: 'paragraph' as const },
+    }
+
+    expect(editor.blocks.commands.patch(opts, 'ai-agent')).toBe(true)
+
+    expect(commands.at(-1)).toEqual(
+      expect.objectContaining({
+        command: 'blocks/patch',
         payload: { opts, source: 'ai-agent' },
         status: 'success',
       }),

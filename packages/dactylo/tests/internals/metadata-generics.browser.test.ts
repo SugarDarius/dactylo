@@ -2,7 +2,14 @@ import { describe, expectTypeOf, test } from 'vitest'
 
 import { Dactylo } from '../../src/dactylo'
 import type { DactyloOptions } from '../../src/dactylo'
-import type { HBM, InsertBlockSpec, Metadata, PBM, TNM } from '../../src/index'
+import type {
+  HBM,
+  InsertBlockSpec,
+  Metadata,
+  PatchBlockSpec,
+  PBM,
+  TNM,
+} from '../../src/index'
 import { isParagraphBlock } from '../../src/internals/blocks'
 import type { BlockId, ParagraphBlock } from '../../src/internals/blocks'
 import { createTextNode, isTextNode } from '../../src/internals/nodes'
@@ -31,7 +38,12 @@ describe('metadata aliases', () => {
       content?: unknown
       metadata?: PBM
     }>()
-    expectTypeOf(editor.blocks.commands.patchParagraph).parameter(1).toExtend<{
+    expectTypeOf(editor.blocks.commands.patch)
+      .parameter(0)
+      .toExtend<{ spec: PatchBlockSpec; blockId: unknown }>()
+    expectTypeOf(editor.blocks.commands.patch).returns.toEqualTypeOf<boolean>()
+    expectTypeOf<Extract<PatchBlockSpec, { type: 'paragraph' }>>().toExtend<{
+      type: 'paragraph'
       content?: unknown
       metadata?: PBM
     }>()
@@ -49,23 +61,18 @@ describe('metadata aliases', () => {
       .extract<{ kind: 'to_heading' }>()
       .toExtend<{ kind: 'to_heading'; level: unknown; metadata?: HBM }>()
     expectTypeOf(editor.blocks.commands.mutate).returns.toEqualTypeOf<boolean>()
-    expectTypeOf(
-      editor.blocks.commands.patchParagraph,
-    ).returns.toEqualTypeOf<boolean>()
 
     expectTypeOf<Extract<InsertBlockSpec, { type: 'heading' }>>().toExtend<{
       type: 'heading'
       level: unknown
       metadata?: HBM
     }>()
-    expectTypeOf(editor.blocks.commands.patchHeading).parameter(1).toExtend<{
+    expectTypeOf<Extract<PatchBlockSpec, { type: 'heading' }>>().toExtend<{
+      type: 'heading'
       level?: unknown
       content?: unknown
       metadata?: HBM
     }>()
-    expectTypeOf(
-      editor.blocks.commands.patchHeading,
-    ).returns.toEqualTypeOf<boolean>()
 
     expectTypeOf<Extract<InsertBlockSpec, { type: 'quote' }>>().toExtend<{
       type: 'quote'
@@ -84,18 +91,23 @@ describe('metadata aliases', () => {
       type: 'divider'
       metadata?: Metadata
     }>()
-    expectTypeOf(
-      editor.blocks.commands.patchQuote,
-    ).returns.toEqualTypeOf<boolean>()
-    expectTypeOf(
-      editor.blocks.commands.patchBulletListItem,
-    ).returns.toEqualTypeOf<boolean>()
-    expectTypeOf(
-      editor.blocks.commands.patchNumberedListItem,
-    ).returns.toEqualTypeOf<boolean>()
-    expectTypeOf(editor.blocks.commands.patchDivider)
-      .parameter(1)
-      .toExtend<{ metadata?: Metadata }>()
+    expectTypeOf<Extract<PatchBlockSpec, { type: 'quote' }>>().toExtend<{
+      type: 'quote'
+      metadata?: Metadata
+    }>()
+    expectTypeOf<
+      Extract<PatchBlockSpec, { type: 'bullet_list_item' }>
+    >().toExtend<{ type: 'bullet_list_item' }>()
+    expectTypeOf<
+      Extract<PatchBlockSpec, { type: 'numbered_list_item' }>
+    >().toExtend<{ type: 'numbered_list_item' }>()
+    expectTypeOf<
+      Extract<PatchBlockSpec, { type: 'checkbox_list_item' }>
+    >().toExtend<{ type: 'checkbox_list_item' }>()
+    expectTypeOf<Extract<PatchBlockSpec, { type: 'divider' }>>().toExtend<{
+      type: 'divider'
+      metadata?: Metadata
+    }>()
   })
 
   test('getContext plus isParagraphBlock uses PBM', () => {

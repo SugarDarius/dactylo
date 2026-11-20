@@ -12,7 +12,7 @@ import type {
   QBM,
   TNM,
 } from './augmentation'
-import type { BlockId, HeadingBlock, NumberedListItemBlock } from './blocks'
+import type { BlockId } from './blocks'
 import { readTransferredData } from './clipboard'
 import { warn, warnOnceIf } from './console'
 import {
@@ -34,18 +34,18 @@ import { InlineBuffer } from './inline-buffer'
 import type { InlineBufferEvent } from './inline-buffer'
 import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
-import type { InlineNode, NodeId } from './nodes'
+import type { NodeId } from './nodes'
 import type { Operation } from './operations'
 import type {
   InsertBlockSpec,
   InsertOrMoveBlockPosition,
   MutateBlockSpec,
   OperationsBuilderInitialMetadata,
+  PatchBlockSpec,
 } from './operations-builder'
 import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
 import type { Selection } from './selection'
-import type { Metadata } from './types'
 
 /** The source of a transaction. */
 export type TransactionSource =
@@ -1832,10 +1832,7 @@ export class TransactionPipeline {
 
   // ─── Block operations ───────────────────────────────────────------
 
-  /**
-   * Inserts a {@link Block} into the the document
-   * based on the given spec an position
-   */
+  /** Inserts a {@link Block} into the the document based on the given spec and position. */
   insertBlock(
     opts: {
       /** Where to insert the paragraph block. */
@@ -1867,72 +1864,20 @@ export class TransactionPipeline {
     return blockId
   }
 
-  /** Patches a {@link ParagraphBlock} by ID with the given options. */
-  patchParagraphBlock(
-    blockId: BlockId,
-    opts: { content?: InlineNode[]; metadata?: Metadata },
-    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): boolean {
-    const intent = this.#operationsEngine.buildPatchParagraphBlockOps(
-      this.#context,
-      blockId,
-      opts,
-    )
-
-    if (intent === null) {
-      return false
-    }
-
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
-      pushToHistory: true,
-      source,
-    })
-
-    return true
-  }
-
-  /** Patches a {@link QuoteBlock} by ID with the given options. */
-  patchQuoteBlock(
-    blockId: BlockId,
-    opts: { content?: InlineNode[]; metadata?: Metadata },
-    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): boolean {
-    const intent = this.#operationsEngine.buildPatchQuoteBlockOps(
-      this.#context,
-      blockId,
-      opts,
-    )
-
-    if (intent === null) {
-      return false
-    }
-
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
-      pushToHistory: true,
-      source,
-    })
-
-    return true
-  }
-
-  /** Patches a {@link HeadingBlock} by ID with the given options. */
-  patchHeadingBlock(
-    blockId: BlockId,
+  /** Patches an existing {@link Block} in place based on the given spec. */
+  patchBlock(
     opts: {
-      level?: HeadingBlock['level']
-      content?: InlineNode[]
-      metadata?: Metadata
+      /** Spec for patching the block. */
+      spec: PatchBlockSpec
+      /** ID of the block to patch. */
+      blockId: BlockId
     },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): boolean {
-    const intent = this.#operationsEngine.buildPatchHeadingBlockOps(
+    const intent = this.#operationsEngine.buildPatchBlockOps(
       this.#context,
-      blockId,
-      opts,
+      opts.blockId,
+      opts.spec,
     )
 
     if (intent === null) {
@@ -1947,112 +1892,6 @@ export class TransactionPipeline {
     })
 
     return true
-  }
-
-  /** Patches a {@link BulletListItemBlock} by ID with the given options. */
-  patchBulletListItemBlock(
-    blockId: BlockId,
-    opts: { content?: InlineNode[]; metadata?: Metadata },
-    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): boolean {
-    const intent = this.#operationsEngine.buildPatchBulletListItemBlockOps(
-      this.#context,
-      blockId,
-      opts,
-    )
-
-    if (intent === null) {
-      return false
-    }
-
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
-      pushToHistory: true,
-      source,
-    })
-
-    return true
-  }
-
-  /** Patches a {@link NumberedListItemBlock} by ID with the given options. */
-  patchNumberedListItemBlock(
-    blockId: BlockId,
-    opts: {
-      variant?: NumberedListItemBlock['variant']
-      content?: InlineNode[]
-      metadata?: Metadata
-    },
-    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): boolean {
-    const intent = this.#operationsEngine.buildPatchNumberedListItemBlockOps(
-      this.#context,
-      blockId,
-      opts,
-    )
-
-    if (intent === null) {
-      return false
-    }
-
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
-      pushToHistory: true,
-      source,
-    })
-
-    return true
-  }
-
-  /** Patches a {@link CheckboxListItemBlock} by ID with the given options. */
-  patchCheckboxListItemBlock(
-    blockId: BlockId,
-    opts: {
-      checked?: boolean
-      content?: InlineNode[]
-      metadata?: Metadata
-    },
-    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
-    const intent = this.#operationsEngine.buildPatchCheckboxListItemBlockOps(
-      this.#context,
-      blockId,
-      opts,
-    )
-    if (intent === null) {
-      return
-    }
-
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
-      pushToHistory: true,
-      source,
-    })
-  }
-
-  /** Patches a {@link DividerBlock} by ID with the given options. */
-  patchDividerBlock(
-    blockId: BlockId,
-    opts: { metadata?: Metadata },
-    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
-  ): void {
-    const intent = this.#operationsEngine.buildPatchDividerBlockOps(
-      this.#context,
-      blockId,
-      opts,
-    )
-    if (intent === null) {
-      return
-    }
-
-    const { ops, label } = intent
-    this.#commit(ops, {
-      label: transactionPolicyLabel('blocks', label),
-      pushToHistory: true,
-      source,
-    })
   }
 
   /** Duplicates a {@link Block} by ID. */
