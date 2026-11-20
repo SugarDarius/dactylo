@@ -45,7 +45,7 @@ import {
   NODE_SELECTED_DATA_NAME,
   NUMBERED_LIST_ITEM_BLOCK_ATTR_NAME,
   NUMBERED_LIST_ITEM_MARKER_ATTR_NAME,
-  NUMBERED_LIST_ITEM_MARKER_INDEX_ATTR_NAME,
+  NUMBERED_LIST_ITEM_MARKER_NUMBERING_ATTR_NAME,
   NUMBERED_LIST_ITEM_VARIANT_DATA_NAME,
   PARAGRAPH_BLOCK_ATTR_NAME,
   QUOTE_BLOCK_ATTR_NAME,
@@ -749,8 +749,8 @@ const ComposerNumberedListItemBlock = forwardRef<
         {...{ [NUMBERED_LIST_ITEM_MARKER_ATTR_NAME]: '' }}
       >
         <div
-          aria-roledescription='numbered-list-item-marker-index'
-          {...{ [NUMBERED_LIST_ITEM_MARKER_INDEX_ATTR_NAME]: '' }}
+          aria-roledescription='numbered-list-item-marker-numbering'
+          {...{ [NUMBERED_LIST_ITEM_MARKER_NUMBERING_ATTR_NAME]: '' }}
         >
           {block.markerNumbering}
         </div>

@@ -156,8 +156,8 @@ export const NUMBERED_LIST_ITEM_VARIANT_DATA_NAME =
 export const NUMBERED_LIST_ITEM_MARKER_ATTR_NAME =
   'dactylo-numbered-list-item-marker' as const
 /** Numbered list item marker number attribute name. */
-export const NUMBERED_LIST_ITEM_MARKER_INDEX_ATTR_NAME =
-  'dactylo-numbered-list-item-marker-index' as const
+export const NUMBERED_LIST_ITEM_MARKER_NUMBERING_ATTR_NAME =
+  'dactylo-numbered-list-item-marker-numbering' as const
 
 /** {@link CheckboxListItemBlock} attribute name. */
 export const CHECKBOX_LIST_ITEM_BLOCK_ATTR_NAME =
