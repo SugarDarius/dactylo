@@ -79,6 +79,7 @@ import {
 import {
   COMPOSER_BLOCKS_NAME,
   COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME,
+  COMPOSER_BULLET_LIST_ITEM_MARKER_DOT_NAME,
   COMPOSER_CHECKBOX_LIST_ITEM_BLOCK_NAME,
   COMPOSER_DIVIDER_BLOCK_NAME,
   COMPOSER_EDITABLE_NAME,
@@ -578,7 +579,7 @@ const ComposerQuoteBlock = forwardRef<HTMLDivElement, ComposerQuoteBlockProps>(
 )
 ComposerQuoteBlock.displayName = COMPOSER_QUOTE_BLOCK_NAME
 
-/** Primitive heading components for the composer. */
+/** Headings primitive for the composer. */
 const ComposerHeadingsPrimitive = COMPOSER_HEADING_LEVELS.reduce(
   (headings, level) => {
     const Heading = forwardRef<
@@ -608,7 +609,7 @@ const ComposerHeadingBlock = forwardRef<
   const { canEdit, editableId, isActive, isEmpty, sct } =
     useEditableBlock(block)
 
-  const Heading = ComposerHeadingsPrimitive[block.level]
+  const ComposerHeadingComp = ComposerHeadingsPrimitive[block.level]
   const placeholder = (overrides?.placeholder ?? heading.placeholder).replace(
     HEADING_LEVEL_REPLACER,
     block.level.toString(),
@@ -630,7 +631,7 @@ const ComposerHeadingBlock = forwardRef<
       }}
       aria-roledescription='heading-block'
     >
-      <Heading
+      <ComposerHeadingComp
         id={editableId}
         role={canEdit ? 'textbox' : undefined}
         aria-roledescription='heading-block-editable'
@@ -650,22 +651,30 @@ const ComposerHeadingBlock = forwardRef<
         style={{ ...EDITABLE_OUTLINE_STYLE }}
       >
         <ComposerSlotInlineContent content={block.content} />
-      </Heading>
+      </ComposerHeadingComp>
     </div>
   )
 })
 ComposerHeadingBlock.displayName = COMPOSER_HEADING_BLOCK_NAME
 
+/** Bullet list item marker dot primitive for the composer. */
+const ComposerBulletListItemMarkerDot = memo<
+  React.HTMLAttributes<HTMLDivElement>
+>((props) => <div {...props} />)
+ComposerBulletListItemMarkerDot.displayName =
+  COMPOSER_BULLET_LIST_ITEM_MARKER_DOT_NAME
+
 /** Adds a {@link BulletListItemBlock} to the composer. */
 const ComposerBulletListItemBlock = forwardRef<
   HTMLDivElement,
   ComposerBulletListItemBlockProps
->(({ block, blockIndex, overrides, ...props }, forwardedRef) => {
+>(({ block, blockIndex, overrides, components, ...props }, forwardedRef) => {
   const { bulletedList } = useEditorConfig()
   const { canEdit, editableId, isActive, isEmpty, sct } =
     useEditableBlock(block)
 
   const placeholder = overrides?.placeholder ?? bulletedList.placeholder
+  const MarkerDotComp = components?.MarkerDot ?? ComposerBulletListItemMarkerDot
 
   return (
     <div
@@ -687,7 +696,7 @@ const ComposerBulletListItemBlock = forwardRef<
         aria-roledescription='bullet-list-item-marker'
         {...{ [BULLET_LIST_ITEM_MARKER_ATTR_NAME]: '' }}
       >
-        <div
+        <MarkerDotComp
           aria-roledescription='bullet-list-item-marker-dot'
           {...{ [BULLET_LIST_ITEM_MARKER_DOT_ATTR_NAME]: '' }}
         />

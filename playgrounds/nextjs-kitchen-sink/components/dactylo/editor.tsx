@@ -786,6 +786,15 @@ export function BulletListItemBlock(props: ComposerBulletListItemBlockProps) {
   return (
     <Composer.BulletListItemBlock
       {...props}
+      components={{
+        // oxlint-disable-next-line react/no-unstable-nested-components
+        MarkerDot: (attributes) => (
+          <div
+            {...attributes}
+            className='size-1.5 shrink-0 rounded-full bg-current'
+          />
+        ),
+      }}
       className={cn(
         'flex flex-row items-center gap-2 px-1.5',
         '**:[[dactylo-bullet-list-item-marker]]:flex',
@@ -793,10 +802,6 @@ export function BulletListItemBlock(props: ComposerBulletListItemBlockProps) {
         '**:[[dactylo-bullet-list-item-marker]]:justify-center',
         '**:[[dactylo-bullet-list-item-marker]]:items-center',
         '**:[[dactylo-bullet-list-item-marker]]:p-1.5',
-        '**:[[dactylo-bullet-list-item-marker-dot]]:size-1.5',
-        '**:[[dactylo-bullet-list-item-marker-dot]]:shrink-0',
-        '**:[[dactylo-bullet-list-item-marker-dot]]:rounded-full',
-        '**:[[dactylo-bullet-list-item-marker-dot]]:bg-current',
         '**:[[dactylo-block-content]]:min-w-0',
         '**:[[dactylo-block-content]]:flex-1',
         editableBlockContentClassName,

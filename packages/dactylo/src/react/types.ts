@@ -156,6 +156,26 @@ export interface ComposerHeadingBlockProps extends ComposerBlockBaseProps {
 export interface ComposerBulletListItemBlockProps extends ComposerBlockBaseProps {
   /** The bullet list item block to render. */
   block: BulletListItemBlock
+
+  /**
+   * Slot overrides for `<Composer.BulletListItemBlock />`.
+   *
+   * @example
+   * ```tsx
+   * import { BulletMarkerDot } from '~/component/ui/bullet-marker'
+   *
+   * <Composer.BulletListItemBlock
+   *   components={{
+   *     MarkerDot: (attributes) => (
+   *       <BulletMarkerDot {...attributes} />
+   *     ),
+   *   }}
+   * />
+   * ```
+   */
+  components?: {
+    MarkerDot?: React.ComponentType<React.HTMLAttributes<HTMLElement>>
+  }
 }
 
 /** Props for declaring a numbered list item block component. */

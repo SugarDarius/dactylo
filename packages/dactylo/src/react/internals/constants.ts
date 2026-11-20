@@ -50,6 +50,10 @@ export const COMPOSER_HEADING_NAME = (level: HeadingBlock['level']) =>
 export const COMPOSER_BULLET_LIST_ITEM_BLOCK_NAME =
   'Composer.BulletListItemBlock'
 
+/** Bullet list item marker dot component name. */
+export const COMPOSER_BULLET_LIST_ITEM_MARKER_DOT_NAME =
+  'Composer.BulletListItemMarkerDot'
+
 /** Numbered list item block component name. */
 export const COMPOSER_NUMBERED_LIST_ITEM_BLOCK_NAME =
   'Composer.NumberedListItemBlock'
