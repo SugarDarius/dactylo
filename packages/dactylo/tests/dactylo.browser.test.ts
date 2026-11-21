@@ -721,42 +721,6 @@ describe('Dactylo blocks', () => {
     )
   })
 
-  test('get returns the current block by ID', () => {
-    const editor = makeTypingEditor()
-    editor.selection.commands.focus()
-    const block = firstInlineBlock(editor.getContext())
-
-    expect(editor.blocks.tools.get(block.id)).toEqual(block)
-
-    typeText(editor, 'Hello')
-    expect(editor.blocks.tools.get(block.id)).toEqual(
-      firstInlineBlock(editor.getContext()),
-    )
-  })
-
-  test('get returns a divider by ID', () => {
-    const editor = makeTypingEditor()
-    editor.selection.commands.focus()
-    const dividerId = editor.blocks.commands.insert({
-      spec: { type: 'divider' },
-    })
-    if (!dividerId) {
-      throw new Error('Expected an inserted divider')
-    }
-
-    const got = editor.blocks.tools.get(dividerId)
-    if (!got) {
-      throw new Error('Expected the divider to be found')
-    }
-    expect(got.id).toBe(dividerId)
-    expect(isDividerBlock(got)).toBe(true)
-  })
-
-  test('get returns null for a missing block', () => {
-    const editor = makeTypingEditor()
-    expect(editor.blocks.tools.get('bl_missing' as BlockId)).toBeNull()
-  })
-
   test('insert heading adds a heading after the current paragraph', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
@@ -2990,9 +2954,6 @@ describe('Dactylo safe-execute opts', () => {
     const emptyId = firstInlineBlock(empty.getContext()).id
     empty.setEditable(false)
     expect(empty.blocks.tools.isWithEmptyInlineContent(emptyId)).toBe('empty')
-    expect(empty.blocks.tools.get(emptyId)).toEqual(
-      firstInlineBlock(empty.getContext()),
-    )
     expect(empty.history.tools.canUndo()).toBe(false)
 
     const filled = makeTypingEditor()
@@ -3003,35 +2964,6 @@ describe('Dactylo safe-execute opts', () => {
     expect(filled.blocks.tools.isWithEmptyInlineContent(filledId)).toBe(
       'not-empty',
     )
-    expect(filled.blocks.tools.get(filledId)).toEqual(
-      firstInlineBlock(filled.getContext()),
-    )
-  })
-
-  test('get returns null for a missing block without emitting errors', () => {
-    const editor = makeTypingEditor()
-    const missingId = 'bl_missing' as BlockId
-
-    const tools: DactyloToolEvent[] = []
-    const errors: DactyloErrorEvent[] = []
-    editor.events.tools.subscribe((event) => {
-      tools.push(event)
-    })
-    editor.events.errors.subscribe((event) => {
-      errors.push(event)
-    })
-
-    expect(editor.blocks.tools.get(missingId)).toBeNull()
-
-    expect(tools.at(-1)).toEqual(
-      expect.objectContaining({
-        payload: undefined,
-        result: null,
-        status: 'success',
-        tool: 'blocks/get',
-      }),
-    )
-    expect(errors).toEqual([])
   })
 
   test('isWithEmptyInlineContent returns never for a missing block without emitting errors', () => {
