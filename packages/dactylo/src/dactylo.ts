@@ -12,7 +12,10 @@ import type {
   QBM,
   TNM,
 } from './internals/augmentation'
-import type { BlockId } from './internals/blocks'
+import type {
+  BlockId,
+  BlockWithInlineContentEmptiness,
+} from './internals/blocks'
 import { error, warnOnceIf } from './internals/console'
 import {
   DEFAULT_AUTOLINK_ENABLED,
@@ -903,15 +906,22 @@ export type DactyloDomApi = DactyloAspectApi<
 /** Tools to query the {@link DocumentState} blocks of the editor. */
 export interface DactyloBlocksTools {
   /**
-   * Whether the block with the given ID is with empty inline content.
+   * Whether the block with the given ID has no inline content.
    * This is a pure function that does not mutate the editor context.
+   *
+   * Always executes even in read-only mode.
+   *
+   * Returns a {@link BlockWithInlineContentEmptiness} indicating whether the block has no inline content,
+   * or `'not-allowed'` if the block does not exist or is not allowed to have inline content.
    *
    * @example
    * ```ts
    * const isEmpty = editor.blocks.tools.isWithEmptyInlineContent(blockId)
    * ```
    */
-  readonly isWithEmptyInlineContent: (blockId: BlockId) => boolean
+  readonly isWithEmptyInlineContent: (
+    blockId: BlockId,
+  ) => BlockWithInlineContentEmptiness
 }
 
 /** Commands to mutate the {@link DocumentState} blocks of the editor. */
@@ -1682,7 +1692,7 @@ export class Dactylo {
       })
 
       return result
-    } catch (err) {
+    } catch (err: unknown) {
       const wrapped = DactyloError.wrap(err)
       const durationMs = Date.now() - startedAt
 
@@ -1764,7 +1774,7 @@ export class Dactylo {
       })
 
       return result
-    } catch (err) {
+    } catch (err: unknown) {
       const wrapped = DactyloError.wrap(err)
       const durationMs = Date.now() - startedAt
 
@@ -2362,16 +2372,30 @@ export class Dactylo {
         /**
          * Whether the block with the given ID is with empty inline content.
          * This is a pure function that does not mutate the editor context.
+         *
+         * Always executes even in read-only mode.
+         *
+         * Returns a {@link BlockWithInlineContentEmptiness} indicating whether the block is with empty inline content,
+         * or `'not-allowed'` if the block does not exist or is not allowed to have inline content.
          */
-        isWithEmptyInlineContent: (blockId: BlockId): boolean =>
+        isWithEmptyInlineContent: (
+          blockId: BlockId,
+        ): BlockWithInlineContentEmptiness =>
           this.#safeExecuteTool(
             'blocks/is-with-empty-inline-content',
-            () =>
-              isBlockWithInlineContentEmpty(
-                this.#pipeline.context.state,
-                blockId,
-              ),
-            negate,
+            () => {
+              try {
+                const empty = isBlockWithInlineContentEmpty(
+                  this.#pipeline.context.state,
+                  blockId,
+                )
+
+                return empty ? 'empty' : 'not-empty'
+              } catch {
+                return 'never'
+              }
+            },
+            () => 'never',
             { alwaysExecute: true },
           ),
       },

@@ -150,6 +150,18 @@ export type BlockWithInlineContent =
   | NumberedListItemBlock
   | CheckboxListItemBlock
 
+/** Emptiness of a block with inline content. */
+export type BlockWithInlineContentEmptiness =
+  /** The block owning inline content is empty. */
+  | 'empty'
+  /** The block owning inline content is not empty. */
+  | 'not-empty'
+  /**
+   * The block was supposed to have inline content but it does not
+   * e.g do not exists or is not allowed to have inline content.
+   */
+  | 'never'
+
 /** Discriminated union of block types.. */
 export type BlockType = Block['__type']
 

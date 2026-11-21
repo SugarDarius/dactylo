@@ -50,6 +50,7 @@ export type {
   BlockId,
   BlockType,
   BlockWithInlineContent,
+  BlockWithInlineContentEmptiness,
   CheckboxListItemBlock,
   DividerBlock,
   HeadingBlock,

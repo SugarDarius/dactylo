@@ -569,14 +569,11 @@ export function useDomActiveRange(): Range | null {
  * @example
  * ```tsx
  * const {
- *   isEmpty,
+ *   duplicate,
  *   move,
  *   mutate,
  *   remove,
- *   duplicate,
  * } = useBlocks()
- *
- * console.log(isEmpty(blockId))
  *
  * remove(blockId)
  * remove(blockId, 'ai-agent')
@@ -590,10 +587,6 @@ export function useDomActiveRange(): Range | null {
  */
 export function useBlocks() {
   const { editor } = useComposer()
-
-  const isEmpty = useStableCallback((blockId: BlockId) =>
-    editor.blocks.tools.isWithEmptyInlineContent(blockId),
-  )
 
   const duplicate = useStableCallback(
     (
@@ -627,7 +620,6 @@ export function useBlocks() {
 
   return {
     duplicate,
-    isEmpty,
     move,
     mutate,
     remove,
@@ -651,7 +643,7 @@ export function useBlocks() {
  */
 export function useParagraphs() {
   const { editor } = useComposer()
-  const { duplicate, isEmpty, move, mutate, remove } = useBlocks()
+  const { duplicate, move, mutate, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -685,7 +677,6 @@ export function useParagraphs() {
   return {
     duplicate,
     insert,
-    isEmpty,
     move,
     mutate,
     patch,
@@ -710,7 +701,7 @@ export function useParagraphs() {
  */
 export function useQuotes() {
   const { editor } = useComposer()
-  const { isEmpty, duplicate, move, mutate, remove } = useBlocks()
+  const { duplicate, move, mutate, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -741,7 +732,6 @@ export function useQuotes() {
   return {
     duplicate,
     insert,
-    isEmpty,
     move,
     mutate,
     patch,
@@ -767,7 +757,7 @@ export function useQuotes() {
  */
 export function useHeadings() {
   const { editor } = useComposer()
-  const { duplicate, isEmpty, move, mutate, remove } = useBlocks()
+  const { duplicate, move, mutate, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -805,7 +795,6 @@ export function useHeadings() {
   return {
     duplicate,
     insert,
-    isEmpty,
     move,
     mutate,
     patch,
@@ -831,7 +820,7 @@ export function useHeadings() {
  */
 export function useDividers() {
   const { editor } = useComposer()
-  const { duplicate, isEmpty, move, remove } = useBlocks()
+  const { duplicate, move, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -862,7 +851,6 @@ export function useDividers() {
   return {
     duplicate,
     insert,
-    isEmpty,
     move,
     patch,
     remove,
@@ -887,7 +875,7 @@ export function useDividers() {
  */
 export function useBulletLists() {
   const { editor } = useComposer()
-  const { duplicate, isEmpty, move, mutate, remove } = useBlocks()
+  const { duplicate, move, mutate, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -924,7 +912,6 @@ export function useBulletLists() {
   return {
     duplicate,
     insert,
-    isEmpty,
     move,
     mutate,
     patch,
@@ -950,7 +937,7 @@ export function useBulletLists() {
  */
 export function useNumberedLists() {
   const { editor } = useComposer()
-  const { duplicate, isEmpty, move, mutate, remove } = useBlocks()
+  const { duplicate, move, mutate, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -995,7 +982,6 @@ export function useNumberedLists() {
   return {
     duplicate,
     insert,
-    isEmpty,
     move,
     mutate,
     patch,
@@ -1021,7 +1007,7 @@ export function useNumberedLists() {
  */
 export function useCheckboxLists() {
   const { editor } = useComposer()
-  const { duplicate, isEmpty, move, mutate, remove } = useBlocks()
+  const { duplicate, move, mutate, remove } = useBlocks()
 
   const insert = useStableCallback(
     (
@@ -1061,7 +1047,6 @@ export function useCheckboxLists() {
   return {
     duplicate,
     insert,
-    isEmpty,
     move,
     mutate,
     patch,
@@ -1070,30 +1055,21 @@ export function useCheckboxLists() {
 }
 
 /**
- * Returns whether the block is empty.
+ * Returns whether the block with allowed inline content is empty.
  *
  * @example
  * ```tsx
- * const isEmpty = useIsBlockEmpty(blockId)
+ * const isEmpty = useIsBlockWithInlineContentEmpty(blockId)
  * console.log(isEmpty)
  * ```
  */
-export function useIsBlockEmpty(blockId: BlockId): boolean {
+export function useIsBlockWithInlineContentEmpty(blockId: BlockId): boolean {
   const { editor } = useComposer()
 
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
   const getSnapshot = useCallback(() => {
-    /**
-     * Block-scoped UI may still re-render once after
-     * undo/delete before React unmounts the block.
-     * To avoid state rendering treat missing blocks as empty instead of throwing
-     */
-    const block = editor.getContext().state.blocks.get(blockId)
-    if (block === undefined) {
-      return true
-    }
-
-    return editor.blocks.tools.isWithEmptyInlineContent(blockId)
+    const emptiness = editor.blocks.tools.isWithEmptyInlineContent(blockId)
+    return emptiness === 'empty'
   }, [blockId, editor])
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
@@ -1590,7 +1566,7 @@ export function useEditableBlock(block: BlockWithInlineContent) {
 
   const withActiveSelection = useIsSelectedBlock(block.id)
   const sct = useBlockSelectionCoverageTopology(block.id)
-  const isEmpty = useIsBlockEmpty(block.id)
+  const isEmpty = useIsBlockWithInlineContentEmpty(block.id)
 
   const isActive = canEdit && withActiveSelection
 

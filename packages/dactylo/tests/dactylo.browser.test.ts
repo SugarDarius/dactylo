@@ -164,7 +164,7 @@ describe('Dactylo construction', () => {
     expect(context.selection).toBeNull()
     expect(editor.canEdit()).toBe(true)
     expect(isParagraphBlock(block)).toBe(true)
-    expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe(true)
+    expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe('empty')
   })
 
   test('resolves default config from constructor options', () => {
@@ -682,19 +682,43 @@ describe('Dactylo history', () => {
 })
 
 describe('Dactylo blocks', () => {
-  test('isWithEmptyInlineContent is false after typing spaces', () => {
+  test('isWithEmptyInlineContent is not-empty after typing spaces', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
     const block = firstInlineBlock(editor.getContext())
 
-    expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe(true)
+    expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe('empty')
 
     typeText(editor, ' ')
-    expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe(false)
+    expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe(
+      'not-empty',
+    )
 
     typeText(editor, ' ')
-    expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe(false)
+    expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe(
+      'not-empty',
+    )
     expect(blockTexts(editor.getContext())).toEqual(['  '])
+  })
+
+  test('isWithEmptyInlineContent is never for a missing or divider block', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    expect(
+      editor.blocks.tools.isWithEmptyInlineContent('bl_missing' as BlockId),
+    ).toBe('never')
+
+    const dividerId = editor.blocks.commands.insert({
+      spec: { type: 'divider' },
+    })
+    if (!dividerId) {
+      throw new Error('Expected an inserted divider')
+    }
+
+    expect(editor.blocks.tools.isWithEmptyInlineContent(dividerId)).toBe(
+      'never',
+    )
   })
 
   test('insert heading adds a heading after the current paragraph', () => {
@@ -719,7 +743,9 @@ describe('Dactylo blocks', () => {
       expect(heading.level).toBe(2)
     }
     expect(blockTexts(context)).toEqual(['Hello', ''])
-    expect(editor.blocks.tools.isWithEmptyInlineContent(heading.id)).toBe(true)
+    expect(editor.blocks.tools.isWithEmptyInlineContent(heading.id)).toBe(
+      'empty',
+    )
   })
 
   test('insert quote adds a quote after the current paragraph', () => {
@@ -739,7 +765,7 @@ describe('Dactylo blocks', () => {
     expect(quote.id).toBe(blockId)
     expect(isQuoteBlock(quote)).toBe(true)
     expect(blockTexts(context)).toEqual(['Hello', ''])
-    expect(editor.blocks.tools.isWithEmptyInlineContent(quote.id)).toBe(true)
+    expect(editor.blocks.tools.isWithEmptyInlineContent(quote.id)).toBe('empty')
   })
 
   test('insert numbered list item adds a numbered item after the current paragraph', () => {
@@ -765,7 +791,7 @@ describe('Dactylo blocks', () => {
       expect(item.markerNumbering).toBe('1.')
     }
     expect(blockTexts(context)).toEqual(['Hello', ''])
-    expect(editor.blocks.tools.isWithEmptyInlineContent(item.id)).toBe(true)
+    expect(editor.blocks.tools.isWithEmptyInlineContent(item.id)).toBe('empty')
   })
 
   test('insert uses the given spec content', () => {
@@ -2927,7 +2953,7 @@ describe('Dactylo safe-execute opts', () => {
     const empty = makeTypingEditor()
     const emptyId = firstInlineBlock(empty.getContext()).id
     empty.setEditable(false)
-    expect(empty.blocks.tools.isWithEmptyInlineContent(emptyId)).toBe(true)
+    expect(empty.blocks.tools.isWithEmptyInlineContent(emptyId)).toBe('empty')
     expect(empty.history.tools.canUndo()).toBe(false)
 
     const filled = makeTypingEditor()
@@ -2935,10 +2961,12 @@ describe('Dactylo safe-execute opts', () => {
     typeText(filled, 'Hello')
     const filledId = firstInlineBlock(filled.getContext()).id
     filled.setEditable(false)
-    expect(filled.blocks.tools.isWithEmptyInlineContent(filledId)).toBe(false)
+    expect(filled.blocks.tools.isWithEmptyInlineContent(filledId)).toBe(
+      'not-empty',
+    )
   })
 
-  test('tool errors omit payload when none was given', () => {
+  test('isWithEmptyInlineContent returns never for a missing block without emitting errors', () => {
     const editor = makeTypingEditor()
     const missingId = 'bl_missing' as BlockId
 
@@ -2951,30 +2979,18 @@ describe('Dactylo safe-execute opts', () => {
       errors.push(event)
     })
 
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
-      /* silence expected DactyloError log */
-    })
-    try {
-      expect(() =>
-        editor.blocks.tools.isWithEmptyInlineContent(missingId),
-      ).toThrow(DactyloError)
-    } finally {
-      errorSpy.mockRestore()
-    }
+    expect(editor.blocks.tools.isWithEmptyInlineContent(missingId)).toBe(
+      'never',
+    )
 
     expect(tools.at(-1)).toEqual(
       expect.objectContaining({
         payload: undefined,
-        status: 'error',
+        result: 'never',
+        status: 'success',
         tool: 'blocks/is-with-empty-inline-content',
       }),
     )
-    expect(errors).toEqual([
-      expect.objectContaining({
-        payload: undefined,
-        tool: 'blocks/is-with-empty-inline-content',
-      }),
-    ])
-    expect(tools.at(-1)?.error).toBe(errors[0]?.error)
+    expect(errors).toEqual([])
   })
 })
