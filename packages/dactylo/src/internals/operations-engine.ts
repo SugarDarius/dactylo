@@ -92,8 +92,8 @@ import type { Selection } from './selection'
 import { SoftBreakOpsBuilder } from './soft-break-ops-builder'
 import { assertNever } from './utils'
 
-/** Warns about a mutate operation being invalid. */
-export function mutateOpsWarning(
+/** Warns about a mutate operation being a no-op. */
+export function mutateOpsNoOpWarning(
   debug: boolean,
   blockId: BlockId,
   blockType: BlockType,
@@ -102,7 +102,21 @@ export function mutateOpsWarning(
   warnIf(
     debug,
     `Cannot mutate ${blockType} block ${blockId} because it is already a ${blockType} block${hint ? `: ${hint}` : ''}`,
-    'OperationsEngine/mutateOpsWarning',
+    'OperationsEngine/mutateOpsNoOpWarning',
+  )
+}
+
+/** Warns about a patch operation being no-op. */
+export function patchOpsNoOPWarning(
+  debug: boolean,
+  blockId: BlockId,
+  targetBlockType: BlockType,
+  sourceBlockType: BlockType,
+): void {
+  warnIf(
+    debug,
+    `Cannot patch block ${blockId} because source type is ${sourceBlockType} instead of ${targetBlockType}`,
+    'OperationsEngine/patchOpsNoOPWarning',
   )
 }
 
@@ -1003,16 +1017,11 @@ export class OperationsEngine {
   ): BuilderOpsIntent | null {
     const source = getBlock(context.state, blockId)
 
-    // @todo: add a policy config to merge blocks metadata
     const { type } = spec
     switch (type) {
       case 'paragraph': {
         if (!isParagraphBlock(source)) {
-          warnIf(
-            this.#debug,
-            `Cannot patch paragraph block ${blockId} because source type is ${source.__type}`,
-            'OperationsEngine/buildPatchBlockOps',
-          )
+          patchOpsNoOPWarning(this.#debug, blockId, 'paragraph', source.__type)
           return null
         }
 
@@ -1032,11 +1041,7 @@ export class OperationsEngine {
       }
       case 'quote': {
         if (!isQuoteBlock(source)) {
-          warnIf(
-            this.#debug,
-            `Cannot patch quote block ${blockId} because source type is ${source.__type}`,
-            'OperationsEngine/buildPatchBlockOps',
-          )
+          patchOpsNoOPWarning(this.#debug, blockId, 'quote', source.__type)
           return null
         }
 
@@ -1056,11 +1061,7 @@ export class OperationsEngine {
       }
       case 'heading': {
         if (!isHeadingBlock(source)) {
-          warnIf(
-            this.#debug,
-            `Cannot patch heading block ${blockId} because source type is ${source.__type}`,
-            'OperationsEngine/buildPatchBlockOps',
-          )
+          patchOpsNoOPWarning(this.#debug, blockId, 'heading', source.__type)
           return null
         }
 
@@ -1081,10 +1082,11 @@ export class OperationsEngine {
       }
       case 'bullet_list_item': {
         if (!isBulletListItemBlock(source)) {
-          warnIf(
+          patchOpsNoOPWarning(
             this.#debug,
-            `Cannot patch bullet list item block ${blockId} because source type is ${source.__type}`,
-            'OperationsEngine/buildPatchBlockOps',
+            blockId,
+            'bullet_list_item',
+            source.__type,
           )
           return null
         }
@@ -1105,10 +1107,11 @@ export class OperationsEngine {
       }
       case 'numbered_list_item': {
         if (!isNumberedListItemBlock(source)) {
-          warnIf(
+          patchOpsNoOPWarning(
             this.#debug,
-            `Cannot patch numbered list item block ${blockId} because source type is ${source.__type}`,
-            'OperationsEngine/buildPatchBlockOps',
+            blockId,
+            'numbered_list_item',
+            source.__type,
           )
           return null
         }
@@ -1153,10 +1156,11 @@ export class OperationsEngine {
       }
       case 'checkbox_list_item': {
         if (!isCheckboxListItemBlock(source)) {
-          warnIf(
+          patchOpsNoOPWarning(
             this.#debug,
-            `Cannot patch checkbox list item block ${blockId} because source type is ${source.__type}`,
-            'OperationsEngine/buildPatchBlockOps',
+            blockId,
+            'checkbox_list_item',
+            source.__type,
           )
           return null
         }
@@ -1178,11 +1182,7 @@ export class OperationsEngine {
       }
       case 'divider': {
         if (!isDividerBlock(source)) {
-          warnIf(
-            this.#debug,
-            `Cannot patch divider block ${blockId} because source type is ${source.__type}`,
-            'OperationsEngine/buildPatchBlockOps',
-          )
+          patchOpsNoOPWarning(this.#debug, blockId, 'divider', source.__type)
           return null
         }
 
@@ -1318,7 +1318,7 @@ export class OperationsEngine {
     switch (kind) {
       case 'to_paragraph': {
         if (isParagraphBlock(source)) {
-          mutateOpsWarning(this.#debug, blockId, 'paragraph')
+          mutateOpsNoOpWarning(this.#debug, blockId, 'paragraph')
           return null
         }
 
@@ -1344,7 +1344,7 @@ export class OperationsEngine {
       }
       case 'to_quote': {
         if (isQuoteBlock(source)) {
-          mutateOpsWarning(this.#debug, blockId, 'quote')
+          mutateOpsNoOpWarning(this.#debug, blockId, 'quote')
           return null
         }
         const ops: Operation[] = [
@@ -1369,7 +1369,7 @@ export class OperationsEngine {
       }
       case 'to_heading': {
         if (isHeadingBlock(source)) {
-          mutateOpsWarning(this.#debug, blockId, 'heading')
+          mutateOpsNoOpWarning(this.#debug, blockId, 'heading')
           return null
         }
         const ops: Operation[] = [
@@ -1395,7 +1395,7 @@ export class OperationsEngine {
       }
       case 'to_bullet_list_item': {
         if (isBulletListItemBlock(source)) {
-          mutateOpsWarning(this.#debug, blockId, 'bullet_list_item')
+          mutateOpsNoOpWarning(this.#debug, blockId, 'bullet_list_item')
           return null
         }
 
@@ -1424,7 +1424,7 @@ export class OperationsEngine {
           isNumberedListItemBlock(source) &&
           source.variant === spec.variant
         ) {
-          mutateOpsWarning(
+          mutateOpsNoOpWarning(
             this.#debug,
             blockId,
             'numbered_list_item',
@@ -1473,7 +1473,7 @@ export class OperationsEngine {
       }
       case 'to_checkbox_list_item': {
         if (isCheckboxListItemBlock(source)) {
-          mutateOpsWarning(this.#debug, blockId, 'checkbox_list_item')
+          mutateOpsNoOpWarning(this.#debug, blockId, 'checkbox_list_item')
           return null
         }
 
