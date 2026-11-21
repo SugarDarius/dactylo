@@ -7,6 +7,7 @@ import {
   createTextNode,
   isTextNode,
 } from '../../src/internals/nodes'
+import type { MutateBlockSpec } from '../../src/internals/operations-builder'
 import {
   assertUndoRedo,
   blockTexts,
@@ -476,6 +477,95 @@ describe('TransactionPipeline block commands', () => {
       pipeline.mutateBlock(dividerId, { kind: 'to_paragraph' }, 'user'),
     ).toBe(false)
     expect(snapshot(pipeline.context)).toEqual(before)
+  })
+
+  test('mutateBlock is a no-op when the block is already the target type', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+
+    const [paragraphId] = pipeline.context.state.blockOrderById
+    if (!paragraphId) {
+      throw new Error('Expected the initial paragraph')
+    }
+
+    const quoteId = pipeline.insertBlock({ spec: { type: 'quote' } }, 'user')
+    const headingId = pipeline.insertBlock(
+      { spec: { level: 1, type: 'heading' } },
+      'user',
+    )
+    const bulletId = pipeline.insertBlock(
+      { spec: { type: 'bullet_list_item' } },
+      'user',
+    )
+    const numberedId = pipeline.insertBlock(
+      { spec: { type: 'numbered_list_item' } },
+      'user',
+    )
+    const checkboxId = pipeline.insertBlock(
+      { spec: { type: 'checkbox_list_item' } },
+      'user',
+    )
+    if (!(quoteId && headingId && bulletId && numberedId && checkboxId)) {
+      throw new Error('Expected inserted blocks to mutate')
+    }
+
+    const cases: readonly {
+      readonly blockId: BlockId
+      readonly spec: MutateBlockSpec
+    }[] = [
+      { blockId: paragraphId, spec: { kind: 'to_paragraph' } },
+      { blockId: quoteId, spec: { kind: 'to_quote' } },
+      { blockId: headingId, spec: { kind: 'to_heading', level: 2 } },
+      { blockId: bulletId, spec: { kind: 'to_bullet_list_item' } },
+      {
+        blockId: numberedId,
+        spec: { kind: 'to_numbered_list_item', variant: 'default' },
+      },
+      {
+        blockId: checkboxId,
+        spec: { checked: true, kind: 'to_checkbox_list_item' },
+      },
+    ]
+
+    const before = snapshot(pipeline.context)
+    const canUndoBefore = pipeline.canUndo()
+
+    for (const { blockId, spec } of cases) {
+      expect(pipeline.mutateBlock(blockId, spec, 'user')).toBe(false)
+    }
+
+    expect(snapshot(pipeline.context)).toEqual(before)
+    expect(pipeline.canUndo()).toBe(canUndoBefore)
+  })
+
+  test('mutateBlock of a numbered item to a different variant still applies', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    const numberedId = pipeline.insertBlock(
+      { spec: { type: 'numbered_list_item' } },
+      'user',
+    )
+    if (!numberedId) {
+      throw new Error('Expected an inserted numbered list item')
+    }
+
+    const before = snapshot(pipeline.context)
+
+    expect(
+      pipeline.mutateBlock(
+        numberedId,
+        { kind: 'to_numbered_list_item', variant: 'alpha' },
+        'user',
+      ),
+    ).toBe(true)
+
+    const mutated = pipeline.context.state.blocks.get(numberedId)
+    expect(mutated?.__type).toBe('numbered_list_item')
+    expect(mutated).toMatchObject({
+      markerNumbering: 'a.',
+      variant: 'alpha',
+    })
+    assertUndoRedo(pipeline, before)
   })
 
   test('mutateBlock of a numbered item compactifies leftover markers', () => {

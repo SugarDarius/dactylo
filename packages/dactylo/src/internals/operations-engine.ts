@@ -21,7 +21,7 @@ import {
   isQuoteBlock,
   touchBlock,
 } from './blocks'
-import type { BlockId } from './blocks'
+import type { BlockId, BlockType } from './blocks'
 import type { TextPlainData } from './clipboard'
 import { warn, warnIf, warnOnceIf } from './console'
 import { DeleteContentForwardOpsBuilder } from './delete-content-forward-ops-builder'
@@ -91,6 +91,20 @@ import {
 import type { Selection } from './selection'
 import { SoftBreakOpsBuilder } from './soft-break-ops-builder'
 import { assertNever } from './utils'
+
+/** Warns about a mutate operation being invalid. */
+export function mutateOpsWarning(
+  debug: boolean,
+  blockId: BlockId,
+  blockType: BlockType,
+  hint?: string,
+): void {
+  warnIf(
+    debug,
+    `Cannot mutate ${blockType} block ${blockId} because it is already a ${blockType} block${hint ? `: ${hint}` : ''}`,
+    'OperationsEngine/mutateOpsWarning',
+  )
+}
 
 /** Options for constructing a {@link OperationsEngine} instance. */
 export interface OperationsEngineOptions {
@@ -1303,6 +1317,11 @@ export class OperationsEngine {
     const { kind } = spec
     switch (kind) {
       case 'to_paragraph': {
+        if (isParagraphBlock(source)) {
+          mutateOpsWarning(this.#debug, blockId, 'paragraph')
+          return null
+        }
+
         const ops: Operation[] = [
           {
             __type: 'mutate_block_type',
@@ -1324,6 +1343,10 @@ export class OperationsEngine {
         return { label: 'mutate-paragraph', ops }
       }
       case 'to_quote': {
+        if (isQuoteBlock(source)) {
+          mutateOpsWarning(this.#debug, blockId, 'quote')
+          return null
+        }
         const ops: Operation[] = [
           {
             __type: 'mutate_block_type',
@@ -1345,6 +1368,10 @@ export class OperationsEngine {
         return { label: 'mutate-quote', ops }
       }
       case 'to_heading': {
+        if (isHeadingBlock(source)) {
+          mutateOpsWarning(this.#debug, blockId, 'heading')
+          return null
+        }
         const ops: Operation[] = [
           {
             __type: 'mutate_block_type',
@@ -1367,6 +1394,11 @@ export class OperationsEngine {
         return { label: 'mutate-heading', ops }
       }
       case 'to_bullet_list_item': {
+        if (isBulletListItemBlock(source)) {
+          mutateOpsWarning(this.#debug, blockId, 'bullet_list_item')
+          return null
+        }
+
         const ops: Operation[] = [
           {
             __type: 'mutate_block_type',
@@ -1388,6 +1420,19 @@ export class OperationsEngine {
         return { label: 'mutate-bullet-list-item', ops }
       }
       case 'to_numbered_list_item': {
+        if (
+          isNumberedListItemBlock(source) &&
+          source.variant === spec.variant
+        ) {
+          mutateOpsWarning(
+            this.#debug,
+            blockId,
+            'numbered_list_item',
+            `using same variant '${source.variant}'`,
+          )
+          return null
+        }
+
         const variant = spec.variant ?? 'default'
         const { prev } = getBlockNeighbors(context.state, source.id)
         const markerNumbering = resolveMarkerNumberingForInsert(
@@ -1427,6 +1472,11 @@ export class OperationsEngine {
         return { label: 'mutate-numbered-list-item', ops }
       }
       case 'to_checkbox_list_item': {
+        if (isCheckboxListItemBlock(source)) {
+          mutateOpsWarning(this.#debug, blockId, 'checkbox_list_item')
+          return null
+        }
+
         const ops: Operation[] = [
           {
             __type: 'mutate_block_type',
