@@ -13,6 +13,7 @@ import type {
   TNM,
 } from './internals/augmentation'
 import type {
+  Block,
   BlockId,
   BlockWithInlineContentEmptiness,
 } from './internals/blocks'
@@ -34,6 +35,7 @@ import {
   DEFAULT_QUOTE_PLACEHOLDER,
 } from './internals/constants'
 import {
+  getBlock,
   getBlockSelectionCoverageTopology,
   getInlineNodeSelectionCoverageTopology,
   isBlockWithInlineContentEmpty,
@@ -293,6 +295,7 @@ export type DactyloTool =
   | 'dom/get-active-range'
 
   /** Blocks tools. */
+  | 'blocks/get'
   | 'blocks/is-with-empty-inline-content'
 
   /** Mentions tools. */
@@ -905,6 +908,20 @@ export type DactyloDomApi = DactyloAspectApi<
 
 /** Tools to query the {@link DocumentState} blocks of the editor. */
 export interface DactyloBlocksTools {
+  /**
+   * Gets a {@link Block} by ID.
+   *
+   * Always executes even in read-only mode.
+   *
+   * Returns the {@link Block} if found, or `null` if not found in document state.
+   *
+   * @example
+   * ```ts
+   * const block = editor.blocks.tools.get(blockId)
+   * ```
+   */
+  readonly get: (blockId: BlockId) => Block | null
+
   /**
    * Whether the block with the given ID has no inline content.
    * This is a pure function that does not mutate the editor context.
@@ -2369,6 +2386,28 @@ export class Dactylo {
           ),
       },
       tools: {
+        /**
+         * Gets a {@link Block} by ID.
+         *
+         * Always executes even in read-only mode.
+         *
+         * Returns the {@link Block} if found, or `null` if not found in document state.
+         */
+        get: (blockId: BlockId) =>
+          this.#safeExecuteTool(
+            'blocks/get',
+            () => {
+              try {
+                const block = getBlock(this.#pipeline.context.state, blockId)
+                return block
+              } catch {
+                return null
+              }
+            },
+            nullish,
+            { alwaysExecute: true },
+          ),
+
         /**
          * Whether the block with the given ID is with empty inline content.
          * This is a pure function that does not mutate the editor context.
