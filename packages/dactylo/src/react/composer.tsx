@@ -47,8 +47,10 @@ import { isMarkEnabled } from '../internals/marks'
 import type { MarkKey } from '../internals/marks'
 import type { InlineNodeWithEditableText, NodeId } from '../internals/nodes'
 import type {
+  InsertBlockSpec,
   InsertOrMoveBlockPosition,
   MutateBlockSpec,
+  PatchBlockSpec,
 } from '../internals/operations-builder'
 import { isCursorSelection, isRangeSelection } from '../internals/selection'
 import type {
@@ -570,19 +572,30 @@ export function useDomActiveRange(): Range | null {
  * ```tsx
  * const {
  *   duplicate,
+ *   insert,
  *   move,
  *   mutate,
  *   remove,
  * } = useBlocks()
  *
- * remove(blockId)
- * remove(blockId, 'ai-agent')
- *
  * duplicate(blockId)
  * duplicate(blockId, 'ai-agent')
  *
+ * insert({ spec: { type: 'paragraph' } })
+ * insert({ pos: { type: 'end' }, spec: { type: 'paragraph' } }, 'ai-agent')
+ *
  * move(blockId, { type: 'after', blockId: targetId })
  * move(blockId, { type: 'start' }, 'ai-agent')
+ *
+ * mutate(blockId, { type: 'paragraph' })
+ * mutate(blockId, { type: 'paragraph' }, 'ai-agent')
+ *
+ * patch(blockId, { metadata: { fontColor: 'red' }  })
+ * patch(blockId, {}, 'ai-agent')
+ *
+ * remove(blockId)
+ * remove(blockId, 'ai-agent')
+ *
  * ```
  */
 export function useBlocks() {
@@ -595,11 +608,14 @@ export function useBlocks() {
     ) => editor.blocks.commands.duplicate(blockId, source),
   )
 
-  const remove = useStableCallback(
+  const insert = useStableCallback(
     (
-      blockId: BlockId,
+      opts: {
+        pos?: InsertOrMoveBlockPosition
+        spec: InsertBlockSpec
+      },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.delete(blockId, source),
+    ) => editor.blocks.commands.insert(opts, source),
   )
 
   const move = useStableCallback(
@@ -618,10 +634,27 @@ export function useBlocks() {
     ) => editor.blocks.commands.mutate(blockId, spec, source),
   )
 
+  const patch = useStableCallback(
+    (
+      blockId: BlockId,
+      spec: PatchBlockSpec,
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.patch({ blockId, spec }, source),
+  )
+
+  const remove = useStableCallback(
+    (
+      blockId: BlockId,
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.blocks.commands.delete(blockId, source),
+  )
+
   return {
     duplicate,
+    insert,
     move,
     mutate,
+    patch,
     remove,
   } as const
 }
@@ -634,18 +667,17 @@ export function useBlocks() {
  * ```tsx
  * const { insert, patch, ...rest } = useParagraphs()
  *
- * insertParagraph({ pos: { type: 'end'}, metadata: { fontColor: 'purple' } })
- * insertParagraph({}, 'ai-agent')
+ * insert({ pos: { type: 'end'}, metadata: { fontColor: 'purple' } })
+ * insert({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { fontColor: 'red' }  })
  * patch(blockId, {}, 'ai-agent')
  * ```
  */
 export function useParagraphs() {
-  const { editor } = useComposer()
-  const { duplicate, move, mutate, remove } = useBlocks()
+  const { duplicate, insert, move, mutate, patch, remove } = useBlocks()
 
-  const insert = useStableCallback(
+  const $insert = useStableCallback(
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
@@ -653,7 +685,7 @@ export function useParagraphs() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.insert(
+      insert(
         {
           pos: opts?.pos,
           spec: { metadata: opts?.metadata, type: 'paragraph' },
@@ -662,24 +694,21 @@ export function useParagraphs() {
       ),
   )
 
-  const patch = useStableCallback(
+  const $patch = useStableCallback(
     (
-      paragraphBlockId: BlockId,
+      blockId: BlockId,
       opts: { metadata?: PBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.patch(
-        { blockId: paragraphBlockId, spec: { ...opts, type: 'paragraph' } },
-        source,
-      ),
+      patch(blockId, { metadata: opts?.metadata, type: 'paragraph' }, source),
   )
 
   return {
     duplicate,
-    insert,
+    insert: $insert,
     move,
     mutate,
-    patch,
+    patch: $patch,
     remove,
   } as const
 }
@@ -692,18 +721,17 @@ export function useParagraphs() {
  * ```tsx
  * const { insert, patch, ...rest } = useQuotes()
  *
- * insertQuote({ pos: { type: 'end' } })
- * insertQuote({}, 'ai-agent')
+ * insert({ pos: { type: 'end' } })
+ * insert({}, 'ai-agent')
  *
  * patch(blockId, { content: [textNode] })
  * patch(blockId, {}, 'ai-agent')
  * ```
  */
 export function useQuotes() {
-  const { editor } = useComposer()
-  const { duplicate, move, mutate, remove } = useBlocks()
+  const { duplicate, insert, move, mutate, patch, remove } = useBlocks()
 
-  const insert = useStableCallback(
+  const $insert = useStableCallback(
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
@@ -711,30 +739,26 @@ export function useQuotes() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.insert(
+      insert(
         { pos: opts?.pos, spec: { metadata: opts?.metadata, type: 'quote' } },
         source,
       ),
   )
 
-  const patch = useStableCallback(
+  const $patch = useStableCallback(
     (
-      quoteBlockId: BlockId,
+      blockId: BlockId,
       opts: { metadata?: QBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) =>
-      editor.blocks.commands.patch(
-        { blockId: quoteBlockId, spec: { ...opts, type: 'quote' } },
-        source,
-      ),
+    ) => patch(blockId, { metadata: opts?.metadata, type: 'quote' }, source),
   )
 
   return {
     duplicate,
-    insert,
+    insert: $insert,
     move,
     mutate,
-    patch,
+    patch: $patch,
     remove,
   } as const
 }
@@ -747,19 +771,18 @@ export function useQuotes() {
  * ```tsx
  * const { insert, patch } = useHeadings()
  *
- * insertHeading(1)
- * insertHeading(2, { pos: { type: 'end' } })
- * insertHeading(3, {}, 'ai-agent')
+ * insert(1)
+ * insert(2, { pos: { type: 'end' } })
+ * insert(3, {}, 'ai-agent')
  *
  * patch(blockId, { level: 3 })
  * patch(blockId, {}, 'ai-agent')
  * ```
  */
 export function useHeadings() {
-  const { editor } = useComposer()
-  const { duplicate, move, mutate, remove } = useBlocks()
+  const { duplicate, insert, move, mutate, patch, remove } = useBlocks()
 
-  const insert = useStableCallback(
+  const $insert = useStableCallback(
     (
       level: HeadingBlock['level'],
       opts?: {
@@ -768,7 +791,7 @@ export function useHeadings() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.insert(
+      insert(
         {
           pos: opts?.pos,
           spec: { level, metadata: opts?.metadata, type: 'heading' },
@@ -777,27 +800,28 @@ export function useHeadings() {
       ),
   )
 
-  const patch = useStableCallback(
+  const $patch = useStableCallback(
     (
-      headingBlockId: BlockId,
+      blockId: BlockId,
       opts: {
         level?: HeadingBlock['level']
         metadata?: HBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.patch(
-        { blockId: headingBlockId, spec: { ...opts, type: 'heading' } },
+      patch(
+        blockId,
+        { level: opts?.level, metadata: opts?.metadata, type: 'heading' },
         source,
       ),
   )
 
   return {
     duplicate,
-    insert,
+    insert: $insert,
     move,
     mutate,
-    patch,
+    patch: $patch,
     remove,
   } as const
 }
@@ -810,19 +834,18 @@ export function useHeadings() {
  * ```tsx
  * const { insert, patch, ...rest } = useDividers()
  *
- * insertDivider()
- * insertDivider({ pos: { type: 'end' } })
- * insertDivider({}, 'ai-agent')
+ * insert()
+ * insert({ pos: { type: 'end' } })
+ * insert({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { bgColor: 'red' }  })
  * patch(blockId, {}, 'ai-agent')
  * ```
  */
 export function useDividers() {
-  const { editor } = useComposer()
-  const { duplicate, move, remove } = useBlocks()
+  const { duplicate, insert, move, patch, remove } = useBlocks()
 
-  const insert = useStableCallback(
+  const $insert = useStableCallback(
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
@@ -830,29 +853,25 @@ export function useDividers() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.insert(
+      insert(
         { pos: opts?.pos, spec: { metadata: opts?.metadata, type: 'divider' } },
         source,
       ),
   )
 
-  const patch = useStableCallback(
+  const $patch = useStableCallback(
     (
-      dividerBlockId: BlockId,
+      blockId: BlockId,
       opts: { metadata?: DBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) =>
-      editor.blocks.commands.patch(
-        { blockId: dividerBlockId, spec: { ...opts, type: 'divider' } },
-        source,
-      ),
+    ) => patch(blockId, { metadata: opts?.metadata, type: 'divider' }, source),
   )
 
   return {
     duplicate,
-    insert,
+    insert: $insert,
     move,
-    patch,
+    patch: $patch,
     remove,
   } as const
 }
@@ -865,19 +884,18 @@ export function useDividers() {
  * ```tsx
  * const { insert, patch, ...rest } = useBulletLists()
  *
- * insertBulletListItem()
- * insertBulletListItem({ pos: { type: 'end' } })
- * insertBulletListItem({}, 'ai-agent')
+ * insert()
+ * insert({ pos: { type: 'end' } })
+ * insert({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { frontColor: 'red' }  })
  * patch(blockId, {}, 'ai-agent')
  * ```
  */
 export function useBulletLists() {
-  const { editor } = useComposer()
-  const { duplicate, move, mutate, remove } = useBlocks()
+  const { duplicate, insert, move, mutate, patch, remove } = useBlocks()
 
-  const insert = useStableCallback(
+  const $insert = useStableCallback(
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
@@ -885,7 +903,7 @@ export function useBulletLists() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.insert(
+      insert(
         {
           pos: opts?.pos,
           spec: { metadata: opts?.metadata, type: 'bullet_list_item' },
@@ -894,27 +912,25 @@ export function useBulletLists() {
       ),
   )
 
-  const patch = useStableCallback(
+  const $patch = useStableCallback(
     (
-      bulletListItemBlockId: BlockId,
+      blockId: BlockId,
       opts: { metadata?: BBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.patch(
-        {
-          blockId: bulletListItemBlockId,
-          spec: { ...opts, type: 'bullet_list_item' },
-        },
+      patch(
+        blockId,
+        { metadata: opts?.metadata, type: 'bullet_list_item' },
         source,
       ),
   )
 
   return {
     duplicate,
-    insert,
+    insert: $insert,
     move,
     mutate,
-    patch,
+    patch: $patch,
     remove,
   } as const
 }
@@ -927,19 +943,18 @@ export function useBulletLists() {
  * ```tsx
  * const { insert, patch, ...rest } = useNumberedLists()
  *
- * insertNumberedListItem()
- * insertNumberedListItem({ pos: { type: 'end' } })
- * insertNumberedListItem({}, 'ai-agent')
+ * insert()
+ * insert({ pos: { type: 'end' } })
+ * insert({}, 'ai-agent')
  *
  * patch(blockId, { variant: '1' })
  * patch(blockId, {}, 'ai-agent')
  * ```
  */
 export function useNumberedLists() {
-  const { editor } = useComposer()
-  const { duplicate, move, mutate, remove } = useBlocks()
+  const { duplicate, insert, move, mutate, patch, remove } = useBlocks()
 
-  const insert = useStableCallback(
+  const $insert = useStableCallback(
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
@@ -948,7 +963,7 @@ export function useNumberedLists() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.insert(
+      insert(
         {
           pos: opts?.pos,
           spec: {
@@ -961,19 +976,21 @@ export function useNumberedLists() {
       ),
   )
 
-  const patch = useStableCallback(
+  const $patch = useStableCallback(
     (
-      numberedListItemBlockId: BlockId,
+      blockId: BlockId,
       opts: {
         variant?: NumberedListItemBlock['variant']
         metadata?: NBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.patch(
+      patch(
+        blockId,
         {
-          blockId: numberedListItemBlockId,
-          spec: { ...opts, type: 'numbered_list_item' },
+          metadata: opts?.metadata,
+          type: 'numbered_list_item',
+          variant: opts?.variant,
         },
         source,
       ),
@@ -981,10 +998,10 @@ export function useNumberedLists() {
 
   return {
     duplicate,
-    insert,
+    insert: $insert,
     move,
     mutate,
-    patch,
+    patch: $patch,
     remove,
   } as const
 }
@@ -997,19 +1014,18 @@ export function useNumberedLists() {
  * ```tsx
  * const { insert, patch, ...rest } = useCheckboxLists()
  *
- * insertCheckboxListItem()
- * insertCheckboxListItem({ pos: { type: 'end' } })
- * insertCheckboxListItem({}, 'ai-agent')
+ * insert()
+ * insert({ pos: { type: 'end' } })
+ * insert({}, 'ai-agent')
  *
  * patch(blockId, { checked: true })
  * patch(blockId, {}, 'ai-agent')
  * ```
  */
 export function useCheckboxLists() {
-  const { editor } = useComposer()
-  const { duplicate, move, mutate, remove } = useBlocks()
+  const { duplicate, insert, move, mutate, patch, remove } = useBlocks()
 
-  const insert = useStableCallback(
+  const $insert = useStableCallback(
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
@@ -1017,7 +1033,7 @@ export function useCheckboxLists() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.insert(
+      insert(
         {
           pos: opts?.pos,
           spec: { metadata: opts?.metadata, type: 'checkbox_list_item' },
@@ -1026,19 +1042,21 @@ export function useCheckboxLists() {
       ),
   )
 
-  const patch = useStableCallback(
+  const $patch = useStableCallback(
     (
-      checkboxListItemBlockId: BlockId,
+      blockId: BlockId,
       opts: {
         checked?: boolean
         metadata?: CBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      editor.blocks.commands.patch(
+      patch(
+        blockId,
         {
-          blockId: checkboxListItemBlockId,
-          spec: { ...opts, type: 'checkbox_list_item' },
+          checked: opts?.checked,
+          metadata: opts?.metadata,
+          type: 'checkbox_list_item',
         },
         source,
       ),
@@ -1046,10 +1064,10 @@ export function useCheckboxLists() {
 
   return {
     duplicate,
-    insert,
+    insert: $insert,
     move,
     mutate,
-    patch,
+    patch: $patch,
     remove,
   } as const
 }

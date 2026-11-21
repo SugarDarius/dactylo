@@ -912,7 +912,7 @@ export interface DactyloBlocksTools {
    * Always executes even in read-only mode.
    *
    * Returns a {@link BlockWithInlineContentEmptiness} indicating whether the block has no inline content,
-   * or `'not-allowed'` if the block does not exist or is not allowed to have inline content.
+   * or `'never'` if the block does not exist or is not allowed to have inline content.
    *
    * @example
    * ```ts
@@ -2376,7 +2376,7 @@ export class Dactylo {
          * Always executes even in read-only mode.
          *
          * Returns a {@link BlockWithInlineContentEmptiness} indicating whether the block is with empty inline content,
-         * or `'not-allowed'` if the block does not exist or is not allowed to have inline content.
+         * or `'never'` if the block does not exist or is not allowed to have inline content.
          */
         isWithEmptyInlineContent: (
           blockId: BlockId,
