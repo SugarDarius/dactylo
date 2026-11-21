@@ -2655,7 +2655,8 @@ export class Dactylo {
        * is editable or not.
        *
        * And we don't sync inline buffers as the buffers need to survive
-       * when the editor switch to `read-only` mode.
+       * when the editor switch to `read-only` mode if they are not dismissed
+       * before making the editor read-only.
        */
       this.#pipeline.clearSelection(source, { syncInlineBuffers: false })
     }
