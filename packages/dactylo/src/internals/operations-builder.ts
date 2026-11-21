@@ -54,7 +54,7 @@ import {
 } from './numbered-list-marker'
 import type { Operation, UpdateBlockOp } from './operations'
 import type { RangeSelection, Selection, TextCursor } from './selection'
-import type { Relax } from './types'
+import type { Metadata, Relax } from './types'
 import { assertNever } from './utils'
 
 // --- Interfaces -───────────────────────────────────---------------
@@ -255,6 +255,26 @@ export type InsertBlockSpec = Relax<
     }
 >
 
+/** Policy behavior for merging metadata when patching a block. */
+export type PatchMetadataPolicy =
+  /** Metadata are replaced entirely. */
+  | 'replace'
+  /** Metadata are merged with the existing ones. */
+  | 'merge'
+
+/** Resolves the metadata to patch based on the policy. */
+export function resolvePatchMetadata<M extends Metadata>(
+  source: M,
+  patch: M,
+  policy: PatchMetadataPolicy = 'replace',
+): M {
+  if (policy === 'merge') {
+    return { ...source, ...patch }
+  }
+
+  return patch
+}
+
 /** Describes which block to patch. */
 export type PatchBlockSpec = Relax<
   | {
@@ -264,7 +284,13 @@ export type PatchBlockSpec = Relax<
       readonly content?: InlineNode[]
 
       /** {@link ParagraphBlock}'s metadata. */
-      readonly metadata?: PBM
+      readonly metadata?: {
+        /** Policy behavior for merging metadata. */
+        policy?: PatchMetadataPolicy
+
+        /** Metadata to patch. */
+        value: PBM
+      }
     }
   | {
       readonly type: 'quote'
@@ -273,7 +299,13 @@ export type PatchBlockSpec = Relax<
       readonly content?: InlineNode[]
 
       /** {@link QuoteBlock}'s metadata. */
-      readonly metadata?: QBM
+      readonly metadata?: {
+        /** Policy behavior for merging metadata. */
+        policy?: PatchMetadataPolicy
+
+        /** Metadata to patch. */
+        value: QBM
+      }
     }
   | {
       readonly type: 'heading'
@@ -285,7 +317,13 @@ export type PatchBlockSpec = Relax<
       readonly content?: InlineNode[]
 
       /** {@link HeadingBlock}'s metadata. */
-      readonly metadata?: HBM
+      readonly metadata?: {
+        /** Policy behavior for merging metadata. */
+        policy?: PatchMetadataPolicy
+
+        /** Metadata to patch. */
+        value: HBM
+      }
     }
   | {
       readonly type: 'bullet_list_item'
@@ -294,7 +332,13 @@ export type PatchBlockSpec = Relax<
       readonly content?: InlineNode[]
 
       /** {@link BulletListItemBlock}'s metadata. */
-      readonly metadata?: BBM
+      readonly metadata?: {
+        /** Policy behavior for merging metadata. */
+        policy?: PatchMetadataPolicy
+
+        /** Metadata to patch. */
+        value: BBM
+      }
     }
   | {
       readonly type: 'numbered_list_item'
@@ -306,7 +350,13 @@ export type PatchBlockSpec = Relax<
       readonly content?: InlineNode[]
 
       /** {@link NumberedListItemBlock}'s metadata. */
-      readonly metadata?: NBM
+      readonly metadata?: {
+        /** Policy behavior for merging metadata. */
+        policy?: PatchMetadataPolicy
+
+        /** Metadata to patch. */
+        value: NBM
+      }
     }
   | {
       readonly type: 'checkbox_list_item'
@@ -318,13 +368,25 @@ export type PatchBlockSpec = Relax<
       readonly content?: InlineNode[]
 
       /** {@link CheckboxListItemBlock}'s metadata. */
-      readonly metadata?: CBM
+      readonly metadata?: {
+        /** Policy behavior for merging metadata. */
+        policy?: PatchMetadataPolicy
+
+        /** Metadata to patch. */
+        value: CBM
+      }
     }
   | {
       readonly type: 'divider'
 
       /** {@link DividerBlock}'s metadata. */
-      readonly metadata?: DBM
+      readonly metadata?: {
+        /** Policy behavior for merging metadata. */
+        policy?: PatchMetadataPolicy
+
+        /** Metadata to patch. */
+        value: DBM
+      }
     }
 >
 

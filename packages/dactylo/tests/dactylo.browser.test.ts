@@ -1188,7 +1188,7 @@ describe('Dactylo blocks', () => {
     expect(
       editor.blocks.commands.patch({
         blockId: checkboxId,
-        spec: { metadata: { a: 1 }, type: 'checkbox_list_item' },
+        spec: { metadata: { value: { a: 1 } }, type: 'checkbox_list_item' },
       }),
     ).toBe(true)
 
@@ -1217,7 +1217,7 @@ describe('Dactylo blocks', () => {
     expect(
       editor.blocks.commands.patch({
         blockId: dividerId,
-        spec: { metadata: { a: 1 }, type: 'divider' },
+        spec: { metadata: { value: { a: 1 } }, type: 'divider' },
       }),
     ).toBe(true)
 
@@ -1268,6 +1268,28 @@ describe('Dactylo blocks', () => {
     }
   })
 
+  test('patch heading sets metadata', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    editor.blocks.commands.insert({ spec: { level: 2, type: 'heading' } })
+    const heading = nthInlineBlock(editor.getContext(), 1)
+
+    expect(
+      editor.blocks.commands.patch({
+        blockId: heading.id,
+        spec: { metadata: { value: { a: 1 } }, type: 'heading' },
+      }),
+    ).toBe(true)
+
+    const patched = nthInlineBlock(editor.getContext(), 1)
+    expect(patched.id).toBe(heading.id)
+    expect(isHeadingBlock(patched)).toBe(true)
+    if (isHeadingBlock(patched)) {
+      expect(patched.level).toBe(2)
+      expect(patched.metadata).toEqual({ a: 1 })
+    }
+  })
+
   test('patch paragraph sets metadata', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
@@ -1277,7 +1299,7 @@ describe('Dactylo blocks', () => {
     expect(
       editor.blocks.commands.patch({
         blockId: paragraphId,
-        spec: { metadata: { a: 1 }, type: 'paragraph' },
+        spec: { metadata: { value: { a: 1 } }, type: 'paragraph' },
       }),
     ).toBe(true)
 
@@ -1297,7 +1319,7 @@ describe('Dactylo blocks', () => {
     expect(
       editor.blocks.commands.patch({
         blockId: quote.id,
-        spec: { metadata: { a: 1 }, type: 'quote' },
+        spec: { metadata: { value: { a: 1 } }, type: 'quote' },
       }),
     ).toBe(true)
 
@@ -1316,7 +1338,7 @@ describe('Dactylo blocks', () => {
     expect(
       editor.blocks.commands.patch({
         blockId: item.id,
-        spec: { metadata: { a: 1 }, type: 'bullet_list_item' },
+        spec: { metadata: { value: { a: 1 } }, type: 'bullet_list_item' },
       }),
     ).toBe(true)
 
@@ -1324,6 +1346,101 @@ describe('Dactylo blocks', () => {
     expect(patched.id).toBe(item.id)
     expect(isBulletListItemBlock(patched)).toBe(true)
     expect(patched.metadata).toEqual({ a: 1 })
+  })
+
+  test('patch metadata replace drops source keys', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const blockId = editor.blocks.commands.insert({
+      spec: {
+        metadata: { align: 'left', source: 'import' },
+        type: 'quote',
+      },
+    })
+    if (!blockId) {
+      throw new Error('Expected an inserted quote')
+    }
+
+    expect(
+      editor.blocks.commands.patch({
+        blockId,
+        spec: { metadata: { value: { a: 1 } }, type: 'quote' },
+      }),
+    ).toBe(true)
+    expect(nthInlineBlock(editor.getContext(), 1).metadata).toEqual({ a: 1 })
+
+    expect(
+      editor.blocks.commands.patch({
+        blockId,
+        spec: { metadata: { policy: 'replace', value: {} }, type: 'quote' },
+      }),
+    ).toBe(true)
+    expect(nthInlineBlock(editor.getContext(), 1).metadata).toEqual({})
+  })
+
+  test('patch metadata merge keeps source keys and overwrites overlaps', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const blockId = editor.blocks.commands.insert({
+      spec: {
+        metadata: { align: 'left', source: 'import' },
+        type: 'quote',
+      },
+    })
+    if (!blockId) {
+      throw new Error('Expected an inserted quote')
+    }
+
+    expect(
+      editor.blocks.commands.patch({
+        blockId,
+        spec: {
+          metadata: {
+            policy: 'merge',
+            value: { align: 'center', extra: 1 },
+          },
+          type: 'quote',
+        },
+      }),
+    ).toBe(true)
+    expect(nthInlineBlock(editor.getContext(), 1).metadata).toEqual({
+      align: 'center',
+      extra: 1,
+      source: 'import',
+    })
+
+    expect(
+      editor.blocks.commands.patch({
+        blockId,
+        spec: { metadata: { policy: 'merge', value: {} }, type: 'quote' },
+      }),
+    ).toBe(true)
+    expect(nthInlineBlock(editor.getContext(), 1).metadata).toEqual({
+      align: 'center',
+      extra: 1,
+      source: 'import',
+    })
+  })
+
+  test('patch without metadata leaves the bag unchanged', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const blockId = editor.blocks.commands.insert({
+      spec: { metadata: { source: 'import' }, type: 'quote' },
+    })
+    if (!blockId) {
+      throw new Error('Expected an inserted quote')
+    }
+
+    expect(
+      editor.blocks.commands.patch({
+        blockId,
+        spec: { type: 'quote' },
+      }),
+    ).toBe(true)
+    expect(nthInlineBlock(editor.getContext(), 1).metadata).toEqual({
+      source: 'import',
+    })
   })
 
   test('patch numbered list item changes variant only', () => {
@@ -1349,6 +1466,31 @@ describe('Dactylo blocks', () => {
       expect(patched.variant).toBe('alpha')
       expect(patched.markerNumbering).toBe('a.')
       expect(patched.content).toEqual(content)
+    }
+  })
+
+  test('patch numbered list item sets metadata', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    editor.blocks.commands.insert({ spec: { type: 'numbered_list_item' } })
+    const item = nthInlineBlock(editor.getContext(), 1)
+
+    expect(
+      editor.blocks.commands.patch({
+        blockId: item.id,
+        spec: {
+          metadata: { value: { a: 1 } },
+          type: 'numbered_list_item',
+        },
+      }),
+    ).toBe(true)
+
+    const patched = nthInlineBlock(editor.getContext(), 1)
+    expect(patched.id).toBe(item.id)
+    expect(isNumberedListItemBlock(patched)).toBe(true)
+    if (isNumberedListItemBlock(patched)) {
+      expect(patched.variant).toBe('default')
+      expect(patched.metadata).toEqual({ a: 1 })
     }
   })
 })
@@ -2455,7 +2597,7 @@ describe('Dactylo initial metadata', () => {
 
     editor.blocks.commands.patch({
       blockId: paragraphId,
-      spec: { metadata: { k: 'patched' }, type: 'paragraph' },
+      spec: { metadata: { value: { k: 'patched' } }, type: 'paragraph' },
     })
     typeText(editor, 'Hello')
     hardBreak(editor)
@@ -2479,7 +2621,7 @@ describe('Dactylo initial metadata', () => {
 
     editor.blocks.commands.patch({
       blockId: item.id,
-      spec: { metadata: { k: 'item' }, type: 'bullet_list_item' },
+      spec: { metadata: { value: { k: 'item' } }, type: 'bullet_list_item' },
     })
     typeText(editor, 'Hello')
     hardBreak(editor)
@@ -2580,13 +2722,13 @@ describe('Dactylo read-only mode', () => {
     expect(
       editor.blocks.commands.patch({
         blockId: paragraphId,
-        spec: { metadata: { a: 1 }, type: 'paragraph' },
+        spec: { metadata: { value: { a: 1 } }, type: 'paragraph' },
       }),
     ).toBe(false)
     expect(
       editor.blocks.commands.patch({
         blockId: paragraphId,
-        spec: { metadata: { a: 1 }, type: 'quote' },
+        spec: { metadata: { value: { a: 1 } }, type: 'quote' },
       }),
     ).toBe(false)
     expect(
@@ -2598,7 +2740,7 @@ describe('Dactylo read-only mode', () => {
     expect(
       editor.blocks.commands.patch({
         blockId: paragraphId,
-        spec: { metadata: { a: 1 }, type: 'bullet_list_item' },
+        spec: { metadata: { value: { a: 1 } }, type: 'bullet_list_item' },
       }),
     ).toBe(false)
     expect(
@@ -2616,7 +2758,7 @@ describe('Dactylo read-only mode', () => {
     expect(
       editor.blocks.commands.patch({
         blockId: paragraphId,
-        spec: { metadata: { a: 1 }, type: 'divider' },
+        spec: { metadata: { value: { a: 1 } }, type: 'divider' },
       }),
     ).toBe(false)
 
@@ -2813,7 +2955,7 @@ describe('Dactylo safe-execute opts', () => {
     const blockId = firstInlineBlock(editor.getContext()).id
     const opts = {
       blockId,
-      spec: { metadata: { a: 1 }, type: 'paragraph' as const },
+      spec: { metadata: { value: { a: 1 } }, type: 'paragraph' as const },
     }
 
     expect(editor.blocks.commands.patch(opts, 'ai-agent')).toBe(true)

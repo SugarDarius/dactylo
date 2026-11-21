@@ -3,10 +3,14 @@ import { describe, expectTypeOf, test } from 'vitest'
 import { Dactylo } from '../../src/dactylo'
 import type { DactyloOptions } from '../../src/dactylo'
 import type {
+  BBM,
+  CBM,
   HBM,
   InsertBlockSpec,
   Metadata,
+  NBM,
   PatchBlockSpec,
+  PatchMetadataPolicy,
   PBM,
   TNM,
 } from '../../src/index'
@@ -45,7 +49,7 @@ describe('metadata aliases', () => {
     expectTypeOf<Extract<PatchBlockSpec, { type: 'paragraph' }>>().toExtend<{
       type: 'paragraph'
       content?: unknown
-      metadata?: PBM
+      metadata?: { value: PBM; policy?: PatchMetadataPolicy }
     }>()
     expectTypeOf(editor.blocks.commands.delete).returns.toEqualTypeOf<boolean>()
     expectTypeOf(
@@ -71,7 +75,7 @@ describe('metadata aliases', () => {
       type: 'heading'
       level?: unknown
       content?: unknown
-      metadata?: HBM
+      metadata?: { value: HBM; policy?: PatchMetadataPolicy }
     }>()
 
     expectTypeOf<Extract<InsertBlockSpec, { type: 'quote' }>>().toExtend<{
@@ -93,20 +97,29 @@ describe('metadata aliases', () => {
     }>()
     expectTypeOf<Extract<PatchBlockSpec, { type: 'quote' }>>().toExtend<{
       type: 'quote'
-      metadata?: Metadata
+      metadata?: { value: Metadata; policy?: PatchMetadataPolicy }
     }>()
     expectTypeOf<
       Extract<PatchBlockSpec, { type: 'bullet_list_item' }>
-    >().toExtend<{ type: 'bullet_list_item' }>()
+    >().toExtend<{
+      type: 'bullet_list_item'
+      metadata?: { value: BBM; policy?: PatchMetadataPolicy }
+    }>()
     expectTypeOf<
       Extract<PatchBlockSpec, { type: 'numbered_list_item' }>
-    >().toExtend<{ type: 'numbered_list_item' }>()
+    >().toExtend<{
+      type: 'numbered_list_item'
+      metadata?: { value: NBM; policy?: PatchMetadataPolicy }
+    }>()
     expectTypeOf<
       Extract<PatchBlockSpec, { type: 'checkbox_list_item' }>
-    >().toExtend<{ type: 'checkbox_list_item' }>()
+    >().toExtend<{
+      type: 'checkbox_list_item'
+      metadata?: { value: CBM; policy?: PatchMetadataPolicy }
+    }>()
     expectTypeOf<Extract<PatchBlockSpec, { type: 'divider' }>>().toExtend<{
       type: 'divider'
-      metadata?: Metadata
+      metadata?: { value: Metadata; policy?: PatchMetadataPolicy }
     }>()
   })
 
@@ -137,6 +150,30 @@ describe('metadata aliases', () => {
         type: 'paragraph',
         // @ts-expect-error nested objects are not a valid Metadata value
         metadata: { fontSize: { nested: true } },
+      },
+    })
+  })
+
+  test('patch metadata is { value, policy? }, not the bag', () => {
+    const editor = new Dactylo()
+    const [blockId] = editor.getContext().state.blockOrderById
+    if (!blockId) {
+      throw new Error('Expected the initial paragraph')
+    }
+
+    editor.blocks.commands.patch({
+      blockId,
+      spec: {
+        type: 'paragraph',
+        metadata: { value: { source: 'import' }, policy: 'merge' },
+      },
+    })
+    editor.blocks.commands.patch({
+      blockId,
+      spec: {
+        type: 'paragraph',
+        // @ts-expect-error patch metadata is { value, policy? }, not the bag
+        metadata: { source: 'import' },
       },
     })
   })

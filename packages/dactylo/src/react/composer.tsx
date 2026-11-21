@@ -42,6 +42,7 @@ import type { InlineNodeWithEditableText, NodeId } from '../internals/nodes'
 import type {
   InsertOrMoveBlockPosition,
   MutateBlockSpec,
+  PatchMetadataPolicy,
 } from '../internals/operations-builder'
 import { isCursorSelection, isRangeSelection } from '../internals/selection'
 import type {
@@ -664,11 +665,11 @@ export function useParagraphs() {
   const patch = useStableCallback(
     (
       blockId: BlockId,
-      opts: { metadata?: PBM },
+      opts: { metadata?: { value: PBM; policy?: PatchMetadataPolicy } },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
       editor.blocks.commands.patch(
-        { blockId, spec: { metadata: opts?.metadata, type: 'paragraph' } },
+        { blockId, spec: { metadata: opts.metadata, type: 'paragraph' } },
         source,
       ),
   )
@@ -724,7 +725,7 @@ export function useQuotes() {
   const patch = useStableCallback(
     (
       blockId: BlockId,
-      opts: { metadata?: QBM },
+      opts: { metadata?: { value: QBM; policy?: PatchMetadataPolicy } },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
       editor.blocks.commands.patch(
@@ -791,7 +792,7 @@ export function useHeadings() {
       blockId: BlockId,
       opts: {
         level?: HeadingBlock['level']
-        metadata?: HBM
+        metadata?: { value: HBM; policy?: PatchMetadataPolicy }
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
@@ -856,7 +857,7 @@ export function useDividers() {
   const patch = useStableCallback(
     (
       blockId: BlockId,
-      opts: { metadata?: DBM },
+      opts: { metadata?: { value: DBM; policy?: PatchMetadataPolicy } },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
       editor.blocks.commands.patch(
@@ -914,7 +915,7 @@ export function useBulletLists() {
   const patch = useStableCallback(
     (
       blockId: BlockId,
-      opts: { metadata?: BBM },
+      opts: { metadata?: { value: BBM; policy?: PatchMetadataPolicy } },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
       editor.blocks.commands.patch(
@@ -988,7 +989,7 @@ export function useNumberedLists() {
       blockId: BlockId,
       opts: {
         variant?: NumberedListItemBlock['variant']
-        metadata?: NBM
+        metadata?: { value: NBM; policy?: PatchMetadataPolicy }
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
@@ -1062,7 +1063,7 @@ export function useCheckboxLists() {
       blockId: BlockId,
       opts: {
         checked?: boolean
-        metadata?: CBM
+        metadata?: { value: CBM; policy?: PatchMetadataPolicy }
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>

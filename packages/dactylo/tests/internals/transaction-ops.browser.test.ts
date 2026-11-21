@@ -683,7 +683,7 @@ describe('TransactionPipeline block commands', () => {
       pipeline.patchBlock(
         {
           blockId: paragraphId,
-          spec: { metadata: { a: 1 }, type: 'paragraph' },
+          spec: { metadata: { value: { a: 1 } }, type: 'paragraph' },
         },
         'user',
       ),
@@ -728,7 +728,10 @@ describe('TransactionPipeline block commands', () => {
 
     expect(
       pipeline.patchBlock(
-        { blockId: quoteId, spec: { metadata: { a: 1 }, type: 'quote' } },
+        {
+          blockId: quoteId,
+          spec: { metadata: { value: { a: 1 } }, type: 'quote' },
+        },
         'user',
       ),
     ).toBe(true)
@@ -742,7 +745,7 @@ describe('TransactionPipeline block commands', () => {
       pipeline.patchBlock(
         {
           blockId: bulletId,
-          spec: { metadata: { a: 1 }, type: 'bullet_list_item' },
+          spec: { metadata: { value: { a: 1 } }, type: 'bullet_list_item' },
         },
         'user',
       ),
@@ -767,7 +770,10 @@ describe('TransactionPipeline block commands', () => {
     ).toBe(true)
     expect(
       pipeline.patchBlock(
-        { blockId: dividerId, spec: { metadata: { a: 1 }, type: 'divider' } },
+        {
+          blockId: dividerId,
+          spec: { metadata: { value: { a: 1 } }, type: 'divider' },
+        },
         'user',
       ),
     ).toBe(true)

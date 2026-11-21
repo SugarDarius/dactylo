@@ -111,6 +111,7 @@ export type {
   InsertOrMoveBlockPosition,
   MutateBlockSpec,
   PatchBlockSpec,
+  PatchMetadataPolicy,
 } from './internals/operations-builder'
 export type {
   CursorSelection,

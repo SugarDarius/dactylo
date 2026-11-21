@@ -66,6 +66,7 @@ import {
   buildReindexAfterRemovedNumberedItemOps,
   buildReindexNumberedListRunsOps,
   buildReindexNumberedListSuffixOps,
+  resolvePatchMetadata,
   withTrailingSelectionOp,
 } from './operations-builder'
 import type {
@@ -1031,7 +1032,13 @@ export class OperationsEngine {
             patch: touchBlock({
               ...source,
               content: spec.content ?? [...source.content],
-              metadata: spec.metadata ?? source.metadata,
+              metadata: spec.metadata
+                ? resolvePatchMetadata(
+                    source.metadata,
+                    spec.metadata.value,
+                    spec.metadata.policy,
+                  )
+                : source.metadata,
             }),
             snapshot: source,
           },
@@ -1051,7 +1058,13 @@ export class OperationsEngine {
             patch: touchBlock({
               ...source,
               content: spec.content ?? [...source.content],
-              metadata: spec.metadata ?? source.metadata,
+              metadata: spec.metadata
+                ? resolvePatchMetadata(
+                    source.metadata,
+                    spec.metadata.value,
+                    spec.metadata.policy,
+                  )
+                : source.metadata,
             }),
             snapshot: source,
           },
@@ -1072,7 +1085,13 @@ export class OperationsEngine {
               ...source,
               content: spec.content ?? [...source.content],
               level: spec.level ?? source.level,
-              metadata: spec.metadata ?? source.metadata,
+              metadata: spec.metadata
+                ? resolvePatchMetadata(
+                    source.metadata,
+                    spec.metadata.value,
+                    spec.metadata.policy,
+                  )
+                : source.metadata,
             }),
             snapshot: source,
           },
@@ -1097,7 +1116,13 @@ export class OperationsEngine {
             patch: touchBlock({
               ...source,
               content: spec.content ?? [...source.content],
-              metadata: spec.metadata ?? source.metadata,
+              metadata: spec.metadata
+                ? resolvePatchMetadata(
+                    source.metadata,
+                    spec.metadata.value,
+                    spec.metadata.policy,
+                  )
+                : source.metadata,
             }),
             snapshot: source,
           },
@@ -1131,7 +1156,13 @@ export class OperationsEngine {
               ...source,
               content: spec.content ?? source.content,
               markerNumbering,
-              metadata: spec.metadata ?? source.metadata,
+              metadata: spec.metadata
+                ? resolvePatchMetadata(
+                    source.metadata,
+                    spec.metadata.value,
+                    spec.metadata.policy,
+                  )
+                : source.metadata,
               variant,
             }),
             snapshot: source,
@@ -1172,7 +1203,13 @@ export class OperationsEngine {
               ...source,
               checked: spec.checked ?? source.checked,
               content: spec.content ?? source.content,
-              metadata: spec.metadata ?? source.metadata,
+              metadata: spec.metadata
+                ? resolvePatchMetadata(
+                    source.metadata,
+                    spec.metadata.value,
+                    spec.metadata.policy,
+                  )
+                : source.metadata,
             }),
             snapshot: source,
           },
@@ -1191,7 +1228,13 @@ export class OperationsEngine {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
-              metadata: spec.metadata ?? source.metadata,
+              metadata: spec.metadata
+                ? resolvePatchMetadata(
+                    source.metadata,
+                    spec.metadata.value,
+                    spec.metadata.policy,
+                  )
+                : source.metadata,
             }),
             snapshot: source,
           },
