@@ -59,6 +59,15 @@ export type {
   ParagraphBlock,
   QuoteBlock,
 } from './internals/blocks'
+export {
+  isBulletListItemBlock,
+  isCheckboxListItemBlock,
+  isDividerBlock,
+  isHeadingBlock,
+  isNumberedListItemBlock,
+  isParagraphBlock,
+  isQuoteBlock,
+} from './internals/blocks'
 export type { DocumentState } from './internals/document'
 export type { EditorContext } from './internals/editor-context'
 export type { HistoryEvent, HistoryStackOptions } from './internals/history'
@@ -74,6 +83,12 @@ export type {
   MentionNode,
   NodeId,
   TextNode,
+} from './internals/nodes'
+export {
+  isLineBreakNode,
+  isLinkNode,
+  isMentionNode,
+  isTextNode,
 } from './internals/nodes'
 export type {
   DeleteBlockOp,
@@ -93,6 +108,7 @@ export type {
 } from './internals/operations'
 export type {
   InsertBlockSpec,
+  InsertOrMoveBlockPosition,
   MutateBlockSpec,
   PatchBlockSpec,
 } from './internals/operations-builder'
