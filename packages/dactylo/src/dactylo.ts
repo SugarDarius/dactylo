@@ -910,7 +910,8 @@ export type DactyloDomApi = DactyloAspectApi<
 export interface DactyloBlocksTools {
   /**
    * Gets a {@link Block} by ID.
-   *
+   * This is a pure function that does not mutate the editor context. 
+
    * Always executes even in read-only mode.
    *
    * Returns the {@link Block} if found, or `null` if not found in document state.
@@ -2388,7 +2389,7 @@ export class Dactylo {
       tools: {
         /**
          * Gets a {@link Block} by ID.
-         *
+         * This is a pure function that does not mutate the editor context.
          * Always executes even in read-only mode.
          *
          * Returns the {@link Block} if found, or `null` if not found in document state.
