@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useSyncExternalStore,
-} from 'react'
+import { useEffect, useId, useMemo, useRef, useSyncExternalStore } from 'react'
 
 import type {
   DactyloCommandEvent,
@@ -47,10 +40,8 @@ import { isMarkEnabled } from '../internals/marks'
 import type { MarkKey } from '../internals/marks'
 import type { InlineNodeWithEditableText, NodeId } from '../internals/nodes'
 import type {
-  InsertBlockSpec,
   InsertOrMoveBlockPosition,
   MutateBlockSpec,
-  PatchBlockSpec,
 } from '../internals/operations-builder'
 import { isCursorSelection, isRangeSelection } from '../internals/selection'
 import type {
@@ -566,13 +557,12 @@ export function useDomActiveRange(): Range | null {
 // --- Blocks ------─────────────────────────────────────────--------
 
 /**
- * Returns block queries and commands.
+ * Returns blocks shared commands.
  *
  * @example
  * ```tsx
  * const {
  *   duplicate,
- *   insert,
  *   move,
  *   mutate,
  *   remove,
@@ -581,21 +571,14 @@ export function useDomActiveRange(): Range | null {
  * duplicate(blockId)
  * duplicate(blockId, 'ai-agent')
  *
- * insert({ spec: { type: 'paragraph' } })
- * insert({ pos: { type: 'end' }, spec: { type: 'paragraph' } }, 'ai-agent')
- *
  * move(blockId, { type: 'after', blockId: targetId })
  * move(blockId, { type: 'start' }, 'ai-agent')
  *
- * mutate(blockId, { type: 'paragraph' })
- * mutate(blockId, { type: 'paragraph' }, 'ai-agent')
- *
- * patch(blockId, { metadata: { fontColor: 'red' }  })
- * patch(blockId, {}, 'ai-agent')
+ * mutate(blockId, { kind: 'to_paragraph' })
+ * mutate(blockId, { kind: 'to_paragraph' }, 'ai-agent')
  *
  * remove(blockId)
  * remove(blockId, 'ai-agent')
- *
  * ```
  */
 export function useBlocks() {
@@ -606,16 +589,6 @@ export function useBlocks() {
       blockId: BlockId,
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) => editor.blocks.commands.duplicate(blockId, source),
-  )
-
-  const insert = useStableCallback(
-    (
-      opts: {
-        pos?: InsertOrMoveBlockPosition
-        spec: InsertBlockSpec
-      },
-      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.insert(opts, source),
   )
 
   const move = useStableCallback(
@@ -634,14 +607,6 @@ export function useBlocks() {
     ) => editor.blocks.commands.mutate(blockId, spec, source),
   )
 
-  const patch = useStableCallback(
-    (
-      blockId: BlockId,
-      spec: PatchBlockSpec,
-      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.blocks.commands.patch({ blockId, spec }, source),
-  )
-
   const remove = useStableCallback(
     (
       blockId: BlockId,
@@ -651,33 +616,35 @@ export function useBlocks() {
 
   return {
     duplicate,
-    insert,
     move,
     mutate,
-    patch,
     remove,
   } as const
 }
 
 /**
- * Returns paragraph queries and commands.
- * Extends from {@link useBlocks}.
+ * Returns paragraph commands and tools.
  *
  * @example
  * ```tsx
- * const { insert, patch, ...rest } = useParagraphs()
+ * const { isEmpty, insert, patch } = useParagraphs()
  *
+ * // commands
  * insert({ pos: { type: 'end'}, metadata: { fontColor: 'purple' } })
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { fontColor: 'red' }  })
  * patch(blockId, {}, 'ai-agent')
+ *
+ * // tools
+ * const isEmpty = isEmpty(blockId)
+ * console.log(isEmpty)
  * ```
  */
 export function useParagraphs() {
-  const { duplicate, insert, move, mutate, patch, remove } = useBlocks()
+  const { editor } = useComposer()
 
-  const $insert = useStableCallback(
+  const insert = useStableCallback(
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
@@ -685,7 +652,7 @@ export function useParagraphs() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      insert(
+      editor.blocks.commands.insert(
         {
           pos: opts?.pos,
           spec: { metadata: opts?.metadata, type: 'paragraph' },
@@ -694,44 +661,53 @@ export function useParagraphs() {
       ),
   )
 
-  const $patch = useStableCallback(
+  const patch = useStableCallback(
     (
       blockId: BlockId,
       opts: { metadata?: PBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      patch(blockId, { metadata: opts?.metadata, type: 'paragraph' }, source),
+      editor.blocks.commands.patch(
+        { blockId, spec: { metadata: opts?.metadata, type: 'paragraph' } },
+        source,
+      ),
   )
 
+  const isEmpty = useStableCallback((blockId: BlockId): boolean => {
+    const emptiness = editor.blocks.tools.isWithEmptyInlineContent(blockId)
+    return emptiness === 'empty'
+  })
+
   return {
-    duplicate,
-    insert: $insert,
-    move,
-    mutate,
-    patch: $patch,
-    remove,
+    insert,
+    isEmpty,
+    patch,
   } as const
 }
 
 /**
- * Returns quote queries and commands.
- * Extends from {@link useBlocks}.
+ * Returns quote commands and tools.
  *
  * @example
  * ```tsx
- * const { insert, patch, ...rest } = useQuotes()
+ * const { isEmpty, insert, patch } = useQuotes()
  *
+ * // commands
  * insert({ pos: { type: 'end' } })
  * insert({}, 'ai-agent')
  *
- * patch(blockId, { content: [textNode] })
+ * patch(blockId, { metadata: { fontColor: 'red' }  })
  * patch(blockId, {}, 'ai-agent')
+ *
+ * // tools
+ * const isEmpty = isEmpty(blockId)
+ * console.log(isEmpty)
  * ```
  */
 export function useQuotes() {
-  const { duplicate, insert, move, mutate, patch, remove } = useBlocks()
+  const { editor } = useComposer()
 
-  const $insert = useStableCallback(
+  const insert = useStableCallback(
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
@@ -739,50 +715,60 @@ export function useQuotes() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      insert(
+      editor.blocks.commands.insert(
         { pos: opts?.pos, spec: { metadata: opts?.metadata, type: 'quote' } },
         source,
       ),
   )
 
-  const $patch = useStableCallback(
+  const patch = useStableCallback(
     (
       blockId: BlockId,
       opts: { metadata?: QBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => patch(blockId, { metadata: opts?.metadata, type: 'quote' }, source),
+    ) =>
+      editor.blocks.commands.patch(
+        { blockId, spec: { metadata: opts?.metadata, type: 'quote' } },
+        source,
+      ),
   )
 
+  const isEmpty = useStableCallback((blockId: BlockId): boolean => {
+    const emptiness = editor.blocks.tools.isWithEmptyInlineContent(blockId)
+    return emptiness === 'empty'
+  })
+
   return {
-    duplicate,
-    insert: $insert,
-    move,
-    mutate,
-    patch: $patch,
-    remove,
+    insert,
+    isEmpty,
+    patch,
   } as const
 }
 
 /**
- * Returns heading queries and commands.
- * Extends from {@link useBlocks}.
+ * Returns heading commands and tools..
  *
  * @example
  * ```tsx
- * const { insert, patch } = useHeadings()
+ * const { iEmpty, insert, patch } = useHeadings()
  *
+ * // commands
  * insert(1)
  * insert(2, { pos: { type: 'end' } })
  * insert(3, {}, 'ai-agent')
  *
  * patch(blockId, { level: 3 })
  * patch(blockId, {}, 'ai-agent')
+ *
+ * // tools
+ * const isEmpty = isEmpty(blockId)
+ * console.log(isEmpty)
  * ```
  */
 export function useHeadings() {
-  const { duplicate, insert, move, mutate, patch, remove } = useBlocks()
+  const { editor } = useComposer()
 
-  const $insert = useStableCallback(
+  const insert = useStableCallback(
     (
       level: HeadingBlock['level'],
       opts?: {
@@ -791,7 +777,7 @@ export function useHeadings() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      insert(
+      editor.blocks.commands.insert(
         {
           pos: opts?.pos,
           spec: { level, metadata: opts?.metadata, type: 'heading' },
@@ -800,7 +786,7 @@ export function useHeadings() {
       ),
   )
 
-  const $patch = useStableCallback(
+  const patch = useStableCallback(
     (
       blockId: BlockId,
       opts: {
@@ -809,31 +795,39 @@ export function useHeadings() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      patch(
-        blockId,
-        { level: opts?.level, metadata: opts?.metadata, type: 'heading' },
+      editor.blocks.commands.patch(
+        {
+          blockId,
+          spec: {
+            level: opts?.level,
+            metadata: opts?.metadata,
+            type: 'heading',
+          },
+        },
         source,
       ),
   )
 
+  const isEmpty = useStableCallback((blockId: BlockId): boolean => {
+    const emptiness = editor.blocks.tools.isWithEmptyInlineContent(blockId)
+    return emptiness === 'empty'
+  })
+
   return {
-    duplicate,
-    insert: $insert,
-    move,
-    mutate,
-    patch: $patch,
-    remove,
+    insert,
+    isEmpty,
+    patch,
   } as const
 }
 
 /**
- * Returns divider queries and commands.
- * Extends from {@link useBlocks}.
+ * Returns divider commands.
  *
  * @example
  * ```tsx
- * const { insert, patch, ...rest } = useDividers()
+ * const { isEmpty, insert, patch } = useDividers()
  *
+ * // commands
  * insert()
  * insert({ pos: { type: 'end' } })
  * insert({}, 'ai-agent')
@@ -843,9 +837,9 @@ export function useHeadings() {
  * ```
  */
 export function useDividers() {
-  const { duplicate, insert, move, patch, remove } = useBlocks()
+  const { editor } = useComposer()
 
-  const $insert = useStableCallback(
+  const insert = useStableCallback(
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
@@ -853,49 +847,54 @@ export function useDividers() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      insert(
+      editor.blocks.commands.insert(
         { pos: opts?.pos, spec: { metadata: opts?.metadata, type: 'divider' } },
         source,
       ),
   )
 
-  const $patch = useStableCallback(
+  const patch = useStableCallback(
     (
       blockId: BlockId,
       opts: { metadata?: DBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => patch(blockId, { metadata: opts?.metadata, type: 'divider' }, source),
+    ) =>
+      editor.blocks.commands.patch(
+        { blockId, spec: { metadata: opts?.metadata, type: 'divider' } },
+        source,
+      ),
   )
 
   return {
-    duplicate,
-    insert: $insert,
-    move,
-    patch: $patch,
-    remove,
+    insert,
+    patch,
   } as const
 }
 
 /**
- * Returns bullet list queries and commands.
- * Extends from {@link useBlocks}.
+ * Returns bullet list commands and tools.
  *
  * @example
  * ```tsx
- * const { insert, patch, ...rest } = useBulletLists()
+ * const { isEmpty, insert, patch } = useBulletLists()
  *
+ * // commands
  * insert()
  * insert({ pos: { type: 'end' } })
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { frontColor: 'red' }  })
  * patch(blockId, {}, 'ai-agent')
+ *
+ * // tools
+ * const isEmpty = isEmpty(blockId)
+ * console.log(isEmpty)
  * ```
  */
 export function useBulletLists() {
-  const { duplicate, insert, move, mutate, patch, remove } = useBlocks()
+  const { editor } = useComposer()
 
-  const $insert = useStableCallback(
+  const insert = useStableCallback(
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
@@ -903,7 +902,7 @@ export function useBulletLists() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      insert(
+      editor.blocks.commands.insert(
         {
           pos: opts?.pos,
           spec: { metadata: opts?.metadata, type: 'bullet_list_item' },
@@ -912,49 +911,57 @@ export function useBulletLists() {
       ),
   )
 
-  const $patch = useStableCallback(
+  const patch = useStableCallback(
     (
       blockId: BlockId,
       opts: { metadata?: BBM },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      patch(
-        blockId,
-        { metadata: opts?.metadata, type: 'bullet_list_item' },
+      editor.blocks.commands.patch(
+        {
+          blockId,
+          spec: { metadata: opts?.metadata, type: 'bullet_list_item' },
+        },
         source,
       ),
   )
 
+  const isEmpty = useStableCallback((blockId: BlockId): boolean => {
+    const emptiness = editor.blocks.tools.isWithEmptyInlineContent(blockId)
+    return emptiness === 'empty'
+  })
+
   return {
-    duplicate,
-    insert: $insert,
-    move,
-    mutate,
-    patch: $patch,
-    remove,
+    insert,
+    isEmpty,
+    patch,
   } as const
 }
 
 /**
- * Returns numbered list queries and commands.
- * Extends from {@link useBlocks}.
+ * Returns numbered list commands and tools.
  *
  * @example
  * ```tsx
- * const { insert, patch, ...rest } = useNumberedLists()
+ * const { isEmpty, insert, patch } = useNumberedLists()
  *
+ * // commands
  * insert()
  * insert({ pos: { type: 'end' } })
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { variant: '1' })
  * patch(blockId, {}, 'ai-agent')
+ *
+ * // tools
+ * const isEmpty = isEmpty(blockId)
+ * console.log(isEmpty)
  * ```
  */
 export function useNumberedLists() {
-  const { duplicate, insert, move, mutate, patch, remove } = useBlocks()
+  const { editor } = useComposer()
 
-  const $insert = useStableCallback(
+  const insert = useStableCallback(
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
@@ -963,7 +970,7 @@ export function useNumberedLists() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      insert(
+      editor.blocks.commands.insert(
         {
           pos: opts?.pos,
           spec: {
@@ -976,7 +983,7 @@ export function useNumberedLists() {
       ),
   )
 
-  const $patch = useStableCallback(
+  const patch = useStableCallback(
     (
       blockId: BlockId,
       opts: {
@@ -985,47 +992,55 @@ export function useNumberedLists() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      patch(
-        blockId,
+      editor.blocks.commands.patch(
         {
-          metadata: opts?.metadata,
-          type: 'numbered_list_item',
-          variant: opts?.variant,
+          blockId,
+          spec: {
+            metadata: opts?.metadata,
+            type: 'numbered_list_item',
+            variant: opts?.variant,
+          },
         },
         source,
       ),
   )
 
+  const isEmpty = useStableCallback((blockId: BlockId): boolean => {
+    const emptiness = editor.blocks.tools.isWithEmptyInlineContent(blockId)
+    return emptiness === 'empty'
+  })
+
   return {
-    duplicate,
-    insert: $insert,
-    move,
-    mutate,
-    patch: $patch,
-    remove,
+    insert,
+    isEmpty,
+    patch,
   } as const
 }
 
 /**
- * Returns checkbox list queries and commands.
- * Extends from {@link useBlocks}.
+ * Returns checkbox list commands and tools.
  *
  * @example
  * ```tsx
- * const { insert, patch, ...rest } = useCheckboxLists()
+ * const { isEmpty, insert, patch } = useCheckboxLists()
  *
+ * // commands
  * insert()
  * insert({ pos: { type: 'end' } })
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { checked: true })
  * patch(blockId, {}, 'ai-agent')
+ *
+ * // tools
+ * const isEmpty = isEmpty(blockId)
+ * console.log(isEmpty)
  * ```
  */
 export function useCheckboxLists() {
-  const { duplicate, insert, move, mutate, patch, remove } = useBlocks()
+  const { editor } = useComposer()
 
-  const $insert = useStableCallback(
+  const insert = useStableCallback(
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
@@ -1033,7 +1048,7 @@ export function useCheckboxLists() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      insert(
+      editor.blocks.commands.insert(
         {
           pos: opts?.pos,
           spec: { metadata: opts?.metadata, type: 'checkbox_list_item' },
@@ -1042,7 +1057,7 @@ export function useCheckboxLists() {
       ),
   )
 
-  const $patch = useStableCallback(
+  const patch = useStableCallback(
     (
       blockId: BlockId,
       opts: {
@@ -1051,24 +1066,28 @@ export function useCheckboxLists() {
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
-      patch(
-        blockId,
+      editor.blocks.commands.patch(
         {
-          checked: opts?.checked,
-          metadata: opts?.metadata,
-          type: 'checkbox_list_item',
+          blockId,
+          spec: {
+            checked: opts?.checked,
+            metadata: opts?.metadata,
+            type: 'checkbox_list_item',
+          },
         },
         source,
       ),
   )
 
+  const isEmpty = useStableCallback((blockId: BlockId): boolean => {
+    const emptiness = editor.blocks.tools.isWithEmptyInlineContent(blockId)
+    return emptiness === 'empty'
+  })
+
   return {
-    duplicate,
-    insert: $insert,
-    move,
-    mutate,
-    patch: $patch,
-    remove,
+    insert,
+    isEmpty,
+    patch,
   } as const
 }
 
@@ -1085,10 +1104,10 @@ export function useIsBlockWithInlineContentEmpty(blockId: BlockId): boolean {
   const { editor } = useComposer()
 
   const subscribe = useStableCallback(editor.subscribe.bind(editor))
-  const getSnapshot = useCallback(() => {
+  const getSnapshot = useStableCallback(() => {
     const emptiness = editor.blocks.tools.isWithEmptyInlineContent(blockId)
     return emptiness === 'empty'
-  }, [blockId, editor])
+  })
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }

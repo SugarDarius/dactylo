@@ -1,6 +1,6 @@
 'use client'
 
-import type { MarkKey } from '@sugardarius/dactylo'
+import type { BlockId, MarkKey } from '@sugardarius/dactylo'
 import type {
   ComposerBulletListItemBlockMarkerDotProps,
   ComposerBulletListItemBlockProps,
@@ -20,10 +20,12 @@ import type {
 } from '@sugardarius/dactylo/react'
 import {
   Composer,
+  useBlocks,
   useBulletLists,
   useCanEdit,
   useCheckboxLists,
   useCommandTrigger,
+  useCursorSelection,
   useDividers,
   useEditableListener,
   useEditorConfig,
@@ -71,7 +73,7 @@ import {
   Undo2,
   UserRoundPlus,
 } from 'lucide-react'
-import { Fragment, useState } from 'react'
+import { Fragment, useCallback, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { Avatar, AvatarBadge, AvatarFallback } from '~/components/ui/avatar'
@@ -281,13 +283,35 @@ export type CommandItem = {
 }
 
 function useInsertCommands(): CommandItem[] {
-  const { insert: insertParagraph } = useParagraphs()
-  const { insert: insertHeading } = useHeadings()
+  const selection = useCursorSelection()
+
+  const { mutate } = useBlocks()
+  const { insert: insertParagraph, isEmpty: isParagraphEmpty } = useParagraphs()
+  const { insert: insertHeading, isEmpty: isHeadingEmpty } = useHeadings()
   const { insert: insertDivider } = useDividers()
-  const { insert: insertBulletListItem } = useBulletLists()
-  const { insert: insertNumberedListItem } = useNumberedLists()
-  const { insert: insertCheckboxListItem } = useCheckboxLists()
-  const { insert: insertQuote } = useQuotes()
+  const { insert: insertBulletListItem, isEmpty: isBulletListItemEmpty } =
+    useBulletLists()
+  const { insert: insertNumberedListItem, isEmpty: isNumberedListItemEmpty } =
+    useNumberedLists()
+  const { insert: insertCheckboxListItem, isEmpty: isCheckboxListItemEmpty } =
+    useCheckboxLists()
+  const { insert: insertQuote, isEmpty: isQuoteEmpty } = useQuotes()
+
+  const insertOrMutate = useCallback(
+    (
+      isEmpty: (blockId: BlockId) => boolean,
+      insertFn: () => void,
+      mutateFn: (blockId: BlockId) => void,
+    ): void => {
+      if (selection !== null && isEmpty(selection.anchor.blockId)) {
+        mutateFn(selection.anchor.blockId)
+        return
+      }
+
+      insertFn()
+    },
+    [selection],
+  )
 
   return [
     {
@@ -295,7 +319,12 @@ function useInsertCommands(): CommandItem[] {
       icon: Pilcrow,
       id: 'paragraph',
       label: 'Paragraph',
-      run: () => insertParagraph(),
+      run: () =>
+        insertOrMutate(
+          isParagraphEmpty,
+          () => insertParagraph(),
+          (blockId) => mutate(blockId, { kind: 'to_paragraph' }),
+        ),
       search: 'paragraph',
     },
     {
@@ -303,7 +332,12 @@ function useInsertCommands(): CommandItem[] {
       icon: Quote,
       id: 'quote',
       label: 'Quote',
-      run: () => insertQuote(),
+      run: () =>
+        insertOrMutate(
+          isQuoteEmpty,
+          () => insertQuote(),
+          (blockId) => mutate(blockId, { kind: 'to_quote' }),
+        ),
       search: 'quote',
     },
     {
@@ -311,7 +345,12 @@ function useInsertCommands(): CommandItem[] {
       icon: Heading1,
       id: 'heading-1',
       label: 'Heading 1',
-      run: () => insertHeading(1),
+      run: () =>
+        insertOrMutate(
+          isHeadingEmpty,
+          () => insertHeading(1),
+          (blockId) => mutate(blockId, { kind: 'to_heading', level: 1 }),
+        ),
       search: 'heading 1',
     },
     {
@@ -319,7 +358,12 @@ function useInsertCommands(): CommandItem[] {
       icon: Heading2,
       id: 'heading-2',
       label: 'Heading 2',
-      run: () => insertHeading(2),
+      run: () =>
+        insertOrMutate(
+          isHeadingEmpty,
+          () => insertHeading(2),
+          (blockId) => mutate(blockId, { kind: 'to_heading', level: 2 }),
+        ),
       search: 'heading 2',
     },
     {
@@ -327,7 +371,12 @@ function useInsertCommands(): CommandItem[] {
       icon: Heading3,
       id: 'heading-3',
       label: 'Heading 3',
-      run: () => insertHeading(3),
+      run: () =>
+        insertOrMutate(
+          isHeadingEmpty,
+          () => insertHeading(3),
+          (blockId) => mutate(blockId, { kind: 'to_heading', level: 3 }),
+        ),
       search: 'heading 3',
     },
     {
@@ -335,7 +384,12 @@ function useInsertCommands(): CommandItem[] {
       icon: Heading4,
       id: 'heading-4',
       label: 'Heading 4',
-      run: () => insertHeading(4),
+      run: () =>
+        insertOrMutate(
+          isHeadingEmpty,
+          () => insertHeading(4),
+          (blockId) => mutate(blockId, { kind: 'to_heading', level: 4 }),
+        ),
       search: 'heading 4',
     },
     {
@@ -343,7 +397,12 @@ function useInsertCommands(): CommandItem[] {
       icon: Heading5,
       id: 'heading-5',
       label: 'Heading 5',
-      run: () => insertHeading(5),
+      run: () =>
+        insertOrMutate(
+          isHeadingEmpty,
+          () => insertHeading(5),
+          (blockId) => mutate(blockId, { kind: 'to_heading', level: 5 }),
+        ),
       search: 'heading 5',
     },
     {
@@ -351,7 +410,12 @@ function useInsertCommands(): CommandItem[] {
       icon: Heading6,
       id: 'heading-6',
       label: 'Heading 6',
-      run: () => insertHeading(6),
+      run: () =>
+        insertOrMutate(
+          isHeadingEmpty,
+          () => insertHeading(6),
+          (blockId) => mutate(blockId, { kind: 'to_heading', level: 6 }),
+        ),
       search: 'heading 6',
     },
     {
@@ -367,7 +431,12 @@ function useInsertCommands(): CommandItem[] {
       icon: List,
       id: 'bullet-list',
       label: 'Bulleted List',
-      run: () => insertBulletListItem(),
+      run: () =>
+        insertOrMutate(
+          isBulletListItemEmpty,
+          () => insertBulletListItem(),
+          (blockId) => mutate(blockId, { kind: 'to_bullet_list_item' }),
+        ),
       search: 'bulleted list',
     },
     {
@@ -375,7 +444,12 @@ function useInsertCommands(): CommandItem[] {
       icon: ListOrdered,
       id: 'numbered-list',
       label: 'Numbered List',
-      run: () => insertNumberedListItem(),
+      run: () =>
+        insertOrMutate(
+          isNumberedListItemEmpty,
+          () => insertNumberedListItem(),
+          (blockId) => mutate(blockId, { kind: 'to_numbered_list_item' }),
+        ),
       search: 'numbered list',
     },
     {
@@ -384,7 +458,16 @@ function useInsertCommands(): CommandItem[] {
       icon: ListOrdered,
       id: 'numbered-list-alpha',
       label: 'Numbered List',
-      run: () => insertNumberedListItem({ variant: 'alpha' }),
+      run: () =>
+        insertOrMutate(
+          isNumberedListItemEmpty,
+          () => insertNumberedListItem({ variant: 'alpha' }),
+          (blockId) =>
+            mutate(blockId, {
+              kind: 'to_numbered_list_item',
+              variant: 'alpha',
+            }),
+        ),
       search: 'numbered list alpha',
     },
     {
@@ -393,7 +476,16 @@ function useInsertCommands(): CommandItem[] {
       icon: ListOrdered,
       id: 'numbered-list-roman',
       label: 'Numbered List',
-      run: () => insertNumberedListItem({ variant: 'roman' }),
+      run: () =>
+        insertOrMutate(
+          isNumberedListItemEmpty,
+          () => insertNumberedListItem({ variant: 'roman' }),
+          (blockId) =>
+            mutate(blockId, {
+              kind: 'to_numbered_list_item',
+              variant: 'roman',
+            }),
+        ),
       search: 'numbered list roman',
     },
     {
@@ -401,7 +493,15 @@ function useInsertCommands(): CommandItem[] {
       icon: SquareCheck,
       id: 'checkbox-list',
       label: 'Checkbox List',
-      run: () => insertCheckboxListItem(),
+      run: () =>
+        insertOrMutate(
+          isCheckboxListItemEmpty,
+          () => insertCheckboxListItem(),
+          (blockId) =>
+            mutate(blockId, {
+              kind: 'to_checkbox_list_item',
+            }),
+        ),
       search: 'checkbox list',
     },
     {
