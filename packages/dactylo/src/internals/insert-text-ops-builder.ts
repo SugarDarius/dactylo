@@ -625,14 +625,14 @@ export class InsertTextOpsBuilder extends OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'InsertTextOpsBuilder/#describe',
+          'InsertTextOpsBuilder/describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'InsertTextOpsBuilder/#describe',
+          'InsertTextOpsBuilder/describe',
         )
       }
 
@@ -656,7 +656,7 @@ export class InsertTextOpsBuilder extends OperationsBuilder<
     if (compareTextCursors(state, anchor, focus) >= 0) {
       rangeCollapsedError(
         'Range selection is collapsed; expected anchor to precede focus.',
-        'InsertTextOpsRule/#describeSituation',
+        'InsertTextOpsRule/describeSituation',
       )
     }
 
@@ -671,14 +671,14 @@ export class InsertTextOpsBuilder extends OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'InsertTextOpsBuilder/#describe',
+          'InsertTextOpsBuilder/describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'InsertTextOpsBuilder/#describe',
+          'InsertTextOpsBuilder/describe',
         )
       }
 
@@ -743,7 +743,7 @@ export class InsertTextOpsBuilder extends OperationsBuilder<
     if (match.done) {
       warn(
         'No rule applied for the given situation and input.',
-        'InsertTextOpsBuilder/#buildInsertTextOps',
+        'InsertTextOpsBuilder/buildInsertTextOps',
       )
       return null
     }
@@ -759,7 +759,7 @@ export class InsertTextOpsBuilder extends OperationsBuilder<
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',
-        'InsertTextOpsBuilder/#buildInsertTextOps',
+        'InsertTextOpsBuilder/buildInsertTextOps',
       )
       return null
     }

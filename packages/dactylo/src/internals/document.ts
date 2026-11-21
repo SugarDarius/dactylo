@@ -204,7 +204,7 @@ export function getBlockIndex(state: DocumentState, blockId: BlockId): number {
   if (index === -1) {
     throw DactyloError.from({
       code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
-      hint: 'DocumentState/#getBlockIndex',
+      hint: 'DocumentState/getBlockIndex',
       message: `Block ${blockId} not found in document from block order by ID.`,
     })
   }
@@ -245,7 +245,7 @@ export function getBlock(state: DocumentState, blockId: BlockId): Block {
   if (!block) {
     throw DactyloError.from({
       code: 'UNKNOWN_BLOCK_IN_DOCUMENT',
-      hint: 'DocumentState/#getBlock',
+      hint: 'DocumentState/getBlock',
       message: `Block ${blockId} not found in document from blocks map.`,
     })
   }
@@ -262,7 +262,7 @@ export function getBlockWithInlineContent(
   if (!isBlockWithInlineContent(block)) {
     throw DactyloError.from({
       code: 'BLOCK_NOT_ALLOWED_TO_HAVE_INLINE_CONTENT',
-      hint: 'DocumentState/#getBlockWithInlineContent',
+      hint: 'DocumentState/getBlockWithInlineContent',
       message: `Block ${blockId} is not allowed to have inline content`,
     })
   }
@@ -331,7 +331,7 @@ export function computeInsertBlockPosKey(
       return between(prevBlock.posKey, block.posKey)
     }
     default: {
-      assertNever(pos, { hint: 'DocumentState/#computeInsertBlockPosKey' })
+      assertNever(pos, { hint: 'DocumentState/computeInsertBlockPosKey' })
     }
   }
 }
@@ -359,7 +359,7 @@ export function resolveInsertAfterBlockId(
       return prev
     }
     default: {
-      assertNever(pos, { hint: 'DocumentState/#resolveInsertAfterBlockId' })
+      assertNever(pos, { hint: 'DocumentState/resolveInsertAfterBlockId' })
     }
   }
 }
@@ -444,7 +444,7 @@ export function isMoveBlockNoOp(
       return from === target - 1
     }
     default: {
-      assertNever(pos, { hint: 'DocumentState/#isMoveBlockNoOp' })
+      assertNever(pos, { hint: 'DocumentState/isMoveBlockNoOp' })
     }
   }
 }

@@ -1494,14 +1494,14 @@ export class MarkdownShortcutOpsBuilder extends OperationsBuilder<
     if (!found) {
       buildError(
         `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-        'InsertTextOpsBuilder/#describe',
+        'InsertTextOpsBuilder/describe',
       )
     }
 
     if (!isInlineNodeWithEditableText(found.node)) {
       buildError(
         `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-        'InsertTextOpsBuilder/#describe',
+        'InsertTextOpsBuilder/describe',
       )
     }
 
@@ -1554,7 +1554,7 @@ export class MarkdownShortcutOpsBuilder extends OperationsBuilder<
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',
-        'MarkdownOpsBuilder/#build',
+        'MarkdownOpsBuilder/build',
       )
       return null
     }

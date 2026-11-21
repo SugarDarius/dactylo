@@ -889,7 +889,7 @@ export function buildDeleteTextRunIntent(
   if (length <= 0) {
     rangeCollapsedError(
       'Range selection is collapsed; expected non-empty text range.',
-      'OperationBuilder/#buildDeleteTextRunOps',
+      'OperationBuilder/buildDeleteTextRunOps',
     )
   }
 
@@ -992,7 +992,7 @@ export function buildForwardTrimBlockOps(
   if (!found) {
     buildError(
       `Node ${from.nodeId} not found in block ${block.id}`,
-      'OperationBuilder/#buildForwardTrimBlockOps',
+      'OperationBuilder/buildForwardTrimBlockOps',
     )
   }
 

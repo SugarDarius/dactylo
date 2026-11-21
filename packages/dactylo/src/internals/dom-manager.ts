@@ -364,7 +364,7 @@ export class DOMManager {
         if (!editableContent) {
           throw DactyloError.from({
             code: 'SELECTION_MANAGER_PAINTING',
-            hint: 'DomManager/#flushPaint/caret',
+            hint: 'DomManager/flushPaint/caret',
             message: `No editable block content found for block id: ${cursor.blockId}`,
             payload: {
               blockId: cursor.blockId,
@@ -426,7 +426,7 @@ export class DOMManager {
     if (!editable) {
       warnOnceIf(
         this.#debug,
-        'DomManager/#sync: no editable element found. Attach the dom manager to the editable element first using `DomManager.attach(element)`.',
+        'DomManager/sync: no editable element found. Attach the dom manager to the editable element first using `DomManager.attach(element)`.',
       )
       return
     }

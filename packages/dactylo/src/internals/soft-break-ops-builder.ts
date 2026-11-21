@@ -455,14 +455,14 @@ export class SoftBreakOpsBuilder extends OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'PastePlainTextOpsBuilder/#describe',
+          'PastePlainTextOpsBuilder/describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'PastePlainTextOpsBuilder/#describe',
+          'PastePlainTextOpsBuilder/describe',
         )
       }
 
@@ -486,7 +486,7 @@ export class SoftBreakOpsBuilder extends OperationsBuilder<
     if (compareTextCursors(state, anchor, focus) >= 0) {
       rangeCollapsedError(
         'Range selection is collapsed; expected anchor to precede focus.',
-        'SoftBreakOpsBuilder/#describe',
+        'SoftBreakOpsBuilder/describe',
       )
     }
 
@@ -501,14 +501,14 @@ export class SoftBreakOpsBuilder extends OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'SoftBreakOpsBuilder/#describe',
+          'SoftBreakOpsBuilder/describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'SoftBreakOpsBuilder/#describe',
+          'SoftBreakOpsBuilder/describe',
         )
       }
 
@@ -567,7 +567,7 @@ export class SoftBreakOpsBuilder extends OperationsBuilder<
     if (match.done) {
       warn(
         'No rule applied for the given situation and input.',
-        'SoftBreakOpsBuilder/#build',
+        'SoftBreakOpsBuilder/build',
       )
       return null
     }
@@ -583,7 +583,7 @@ export class SoftBreakOpsBuilder extends OperationsBuilder<
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',
-        'SoftBreakOpsBuilder/#build',
+        'SoftBreakOpsBuilder/build',
       )
       return null
     }

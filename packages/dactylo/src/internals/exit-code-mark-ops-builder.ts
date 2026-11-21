@@ -214,7 +214,7 @@ export class ExitCodeMarkOpsBuilder extends OperationsBuilder<
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',
-        'ExitCodeMarkOpsBuilder/#build',
+        'ExitCodeMarkOpsBuilder/build',
       )
       return null
     }

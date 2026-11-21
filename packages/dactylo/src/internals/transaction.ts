@@ -779,7 +779,7 @@ export class TransactionPipeline {
      */
     if (ops.length === 0) {
       warn(
-        'TransactionPipeline/#dispatch: no operations declared in transaction.',
+        'TransactionPipeline/dispatch: no operations declared in transaction.',
         JSON.stringify(transaction, null, 2),
       )
       return
@@ -910,7 +910,7 @@ export class TransactionPipeline {
     if (this.#batch.active) {
       historyError(
         '`undo()` is not allowed to execute when the batch is active.',
-        'TransactionPipeline/#undo',
+        'TransactionPipeline/undo',
       )
     }
 
@@ -933,7 +933,7 @@ export class TransactionPipeline {
     if (this.#batch.active) {
       historyError(
         '`redo()` is not allowed to execute when the batch is active.',
-        'TransactionPipeline/#redo',
+        'TransactionPipeline/redo',
       )
     }
 

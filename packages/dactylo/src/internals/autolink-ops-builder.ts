@@ -303,14 +303,14 @@ export class AutolinkOpsBuilder extends OperationsBuilder<
     if (!found) {
       buildError(
         `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-        'AutolinkOpsBuilder/#describe',
+        'AutolinkOpsBuilder/describe',
       )
     }
 
     if (!isInlineNodeWithEditableText(found.node)) {
       buildError(
         `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-        'AutolinkOpsBuilder/#describe',
+        'AutolinkOpsBuilder/describe',
       )
     }
 
@@ -357,7 +357,7 @@ export class AutolinkOpsBuilder extends OperationsBuilder<
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',
-        'AutolinkOpsBuilder/#build',
+        'AutolinkOpsBuilder/build',
       )
       return null
     }

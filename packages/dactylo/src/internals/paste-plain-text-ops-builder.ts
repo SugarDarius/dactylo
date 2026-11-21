@@ -633,14 +633,14 @@ export class PastePlainTextOpsBuilder extends OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'PastePlainTextOpsBuilder/#describe',
+          'PastePlainTextOpsBuilder/describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'PastePlainTextOpsBuilder/#describe',
+          'PastePlainTextOpsBuilder/describe',
         )
       }
 
@@ -664,7 +664,7 @@ export class PastePlainTextOpsBuilder extends OperationsBuilder<
     if (compareTextCursors(state, anchor, focus) >= 0) {
       rangeCollapsedError(
         'Range selection is collapsed; expected anchor to precede focus.',
-        'PastePlainTextOpsBuilder/#describe',
+        'PastePlainTextOpsBuilder/describe',
       )
     }
 
@@ -679,14 +679,14 @@ export class PastePlainTextOpsBuilder extends OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'PastePlainTextOpsBuilder/#describe',
+          'PastePlainTextOpsBuilder/describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'PastePlainTextOpsBuilder/#describe',
+          'PastePlainTextOpsBuilder/describe',
         )
       }
 
@@ -751,7 +751,7 @@ export class PastePlainTextOpsBuilder extends OperationsBuilder<
     if (match.done) {
       warn(
         'No rule applied for the given situation and input.',
-        'PastePlainTextOpsBuilder/#build',
+        'PastePlainTextOpsBuilder/build',
       )
       return null
     }
@@ -770,7 +770,7 @@ export class PastePlainTextOpsBuilder extends OperationsBuilder<
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',
-        'PastePlainTextOpsBuilder/#build',
+        'PastePlainTextOpsBuilder/build',
       )
       return null
     }

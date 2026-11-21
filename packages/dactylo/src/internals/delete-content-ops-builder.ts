@@ -391,7 +391,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
       ) {
         buildError(
           `Previous node not found for block ${block.id} at index ${nodeIndex - 1}`,
-          'DeleteContentOpsBuilder/#build',
+          'DeleteContentOpsBuilder/build',
         )
       }
 
@@ -496,7 +496,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
       if (!prevNode || !isEmptyEditableRunway(prevNode)) {
         buildError(
           `Previous empty runway not found for block ${block.id} at index ${nodeIndex - 1}`,
-          'DeleteContentOpsBuilder/#build',
+          'DeleteContentOpsBuilder/build',
         )
       }
 
@@ -556,7 +556,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
       if (!prevNode || !isInlineNodeWithEditableText(prevNode)) {
         buildError(
           `Previous node not found for block ${block.id} at index ${nodeIndex - 1}`,
-          'DeleteContentOpsBuilder/#build',
+          'DeleteContentOpsBuilder/build',
         )
       }
 
@@ -628,7 +628,7 @@ export const cursorRules: DeleteContentOpsRule[] = [
       if (!prevNode || !isInlineNodeWithEditableText(prevNode)) {
         buildError(
           `Previous node not found for block ${block.id} at index ${nodeIndex - 1}`,
-          'DeleteContentOpsBuilder/#build',
+          'DeleteContentOpsBuilder/build',
         )
       }
 
@@ -1048,14 +1048,14 @@ export class DeleteContentOpsBuilder extends OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'DeleteContentOpsBuilder/#describe',
+          'DeleteContentOpsBuilder/describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'DeleteContentOpsBuilder/#describe',
+          'DeleteContentOpsBuilder/describe',
         )
       }
 
@@ -1080,7 +1080,7 @@ export class DeleteContentOpsBuilder extends OperationsBuilder<
     if (compareTextCursors(state, anchor, focus) >= 0) {
       rangeCollapsedError(
         'Range selection is collapsed; expected anchor to precede focus.',
-        'DeleteContentOpsBuilder/#describe',
+        'DeleteContentOpsBuilder/describe',
       )
     }
 
@@ -1151,7 +1151,7 @@ export class DeleteContentOpsBuilder extends OperationsBuilder<
     if (match.done) {
       warn(
         'No rule applied for the given situation and input.',
-        'DeleteContentOpsBuilder/#build',
+        'DeleteContentOpsBuilder/build',
       )
       return null
     }
@@ -1170,7 +1170,7 @@ export class DeleteContentOpsBuilder extends OperationsBuilder<
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',
-        'DeleteContentOpsBuilder/#build',
+        'DeleteContentOpsBuilder/build',
       )
       return null
     }

@@ -305,7 +305,7 @@ export function createFromInlineWithEditableText(
     }
     default: {
       assertNever(node, {
-        hint: 'InlineNode/#createFromInlineWithEditableText',
+        hint: 'InlineNode/createFromInlineWithEditableText',
       })
     }
   }
@@ -334,7 +334,7 @@ export function getInlineNodeTextLength(node: InlineNode): number {
       return 0
     }
     default: {
-      assertNever(type, { hint: 'InlineNode/#getInlineNodeTextLength' })
+      assertNever(type, { hint: 'InlineNode/getInlineNodeTextLength' })
     }
   }
 }
@@ -375,7 +375,7 @@ export function isInlineContentEmpty(content: readonly InlineNode[]): boolean {
         return false
       }
       default: {
-        assertNever(node, { hint: 'InlineNode/#isInlineContentEmpty' })
+        assertNever(node, { hint: 'InlineNode/isInlineContentEmpty' })
       }
     }
   }
@@ -418,7 +418,7 @@ export function isInlineContentWithoutVisibleText(
       }
       default: {
         assertNever(node, {
-          hint: 'InlineNode/#isInlineContentWithoutVisibleText',
+          hint: 'InlineNode/isInlineContentWithoutVisibleText',
         })
       }
     }

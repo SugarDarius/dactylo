@@ -592,14 +592,14 @@ export class HardBreakOpsBuilder extends OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'HardBreakOpsBuilder/#describe',
+          'HardBreakOpsBuilder/describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'HardBreakOpsBuilder/#describe',
+          'HardBreakOpsBuilder/describe',
         )
       }
 
@@ -623,7 +623,7 @@ export class HardBreakOpsBuilder extends OperationsBuilder<
     if (compareTextCursors(state, anchor, focus) >= 0) {
       rangeCollapsedError(
         'Range selection is collapsed; expected anchor to precede focus.',
-        'HardBreakOpsBuilder/#describe',
+        'HardBreakOpsBuilder/describe',
       )
     }
 
@@ -638,14 +638,14 @@ export class HardBreakOpsBuilder extends OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'HardBreakOpsBuilder/#describe',
+          'HardBreakOpsBuilder/describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'HardBreakOpsBuilder/#describe',
+          'HardBreakOpsBuilder/describe',
         )
       }
 
@@ -704,7 +704,7 @@ export class HardBreakOpsBuilder extends OperationsBuilder<
     if (match.done) {
       warn(
         'No rule applied for the given situation and input.',
-        'HardBreakOpsBuilder/#build',
+        'HardBreakOpsBuilder/build',
       )
       return null
     }
@@ -720,7 +720,7 @@ export class HardBreakOpsBuilder extends OperationsBuilder<
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',
-        'HardBreakOpsBuilder/#build',
+        'HardBreakOpsBuilder/build',
       )
       return null
     }

@@ -342,7 +342,7 @@ export const cursorRules: DeleteContentForwardOpsRule[] = [
       ) {
         buildError(
           `Next node not found for block ${block.id} at index ${nodeIndex + 1}`,
-          'DeleteContentForwardOpsBuilder/#build',
+          'DeleteContentForwardOpsBuilder/build',
         )
       }
 
@@ -446,7 +446,7 @@ export const cursorRules: DeleteContentForwardOpsRule[] = [
       if (!nextNode || !isEmptyEditableRunway(nextNode)) {
         buildError(
           `Next empty runway not found for block ${block.id} at index ${nodeIndex + 1}`,
-          'DeleteContentForwardOpsBuilder/#build',
+          'DeleteContentForwardOpsBuilder/build',
         )
       }
 
@@ -504,7 +504,7 @@ export const cursorRules: DeleteContentForwardOpsRule[] = [
       if (!nextNode || !isInlineNodeWithEditableText(nextNode)) {
         buildError(
           `Next node not found for block ${block.id} at index ${nodeIndex + 1}`,
-          'DeleteContentForwardOpsBuilder/#build',
+          'DeleteContentForwardOpsBuilder/build',
         )
       }
 
@@ -575,7 +575,7 @@ export const cursorRules: DeleteContentForwardOpsRule[] = [
       if (!nextNode || !isInlineNodeWithEditableText(nextNode)) {
         buildError(
           `Next node not found for block ${block.id} at index ${nodeIndex + 1}`,
-          'DeleteContentForwardOpsBuilder/#build',
+          'DeleteContentForwardOpsBuilder/build',
         )
       }
 
@@ -999,14 +999,14 @@ export class DeleteContentForwardOpsBuilder extends OperationsBuilder<
       if (!found) {
         buildError(
           `Node ${selection.anchor.nodeId} not found in block ${block.id}`,
-          'DeleteContentForwardOpsBuilder/#describe',
+          'DeleteContentForwardOpsBuilder/describe',
         )
       }
 
       if (!isInlineNodeWithEditableText(found.node)) {
         buildError(
           `Node ${selection.anchor.nodeId} is not an inline node with editable text`,
-          'DeleteContentForwardOpsBuilder/#describe',
+          'DeleteContentForwardOpsBuilder/describe',
         )
       }
 
@@ -1031,7 +1031,7 @@ export class DeleteContentForwardOpsBuilder extends OperationsBuilder<
     if (compareTextCursors(state, anchor, focus) >= 0) {
       rangeCollapsedError(
         'Range selection is collapsed; expected anchor to precede focus.',
-        'DeleteContentForwardOpsBuilder/#describe',
+        'DeleteContentForwardOpsBuilder/describe',
       )
     }
 
@@ -1095,7 +1095,7 @@ export class DeleteContentForwardOpsBuilder extends OperationsBuilder<
     if (match.done) {
       warn(
         'No rule applied for the given situation and input.',
-        'DeleteContentForwardOpsBuilder/#build',
+        'DeleteContentForwardOpsBuilder/build',
       )
       return null
     }
@@ -1114,7 +1114,7 @@ export class DeleteContentForwardOpsBuilder extends OperationsBuilder<
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',
-        'DeleteContentForwardOpsBuilder/#build',
+        'DeleteContentForwardOpsBuilder/build',
       )
       return null
     }

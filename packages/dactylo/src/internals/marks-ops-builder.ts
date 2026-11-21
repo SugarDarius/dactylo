@@ -339,7 +339,7 @@ export class MarksOpsBuilder extends OperationsBuilder<
     if (compareTextCursors(state, anchor, focus) >= 0) {
       rangeCollapsedError(
         'Range selection is collapsed; expected anchor to precede focus.',
-        'MarksOpsBuilder/#describe',
+        'MarksOpsBuilder/describe',
       )
     }
 
@@ -369,7 +369,7 @@ export class MarksOpsBuilder extends OperationsBuilder<
     if (match.done) {
       warn(
         'No rule applied for the given situation and input.',
-        'MarksOpsBuilder/#build',
+        'MarksOpsBuilder/build',
       )
       return null
     }
@@ -380,7 +380,7 @@ export class MarksOpsBuilder extends OperationsBuilder<
     if (ops === null) {
       warn(
         'No operations were built for the given situation and input.',
-        'MarksOpsBuilder/#build',
+        'MarksOpsBuilder/build',
       )
       return null
     }
