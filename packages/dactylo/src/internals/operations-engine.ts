@@ -23,7 +23,7 @@ import {
 } from './blocks'
 import type { BlockId, BlockType } from './blocks'
 import type { TextPlainData } from './clipboard'
-import { warn, warnIf, warnOnceIf } from './console'
+import { logOnceIf, warn, warnIf } from './console'
 import { DeleteContentForwardOpsBuilder } from './delete-content-forward-ops-builder'
 import { DeleteContentOpsBuilder } from './delete-content-ops-builder'
 import {
@@ -1274,7 +1274,7 @@ export class OperationsEngine {
      *  skip the move so history is not polluted with a posKey-only change.
      */
     if (isMoveBlockNoOp(state, blockId, pos)) {
-      warnOnceIf(
+      logOnceIf(
         this.#debug,
         `Skipping move of block ${blockId} because it is already at the destination.`,
         'OperationsEngine/buildMoveBlockOps',
@@ -1524,7 +1524,7 @@ export class OperationsEngine {
      * Then skip deletion because document must have at least one block.
      */
     if (idx === 0 && isEmpty) {
-      warnOnceIf(
+      logOnceIf(
         this.#debug,
         `Skipping deletion of block ${blockId} because it is the first empty block.`,
         'OperationsEngine/buildDeleteBlockOps',

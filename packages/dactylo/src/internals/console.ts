@@ -23,10 +23,20 @@ function wrap(
  * In other words, it's a wrapper around the native `console` methods but with some sugar.
  */
 function makeConsole() {
+  const emittedLogs = new Set<string>()
   const emittedWarnings = new Set<string>()
 
+  const log = wrap('log')
   const warn = wrap('warn')
   const error = wrap('error')
+
+  const logOnce = (message: string, ...args: readonly unknown[]): void => {
+    if (emittedLogs.has(message)) {
+      return
+    }
+    emittedLogs.add(message)
+    log(message, ...args)
+  }
 
   const warnOnce = (message: string, ...args: readonly unknown[]): void => {
     if (emittedWarnings.has(message)) {
@@ -39,8 +49,33 @@ function makeConsole() {
   return {
     /** Log a failure or unexpected condition. */
     error,
+    /** log a message. */
+    log,
+    /** Log a message if the condition is met. */
+    logIf: (
+      condition: boolean,
+      message: string,
+      ...args: readonly unknown[]
+    ): void => {
+      if (condition) {
+        log(message, ...args)
+      }
+    },
+    /** Log a message only once. */
+    logOnce,
+    /** Log a message only once if the condition is met. */
+    logOnceIf: (
+      condition: boolean,
+      message: string,
+      ...args: readonly unknown[]
+    ): void => {
+      if (condition) {
+        logOnce(message, ...args)
+      }
+    },
     /** Log a non-fatal diagnostic. */
     warn,
+    /** Emits a warning if the condition is met. */
     warnIf: (
       condition: boolean,
       message: string,
@@ -65,4 +100,14 @@ function makeConsole() {
   }
 }
 
-export const { error, warn, warnIf, warnOnce, warnOnceIf } = makeConsole()
+export const {
+  error,
+  log,
+  logIf,
+  logOnce,
+  logOnceIf,
+  warn,
+  warnIf,
+  warnOnce,
+  warnOnceIf,
+} = makeConsole()

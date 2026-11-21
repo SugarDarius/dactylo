@@ -14,7 +14,7 @@ import type {
 } from './augmentation'
 import type { BlockId } from './blocks'
 import { readTransferredData } from './clipboard'
-import { warn, warnOnceIf } from './console'
+import { logOnceIf, warn, warnOnceIf } from './console'
 import {
   DEFAULT_BATCH_MAX_SIZE,
   INLINE_DETECTOR_TRIGGER_CHARACTER,
@@ -689,7 +689,7 @@ export class TransactionPipeline {
   /** Whether autolink detection is enabled. */
   #autolinkEnabled(): boolean {
     if (!this.#autolink.enabled) {
-      warnOnceIf(this.#debug, 'Autolink detection is not enabled.')
+      logOnceIf(this.#debug, 'Autolink detection is not enabled.')
       return false
     }
 
@@ -699,7 +699,7 @@ export class TransactionPipeline {
   /** Whether a mention is being typed. */
   #isMentionIntent(text: string): boolean {
     if (!this.#mentions.enabled) {
-      warnOnceIf(this.#debug, 'Mentions are not enabled.')
+      logOnceIf(this.#debug, 'Mentions are not enabled.')
       return false
     }
 
@@ -709,7 +709,7 @@ export class TransactionPipeline {
   /** Whether a command trigger is being typed. */
   #isCommandTriggerIntent(text: string): boolean {
     if (!this.#commandTrigger.enabled) {
-      warnOnceIf(this.#debug, 'Command trigger is not enabled.')
+      logOnceIf(this.#debug, 'Command trigger is not enabled.')
       return false
     }
 
