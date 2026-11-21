@@ -311,7 +311,7 @@ export function useBlockOrderById(): readonly BlockId[] {
 }
 
 /**
- * Returns the block from the {@link EditorContext}.
+ * Returns a {@link Block} from the {@link EditorContext}.
  *
  * @example
  * ```tsx
