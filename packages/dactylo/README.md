@@ -194,8 +194,8 @@ export function Editor() {
 | Comment decorator                                | 🚧 **In Progress** | Apply decorator on InlineNode for adding comments                                       |
 | Markdown inline shortcuts                        | 🚧 **In Progress** | Use Build-in markdown inline shortcuts for headings, divider, links, lists and marks    |
 | Autolink detection                               | ✅ **Done**        | Automatically transform links from pastes into inline nodes (configurable)              |
-| Mentions (`@…`)                                  | 🚧 **In Progress** | Enables build-in inline composition for inserting mentions (configurable)               |
-| Command trigger (`/…`)                           | 🚧 **In Progress** | Enables build-in inline composition for triggering external commands (configurable)     |
+| Mentions (`@…`)                                  | ✅ **Done**        | Enables build-in inline composition for inserting mentions (configurable)               |
+| Command trigger (`/…`)                           | ✅ **Done**        | Enables build-in inline composition for triggering external commands (configurable)     |
 | IME composition                                  | 🚧 **In Progress** | Build-in IME composition management                                                     |
 | Clipboard (paste / cut / copy)                   | 🚧 **In Progress** | Clipboard events management                                                             |
 | Browser native shortcuts                         | 🚧 **In Progress** | Shortcuts management like `mod+z`, `mod+a`                                              |
@@ -209,31 +209,31 @@ export function Editor() {
 | Strings security                                 | 🚧 **In Progress** | Prevents scripting and injections when inserting text                                   |
 | DOM sync                                         | 🚧 **In Progress** | Sync DOM selection with Dactylo Selection                                               |
 | Dactylo owned errors                             | 🚧 **In Progress** | Exposes errors defined by Dactylo                                                       |
-| Collaboration                                    | 📆 **Planned**     | Enables collaboration through external providers                                        |
+| Collaboration                                    | 📆 **Planned**     | Enables collaboration through external providers as adapters                            |
 | Emojis inline trigger (`:…`)                     | 📆 **Planned**     | Enables inline composition for inserting emojis (configurable)                          |
 | Hashtags (`#…`)                                  | 📆 **Planned**     | Enables built-in support for hashtags                                                   |
 
 ### Blocks (🚧 **In Progress**)
 
-| Feature              | Status             | Description                                                                                                     |
-| -------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Paragraph            | ✅ **Done**        | Paragraph block with inline content                                                                             |
-| Heading (levels 1–6) | ✅ **Done**        | Heading block with inline content                                                                               |
-| Divider              | ✅ **Done**        | Block for UI rendering - no inline content                                                                      |
-| Quote                | ✅ **Done**        | Quote block with inline content only (a variant of `ParagraphBlock` but with a left border )                    |
-| Bullet list item     | ✅ **Done**        | Bullet list item block with inline content                                                                      |
-| Numbered list item   | ✅ **Done**        | Numbered list item block with inline content with variants (lower or upper alpha, lower or upper roman)         |
-| Checkbox list item   | ✅ **Done**        | Checkbox list item with block inline content                                                                    |
-| Toggle list item     | 📆 **Planned**     | Toggle list item block with inline content                                                                      |
-| Code                 | 🚧 **In Progress** | Safe code block rendering code with simplified inline content                                                   |
-| File                 | 📆 **Planned**     | File block with no inline content for rendering files                                                           |
-| Media                | 📆 **Planned**     | Media block with no inline content for rendering images, videos or audios                                       |
-| Web embed            | 📆 **Planned**     | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
-| Callout              | 📆 **Planned**     | Callout parent block with icon + sub blocks                                                                     |
-| Table                | 📆 **Planned**     | Table block with inline content                                                                                 |
-| Tabs                 | 📆 **Planned**     | Tabs parent block with sub blocks inside                                                                        |
-| 2 / 3 / 4 columns    | 📆 **Planned**     | Columns parent block with sub blocks inside                                                                     |
-| Slot                 | 📆 **Planned**     | Hosting custom content and data owned by developer with no inline content                                       |
+| Feature              | Status         | Description                                                                                                     |
+| -------------------- | -------------- | --------------------------------------------------------------------------------------------------------------- |
+| Paragraph            | ✅ **Done**    | Paragraph block with inline content                                                                             |
+| Heading (levels 1–6) | ✅ **Done**    | Heading block with inline content                                                                               |
+| Divider              | ✅ **Done**    | Block for UI rendering - no inline content                                                                      |
+| Quote                | ✅ **Done**    | Quote block with inline content only (a variant of `ParagraphBlock` but with a left border )                    |
+| Bullet list item     | ✅ **Done**    | Bullet list item block with inline content                                                                      |
+| Numbered list item   | ✅ **Done**    | Numbered list item block with inline content with variants (lower or upper alpha, lower or upper roman)         |
+| Checkbox list item   | ✅ **Done**    | Checkbox list item with block inline content                                                                    |
+| Toggle list item     | 📆 **Planned** | Toggle list item block with inline content                                                                      |
+| Code                 | 📆 **Planned** | Safe code block rendering code with simplified inline content                                                   |
+| File                 | 📆 **Planned** | File block with no inline content for rendering files                                                           |
+| Media                | 📆 **Planned** | Media block with no inline content for rendering images, videos or audios                                       |
+| Web embed            | 📆 **Planned** | Web embed block with no inline content for rendering external web content like tweets, gist or any html content |
+| Callout              | 📆 **Planned** | Callout parent block with icon + sub blocks                                                                     |
+| Table                | 📆 **Planned** | Table block with inline content                                                                                 |
+| Tabs                 | 📆 **Planned** | Tabs parent block with sub blocks inside                                                                        |
+| 2 / 3 / 4 columns    | 📆 **Planned** | Columns parent block with sub blocks inside                                                                     |
+| Slot                 | 📆 **Planned** | Hosting custom content and data owned by developer with no inline content                                       |
 
 ### Inline Nodes (🚧 **In Progress**)
 
@@ -255,14 +255,15 @@ export function Editor() {
 | Commands API                 | 🚧 **In Progress** | Exposes commands api to mutate document state                                                   |
 | Marks API                    | ✅ **Done**        | Apply marks on eligible inline nodes                                                            |
 | Comments API                 | 🚧 **In Progress** | Reads and mutate comments data on comments decorator                                            |
-| Document API                 | 🚧 **In Progress** | Init (with JSON or Markdown), replace, and reset document state                                 |
+| Document API                 | 🚧 **In Progress** | Init (with JSON ✅ or Markdown), replace, and reset document state                              |
 | History API                  | ✅ **Done**        | Work with build-in history                                                                      |
 | Composer API                 | 🚧 **In Progress** | Sends and reads composing events                                                                |
 | Selection API                | 🚧 **In Progress** | Mutate and reads Dactylo's selection                                                            |
 | DOM API                      | 🚧 **In Progress** | Sync browser DOM native selection with Dactylo's selection                                      |
 | Blocks API                   | ✅ **Done**        | Mutate and reads blocks                                                                         |
 | Inline nodes API             | 🚧 **In Progress** | Mutate and reads inline nodes                                                                   |
-| Metadata API                 | 🚧 **In Progress** | Mutate and reads blocks and inline nodes metadata (config for globals metadata)                 |
+| Insert text API              | 🚧 **In Progress** | Insert text in the current selection                                                            |
+| Metadata API                 | ✅ **Done**        | Mutate and reads blocks and inline nodes metadata (config for globals metadata)                 |
 | Mentions API                 | 🚧 **In Progress** | Mutate and reads mentions as first-class citizen                                                |
 | OnChange/OnSubmit API        | 🚧 **In Progress** | Callback when document state is changing for saving in databases                                |
 | Export JSON and Markdown API | 📆 **Planned**     | Export document state as JSON and Markdown                                                      |
