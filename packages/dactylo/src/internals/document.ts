@@ -43,7 +43,7 @@ import { assertNever } from './utils'
  * The brain of Dactylo. It's the single in-memory snapshot
  * of everything the user has written, structured as blocks.
  *
- * It's not not the markdown string on disk, nor the React UI and nor the cursor position.
+ * It's not not the markdown string on disk, nor the UI library and nor the cursor position.
  * It's the authoritative source of truth (data) that all of of thins are derived from.
  *
  * ```md
@@ -59,8 +59,8 @@ import { assertNever } from './utils'
  * └─────────────────────────────────────────────────────────┘
  *       │                    │                    │
  *       ▼                    ▼                    ▼
- *   toMarkdown()          React UI            AI getSummary()
- *   (export string)     (renders blocks)      (reads blocks)
+ *  ex. toMarkdown()      UI library             AI agent
+ *  (string export)    (renders blocks)     (run commands, …)
  *```
  *
  * When the user types a character, Dactylo does not edit a string at all.
@@ -87,12 +87,6 @@ import { assertNever } from './utils'
  * exports, and AI-safe mutations possible.
  */
 export interface DocumentState {
-  /**
-   * Schema version for indicating which blocks, nodes, marks, etc. are currently supported.
-   * Evolving without breaking old saves
-   */
-  readonly schemaVersion: 1
-
   /**
    * Dictionary of every blocks keyed by a stable block ID in the document.
    * It gives an O(1) lookup needed for operations, Ai edits and UI rendering (memoization).
@@ -123,7 +117,6 @@ export function createDocumentState(): DocumentState {
   return {
     blockOrderById: [],
     blocks: new Map(),
-    schemaVersion: 1,
   }
 }
 
