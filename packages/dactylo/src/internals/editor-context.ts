@@ -1,4 +1,3 @@
-import type { PBM, TNM } from './augmentation'
 import {
   findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
@@ -8,7 +7,7 @@ import type { BlockId, BlockWithInlineContent } from './blocks'
 import { INLINE_BUFFER_BEFORE_CHAR_OPENER } from './constants'
 import {
   collectTextSpansInRange,
-  createInitialEmptyDocumentState,
+  createDocumentState,
   getBlockWithInlineContent,
   normalizeRange,
   putBlock,
@@ -124,16 +123,11 @@ export interface EditorContext {
   readonly selection: Selection | null
 }
 
-/** Creates the initial context for an empty document. */
-export function createInitialEditorContext(
-  opts: {
-    paragraphMetadata?: PBM
-    textMetadata?: TNM
-  } = {},
-): EditorContext {
+/** Creates a default {@link EditorContext}. */
+export function createEditorContext(): EditorContext {
   return {
     selection: null,
-    state: createInitialEmptyDocumentState({ ...opts }),
+    state: createDocumentState(),
   }
 }
 

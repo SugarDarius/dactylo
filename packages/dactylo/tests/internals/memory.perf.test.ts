@@ -5,15 +5,12 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  createParagraphBlock,
   createParagraphBlockAfter,
   isBlockWithInlineContent,
-  isParagraphBlock,
 } from '../../src/internals/blocks'
 import type { BlockId, ParagraphBlock } from '../../src/internals/blocks'
-import {
-  createInitialEmptyDocumentState,
-  putBlocks,
-} from '../../src/internals/document'
+import { createDocumentState, putBlocks } from '../../src/internals/document'
 import type { DocumentState } from '../../src/internals/document'
 import type { HistoryEntry } from '../../src/internals/history'
 import type { InlineNode, NodeId } from '../../src/internals/nodes'
@@ -21,6 +18,7 @@ import {
   createTextNode,
   isInlineNodeWithEditableText,
 } from '../../src/internals/nodes'
+import { makeInitialPosition } from '../../src/internals/position'
 import { jsonBytes, utf16Bytes } from '../utils/perf'
 
 const BLOCK_COUNT = 50
@@ -38,33 +36,14 @@ const NODE_OVERHEAD_CEILING = 20 * KB
 /** Design ~40 KB → 2× ceiling. */
 const HISTORY_CEILING = 80 * KB
 
-function firstParagraph(state: DocumentState): ParagraphBlock {
-  const [id] = state.blockOrderById
-  if (!id) {
-    throw new Error('Expected a block')
-  }
-
-  const block = state.blocks.get(id)
-  if (!block || !isParagraphBlock(block)) {
-    throw new Error('Expected a paragraph')
-  }
-
-  return block
-}
-
 function createTenKCharDocument(): DocumentState {
   const chunk = 'x'.repeat(CHARS_PER_BLOCK)
-  const state = createInitialEmptyDocumentState({})
-  const first = firstParagraph(state)
-  const incoming: ParagraphBlock[] = [
-    { ...first, content: [createTextNode({ text: chunk })] },
-  ]
-
-  const [firstIncoming] = incoming
-  if (!firstIncoming) {
-    throw new Error('Expected a first paragraph')
-  }
-  let prev = firstIncoming
+  const first = createParagraphBlock({
+    content: [createTextNode({ text: chunk })],
+    posKey: makeInitialPosition(),
+  })
+  const incoming: ParagraphBlock[] = [first]
+  let prev = first
 
   for (let i = 1; i < BLOCK_COUNT; i += 1) {
     const next = createParagraphBlockAfter(prev, [
@@ -74,7 +53,7 @@ function createTenKCharDocument(): DocumentState {
     prev = next
   }
 
-  return putBlocks(state, incoming)
+  return putBlocks(createDocumentState(), incoming)
 }
 
 function collectInlineNodes(state: DocumentState): InlineNode[] {

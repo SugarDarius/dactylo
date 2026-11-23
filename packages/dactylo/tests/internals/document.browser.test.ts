@@ -1,18 +1,19 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  createParagraphBlock,
   createParagraphBlockAfter,
   isParagraphBlock,
 } from '../../src/internals/blocks'
 import type { Block, ParagraphBlock } from '../../src/internals/blocks'
 import {
-  createInitialEmptyDocumentState,
+  createDocumentState,
   putBlock,
   putBlocks,
 } from '../../src/internals/document'
 import type { DocumentState } from '../../src/internals/document'
 import { createTextNode, isTextNode } from '../../src/internals/nodes'
-import { after } from '../../src/internals/position'
+import { after, makeInitialPosition } from '../../src/internals/position'
 
 function firstParagraph(state: DocumentState): ParagraphBlock {
   const [id] = state.blockOrderById
@@ -36,9 +37,19 @@ function paragraphAfter(block: Block, text: string): ParagraphBlock {
   return createParagraphBlockAfter(block, [createTextNode({ text })])
 }
 
+function documentWithEmptyParagraph(): DocumentState {
+  return putBlock(
+    createDocumentState(),
+    createParagraphBlock({
+      content: [createTextNode({ text: '' })],
+      posKey: makeInitialPosition(),
+    }),
+  )
+}
+
 describe('putBlock', () => {
   test('keeps blockOrderById when posKey is unchanged', () => {
-    const state = createInitialEmptyDocumentState()
+    const state = documentWithEmptyParagraph()
     const next = putBlock(state, withText(firstParagraph(state), 'Hello'))
 
     expect(next.blockOrderById).toBe(state.blockOrderById)
@@ -50,7 +61,7 @@ describe('putBlock', () => {
   })
 
   test('inserts a block and keeps existing ones', () => {
-    const state = createInitialEmptyDocumentState()
+    const state = documentWithEmptyParagraph()
     const first = firstParagraph(state)
     const second = paragraphAfter(first, 'B')
     const next = putBlock(state, second)
@@ -61,7 +72,7 @@ describe('putBlock', () => {
   })
 
   test('reorders when posKey changes', () => {
-    let state = createInitialEmptyDocumentState()
+    let state = documentWithEmptyParagraph()
     state = putBlock(state, withText(firstParagraph(state), 'A'))
     const second = paragraphAfter(firstParagraph(state), 'B')
     state = putBlock(state, second)
@@ -78,7 +89,7 @@ describe('putBlock', () => {
 
 describe('putBlocks', () => {
   test('merges into the existing map instead of replacing it', () => {
-    let state = createInitialEmptyDocumentState()
+    let state = documentWithEmptyParagraph()
     const first = firstParagraph(state)
     state = putBlock(state, withText(first, 'A'))
     const second = paragraphAfter(firstParagraph(state), 'B')
@@ -106,7 +117,7 @@ describe('putBlocks', () => {
   })
 
   test('keeps blockOrderById when every posKey is unchanged', () => {
-    const state = createInitialEmptyDocumentState()
+    const state = documentWithEmptyParagraph()
     const next = putBlocks(state, [withText(firstParagraph(state), 'Hello')])
 
     expect(next.blockOrderById).toBe(state.blockOrderById)
@@ -114,18 +125,12 @@ describe('putBlocks', () => {
   })
 })
 
-describe('createInitialEmptyDocumentState', () => {
-  test('applies paragraph and text metadata to the empty document', () => {
-    const state = createInitialEmptyDocumentState({
-      paragraphMetadata: { source: 'paragraph' },
-      textMetadata: { source: 'text' },
-    })
-    const block = firstParagraph(state)
-    const [node] = block.content
+describe('createDocumentState', () => {
+  test('starts with no blocks', () => {
+    const state = createDocumentState()
 
-    expect(block.metadata).toEqual({ source: 'paragraph' })
-    expect(node && isTextNode(node) ? node.metadata : undefined).toEqual({
-      source: 'text',
-    })
+    expect(state.schemaVersion).toBe(1)
+    expect(state.blockOrderById).toEqual([])
+    expect(state.blocks.size).toBe(0)
   })
 })

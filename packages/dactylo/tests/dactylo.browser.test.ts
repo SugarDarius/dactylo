@@ -163,6 +163,8 @@ describe('Dactylo construction', () => {
     expect(context.state.blockOrderById).toHaveLength(1)
     expect(context.selection).toBeNull()
     expect(editor.canEdit()).toBe(true)
+    expect(editor.history.tools.canUndo()).toBe(false)
+    expect(editor.history.tools.canRedo()).toBe(false)
     expect(isParagraphBlock(block)).toBe(true)
     expect(editor.blocks.tools.isWithEmptyInlineContent(block.id)).toBe('empty')
   })

@@ -80,6 +80,7 @@ import type {
 import { makeOperationsRuntime } from './operations-runtime'
 import type { OperationsRuntime } from './operations-runtime'
 import { PastePlainTextOpsBuilder } from './paste-plain-text-ops-builder'
+import { makeInitialPosition } from './position'
 import {
   areSelectionsEqual,
   createCursor,
@@ -242,6 +243,33 @@ export class OperationsEngine {
   /** Gets the operations runtime. */
   get runtime(): OperationsRuntime {
     return this.#opsRuntime
+  }
+
+  // ---Initialize content operations ─────────────────────────────----
+
+  /**
+   * Builds operations to initialize an empty document.
+   * Creates a single {@link ParagraphBlock} owning a single {@link TextNode}.
+   */
+  buildEmptyDocumentOps(): BuilderOpsIntent {
+    const ops: Operation[] = [
+      {
+        __type: 'insert_block',
+        afterBlockId: null,
+        block: createParagraphBlock({
+          content: [
+            createTextNode({
+              metadata: this.#initialMetadata.text,
+              text: '',
+            }),
+          ],
+          metadata: this.#initialMetadata.paragraph,
+          posKey: makeInitialPosition(),
+        }),
+      },
+    ]
+
+    return { label: 'initialize-empty-document', ops }
   }
 
   // --- Marks operations ─────────────────────────────────────────----

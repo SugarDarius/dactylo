@@ -1,6 +1,4 @@
-import type { PBM, TNM } from './augmentation'
 import {
-  createParagraphBlock,
   findNodeInBlockWithInlineContent,
   isBlockWithInlineContent,
   isDividerBlock,
@@ -14,24 +12,14 @@ import type {
   NumberedListItemBlock,
 } from './blocks'
 import { DactyloError } from './errors'
-import {
-  createTextNode,
-  getInlineNodeTextLength,
-  isInlineContentEmpty,
-} from './nodes'
+import { getInlineNodeTextLength, isInlineContentEmpty } from './nodes'
 import type { InlineNode, NodeId } from './nodes'
 import {
   getDefaultMarkerNumbering,
   markerNumberingAfterNeighbor,
 } from './numbered-list-marker'
 import type { InsertOrMoveBlockPosition } from './operations-builder'
-import {
-  after,
-  before,
-  between,
-  makeInitialPosition,
-  makePosition,
-} from './position'
+import { after, before, between, makePosition } from './position'
 import type { PosKey } from './position'
 import type {
   CursorSelection,
@@ -121,26 +109,11 @@ export interface DocumentState {
   readonly blockOrderById: readonly BlockId[]
 }
 
-/** Creates an initial empty doc state for empty document. */
-export function createInitialEmptyDocumentState(
-  opts: {
-    textMetadata?: TNM
-    paragraphMetadata?: PBM
-  } = {},
-): DocumentState {
-  const block = createParagraphBlock({
-    content: [
-      createTextNode({
-        metadata: opts.textMetadata ?? {},
-        text: '',
-      }),
-    ],
-    metadata: opts.paragraphMetadata ?? {},
-    posKey: makeInitialPosition(),
-  })
+/** Creates a default {@link DocumentState}. */
+export function createDocumentState(): DocumentState {
   return {
-    blockOrderById: [block.id],
-    blocks: new Map([[block.id, block]]),
+    blockOrderById: [],
+    blocks: new Map(),
     schemaVersion: 1,
   }
 }

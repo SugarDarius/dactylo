@@ -223,4 +223,11 @@ describe('WithUnless', () => {
       paragraph: { initialMetadata: { source: 'import' } },
     }).toExtend<DactyloOptions>()
   })
+
+  test('DactyloOptions accepts optional initialContent as JSON or markdown', () => {
+    expectTypeOf({ initialContent: '# Hello' }).toExtend<DactyloOptions>()
+    expectTypeOf({
+      initialContent: { type: 'paragraph' },
+    }).toExtend<DactyloOptions>()
+  })
 })

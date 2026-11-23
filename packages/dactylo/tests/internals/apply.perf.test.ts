@@ -6,21 +6,38 @@
  */
 import { describe, expect, test } from 'vitest'
 
-import { createParagraphBlockAfter } from '../../src/internals/blocks'
+import {
+  createParagraphBlock,
+  createParagraphBlockAfter,
+} from '../../src/internals/blocks'
 import {
   getBlockWithInlineContent,
   putBlock,
 } from '../../src/internals/document'
-import { createInitialEditorContext } from '../../src/internals/editor-context'
+import { createEditorContext } from '../../src/internals/editor-context'
 import type { EditorContext } from '../../src/internals/editor-context'
 import { createTextNode, isTextNode } from '../../src/internals/nodes'
 import type { InsertTextOp } from '../../src/internals/operations'
 import { applyOp } from '../../src/internals/operations-runtime'
+import { makeInitialPosition } from '../../src/internals/position'
 import { timeMs } from '../utils/perf'
 
 const OPS = 10_000
 const INSERT_TEXT_BUDGET_MS = 200
 const WARMUP_OPS = 50
+
+function contextWithEmptyParagraph(): EditorContext {
+  const context = createEditorContext()
+  const block = createParagraphBlock({
+    content: [createTextNode({ text: '' })],
+    posKey: makeInitialPosition(),
+  })
+
+  return {
+    ...context,
+    state: putBlock(context.state, block),
+  }
+}
 
 function firstTextTarget(context: EditorContext): {
   blockId: InsertTextOp['blockId']
@@ -66,10 +83,10 @@ describe('apply perf', () => {
   test(`10k insert_text ops complete under ${INSERT_TEXT_BUDGET_MS}ms`, () => {
     const elapsed = timeMs(
       () => {
-        applyInsertChars(createInitialEditorContext(), OPS)
+        applyInsertChars(contextWithEmptyParagraph(), OPS)
       },
       () => {
-        applyInsertChars(createInitialEditorContext(), WARMUP_OPS)
+        applyInsertChars(contextWithEmptyParagraph(), WARMUP_OPS)
       },
     )
 
@@ -77,7 +94,7 @@ describe('apply perf', () => {
   })
 
   test('insert_text reuses unchanged block identity and blockOrderById', () => {
-    let context = createInitialEditorContext()
+    let context = contextWithEmptyParagraph()
     const [firstId] = context.state.blockOrderById
     if (!firstId) {
       throw new Error('Expected a block')
@@ -109,7 +126,7 @@ describe('apply perf', () => {
   })
 
   test('10k chars into one paragraph stay on a single text node', () => {
-    const context = applyInsertChars(createInitialEditorContext(), OPS)
+    const context = applyInsertChars(contextWithEmptyParagraph(), OPS)
     const { blockId } = firstTextTarget(context)
     const block = getBlockWithInlineContent(context.state, blockId)
     const [node] = block.content

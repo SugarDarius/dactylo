@@ -83,6 +83,7 @@ import type {
 } from './internals/transaction'
 import type {
   CancelCallback,
+  JsonValue,
   OptionalTupleUnless,
   Relax,
   WithUnless,
@@ -1229,6 +1230,32 @@ export interface DactyloBaseOptions {
   readonly debug?: boolean
 
   /**
+   * Initial content of the editor.
+   *
+   * When no provided, the editor will be initialized with an empty document
+   * containing a single {@link ParagraphBlock} owning a single {@link TextNode}.
+   *
+   * It can be a JSON value (shape TBD) or a markdown string.
+   *
+   * @example
+   * ```ts
+   * new Dactylo({
+   *   initialContent: {
+   *     type: 'paragraph',
+   *     content: [
+   *       { type: 'text', text: 'Hello, world!' },
+   *     ],
+   *   },
+   * })
+   *
+   * new Dactylo({
+   *   initialContent: '# Hello, world!',
+   * })
+   * ```
+   */
+  readonly initialContent?: JsonValue | string
+
+  /**
    * Whether the editor is editable.
    * Defaults to `true`
    */
@@ -1600,6 +1627,7 @@ export class Dactylo {
         locales,
       },
       history: options.pipeline?.history,
+      initialContent: options.initialContent,
       initialMetadata: {
         bulletedList: this.#config.bulletedList.initialMetadata,
         checkboxList: this.#config.checkboxList.initialMetadata,

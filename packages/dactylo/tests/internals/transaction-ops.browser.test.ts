@@ -21,6 +21,20 @@ import {
   typeText,
 } from '../utils/pipeline'
 
+describe('TransactionPipeline initialization', () => {
+  test('starts with one empty paragraph and no history', () => {
+    const pipeline = makePipeline()
+    const [blockId] = pipeline.context.state.blockOrderById
+
+    expect(pipeline.context.state.blockOrderById).toHaveLength(1)
+    expect(pipeline.context.selection).toBeNull()
+    expect(pipeline.canUndo()).toBe(false)
+    expect(pipeline.canRedo()).toBe(false)
+    expect(blockTexts(pipeline.context)).toEqual([''])
+    expect(blockId).toBeDefined()
+  })
+})
+
 describe('TransactionPipeline block commands', () => {
   test('insertBlock paragraph and undo/redo round-trip', () => {
     const pipeline = makePipeline({ markdown: false })

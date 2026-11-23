@@ -14,13 +14,13 @@ import type {
 } from './augmentation'
 import type { BlockId } from './blocks'
 import { readTransferredData } from './clipboard'
-import { logOnceIf, warn, warnOnceIf } from './console'
+import { logOnceIf, warn, warnIf, warnOnceIf } from './console'
 import {
   DEFAULT_BATCH_MAX_SIZE,
   INLINE_DETECTOR_TRIGGER_CHARACTER,
 } from './constants'
 import {
-  createInitialEditorContext,
+  createEditorContext,
   findInlineBufferPointerAtCursor,
   readInlineBufferQueryAtPointer,
 } from './editor-context'
@@ -46,6 +46,7 @@ import type {
 import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
 import type { Selection } from './selection'
+import type { JsonValue } from './types'
 
 /** The source of a transaction. */
 export type TransactionSource =
@@ -421,6 +422,9 @@ export interface TransactionPipelineOptions {
    */
   readonly debug: boolean
 
+  /** Initial developer-provided content to initialize the {@link EditorContext}. */
+  readonly initialContent?: JsonValue | string
+
   /**
    * Configuration for creating initial metadata in {@link DocumentState}
    * when it's not initialized from a JSON object or a markdown string.
@@ -614,24 +618,7 @@ export class TransactionPipeline {
       text: {} as TNM,
     }
 
-    /**
-     * Initialize the editor context
-     * If no initial content is provided, it creates an empty document
-     * with a placeholder.
-     *
-     * Otherwise initial document state is provider from either:
-     *  - a JSON object (validated against the current schema version)
-     *  - a markdown string
-     *
-     * TODO: handle initial content from props
-     *  - from JSON (validated schema version)
-     *  - from markdown string
-     *  - patch if no inline content is provided for a block with inline content
-     */
-    this.#context = createInitialEditorContext({
-      paragraphMetadata: initialMetadata.paragraph,
-      textMetadata: initialMetadata.text,
-    })
+    this.#context = createEditorContext()
 
     this.#batch = new Batch({
       maxSize: options.batch?.maxSize,
@@ -677,11 +664,33 @@ export class TransactionPipeline {
       transactionDidApply: new EventSource<Transaction>(),
       transactionDidReject: new EventSource<Transaction>(),
     }
+
+    this.#buildInitialEditorContext(options.initialContent ?? null)
   }
 
   /** Returns the current editor context */
   get context(): EditorContext {
     return this.#context
+  }
+
+  /** Whether the IME composition is currently active. */
+  get isIMEComposing(): boolean {
+    return this.#isIMEComposing
+  }
+
+  /** Sets the IME composing state. */
+  setIMEComposing(isComposing: boolean): void {
+    this.#isIMEComposing = isComposing
+  }
+
+  /** Returns the inline buffer for mentions. */
+  get mentionInlineBuffer(): InlineBuffer<'mention'> {
+    return this.#mentionBuffer
+  }
+
+  /** Returns the inline buffer for command trigger. */
+  get commandTriggerInlineBuffer(): InlineBuffer<'command-trigger'> {
+    return this.#commandTriggerBuffer
   }
 
   // ─── Core pipeline ────────────────────────────────────────────────
@@ -843,6 +852,38 @@ export class TransactionPipeline {
   }
 
   /**
+   * Builds the initial {@link EditorContext}.
+   *
+   * If no initial content is provided, then we created an initial {@link DocumentState}
+   * with a single {@link ParagraphBlock} owning a single {@link TextNode}.
+   *
+   * Otherwise we build the initial {@link DocumentState} provided from either:
+   *  - A JSON object (todo: shape TDB) validated against the current schema version.
+   *  - A markdown string validated against the current schema version.
+   *
+   * This initialization creates a list of ops to apply to the default {@link EditorContext}
+   * from `import` source when initial content is provided, otherwise it's from `editor` source.
+   */
+  #buildInitialEditorContext(initialContent: JsonValue | string | null): void {
+    if (initialContent !== null) {
+      warnIf(
+        this.#debug,
+        `Initializing editor context from provided initial content is not supported yet.`,
+      )
+    }
+
+    const { ops, label } = this.#operationsEngine.buildEmptyDocumentOps()
+    this.#dispatch({
+      ops,
+      policy: {
+        label: transactionPolicyLabel('editor-context', label),
+        pushToHistory: false,
+        source: 'editor',
+      },
+    })
+  }
+
+  /**
    * Enqueues or immediately dispatches operations depending on batch state.
    * Mental model: #commit([op1, op2, …]) 👉🏻 this user action is one atomic transaction.
    */
@@ -856,26 +897,6 @@ export class TransactionPipeline {
       ops,
       policy: { source: 'editor', ...policy },
     })
-  }
-
-  /** Whether the IME composition is currently active. */
-  get isIMEComposing(): boolean {
-    return this.#isIMEComposing
-  }
-
-  /** Sets the IME composing state. */
-  setIMEComposing(isComposing: boolean): void {
-    this.#isIMEComposing = isComposing
-  }
-
-  /** Returns the inline buffer for mentions. */
-  get mentionInlineBuffer(): InlineBuffer<'mention'> {
-    return this.#mentionBuffer
-  }
-
-  /** Returns the inline buffer for command trigger. */
-  get commandTriggerInlineBuffer(): InlineBuffer<'command-trigger'> {
-    return this.#commandTriggerBuffer
   }
 
   // ─── Events ───────────────────────────────────────────────────----

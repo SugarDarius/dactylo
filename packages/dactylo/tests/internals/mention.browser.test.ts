@@ -2,15 +2,10 @@ import { describe, expect, test } from 'vitest'
 
 import {
   createDividerBlock,
+  createParagraphBlock,
   createParagraphBlockAfter,
-  isParagraphBlock,
 } from '../../src/internals/blocks'
-import type { ParagraphBlock } from '../../src/internals/blocks'
-import {
-  createInitialEmptyDocumentState,
-  putBlock,
-} from '../../src/internals/document'
-import type { DocumentState } from '../../src/internals/document'
+import { createDocumentState, putBlock } from '../../src/internals/document'
 import {
   extractMention,
   omitBlockProps,
@@ -22,21 +17,7 @@ import {
   generateNodeId,
   isTextNode,
 } from '../../src/internals/nodes'
-import { after } from '../../src/internals/position'
-
-function firstParagraph(state: DocumentState): ParagraphBlock {
-  const [id] = state.blockOrderById
-  if (!id) {
-    throw new Error('Expected a block')
-  }
-
-  const block = state.blocks.get(id)
-  if (!block || !isParagraphBlock(block)) {
-    throw new Error('Expected a paragraph')
-  }
-
-  return block
-}
+import { after, makeInitialPosition } from '../../src/internals/position'
 
 function mentionNode(id: string) {
   return createMentionNode({
@@ -53,16 +34,15 @@ function mentionNode(id: string) {
  * E → mention in last paragraph
  */
 function mentionDocument() {
-  let state = createInitialEmptyDocumentState()
   const mentionA = mentionNode('a')
   const mentionC = mentionNode('c')
   const mentionE = mentionNode('e')
 
-  const a = {
-    ...firstParagraph(state),
+  const a = createParagraphBlock({
     content: [mentionA],
-  }
-  state = putBlock(state, a)
+    posKey: makeInitialPosition(),
+  })
+  let state = putBlock(createDocumentState(), a)
 
   const b = createParagraphBlockAfter(a, [createTextNode({ text: 'B' })])
   state = putBlock(state, b)
@@ -120,7 +100,10 @@ describe('resolveMentionBlockNeighborsRadii', () => {
 
 describe('omitBlockProps', () => {
   test('drops posKey and parentId', () => {
-    const block = firstParagraph(createInitialEmptyDocumentState())
+    const block = createParagraphBlock({
+      content: [createTextNode({ text: '' })],
+      posKey: makeInitialPosition(),
+    })
     const omitted = omitBlockProps(block)
 
     expect(omitted).not.toHaveProperty('posKey')
