@@ -142,6 +142,20 @@ describe('validateDocumentJsonSchema', () => {
     expect(() => validateDocumentJsonSchema(coveringDocument())).not.toThrow()
   })
 
+  test('accepts a block with parentId omitted', () => {
+    expect(() =>
+      validateDocumentJsonSchema(
+        documentOf({
+          content: [textNode()],
+          createdAt: CREATED_AT,
+          metadata: {},
+          type: 'paragraph',
+          updatedAt: null,
+        }),
+      ),
+    ).not.toThrow()
+  })
+
   test.each([
     { json: null, name: 'null' },
     { json: [], name: 'array' },

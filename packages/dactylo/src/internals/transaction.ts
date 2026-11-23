@@ -921,7 +921,7 @@ export class TransactionPipeline {
    * with a single {@link ParagraphBlock} owning a single {@link TextNode}.
    *
    * Otherwise we build the initial {@link DocumentState} provided from either:
-   *  - A JSON object (todo: shape TDB) validated against the current schema version.
+   *  - A {@link DocumentJsonSchema} validated against the current schema version.
    *  - A markdown string validated against the current schema version.
    *
    * This initialization creates a list of ops to apply to the default {@link EditorContext}

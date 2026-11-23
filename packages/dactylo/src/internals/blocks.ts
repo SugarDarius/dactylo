@@ -176,16 +176,18 @@ export function createParagraphBlock(opts: {
   metadata?: PBM
   posKey: PosKey
   parentId?: BlockId | null
+  createdAt?: Date
+  updatedAt?: Date | null
 }): ParagraphBlock {
   return {
     __type: 'paragraph',
     content: opts.content,
-    createdAt: new Date(),
+    createdAt: opts.createdAt ?? new Date(),
     id: generateBlockId(),
     metadata: (opts.metadata ?? {}) as PBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
-    updatedAt: null,
+    updatedAt: opts.updatedAt ?? null,
   }
 }
 
@@ -218,16 +220,18 @@ export function createQuoteBlock(opts: {
   metadata?: QBM
   posKey: PosKey
   parentId?: BlockId | null
+  createdAt?: Date
+  updatedAt?: Date | null
 }): QuoteBlock {
   return {
     __type: 'quote',
     content: opts.content,
-    createdAt: new Date(),
+    createdAt: opts.createdAt ?? new Date(),
     id: generateBlockId(),
     metadata: (opts.metadata ?? {}) as QBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
-    updatedAt: null,
+    updatedAt: opts.updatedAt ?? null,
   }
 }
 
@@ -243,17 +247,19 @@ export function createHeadingBlock(opts: {
   metadata?: HBM
   posKey: PosKey
   parentId?: BlockId | null
+  createdAt?: Date
+  updatedAt?: Date | null
 }): HeadingBlock {
   return {
     __type: 'heading',
     content: opts.content,
-    createdAt: new Date(),
+    createdAt: opts.createdAt ?? new Date(),
     id: generateBlockId(),
     level: opts.level,
     metadata: (opts.metadata ?? {}) as HBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
-    updatedAt: null,
+    updatedAt: opts.updatedAt ?? null,
   }
 }
 
@@ -268,16 +274,18 @@ export function createBulletListItemBlock(opts: {
   metadata?: BBM
   posKey: PosKey
   parentId?: BlockId | null
+  createdAt?: Date
+  updatedAt?: Date | null
 }): BulletListItemBlock {
   return {
     __type: 'bullet_list_item',
     content: opts.content,
-    createdAt: new Date(),
+    createdAt: opts.createdAt ?? new Date(),
     id: generateBlockId(),
     metadata: (opts.metadata ?? {}) as BBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
-    updatedAt: null,
+    updatedAt: opts.updatedAt ?? null,
   }
 }
 
@@ -296,6 +304,8 @@ export function createNumberedListItemBlock(opts: {
   parentId?: BlockId | null
   variant?: 'default' | 'alpha' | 'roman'
   markerNumbering?: string
+  createdAt?: Date
+  updatedAt?: Date | null
 }): NumberedListItemBlock {
   const variant = opts.variant ?? 'default'
   const markerNumbering =
@@ -305,13 +315,13 @@ export function createNumberedListItemBlock(opts: {
   return {
     __type: 'numbered_list_item',
     content: opts.content,
-    createdAt: new Date(),
+    createdAt: opts.createdAt ?? new Date(),
     id: generateBlockId(),
     markerNumbering,
     metadata: (opts.metadata ?? {}) as NBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
-    updatedAt: null,
+    updatedAt: opts.updatedAt ?? null,
     variant,
   }
 }
@@ -330,17 +340,19 @@ export function createCheckboxListItemBlock(opts: {
   posKey: PosKey
   parentId?: BlockId | null
   checked?: boolean
+  createdAt?: Date
+  updatedAt?: Date | null
 }): CheckboxListItemBlock {
   return {
     __type: 'checkbox_list_item',
     checked: opts.checked ?? false,
     content: opts.content,
-    createdAt: new Date(),
+    createdAt: opts.createdAt ?? new Date(),
     id: generateBlockId(),
     metadata: (opts.metadata ?? {}) as CBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
-    updatedAt: null,
+    updatedAt: opts.updatedAt ?? null,
   }
 }
 
@@ -356,15 +368,17 @@ export function createDividerBlock(opts: {
   metadata?: DBM
   posKey: PosKey
   parentId?: BlockId | null
+  createdAt?: Date
+  updatedAt?: Date | null
 }): DividerBlock {
   return {
     __type: 'divider',
-    createdAt: new Date(),
+    createdAt: opts.createdAt ?? new Date(),
     id: generateBlockId(),
     metadata: (opts.metadata ?? {}) as DBM,
     parentId: opts.parentId ?? null,
     posKey: opts.posKey,
-    updatedAt: null,
+    updatedAt: opts.updatedAt ?? null,
   }
 }
 

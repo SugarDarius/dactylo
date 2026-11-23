@@ -237,6 +237,39 @@ describe('OperationsEngine.buildInitialDocumentOps', () => {
       ])
     }
   })
+
+  test('fills omitted JSON metadata from engine initialMetadata', () => {
+    const { ops } = makeEngine().buildInitialDocumentOps({
+      blocks: [
+        {
+          content: [{ text: 'Hello', type: 'text' }],
+          type: 'paragraph',
+        },
+      ],
+    })
+
+    expectInsertBlockOps(ops)
+    const [op] = ops
+    if (op === undefined) {
+      throw new Error('op is undefined')
+    }
+
+    expect(isParagraphBlock(op.block)).toBe(true)
+    if (!isParagraphBlock(op.block)) {
+      return
+    }
+
+    expect(op.block.metadata).toEqual({ source: 'init-paragraph' })
+    expect(op.block.parentId).toBeNull()
+    if (op.block.content[0] === undefined) {
+      throw new Error('op.block.content[0] is undefined')
+    }
+    expect(isTextNode(op.block.content[0])).toBe(true)
+    if (!isTextNode(op.block.content[0])) {
+      return
+    }
+    expect(op.block.content[0].metadata).toEqual({ source: 'init-text' })
+  })
 })
 
 describe('TransactionPipeline JSON initialContent', () => {

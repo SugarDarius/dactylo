@@ -92,7 +92,7 @@ export type InlineNodeJsonSchema =
 /** JSON schema for {@link IBlock}. */
 export interface IBlockJsonSchema<M extends Metadata = Metadata> {
   /** Parent block identifier with nested blocks like list or quotes. */
-  readonly parentId: string | null
+  readonly parentId?: string | null
 
   /** Date as string in ISO format When the block was created.  */
   readonly createdAt?: string
@@ -304,7 +304,9 @@ export function validateIBlockFields(
   value: Record<string, unknown>,
   payload: Record<string, unknown>,
 ): void {
-  expectStringOrNull(value.parentId, 'parentId', payload)
+  if (value.parentId !== undefined) {
+    expectStringOrNull(value.parentId, 'parentId', payload)
+  }
   validateINodeFields(value, payload)
 }
 

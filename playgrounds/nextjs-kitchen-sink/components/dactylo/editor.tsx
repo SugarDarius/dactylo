@@ -1387,6 +1387,55 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         paragraph={{ initialMetadata: { fontSize: '16px' } }}
         mentions={{ enabled: true }}
         commandTrigger={{ enabled: true }}
+        initialContent={{
+          blocks: [
+            {
+              content: [
+                {
+                  text: 'Welcome to Dactylo 🚀',
+                  type: 'text',
+                },
+              ],
+              level: 1,
+              type: 'heading',
+            },
+            {
+              type: 'divider',
+            },
+            {
+              content: [
+                {
+                  text: 'Type ',
+                  type: 'text',
+                },
+                {
+                  marks: { code: true },
+                  text: '/',
+                  type: 'text',
+                },
+                {
+                  text: ' to open the command menu and discover blocks, formatting, and hidden features.',
+                  type: 'text',
+                },
+              ],
+              type: 'paragraph',
+            },
+            {
+              content: [{ text: 'Make it yours', type: 'text' }],
+              level: 3,
+              type: 'heading',
+            },
+            {
+              content: [
+                {
+                  text: '',
+                  type: 'text',
+                },
+              ],
+              type: 'paragraph',
+            },
+          ],
+        }}
       >
         <Toolbar />
         <EditableListener />

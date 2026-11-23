@@ -299,7 +299,7 @@ export class OperationsEngine {
 
     for (const jsonBlock of blocks) {
       const block = createBlockFromJson(jsonBlock, posKey, {
-        textMetadata: this.#initialMetadata.text,
+        initialMetadata: this.#initialMetadata,
       })
 
       ops.push({

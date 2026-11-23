@@ -1256,7 +1256,7 @@ export interface DactyloBaseOptions {
    * When no provided, the editor will be initialized with an empty document
    * containing a single {@link ParagraphBlock} owning a single {@link TextNode}.
    *
-   * It can be a JSON value (shape TBD) or a markdown string.
+   * It can be a {@link DocumentJsonSchema} or a markdown string.
    *
    * @example
    * ```ts

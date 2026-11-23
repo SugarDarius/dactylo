@@ -120,15 +120,17 @@ export function createTextNode(opts: {
   text: string
   metadata?: TNM
   marks?: Marks
+  createdAt?: Date
+  updatedAt?: Date | null
 }): TextNode {
   return {
     __type: 'text',
-    createdAt: new Date(),
+    createdAt: opts.createdAt ?? new Date(),
     id: generateNodeId(),
     marks: opts.marks ?? createBaseMarks(),
     metadata: (opts.metadata ?? {}) as TNM,
     text: sanitizeText(opts.text),
-    updatedAt: null,
+    updatedAt: opts.updatedAt ?? null,
   }
 }
 
@@ -141,14 +143,16 @@ export function isTextNode(node: InlineNode): node is TextNode {
 export function createLineBreakNode(
   opts: {
     metadata?: LBNM
+    createdAt?: Date
+    updatedAt?: Date | null
   } = {},
 ): LineBreakNode {
   return {
     __type: 'line_break',
-    createdAt: new Date(),
+    createdAt: opts.createdAt ?? new Date(),
     id: generateNodeId(),
     metadata: (opts.metadata ?? {}) as LBNM,
-    updatedAt: null,
+    updatedAt: opts.updatedAt ?? null,
   }
 }
 
@@ -168,15 +172,17 @@ export function createLinkNode(opts: {
   metadata?: LNM
   text: string
   marks?: Marks
+  createdAt?: Date
+  updatedAt?: Date | null
 }): LinkNode {
   return {
     __type: 'link',
-    createdAt: new Date(),
+    createdAt: opts.createdAt ?? new Date(),
     id: generateNodeId(),
     marks: opts.marks ?? createBaseMarks(),
     metadata: (opts.metadata ?? {}) as LNM,
     text: sanitizeText(opts.text),
-    updatedAt: null,
+    updatedAt: opts.updatedAt ?? null,
     url: {
       href: sanitizeLinkHref(opts.url.href),
       title: sanitizeText(opts.url.title),
@@ -196,17 +202,19 @@ export function createMentionNode(opts: {
     data: MNED
   }
   metadata?: MNM
+  createdAt?: Date
+  updatedAt?: Date | null
 }): MentionNode {
   return {
     __type: 'mention',
-    createdAt: new Date(),
+    createdAt: opts.createdAt ?? new Date(),
     entity: {
       data: opts.entity.data,
       id: opts.entity.id,
     },
     id: generateNodeId(),
     metadata: (opts.metadata ?? {}) as MNM,
-    updatedAt: null,
+    updatedAt: opts.updatedAt ?? null,
   }
 }
 

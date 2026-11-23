@@ -25,10 +25,27 @@ import {
   isMentionNode,
   isTextNode,
 } from '../../src/internals/nodes'
+import type { OperationsBuilderInitialMetadata } from '../../src/internals/operations-builder'
 import { makeInitialPosition } from '../../src/internals/position'
 
 const CREATED_AT = '2026-11-23T00:00:00.000Z'
-const EMPTY_TEXT_METADATA = { origin: 'empty-fallback' }
+const UPDATED_AT = '2026-11-23T12:00:00.000Z'
+
+const INITIAL_METADATA: OperationsBuilderInitialMetadata = {
+  bulletedList: { origin: 'init-bulleted' },
+  checkboxList: { origin: 'init-checkbox' },
+  divider: { origin: 'init-divider' },
+  heading: { origin: 'init-heading' },
+  lineBreak: { origin: 'init-line-break' },
+  link: { origin: 'init-link' },
+  mentions: { origin: 'init-mention' },
+  numberedList: { origin: 'init-numbered' },
+  paragraph: { origin: 'init-paragraph' },
+  quote: { origin: 'init-quote' },
+  text: { origin: 'init-text' },
+}
+
+const JSON_OPTS = { initialMetadata: INITIAL_METADATA }
 
 function nodeBase() {
   return {
@@ -78,7 +95,10 @@ function paragraphJson(
 
 describe('createInlineNodeFromJson', () => {
   test('mints a text node, copies marks, and sanitizes control characters', () => {
-    const node = createInlineNodeFromJson(textJson('a\u0000b', { bold: true }))
+    const node = createInlineNodeFromJson(
+      textJson('a\u0000b', { bold: true }),
+      JSON_OPTS,
+    )
 
     expect(isTextNode(node)).toBe(true)
     if (!isTextNode(node)) {
@@ -89,22 +109,25 @@ describe('createInlineNodeFromJson', () => {
     expect(node.text).toBe('ab')
     expect(node.marks.bold).toBe(true)
     expect(node.metadata).toEqual({ bag: 'from-json' })
-    expect(node.createdAt).toBeInstanceOf(Date)
+    expect(node.createdAt.toISOString()).toBe(CREATED_AT)
     expect(node.updatedAt).toBeNull()
   })
 
   test('mints a link node and strips a javascript href', () => {
-    const node = createInlineNodeFromJson({
-      ...nodeBase(),
-      marks: marks({ italic: true }),
-      text: 'click',
-      type: 'link',
-      url: {
-        // oxlint-disable-next-line no-script-url
-        href: 'javascript:alert(1)',
-        title: 'Example',
+    const node = createInlineNodeFromJson(
+      {
+        ...nodeBase(),
+        marks: marks({ italic: true }),
+        text: 'click',
+        type: 'link',
+        url: {
+          // oxlint-disable-next-line no-script-url
+          href: 'javascript:alert(1)',
+          title: 'Example',
+        },
       },
-    })
+      JSON_OPTS,
+    )
 
     expect(isLinkNode(node)).toBe(true)
     if (!isLinkNode(node)) {
@@ -118,11 +141,14 @@ describe('createInlineNodeFromJson', () => {
   })
 
   test('mints a mention node with the JSON entity', () => {
-    const node = createInlineNodeFromJson({
-      ...nodeBase(),
-      entity: { data: { email: 'jane@example.com' }, id: 'user_1' },
-      type: 'mention',
-    })
+    const node = createInlineNodeFromJson(
+      {
+        ...nodeBase(),
+        entity: { data: { email: 'jane@example.com' }, id: 'user_1' },
+        type: 'mention',
+      },
+      JSON_OPTS,
+    )
 
     expect(isMentionNode(node)).toBe(true)
     if (!isMentionNode(node)) {
@@ -136,19 +162,73 @@ describe('createInlineNodeFromJson', () => {
   })
 
   test('mints a line break node', () => {
-    const node = createInlineNodeFromJson({
-      ...nodeBase(),
-      type: 'line_break',
-    })
+    const node = createInlineNodeFromJson(
+      {
+        ...nodeBase(),
+        type: 'line_break',
+      },
+      JSON_OPTS,
+    )
 
     expect(isLineBreakNode(node)).toBe(true)
     expect(node.metadata).toEqual({ bag: 'from-json' })
+    expect(node.createdAt.toISOString()).toBe(CREATED_AT)
+  })
+
+  test('fills omitted metadata from initialMetadata and merges partial marks', () => {
+    const node = createInlineNodeFromJson(
+      { marks: { code: true }, text: 'Hello', type: 'text' },
+      JSON_OPTS,
+    )
+
+    expect(isTextNode(node)).toBe(true)
+    if (!isTextNode(node)) {
+      return
+    }
+
+    expect(node.metadata).toEqual(INITIAL_METADATA.text)
+    expect(node.marks).toEqual({ ...createBaseMarks(), code: true })
+  })
+
+  test('parses JSON updatedAt onto the node', () => {
+    const node = createInlineNodeFromJson(
+      { ...textJson(), updatedAt: UPDATED_AT },
+      JSON_OPTS,
+    )
+
+    expect(node.updatedAt?.toISOString()).toBe(UPDATED_AT)
+  })
+
+  test('uses initialMetadata when JSON omits it on link, mention, and line break', () => {
+    const link = createInlineNodeFromJson(
+      {
+        text: 'click',
+        type: 'link',
+        url: { href: 'https://example.com', title: '' },
+      },
+      JSON_OPTS,
+    )
+    const mention = createInlineNodeFromJson(
+      {
+        entity: { data: { email: 'jane@example.com' }, id: 'user_1' },
+        type: 'mention',
+      },
+      JSON_OPTS,
+    )
+    const lineBreak = createInlineNodeFromJson(
+      { type: 'line_break' },
+      JSON_OPTS,
+    )
+
+    expect(link.metadata).toEqual(INITIAL_METADATA.link)
+    expect(mention.metadata).toEqual(INITIAL_METADATA.mentions)
+    expect(lineBreak.metadata).toEqual(INITIAL_METADATA.lineBreak)
   })
 })
 
 describe('createInlineContentFromJson', () => {
   test('inserts one empty text node when the JSON array is empty', () => {
-    const content = createInlineContentFromJson([], EMPTY_TEXT_METADATA)
+    const content = createInlineContentFromJson([], JSON_OPTS)
 
     expect(content).toHaveLength(1)
     const [node] = content
@@ -159,7 +239,7 @@ describe('createInlineContentFromJson', () => {
 
     expect(node.text).toBe('')
     expect(node.marks).toEqual(createBaseMarks())
-    expect(node.metadata).toEqual(EMPTY_TEXT_METADATA)
+    expect(node.metadata).toEqual(INITIAL_METADATA.text)
   })
 
   test('maps JSON nodes in order and ignores the empty-text metadata bag', () => {
@@ -172,7 +252,7 @@ describe('createInlineContentFromJson', () => {
         },
         textJson('world'),
       ],
-      EMPTY_TEXT_METADATA,
+      JSON_OPTS,
     )
 
     expect(content.map((node) => node.__type)).toEqual([
@@ -190,10 +270,9 @@ describe('createInlineContentFromJson', () => {
 
 describe('createBlockFromJson', () => {
   const posKey = makeInitialPosition()
-  const opts = { textMetadata: EMPTY_TEXT_METADATA }
 
   test('builds a paragraph, drops JSON parentId, and uses the given posKey', () => {
-    const block = createBlockFromJson(paragraphJson(), posKey, opts)
+    const block = createBlockFromJson(paragraphJson(), posKey, JSON_OPTS)
 
     expect(isParagraphBlock(block)).toBe(true)
     if (!isParagraphBlock(block)) {
@@ -204,7 +283,7 @@ describe('createBlockFromJson', () => {
     expect(block.parentId).toBeNull()
     expect(block.posKey).toBe(posKey)
     expect(block.metadata).toEqual({ bag: 'from-json' })
-    expect(block.createdAt).toBeInstanceOf(Date)
+    expect(block.createdAt.toISOString()).toBe(CREATED_AT)
     expect(block.updatedAt).toBeNull()
     if (block.content[0] === undefined) {
       throw new Error('block.content[0] is undefined')
@@ -213,7 +292,7 @@ describe('createBlockFromJson', () => {
   })
 
   test('fills empty inline content with an empty text node', () => {
-    const block = createBlockFromJson(paragraphJson([]), posKey, opts)
+    const block = createBlockFromJson(paragraphJson([]), posKey, JSON_OPTS)
 
     expect(isParagraphBlock(block)).toBe(true)
     if (!isParagraphBlock(block)) {
@@ -223,7 +302,30 @@ describe('createBlockFromJson', () => {
     expect(block.content).toHaveLength(1)
     const [node] = block.content
     expect(node && isTextNode(node) && node.text).toBe('')
-    expect(node?.metadata).toEqual(EMPTY_TEXT_METADATA)
+    expect(node?.metadata).toEqual(INITIAL_METADATA.text)
+  })
+
+  test('fills omitted block metadata from initialMetadata', () => {
+    const paragraph = createBlockFromJson(
+      { content: [{ text: 'Hello', type: 'text' }], type: 'paragraph' },
+      posKey,
+      JSON_OPTS,
+    )
+    const divider = createBlockFromJson({ type: 'divider' }, posKey, JSON_OPTS)
+
+    expect(paragraph.metadata).toEqual(INITIAL_METADATA.paragraph)
+    expect(paragraph.parentId).toBeNull()
+    expect(divider.metadata).toEqual(INITIAL_METADATA.divider)
+  })
+
+  test('parses JSON updatedAt onto the block', () => {
+    const block = createBlockFromJson(
+      { ...paragraphJson(), updatedAt: UPDATED_AT },
+      posKey,
+      JSON_OPTS,
+    )
+
+    expect(block.updatedAt?.toISOString()).toBe(UPDATED_AT)
   })
 
   test('builds a heading with the JSON level', () => {
@@ -235,7 +337,7 @@ describe('createBlockFromJson', () => {
         type: 'heading',
       },
       posKey,
-      opts,
+      JSON_OPTS,
     )
 
     expect(isHeadingBlock(block)).toBe(true)
@@ -258,7 +360,7 @@ describe('createBlockFromJson', () => {
         type: 'quote',
       },
       posKey,
-      opts,
+      JSON_OPTS,
     )
     const bullet = createBlockFromJson(
       {
@@ -267,7 +369,7 @@ describe('createBlockFromJson', () => {
         type: 'bullet_list_item',
       },
       posKey,
-      opts,
+      JSON_OPTS,
     )
 
     expect(isQuoteBlock(quote)).toBe(true)
@@ -284,7 +386,7 @@ describe('createBlockFromJson', () => {
         variant: 'roman',
       },
       posKey,
-      opts,
+      JSON_OPTS,
     )
 
     expect(isNumberedListItemBlock(block)).toBe(true)
@@ -305,7 +407,7 @@ describe('createBlockFromJson', () => {
         type: 'checkbox_list_item',
       },
       posKey,
-      opts,
+      JSON_OPTS,
     )
 
     expect(isCheckboxListItemBlock(block)).toBe(true)
@@ -323,11 +425,12 @@ describe('createBlockFromJson', () => {
         type: 'divider',
       },
       posKey,
-      opts,
+      JSON_OPTS,
     )
 
     expect(isDividerBlock(block)).toBe(true)
     expect(block.parentId).toBeNull()
+    expect(block.createdAt.toISOString()).toBe(CREATED_AT)
     expect('content' in block).toBe(false)
   })
 })
