@@ -1414,7 +1414,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
                   type: 'text',
                 },
                 {
-                  text: ' to open the command menu and discover blocks, formatting, and hidden features.',
+                  text: ' to open the command menu and discover blocks and features.',
                   type: 'text',
                 },
               ],

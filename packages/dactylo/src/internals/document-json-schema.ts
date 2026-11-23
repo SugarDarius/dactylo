@@ -282,11 +282,21 @@ export function validateMarks(
     documentJsonSchemaError('Marks must be a plain object.', payload)
   }
 
-  expectBoolean(value.bold, 'marks.bold', payload)
-  expectBoolean(value.code, 'marks.code', payload)
-  expectBoolean(value.italic, 'marks.italic', payload)
-  expectBoolean(value.strikethrough, 'marks.strikethrough', payload)
-  expectBoolean(value.underline, 'marks.underline', payload)
+  if (value.bold !== undefined) {
+    expectBoolean(value.bold, 'marks.bold', payload)
+  }
+  if (value.code !== undefined) {
+    expectBoolean(value.code, 'marks.code', payload)
+  }
+  if (value.italic !== undefined) {
+    expectBoolean(value.italic, 'marks.italic', payload)
+  }
+  if (value.strikethrough !== undefined) {
+    expectBoolean(value.strikethrough, 'marks.strikethrough', payload)
+  }
+  if (value.underline !== undefined) {
+    expectBoolean(value.underline, 'marks.underline', payload)
+  }
 }
 
 /** Checks the shared `createdAt`, `updatedAt`, and `metadata` fields on a node. */
@@ -294,9 +304,15 @@ export function validateINodeFields(
   value: Record<string, unknown>,
   payload: Record<string, unknown>,
 ): void {
-  expectString(value.createdAt, 'createdAt', payload)
-  expectStringOrNull(value.updatedAt, 'updatedAt', payload)
-  expectJsonObject(value.metadata, 'metadata', payload)
+  if (value.createdAt !== undefined) {
+    expectString(value.createdAt, 'createdAt', payload)
+  }
+  if (value.updatedAt !== undefined) {
+    expectStringOrNull(value.updatedAt, 'updatedAt', payload)
+  }
+  if (value.metadata !== undefined) {
+    expectJsonObject(value.metadata, 'metadata', payload)
+  }
 }
 
 /** Checks the shared block fields, including `parentId`. */
@@ -331,12 +347,16 @@ export function validateInlineNode(
   switch (type) {
     case 'text': {
       expectString(value.text, 'text', payload)
-      validateMarks(value.marks, payload)
+      if (value.marks !== undefined) {
+        validateMarks(value.marks, payload)
+      }
       break
     }
     case 'link': {
       expectString(value.text, 'text', payload)
-      validateMarks(value.marks, payload)
+      if (value.marks !== undefined) {
+        validateMarks(value.marks, payload)
+      }
       if (!isPlainObject(value.url)) {
         documentJsonSchemaError('Link url must be a plain object.', payload)
       }
@@ -445,6 +465,7 @@ export function validateBlock(
  * Walks an unknown JSON payload and checks it matches {@link DocumentJsonSchema}.
  *
  * Empty `blocks` is fine. Extra keys are ignored.
+ * Optional fields (`createdAt`, `updatedAt`, `metadata`, `marks`) may be omitted.
  * Throws a {@link DactyloError} when the shape is wrong.
  */
 export function validateDocumentJsonSchema(

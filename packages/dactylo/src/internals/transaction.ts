@@ -14,7 +14,7 @@ import type {
 } from './augmentation'
 import type { BlockId } from './blocks'
 import { readTransferredData } from './clipboard'
-import { logOnceIf, warn, warnIf, warnOnceIf } from './console'
+import { error, logOnceIf, warn, warnIf, warnOnceIf } from './console'
 import {
   DEFAULT_BATCH_MAX_SIZE,
   INLINE_DETECTOR_TRIGGER_CHARACTER,
@@ -865,7 +865,7 @@ export class TransactionPipeline {
     for (const op of ops) {
       try {
         this.#operationsEngine.runtime.validateOp(next, op)
-      } catch (err) {
+      } catch (err: unknown) {
         this.#eventSources.transactionDidReject.notify(transaction)
         throw DactyloError.wrap(err)
       }
@@ -947,6 +947,7 @@ export class TransactionPipeline {
           )
         } else if (isJsonObject(initialContent)) {
           validateDocumentJsonSchema(initialContent)
+
           intent =
             this.#operationsEngine.buildInitialDocumentOps(initialContent)
           source = 'import'
@@ -985,10 +986,15 @@ export class TransactionPipeline {
 
       this.#documentStatus = 'ready'
       this.#notifyDocumentStatus()
-    } catch {
+    } catch (err: unknown) {
+      const wrapped = DactyloError.wrap(err)
+      error(wrapped.message, wrapped.stack)
+
       // @todo: add document error event
       this.#documentStatus = 'error'
       this.#notifyDocumentStatus()
+
+      throw wrapped
     }
   }
 

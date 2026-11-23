@@ -156,6 +156,28 @@ describe('validateDocumentJsonSchema', () => {
     ).not.toThrow()
   })
 
+  test('accepts a content dump that omits optional node and mark fields', () => {
+    expect(() =>
+      validateDocumentJsonSchema({
+        blocks: [
+          {
+            content: [{ text: 'Welcome', type: 'text' }],
+            level: 1,
+            type: 'heading',
+          },
+          { type: 'divider' },
+          {
+            content: [
+              { text: 'Type ', type: 'text' },
+              { marks: { code: true }, text: '/', type: 'text' },
+            ],
+            type: 'paragraph',
+          },
+        ],
+      }),
+    ).not.toThrow()
+  })
+
   test.each([
     { json: null, name: 'null' },
     { json: [], name: 'array' },
