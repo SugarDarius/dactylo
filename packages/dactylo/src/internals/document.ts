@@ -109,6 +109,15 @@ export interface DocumentState {
   readonly blockOrderById: readonly BlockId[]
 }
 
+/** Status of the document. */
+export type DocumentStatus =
+  /** The document is initializing. */
+  | 'initializing'
+  /** The document is ready (initialized) to work with. */
+  | 'ready'
+  /** The document is in an error state (failed to initialize). */
+  | 'error'
+
 /** Creates a default {@link DocumentState}. */
 export function createDocumentState(): DocumentState {
   return {

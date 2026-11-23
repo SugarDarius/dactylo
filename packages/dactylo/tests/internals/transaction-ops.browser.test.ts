@@ -33,6 +33,35 @@ describe('TransactionPipeline initialization', () => {
     expect(blockTexts(pipeline.context)).toEqual([''])
     expect(blockId).toBeDefined()
   })
+
+  test('empty pipeline is ready after construction', () => {
+    const pipeline = makePipeline()
+
+    expect(pipeline.documentStatus).toBe('ready')
+  })
+
+  test('documentStatus and documentReady do not replay after construction', () => {
+    const pipeline = makePipeline()
+    const statuses: string[] = []
+    let readyCount = 0
+
+    pipeline.events.documentStatus.subscribe((status) => {
+      statuses.push(status)
+    })
+    pipeline.events.documentReady.subscribe(() => {
+      readyCount += 1
+    })
+
+    expect(statuses).toEqual([])
+    expect(readyCount).toBe(0)
+  })
+
+  test('waitUntilDocumentReady resolves when the document is already ready', async () => {
+    const pipeline = makePipeline()
+
+    expect(pipeline.documentStatus).toBe('ready')
+    await expect(pipeline.waitUntilDocumentReady()).resolves.toBeUndefined()
+  })
 })
 
 describe('TransactionPipeline block commands', () => {

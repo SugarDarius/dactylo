@@ -19,6 +19,7 @@ import {
   DEFAULT_BATCH_MAX_SIZE,
   INLINE_DETECTOR_TRIGGER_CHARACTER,
 } from './constants'
+import type { DocumentStatus } from './document'
 import {
   createEditorContext,
   findInlineBufferPointerAtCursor,
@@ -357,14 +358,26 @@ export interface MentionDidCreatedEvent {
 /** Events emitted by the transaction pipeline */
 export interface TransactionPipelineEvents {
   /**
-   * Subscribes to the current editor context changes.
-   * Fires anytime the context is updated.
+   * Subscribes to the current {@link EditorContext} changes.
+   * 👉🏻 Fires anytime the context is updated.
    */
   readonly context: Observable<EditorContext>
 
   /**
+   * Subscribes to the {@link DocumentStatus} changes.
+   * 👉🏻  Fires anytime this status changes.
+   */
+  readonly documentStatus: Observable<DocumentStatus>
+
+  /**
+   * Subscribes to when the {@link DocumentStatus} is set to `ready`.
+   * 👉🏻 Fires once the document is ready to work with.
+   */
+  readonly documentReady: Observable<void>
+
+  /**
    * Subscribes to the history stack changes.
-   * Fires anytime the history stack is updated.
+   * 👉🏻  Fires anytime the history stack is updated.
    */
   readonly history: Observable<HistoryEvent>
 
@@ -374,7 +387,10 @@ export interface TransactionPipelineEvents {
    */
   readonly mentionBuffer: Observable<MentionBufferEvent>
 
-  /** Subscribes to mentions that were created. */
+  /**
+   * Subscribes to mentions that were created.
+   * 👉🏻  Fires anytime a mention is created.
+   */
   readonly mentionDidCreated: Observable<MentionDidCreatedEvent>
 
   /**
@@ -385,32 +401,38 @@ export interface TransactionPipelineEvents {
 
   /**
    * Subscribes to applied transactions.
-   * Fires anytime a transaction is applied.
+   * 👉🏻 Fires anytime a transaction is applied.
    */
   readonly transactionDidApply: Observable<Transaction>
 
   /**
    * Subscribes to rejected transactions.
-   * Fires anytime a transaction is rejected.
+   * 👉🏻  Fires anytime a transaction is rejected.
    */
   readonly transactionDidReject: Observable<Transaction>
 }
 
 /** Event sources for the transaction pipeline. */
 export interface TransactionPipelineEventSources {
-  /** The event source for the current editor context */
+  /** The event source for the current {@link EditorContext}. */
   readonly context: EventSource<EditorContext>
 
-  /** The event source for the history stack */
+  /** The event source for the {@link DocumentStatus}. */
+  readonly documentStatus: EventSource<DocumentStatus>
+
+  /** The event source for when the {@link DocumentStatus} is set to `ready`. */
+  readonly documentReady: EventSource<void>
+
+  /** The event source for the {@link HistoryStack}. */
   readonly history: EventSource<HistoryEvent>
 
-  /** The event source for a transaction that was applied. */
+  /** The event source for a {@link Transaction} that was applied. */
   readonly transactionDidApply: EventSource<Transaction>
 
-  /** The event source for a transaction that was rejected. */
+  /** The event source for a {@link Transaction} that was rejected. */
   readonly transactionDidReject: EventSource<Transaction>
 
-  /** The event source for a mention that was created. */
+  /** The event source for a {@link MentionNode} that was created. */
   readonly mentionDidCreated: EventSource<MentionDidCreatedEvent>
 }
 
@@ -568,6 +590,9 @@ export class TransactionPipeline {
   /** Current editor context */
   #context: EditorContext
 
+  /** Document status. */
+  #documentStatus: DocumentStatus
+
   /**
    * Whether the IME composition is currently active.
    * Covers gaps between events, where `isComposing` is missing or already `false`.
@@ -619,6 +644,7 @@ export class TransactionPipeline {
     }
 
     this.#context = createEditorContext()
+    this.#documentStatus = 'initializing'
 
     this.#batch = new Batch({
       maxSize: options.batch?.maxSize,
@@ -659,6 +685,8 @@ export class TransactionPipeline {
 
     this.#eventSources = {
       context: new EventSource<EditorContext>(),
+      documentReady: new EventSource<void>(),
+      documentStatus: new EventSource<DocumentStatus>(),
       history: new EventSource<HistoryEvent>(),
       mentionDidCreated: new EventSource<MentionDidCreatedEvent>(),
       transactionDidApply: new EventSource<Transaction>(),
@@ -671,6 +699,11 @@ export class TransactionPipeline {
   /** Returns the current editor context */
   get context(): EditorContext {
     return this.#context
+  }
+
+  /** Returns the current document status. */
+  get documentStatus(): DocumentStatus {
+    return this.#documentStatus
   }
 
   /** Whether the IME composition is currently active. */
@@ -691,6 +724,18 @@ export class TransactionPipeline {
   /** Returns the inline buffer for command trigger. */
   get commandTriggerInlineBuffer(): InlineBuffer<'command-trigger'> {
     return this.#commandTriggerBuffer
+  }
+
+  /** Waits until the document is ready to work with. */
+  waitUntilDocumentReady(): Promise<void> {
+    /** No to need to subscribe if at the time of the call the document is already ready. */
+    if (this.#documentStatus === 'ready') {
+      return Promise.resolve()
+    }
+
+    return new Promise((resolve) => {
+      this.#eventSources.documentReady.observable.subscribeOnce(resolve)
+    })
   }
 
   // ─── Core pipeline ────────────────────────────────────────────────
@@ -723,6 +768,18 @@ export class TransactionPipeline {
     }
 
     return text === this.#commandTrigger.character
+  }
+
+  /** Notifies the document status changes. */
+  #notifyDocumentStatus(): void {
+    const status = this.#documentStatus
+    this.#eventSources.documentStatus.notify(status)
+
+    if (status === 'ready') {
+      this.#eventSources.documentReady.notify()
+    }
+
+    // todo: add status error state.
   }
 
   /** Notifies the history stack changes. */
@@ -865,6 +922,9 @@ export class TransactionPipeline {
    * from `import` source when initial content is provided, otherwise it's from `editor` source.
    */
   #buildInitialEditorContext(initialContent: JsonValue | string | null): void {
+    this.#documentStatus = 'initializing'
+    this.#notifyDocumentStatus()
+
     if (initialContent !== null) {
       warnIf(
         this.#debug,
@@ -881,11 +941,16 @@ export class TransactionPipeline {
         source: 'editor',
       },
     })
+
+    this.#documentStatus = 'ready'
+    this.#notifyDocumentStatus()
   }
 
   /**
    * Enqueues or immediately dispatches operations depending on batch state.
-   * Mental model: #commit([op1, op2, …]) 👉🏻 this user action is one atomic transaction.
+   *
+   * Mental model: #commit([op1, op2, …]).
+   * 👉🏻 this user action is one atomic transaction.
    */
   #commit(ops: Operation[], policy?: TransactionPolicy): void {
     if (this.#batch.active) {
@@ -906,6 +971,8 @@ export class TransactionPipeline {
     return {
       commandTriggerBuffer: this.#commandTriggerBuffer.observable,
       context: this.#eventSources.context.observable,
+      documentReady: this.#eventSources.documentReady.observable,
+      documentStatus: this.#eventSources.documentStatus.observable,
       history: this.#eventSources.history.observable,
       mentionBuffer: this.#mentionBuffer.observable,
       mentionDidCreated: this.#eventSources.mentionDidCreated.observable,

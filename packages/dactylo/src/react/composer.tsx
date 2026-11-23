@@ -33,7 +33,7 @@ import {
   EDITABLE_NODE_STRIKETHROUGH_MARK_DATA_NAME,
   EDITABLE_NODE_UNDERLINE_MARK_DATA_NAME,
 } from '../internals/constants'
-import type { DocumentState } from '../internals/document'
+import type { DocumentState, DocumentStatus } from '../internals/document'
 import { paintTextForDOM } from '../internals/dom'
 import type { EditorContext } from '../internals/editor-context'
 import { isMarkEnabled } from '../internals/marks'
@@ -157,7 +157,7 @@ export function useInlineCommandTriggerQueryAnchorElement(): HTMLSpanElement | n
   )
 }
 
-// --- Editor Store ───────────────────────────────────--------------
+// --- Editor Context Store ───────────────────────────--------------
 
 /**
  * Subscribe to {@link EditorContext} and re-render only when
@@ -279,6 +279,68 @@ export function useEditableListener(
 
   useEffect(
     () => editor.events.editable.subscribe(stableListener),
+    [editor, stableListener],
+  )
+}
+
+/**
+ * Returns the current document status from the {@link EditorContext}.
+ *
+ * @example
+ * ```tsx
+ * const status = useDocumentStatus()
+ * console.log(status)
+ * ```
+ */
+export function useDocumentStatus(): DocumentStatus {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(
+    editor.events.documentStatus.subscribe.bind(editor),
+  )
+  const getSnapshot = useStableCallback(() => editor.getDocumentStatus())
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Get informed when the document status changes.
+ *
+ * @example
+ * ```tsx
+ * useDocumentStatusListener((status) => {
+ *   console.log(status)
+ * })
+ * ```
+ */
+export function useDocumentStatusListener(
+  listener: (status: DocumentStatus) => void,
+): void {
+  const { editor } = useComposer()
+  const stableListener = useStableCallback(listener)
+
+  useEffect(
+    () => editor.events.documentStatus.subscribe(stableListener),
+    [editor, stableListener],
+  )
+}
+
+/**
+ * Get informed once when the document is ready to work with.
+ *
+ * @example
+ * ```tsx
+ * useDocumentReadyListener(() => {
+ *   console.log('Document is ready to work with')
+ * })
+ * ```
+ */
+export function useDocumentReadyListener(listener: () => void): void {
+  const { editor } = useComposer()
+  const stableListener = useStableCallback(listener)
+
+  useEffect(
+    () => editor.events.documentReady.subscribeOnce(stableListener),
     [editor, stableListener],
   )
 }
@@ -1383,6 +1445,7 @@ export function useEditable() {
   const { editor } = useComposer()
 
   const canEdit = useCanEdit()
+  const docStatus = useDocumentStatus()
   const focused = useIsFocused()
 
   const cursorSelection = useCursorSelection()
@@ -1390,6 +1453,8 @@ export function useEditable() {
 
   const { focus } = useFocus()
   const { sendInput, sendKeydown } = useComposerInput()
+
+  const isReady = docStatus === 'ready'
 
   /**
    * `beforeinput` event handler used to capture the following input types:
@@ -1554,7 +1619,7 @@ export function useEditable() {
     return noop
   }, [canEdit, cursorSelection, rangeSelection, editor])
 
-  return { canEdit, editableRef, focused } as const
+  return { canEdit, editableRef, focused, isReady } as const
 }
 
 /**

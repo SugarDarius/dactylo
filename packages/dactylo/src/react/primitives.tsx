@@ -1102,7 +1102,7 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
 
     const didAutoFocusRef = useRef(false)
 
-    const { editableRef, canEdit, focused } = useEditable()
+    const { editableRef, canEdit, focused, isReady } = useEditable()
     const mergedRefs = mergeRefs(forwardedRef, editableRef)
 
     const { focus } = useFocus()
@@ -1114,7 +1114,13 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
     }, [canEdit])
 
     useIsomorphicLayoutEffect(() => {
-      if (canEdit && autoFocus && !focused && !didAutoFocusRef.current) {
+      if (
+        isReady &&
+        canEdit &&
+        autoFocus &&
+        !focused &&
+        !didAutoFocusRef.current
+      ) {
         didAutoFocusRef.current = true
         focus()
       }

@@ -28,6 +28,7 @@ export default defineConfig({
     'jsx-a11y/no-noninteractive-tabindex': 'off',
     'jsx-a11y/prefer-tag-over-role': 'off',
     'node/callback-return': 'off',
+    'promise/avoid-new': 'off',
     'promise/prefer-await-to-callbacks': 'off',
     'react/function-component-definition': 'off',
     'typescript/consistent-type-definitions': 'off',

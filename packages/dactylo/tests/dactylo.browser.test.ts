@@ -314,6 +314,37 @@ describe('Dactylo construction', () => {
   })
 })
 
+describe('Dactylo document status', () => {
+  test('empty editor is ready after construction', () => {
+    const editor = makeEditor()
+
+    expect(editor.getDocumentStatus()).toBe('ready')
+  })
+
+  test('documentStatus and documentReady do not replay after construction', () => {
+    const editor = makeEditor()
+    const statuses: string[] = []
+    let readyCount = 0
+
+    editor.events.documentStatus.subscribe((status) => {
+      statuses.push(status)
+    })
+    editor.events.documentReady.subscribe(() => {
+      readyCount += 1
+    })
+
+    expect(statuses).toEqual([])
+    expect(readyCount).toBe(0)
+  })
+
+  test('waitUntilDocumentReady resolves when the document is already ready', async () => {
+    const editor = makeEditor()
+
+    expect(editor.getDocumentStatus()).toBe('ready')
+    await expect(editor.waitUntilDocumentReady()).resolves.toBeUndefined()
+  })
+})
+
 describe('Dactylo selection', () => {
   test('focus places a caret at document end', () => {
     const editor = makeTypingEditor()

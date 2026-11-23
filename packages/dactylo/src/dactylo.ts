@@ -38,6 +38,7 @@ import {
   getInlineNodeSelectionCoverageTopology,
   isBlockWithInlineContentEmpty,
 } from './internals/document'
+import type { DocumentStatus } from './internals/document'
 import { DOMManager } from './internals/dom-manager'
 import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
@@ -468,6 +469,28 @@ export interface DactyloEventsApi {
   readonly errors: Observable<DactyloErrorEvent>
 
   /**
+   * Subscribes to the {@link DocumentStatus} changes.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.documentStatus.subscribe((event) => {
+   *  console.log(event.status)
+   * })
+   */
+  readonly documentStatus: Observable<DocumentStatus>
+
+  /**
+   * Subscribes to when the {@link DocumentStatus} is set to `ready`.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.documentReady.subscribeOnce(() => {
+   *  console.log('Document is ready to work with')
+   * })
+   */
+  readonly documentReady: Observable<void>
+
+  /**
    * Subscribes to the history stack changes.
    *
    * @example
@@ -480,7 +503,6 @@ export interface DactyloEventsApi {
 
   /**
    * Subscribes to the mention buffer changes.
-   * 👉🏻 Fires anytime the inline buffer is updated.
    *
    * @example
    * ```ts
@@ -505,7 +527,6 @@ export interface DactyloEventsApi {
 
   /**
    * Subscribes to the command trigger buffer changes.
-   * 👉🏻 Fires anytime the inline buffer is updated.
    *
    * @example
    * ```ts
@@ -1855,6 +1876,12 @@ export class Dactylo {
       /** Subscribes to the commands executed by the user/ai-agent. */
       commands: this.#eventSources.commands.observable,
 
+      /** Subscribes to when the {@link DocumentStatus} is set to `ready`. */
+      documentReady: this.#pipeline.events.documentReady,
+
+      /** Subscribes to the document status changes. */
+      documentStatus: this.#pipeline.events.documentStatus,
+
       /** Subscribe to the `editable` changes. */
       editable: this.#eventSources.editable.observable,
 
@@ -1864,10 +1891,7 @@ export class Dactylo {
       /** Subscribes to the history stack changes. */
       history: this.#pipeline.events.history,
 
-      /**
-       * Subscribes to the mention buffer changes.
-       * 👉🏻 Fires anytime the inline buffer is updated.
-       */
+      /** Subscribes to the mention buffer changes. */
       mentionBuffer: this.#pipeline.events.mentionBuffer,
 
       /** Subscribes to mentions that were created. */
@@ -2720,5 +2744,32 @@ export class Dactylo {
   subscribe(callback: SubscriberCallback<EditorContext>): UnsubscribeCallback {
     /** Passthrough for DX convenience. */
     return this.#pipeline.events.context.subscribe(callback)
+  }
+
+  /**
+   * Returns the current document status from the transaction pipeline.
+   *
+   * @example
+   * ```ts
+   * const status = editor.getDocumentStatus()
+   * console.log(status)
+   * ```
+   */
+  getDocumentStatus(): DocumentStatus {
+    /** Passthrough for DX convenience. */
+    return this.#pipeline.documentStatus
+  }
+
+  /**
+   * Waits until the document is ready to work with.
+   *
+   * @example
+   * ```ts
+   * await editor.waitUntilDocumentReady()
+   * ```
+   */
+  async waitUntilDocumentReady(): Promise<void> {
+    /** Passthrough for DX convenience. */
+    return await this.#pipeline.waitUntilDocumentReady()
   }
 }
