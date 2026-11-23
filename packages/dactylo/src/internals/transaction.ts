@@ -39,6 +39,7 @@ import type { MarkKey } from './marks'
 import type { NodeId } from './nodes'
 import type { Operation } from './operations'
 import type {
+  BuilderOpsIntent,
   InsertBlockSpec,
   InsertOrMoveBlockPosition,
   MutateBlockSpec,
@@ -930,32 +931,46 @@ export class TransactionPipeline {
     this.#documentStatus = 'initializing'
     this.#notifyDocumentStatus()
 
-    if (initialContent !== null) {
-      if (typeof initialContent === 'string') {
-        warnIf(
-          this.#debug,
-          `Initializing editor context from provided initial markdown string is not supported yet.`,
-        )
-      } else if (isJsonObject(initialContent)) {
-        warnIf(
-          this.#debug,
-          `Initializing editor context from provided initial JSON object is not supported yet.`,
-        )
+    try {
+      let intent: BuilderOpsIntent | null = null
+      let source: Extract<TransactionSource, 'editor' | 'import'> = 'editor'
+
+      if (initialContent !== null) {
+        if (typeof initialContent === 'string') {
+          warnIf(
+            this.#debug,
+            `Initializing editor context from provided initial markdown string is not supported yet.`,
+          )
+        } else if (isJsonObject(initialContent)) {
+          warnIf(
+            this.#debug,
+            `Initializing editor context from provided initial JSON object is not supported yet.`,
+          )
+        }
       }
+
+      if (intent === null) {
+        intent = this.#operationsEngine.buildInitialEmptyDocumentOps()
+        source = 'editor'
+      }
+
+      const { ops, label } = intent
+      this.#dispatch({
+        ops,
+        policy: {
+          label: transactionPolicyLabel('editor-context', label),
+          pushToHistory: false,
+          source,
+        },
+      })
+
+      this.#documentStatus = 'ready'
+      this.#notifyDocumentStatus()
+    } catch {
+      // @todo: add document error event
+      this.#documentStatus = 'error'
+      this.#notifyDocumentStatus()
     }
-
-    const { ops, label } = this.#operationsEngine.buildInitialEmptyDocumentOps()
-    this.#dispatch({
-      ops,
-      policy: {
-        label: transactionPolicyLabel('editor-context', label),
-        pushToHistory: false,
-        source: 'editor',
-      },
-    })
-
-    this.#documentStatus = 'ready'
-    this.#notifyDocumentStatus()
   }
 
   /**
