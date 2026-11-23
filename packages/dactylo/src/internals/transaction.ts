@@ -733,9 +733,11 @@ export class TransactionPipeline {
       return Promise.resolve()
     }
 
-    return new Promise((resolve) => {
+    const { promise, resolve } = Promise.withResolvers<void>()
+    const unsub =
       this.#eventSources.documentReady.observable.subscribeOnce(resolve)
-    })
+
+    return promise.finally(unsub)
   }
 
   // ─── Core pipeline ────────────────────────────────────────────────
