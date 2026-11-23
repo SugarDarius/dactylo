@@ -20,6 +20,7 @@ import {
   INLINE_DETECTOR_TRIGGER_CHARACTER,
 } from './constants'
 import type { DocumentStatus } from './document'
+import type { DocumentJsonSchema } from './document-json-schema'
 import {
   createEditorContext,
   findInlineBufferPointerAtCursor,
@@ -47,7 +48,7 @@ import type {
 import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
 import type { Selection } from './selection'
-import type { JsonValue } from './types'
+import { isJsonObject } from './utils'
 
 /** The source of a transaction. */
 export type TransactionSource =
@@ -445,7 +446,7 @@ export interface TransactionPipelineOptions {
   readonly debug: boolean
 
   /** Initial developer-provided content to initialize the {@link EditorContext}. */
-  readonly initialContent?: JsonValue | string
+  readonly initialContent?: DocumentJsonSchema | string
 
   /**
    * Configuration for creating initial metadata in {@link DocumentState}
@@ -923,15 +924,24 @@ export class TransactionPipeline {
    * This initialization creates a list of ops to apply to the default {@link EditorContext}
    * from `import` source when initial content is provided, otherwise it's from `editor` source.
    */
-  #buildInitialEditorContext(initialContent: JsonValue | string | null): void {
+  #buildInitialEditorContext(
+    initialContent: DocumentJsonSchema | string | null,
+  ): void {
     this.#documentStatus = 'initializing'
     this.#notifyDocumentStatus()
 
     if (initialContent !== null) {
-      warnIf(
-        this.#debug,
-        `Initializing editor context from provided initial content is not supported yet.`,
-      )
+      if (typeof initialContent === 'string') {
+        warnIf(
+          this.#debug,
+          `Initializing editor context from provided initial markdown string is not supported yet.`,
+        )
+      } else if (isJsonObject(initialContent)) {
+        warnIf(
+          this.#debug,
+          `Initializing editor context from provided initial JSON object is not supported yet.`,
+        )
+      }
     }
 
     const { ops, label } = this.#operationsEngine.buildEmptyDocumentOps()

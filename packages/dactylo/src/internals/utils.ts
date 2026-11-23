@@ -1,4 +1,5 @@
 import { PLAIN_TEXT_LINK_PATTERN } from './constants'
+import type { JsonObject, JsonValue } from './types'
 
 /**
  * Utility function to assert that a value is never
@@ -73,6 +74,45 @@ export function isPlainObject(blob: unknown): blob is Record<string, unknown> {
     typeof blob === 'object' &&
     Object.prototype.toString.call(blob) === '[object Object]'
   )
+}
+
+/** Checks whether a value is a JSON value. */
+export function isJsonValue(value: unknown): value is JsonValue {
+  if (value === null) {
+    return true
+  }
+
+  switch (typeof value) {
+    case 'string':
+    case 'boolean':
+    case 'number': {
+      return true
+    }
+    default: {
+      break
+    }
+  }
+
+  if (Array.isArray(value)) {
+    return value.every(isJsonValue)
+  }
+
+  if (!isPlainObject(value)) {
+    return false
+  }
+
+  for (const nested of Object.values(value)) {
+    if (nested !== undefined && !isJsonValue(nested)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+/** Checks whether a value is a JSON object. */
+export function isJsonObject(value: unknown): value is JsonObject {
+  return isPlainObject(value) && isJsonValue(value)
 }
 
 /** Omits the given keys from an object. */

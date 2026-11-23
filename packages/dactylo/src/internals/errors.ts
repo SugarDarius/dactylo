@@ -42,6 +42,8 @@ export type DactyloErrorCode =
   | 'NO_WINDOW_SELECTION'
   /** Unexpected failure when painting selection into the DOM. */
   | 'SELECTION_MANAGER_PAINTING'
+  /** Failed to deserialize a document from JSON schema. */
+  | 'DESERIALIZE_DOCUMENT_JSON_SCHEMA'
 
 /**
  * Typed error for Dactylo operations.

@@ -39,6 +39,7 @@ import {
   isBlockWithInlineContentEmpty,
 } from './internals/document'
 import type { DocumentStatus } from './internals/document'
+import type { DocumentJsonSchema } from './internals/document-json-schema'
 import { DOMManager } from './internals/dom-manager'
 import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
@@ -84,7 +85,6 @@ import type {
 } from './internals/transaction'
 import type {
   CancelCallback,
-  JsonValue,
   OptionalTupleUnless,
   Relax,
   WithUnless,
@@ -1274,7 +1274,7 @@ export interface DactyloBaseOptions {
    * })
    * ```
    */
-  readonly initialContent?: JsonValue | string
+  readonly initialContent?: DocumentJsonSchema | string
 
   /**
    * Whether the editor is editable.

@@ -69,6 +69,25 @@ export {
   isQuoteBlock,
 } from './internals/blocks'
 export type { DocumentState, DocumentStatus } from './internals/document'
+export type {
+  BulletListItemBlockJsonSchema,
+  BlockJsonSchema,
+  CheckboxListItemBlockJsonSchema,
+  DocumentJsonSchema,
+  DividerBlockJsonSchema,
+  HeadingBlockJsonSchema,
+  IBlockJsonSchema,
+  IBlockWithInlineContextJsonSchema,
+  InlineNodeJsonSchema,
+  INodeJsonSchema,
+  LineBreakNodeJsonSchema,
+  LinkNodeJsonSchema,
+  MentionNodeJsonSchema,
+  NumberedListItemBlockJsonSchema,
+  ParagraphBlockJsonSchema,
+  QuoteBlockJsonSchema,
+  TextNodeJsonSchema,
+} from './internals/document-json-schema'
 export type { EditorContext } from './internals/editor-context'
 export type { HistoryEvent, HistoryStackOptions } from './internals/history'
 export type { InlineBufferPointer } from './internals/inline-buffer'
