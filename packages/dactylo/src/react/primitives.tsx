@@ -1126,7 +1126,7 @@ const ComposerEditable = forwardRef<HTMLDivElement, ComposerEditableProps>(
         didAutoFocusRef.current = true
         focus()
       }
-    }, [autoFocus, canEdit, focused, focus])
+    }, [isReady, canEdit, autoFocus, focused, focus])
 
     return (
       <ComposerEditableProvider value={ctx}>
