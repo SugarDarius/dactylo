@@ -234,11 +234,10 @@ export type BlockJsonInput =
  * Why does it exist?
  * 👉🏻 Without `DocumentJsonInput`, seeding the editor from structured data would mean one of two bad options:
  *
- * | You have…          | Why it fails as `initialContent`              | How this type solves it                 |
- * |--------------------|-----------------------------------------------|-----------------------------------------|
- * | A markdown string  | Mentions, metadata, exact marks get lost      | Blocks and inline nodes are explicit    |
- * | A {@link DocumentState} | `Map`, `Date`, branded ids aren't JSON   | Plain objects + ISO strings             |
- * | Ad-hoc JSON        | No schema, silent shape bugs at runtime       | {@link validateDocumentJsonInput} throws |
+ * | You have…               | Why it fails as `initialContent`              | How this type solves it                  |
+ * |-------------------------|-----------------------------------------------|------------------------------------------|
+ * | A {@link DocumentState} | `Map`, `Date`, branded ids aren't JSON        | Plain objects + ISO strings              |
+ * | Ad-hoc JSON             | No schema, silent shape bugs at runtime       | {@link validateDocumentJsonInput} throws |
  *
  * Empty `blocks` is allowed: Dactylo then starts from a single empty
  * paragraph, same as omitting `initialContent`. Extra keys are ignored.
