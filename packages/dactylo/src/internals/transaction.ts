@@ -944,7 +944,7 @@ export class TransactionPipeline {
       }
     }
 
-    const { ops, label } = this.#operationsEngine.buildEmptyDocumentOps()
+    const { ops, label } = this.#operationsEngine.buildInitialEmptyDocumentOps()
     this.#dispatch({
       ops,
       policy: {

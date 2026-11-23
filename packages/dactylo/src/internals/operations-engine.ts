@@ -252,7 +252,7 @@ export class OperationsEngine {
    * Builds operations to initialize an empty document.
    * Creates a single {@link ParagraphBlock} owning a single {@link TextNode}.
    */
-  buildEmptyDocumentOps(): BuilderOpsIntent {
+  buildInitialEmptyDocumentOps(): BuilderOpsIntent {
     const ops: Operation[] = [
       {
         __type: 'insert_block',
@@ -281,7 +281,7 @@ export class OperationsEngine {
     const { blocks } = jsonDocument
 
     if (blocks.length <= 0) {
-      return this.buildEmptyDocumentOps()
+      return this.buildInitialEmptyDocumentOps()
     }
 
     const ops: Operation[] = []
