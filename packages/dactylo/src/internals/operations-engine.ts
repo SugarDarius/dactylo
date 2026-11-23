@@ -38,6 +38,7 @@ import {
   resolveInsertAfterBlockId,
   resolveMarkerNumberingForInsert,
 } from './document'
+import { createBlockFromJson } from './document-json'
 import type { DocumentJsonSchema } from './document-json-schema'
 import type { EditorContext } from './editor-context'
 import { ExitCodeMarkOpsBuilder } from './exit-code-mark-ops-builder'
@@ -81,7 +82,7 @@ import type {
 import { makeOperationsRuntime } from './operations-runtime'
 import type { OperationsRuntime } from './operations-runtime'
 import { PastePlainTextOpsBuilder } from './paste-plain-text-ops-builder'
-import { makeInitialPosition } from './position'
+import { makeInitialPosition, makePosition } from './position'
 import {
   areSelectionsEqual,
   createCursor,
@@ -276,15 +277,40 @@ export class OperationsEngine {
   /**
    * Builds operations to initialize a document from a {@link DocumentJsonSchema}.
    * When blocks from json schema are empty, we build an empty document.
+   *
+   * Nested blocks are not supported yet.
    */
   buildInitialDocumentOps(jsonDocument: DocumentJsonSchema): BuilderOpsIntent {
     const { blocks } = jsonDocument
 
     if (blocks.length <= 0) {
+      warnIf(
+        this.#debug,
+        'Initial document from JSON schema is empty.',
+        'OperationsEngine/buildInitialDocumentOps',
+      )
       return this.buildInitialEmptyDocumentOps()
     }
 
     const ops: Operation[] = []
+
+    let afterBlockId: BlockId | null = null
+    let posKey = makeInitialPosition()
+
+    for (const jsonBlock of blocks) {
+      const block = createBlockFromJson(jsonBlock, posKey, {
+        textMetadata: this.#initialMetadata.text,
+      })
+
+      ops.push({
+        __type: 'insert_block',
+        afterBlockId,
+        block,
+      })
+
+      afterBlockId = block.id
+      posKey = makePosition(posKey)
+    }
 
     return { label: 'initialize-document-from-json', ops }
   }

@@ -18,7 +18,10 @@ import {
   toAlphaIndex,
   toRomanIndex,
 } from '../../src/internals/numbered-list-marker'
-import { buildReindexNumberedListSuffixOps } from '../../src/internals/operations-builder'
+import {
+  buildReindexNumberedListItemsOps,
+  buildReindexNumberedListSuffixOps,
+} from '../../src/internals/operations-builder'
 import { makeInitialPosition } from '../../src/internals/position'
 
 const posKey = makeInitialPosition()
@@ -169,5 +172,50 @@ describe('buildReindexNumberedListSuffixOps', () => {
     expect(ops).toHaveLength(2)
     expect(markerFromPatch(ops[0]?.patch)).toBe('1.')
     expect(markerFromPatch(ops[1]?.patch)).toBe('2.')
+  })
+})
+
+describe('buildReindexNumberedListItemsOps', () => {
+  test('compacts a gapped same-variant run and keeps the first marker', () => {
+    const a = numbered('default', '1.')
+    const b = numbered('default', '5.')
+    const c = numbered('default', '9.')
+    const ops = buildReindexNumberedListItemsOps(stateOf([a, b, c]))
+
+    expect(ops).toHaveLength(2)
+    expect(ops[0]?.snapshot.id).toBe(b.id)
+    expect(markerFromPatch(ops[0]?.patch)).toBe('2.')
+    expect(ops[1]?.snapshot.id).toBe(c.id)
+    expect(markerFromPatch(ops[1]?.patch)).toBe('3.')
+  })
+
+  test('returns no ops when a run is already consecutive', () => {
+    const a = numbered('default', '2.')
+    const b = numbered('default', '3.')
+
+    expect(buildReindexNumberedListItemsOps(stateOf([a, b]))).toEqual([])
+  })
+
+  test('starts a new run after a non-numbered block', () => {
+    const a = numbered('default', '1.')
+    const gap = paragraph()
+    const b = numbered('default', '9.')
+    const c = numbered('default', '20.')
+    const ops = buildReindexNumberedListItemsOps(stateOf([a, gap, b, c]))
+
+    expect(ops).toHaveLength(1)
+    expect(ops[0]?.snapshot.id).toBe(c.id)
+    expect(markerFromPatch(ops[0]?.patch)).toBe('10.')
+  })
+
+  test('starts a new run when the variant changes', () => {
+    const a = numbered('default', '1.')
+    const b = numbered('alpha', 'a.')
+    const c = numbered('alpha', 'c.')
+    const ops = buildReindexNumberedListItemsOps(stateOf([a, b, c]))
+
+    expect(ops).toHaveLength(1)
+    expect(ops[0]?.snapshot.id).toBe(c.id)
+    expect(markerFromPatch(ops[0]?.patch)).toBe('b.')
   })
 })

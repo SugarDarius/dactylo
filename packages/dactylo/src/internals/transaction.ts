@@ -20,6 +20,7 @@ import {
   INLINE_DETECTOR_TRIGGER_CHARACTER,
 } from './constants'
 import type { DocumentStatus } from './document'
+import { validateDocumentJsonSchema } from './document-json-schema'
 import type { DocumentJsonSchema } from './document-json-schema'
 import {
   createEditorContext,
@@ -38,6 +39,7 @@ import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
 import type { NodeId } from './nodes'
 import type { Operation } from './operations'
+import { buildReindexNumberedListItemsOps } from './operations-builder'
 import type {
   BuilderOpsIntent,
   InsertBlockSpec,
@@ -924,6 +926,8 @@ export class TransactionPipeline {
    *
    * This initialization creates a list of ops to apply to the default {@link EditorContext}
    * from `import` source when initial content is provided, otherwise it's from `editor` source.
+   *
+   * {@link NumberedListItemBlock}s are re-indexed to maintain correct numbering.
    */
   #buildInitialEditorContext(
     initialContent: DocumentJsonSchema | string | null,
@@ -942,10 +946,10 @@ export class TransactionPipeline {
             `Initializing editor context from provided initial markdown string is not supported yet.`,
           )
         } else if (isJsonObject(initialContent)) {
-          warnIf(
-            this.#debug,
-            `Initializing editor context from provided initial JSON object is not supported yet.`,
-          )
+          validateDocumentJsonSchema(initialContent)
+          intent =
+            this.#operationsEngine.buildInitialDocumentOps(initialContent)
+          source = 'import'
         }
       }
 
@@ -963,6 +967,21 @@ export class TransactionPipeline {
           source,
         },
       })
+
+      const reindexOps = buildReindexNumberedListItemsOps(this.#context.state)
+      if (reindexOps.length > 0) {
+        this.#dispatch({
+          ops: reindexOps,
+          policy: {
+            label: transactionPolicyLabel(
+              'editor-context',
+              'reindex-numbered-list-items',
+            ),
+            pushToHistory: false,
+            source,
+          },
+        })
+      }
 
       this.#documentStatus = 'ready'
       this.#notifyDocumentStatus()

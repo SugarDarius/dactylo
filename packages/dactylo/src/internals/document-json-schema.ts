@@ -1,36 +1,50 @@
+import type {
+  BBM,
+  CBM,
+  DBM,
+  HBM,
+  LBNM,
+  LNM,
+  MNED,
+  MNM,
+  NBM,
+  PBM,
+  QBM,
+  TNM,
+} from './augmentation'
 import { DactyloError } from './errors'
 import type { Marks } from './marks'
-import type { JsonObject, JsonValue } from './types'
+import type { JsonObject, Metadata } from './types'
 import { assertNever, isJsonObject, isJsonValue, isPlainObject } from './utils'
 
 /** JSON schema for {@link Marks}. */
-export type MarksJsonSchema = Marks
+export type MarksJsonSchema = Partial<Marks>
 
 /** JSON schema for {@link INode}. */
-export interface INodeJsonSchema {
+export interface INodeJsonSchema<M extends Metadata = Metadata> {
   /** Date as string in ISO format When the node was created.  */
-  readonly createdAt: string
+  readonly createdAt?: string
 
   /** Date as string in ISO format When the node was last updated. */
-  readonly updatedAt: string | null
+  readonly updatedAt?: string | null
 
   /** Custom metadata defined by developers. */
-  readonly metadata: JsonObject
+  readonly metadata?: M
 }
 
 /** JSON schema for {@link TextNode}. */
-export interface TextNodeJsonSchema extends INodeJsonSchema {
+export interface TextNodeJsonSchema extends INodeJsonSchema<TNM> {
   readonly type: 'text'
 
   /** Text content of the node. */
   readonly text: string
 
   /** Marks decorating the text content */
-  readonly marks: MarksJsonSchema
+  readonly marks?: MarksJsonSchema
 }
 
 /** JSON schema for {@link LinkNode}. */
-export interface LinkNodeJsonSchema extends INodeJsonSchema {
+export interface LinkNodeJsonSchema extends INodeJsonSchema<LNM> {
   readonly type: 'link'
 
   /** URL of the link. */
@@ -46,11 +60,11 @@ export interface LinkNodeJsonSchema extends INodeJsonSchema {
   readonly text: string
 
   /** Marks decorating the text content */
-  readonly marks: MarksJsonSchema
+  readonly marks?: MarksJsonSchema
 }
 
 /** JSON schema for {@link MentionNode}. */
-export interface MentionNodeJsonSchema extends INodeJsonSchema {
+export interface MentionNodeJsonSchema extends INodeJsonSchema<MNM> {
   readonly type: 'mention'
 
   /** Entity related to the mention. */
@@ -59,12 +73,12 @@ export interface MentionNodeJsonSchema extends INodeJsonSchema {
     readonly id: string
 
     /** Developer-provided additional JSON structured data to store with the mention's entity. */
-    readonly data: JsonValue
+    readonly data: MNED
   }
 }
 
 /** JSON schema for {@link LineBreakNode}. */
-export interface LineBreakNodeJsonSchema extends INodeJsonSchema {
+export interface LineBreakNodeJsonSchema extends INodeJsonSchema<LBNM> {
   readonly type: 'line_break'
 }
 
@@ -76,28 +90,30 @@ export type InlineNodeJsonSchema =
   | LineBreakNodeJsonSchema
 
 /** JSON schema for {@link IBlock}. */
-export interface IBlockJsonSchema {
+export interface IBlockJsonSchema<M extends Metadata = Metadata> {
   /** Parent block identifier with nested blocks like list or quotes. */
   readonly parentId: string | null
 
   /** Date as string in ISO format When the block was created.  */
-  readonly createdAt: string
+  readonly createdAt?: string
 
   /** Date as string in ISO format When the block was last updated. */
-  readonly updatedAt: string | null
+  readonly updatedAt?: string | null
 
   /** Custom metadata defined by developers. */
-  readonly metadata: JsonObject
+  readonly metadata?: M
 }
 
 /** JSON schema for {@link IBlockWithInlineContext}. */
-export interface IBlockWithInlineContextJsonSchema extends IBlockJsonSchema {
+export interface IBlockWithInlineContextJsonSchema<
+  M extends Metadata = Metadata,
+> extends IBlockJsonSchema<M> {
   /** Inline content tree for the block. */
   readonly content: readonly InlineNodeJsonSchema[]
 }
 
 /** JSON schema for {@link HeadingBlock}. */
-export interface HeadingBlockJsonSchema extends IBlockWithInlineContextJsonSchema {
+export interface HeadingBlockJsonSchema extends IBlockWithInlineContextJsonSchema<HBM> {
   readonly type: 'heading'
 
   /** Level of the heading. */
@@ -105,22 +121,22 @@ export interface HeadingBlockJsonSchema extends IBlockWithInlineContextJsonSchem
 }
 
 /** JSON schema for {@link ParagraphBlock}. */
-export interface ParagraphBlockJsonSchema extends IBlockWithInlineContextJsonSchema {
+export interface ParagraphBlockJsonSchema extends IBlockWithInlineContextJsonSchema<PBM> {
   readonly type: 'paragraph'
 }
 
 /** JSON schema for {@link QuoteBlock}. */
-export interface QuoteBlockJsonSchema extends IBlockWithInlineContextJsonSchema {
+export interface QuoteBlockJsonSchema extends IBlockWithInlineContextJsonSchema<QBM> {
   readonly type: 'quote'
 }
 
 /** JSON schema for {@link BulletListItemBlock}. */
-export interface BulletListItemBlockJsonSchema extends IBlockWithInlineContextJsonSchema {
+export interface BulletListItemBlockJsonSchema extends IBlockWithInlineContextJsonSchema<BBM> {
   readonly type: 'bullet_list_item'
 }
 
 /** JSON schema for {@link NumberedListItemBlock}. */
-export interface NumberedListItemBlockJsonSchema extends IBlockWithInlineContextJsonSchema {
+export interface NumberedListItemBlockJsonSchema extends IBlockWithInlineContextJsonSchema<NBM> {
   readonly type: 'numbered_list_item'
 
   /** Variant to use in order to display item marker. */
@@ -131,7 +147,7 @@ export interface NumberedListItemBlockJsonSchema extends IBlockWithInlineContext
 }
 
 /** JSON schema for {@link CheckboxListItemBlock}. */
-export interface CheckboxListItemBlockJsonSchema extends IBlockWithInlineContextJsonSchema {
+export interface CheckboxListItemBlockJsonSchema extends IBlockWithInlineContextJsonSchema<CBM> {
   readonly type: 'checkbox_list_item'
 
   /** Whether the item is checked. */
@@ -139,7 +155,7 @@ export interface CheckboxListItemBlockJsonSchema extends IBlockWithInlineContext
 }
 
 /** JSON schema for {@link DividerBlock}. */
-export interface DividerBlockJsonSchema extends IBlockJsonSchema {
+export interface DividerBlockJsonSchema extends IBlockJsonSchema<DBM> {
   readonly type: 'divider'
 }
 
@@ -427,7 +443,7 @@ export function validateBlock(
  * Walks an unknown JSON payload and checks it matches {@link DocumentJsonSchema}.
  *
  * Empty `blocks` is fine. Extra keys are ignored.
- * Throws a {@link DactyloError} (`DESERIALIZE_DOCUMENT_JSON_SCHEMA`) when the shape is wrong.
+ * Throws a {@link DactyloError} when the shape is wrong.
  */
 export function validateDocumentJsonSchema(
   json: unknown,

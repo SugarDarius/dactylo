@@ -1823,6 +1823,49 @@ export function buildReindexNumberedListSuffixOps(
 }
 
 /**
+ * Builds `update_block` ops so every numbered-list run in document order
+ * stays consecutive.
+ *
+ * Each run keeps its first stored marker. Later same-variant items increment.
+ * A non-numbered block or a variant change starts a new run.
+ */
+export function buildReindexNumberedListItemsOps(
+  state: DocumentState,
+): UpdateBlockOp[] {
+  const ops: UpdateBlockOp[] = []
+  let previous: {
+    markerNumbering: string
+    variant: NumberedListItemBlock['variant']
+  } | null = null
+
+  for (const blockId of state.blockOrderById) {
+    const block = state.blocks.get(blockId)
+    if (block === undefined || !isNumberedListItemBlock(block)) {
+      previous = null
+      continue
+    }
+
+    const { markerNumbering, variant } = block
+    if (previous === null || previous.variant !== variant) {
+      previous = { markerNumbering, variant }
+      continue
+    }
+
+    const desired = getMarkerNumbering(previous.markerNumbering, variant)
+    if (desired !== markerNumbering) {
+      ops.push({
+        __type: 'update_block',
+        patch: touchBlock({ ...block, markerNumbering: desired }),
+        snapshot: block,
+      })
+    }
+    previous = { markerNumbering: desired, variant }
+  }
+
+  return ops
+}
+
+/**
  * Reindexes the run after a numbered item that left the list
  * (delete, merge, or mutate to paragraph).
  */
