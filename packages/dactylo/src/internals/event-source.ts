@@ -6,8 +6,19 @@ export type UnsubscribeCallback = () => void
 
 /** An observable that can be subscribed to and notified about events. */
 export interface Observable<T> {
-  /** Register a callback function called when the event source emits an events. */
-  subscribe: (callback: SubscriberCallback<T>) => UnsubscribeCallback
+  /** Subscribes a callback function to call when the event source emits an event. */
+  readonly subscribe: (callback: SubscriberCallback<T>) => UnsubscribeCallback
+
+  /**
+   * Register a one-time callback function to be called whenever the event
+   * source emits an event.
+   *
+   * Subscribes a callback function to call only once when the event source emits an event.
+   * Once the event is emitted, the callback is unsubscribed automatically.
+   */
+  readonly subscribeOnce: (
+    callback: SubscriberCallback<T>,
+  ) => UnsubscribeCallback
 }
 /**
  * An event source that can be subscribed to and notified about events.
@@ -36,11 +47,31 @@ export class EventSource<T> {
   /** An observable that can be subscribed to and notified about events. */
   get observable(): Observable<T> {
     return {
-      /** Register a callback function called when the event source emits an events. */
+      /** R Subscribes a callback function to call when the event source emits an event. */
       subscribe: (callback: SubscriberCallback<T>): UnsubscribeCallback => {
         this.#callbacks.add(callback)
 
         return () => this.#callbacks.delete(callback)
+      },
+
+      /**
+       * Register a one-time callback function to be called whenever the event
+       * source emits an event.
+       *
+       * Subscribes a callback function to call only once when the event source emits an event.
+       * Once the event is emitted, the callback is unsubscribed automatically.
+       */
+      subscribeOnce: (callback: SubscriberCallback<T>): UnsubscribeCallback => {
+        const wrapper = (event: T): void => {
+          this.#callbacks.delete(wrapper)
+          callback(event)
+        }
+
+        this.#callbacks.add(wrapper)
+
+        return () => {
+          this.#callbacks.delete(wrapper)
+        }
       },
     }
   }
