@@ -2,6 +2,8 @@ import { describe, expect, test } from 'vitest'
 
 import type { BlockId } from '../../src/internals/blocks'
 import { isNumberedListItemBlock } from '../../src/internals/blocks'
+import type { DocumentJsonSchema } from '../../src/internals/document-json-schema'
+import { DactyloError } from '../../src/internals/errors'
 import {
   createLineBreakNode,
   createTextNode,
@@ -11,15 +13,20 @@ import type { MutateBlockSpec } from '../../src/internals/operations-builder'
 import {
   assertUndoRedo,
   blockTexts,
+  collectDocumentLifecycleNotifies,
   focus,
   hardBreak,
   makePipeline,
   requireCursor,
   selectOffsetsInCurrentNode,
+  silenceDactyloErrorLog,
   snapshot,
   typeLines,
   typeText,
 } from '../utils/pipeline'
+
+/** JSON that fails schema validation so init can reach the error path. */
+const INVALID_DOCUMENT_JSON = { blocks: {} } as unknown as DocumentJsonSchema
 
 describe('TransactionPipeline initialization', () => {
   test('starts with one empty paragraph and no history', () => {
@@ -40,10 +47,11 @@ describe('TransactionPipeline initialization', () => {
     expect(pipeline.documentStatus).toBe('ready')
   })
 
-  test('documentStatus and documentReady do not replay after construction', () => {
+  test('documentStatus, documentReady, and documentError do not replay after construction', () => {
     const pipeline = makePipeline()
     const statuses: string[] = []
     let readyCount = 0
+    let errorCount = 0
 
     pipeline.events.documentStatus.subscribe((status) => {
       statuses.push(status)
@@ -51,9 +59,48 @@ describe('TransactionPipeline initialization', () => {
     pipeline.events.documentReady.subscribe(() => {
       readyCount += 1
     })
+    pipeline.events.documentError.subscribe(() => {
+      errorCount += 1
+    })
 
     expect(statuses).toEqual([])
     expect(readyCount).toBe(0)
+    expect(errorCount).toBe(0)
+  })
+
+  test('documentReady emits durationMs when initialization succeeds', () => {
+    const lifecycle = collectDocumentLifecycleNotifies(() => {
+      const pipeline = makePipeline()
+      expect(pipeline.documentStatus).toBe('ready')
+    })
+
+    expect(lifecycle.statuses).toEqual(['initializing', 'ready'])
+    expect(lifecycle.ready).toHaveLength(1)
+    expect(lifecycle.ready[0]?.durationMs).toBeGreaterThanOrEqual(0)
+    expect(lifecycle.errors).toEqual([])
+  })
+
+  test('documentError emits when initial JSON is invalid', () => {
+    const restoreErrorLog = silenceDactyloErrorLog()
+
+    try {
+      const lifecycle = collectDocumentLifecycleNotifies(() => {
+        expect(() =>
+          makePipeline({ initialContent: INVALID_DOCUMENT_JSON }),
+        ).toThrow(DactyloError)
+      })
+
+      expect(lifecycle.statuses).toEqual(['initializing', 'error'])
+      expect(lifecycle.ready).toEqual([])
+      expect(lifecycle.errors).toHaveLength(1)
+      expect(lifecycle.errors[0]?.durationMs).toBeGreaterThanOrEqual(0)
+      expect(lifecycle.errors[0]?.error).toBeInstanceOf(DactyloError)
+      expect(lifecycle.errors[0]?.error.code).toBe(
+        'DESERIALIZE_DOCUMENT_JSON_SCHEMA',
+      )
+    } finally {
+      restoreErrorLog()
+    }
   })
 
   test('waitUntilDocumentReady resolves when the document is already ready', async () => {

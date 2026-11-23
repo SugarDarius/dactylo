@@ -33,6 +33,7 @@ import {
   DEFAULT_PARAGRAPH_PLACEHOLDER,
   DEFAULT_QUOTE_PLACEHOLDER,
 } from '../src/internals/constants'
+import type { DocumentJsonSchema } from '../src/internals/document-json-schema'
 import { DactyloError } from '../src/internals/errors'
 import type { HistoryEvent } from '../src/internals/history'
 import { isMarkEnabled } from '../src/internals/marks'
@@ -64,11 +65,16 @@ import {
 } from './utils/editor'
 import {
   blockTexts,
+  collectDocumentLifecycleNotifies,
   firstInlineBlock,
   nthInlineBlock,
   requireCursor,
+  silenceDactyloErrorLog,
   snapshot,
 } from './utils/pipeline'
+
+/** JSON that fails schema validation so init can reach the error path. */
+const INVALID_DOCUMENT_JSON = { blocks: {} } as unknown as DocumentJsonSchema
 
 function threeNumberedEditor() {
   const editor = makeTypingEditor()
@@ -320,10 +326,11 @@ describe('Dactylo document status', () => {
     expect(editor.getDocumentStatus()).toBe('ready')
   })
 
-  test('documentStatus and documentReady do not replay after construction', () => {
+  test('documentStatus, documentReady, and documentError do not replay after construction', () => {
     const editor = makeEditor()
     const statuses: string[] = []
     let readyCount = 0
+    let errorCount = 0
 
     editor.events.documentStatus.subscribe((status) => {
       statuses.push(status)
@@ -331,9 +338,48 @@ describe('Dactylo document status', () => {
     editor.events.documentReady.subscribe(() => {
       readyCount += 1
     })
+    editor.events.documentError.subscribe(() => {
+      errorCount += 1
+    })
 
     expect(statuses).toEqual([])
     expect(readyCount).toBe(0)
+    expect(errorCount).toBe(0)
+  })
+
+  test('documentReady emits durationMs when initialization succeeds', () => {
+    const lifecycle = collectDocumentLifecycleNotifies(() => {
+      const editor = makeEditor()
+      expect(editor.getDocumentStatus()).toBe('ready')
+    })
+
+    expect(lifecycle.statuses).toEqual(['initializing', 'ready'])
+    expect(lifecycle.ready).toHaveLength(1)
+    expect(lifecycle.ready[0]?.durationMs).toBeGreaterThanOrEqual(0)
+    expect(lifecycle.errors).toEqual([])
+  })
+
+  test('documentError emits when initial JSON is invalid', () => {
+    const restoreErrorLog = silenceDactyloErrorLog()
+
+    try {
+      const lifecycle = collectDocumentLifecycleNotifies(() => {
+        expect(() =>
+          makeEditor({ initialContent: INVALID_DOCUMENT_JSON }),
+        ).toThrow(DactyloError)
+      })
+
+      expect(lifecycle.statuses).toEqual(['initializing', 'error'])
+      expect(lifecycle.ready).toEqual([])
+      expect(lifecycle.errors).toHaveLength(1)
+      expect(lifecycle.errors[0]?.durationMs).toBeGreaterThanOrEqual(0)
+      expect(lifecycle.errors[0]?.error).toBeInstanceOf(DactyloError)
+      expect(lifecycle.errors[0]?.error.code).toBe(
+        'DESERIALIZE_DOCUMENT_JSON_SCHEMA',
+      )
+    } finally {
+      restoreErrorLog()
+    }
   })
 
   test('waitUntilDocumentReady resolves when the document is already ready', async () => {

@@ -1,4 +1,4 @@
-import { expect } from 'vitest'
+import { expect, vi } from 'vitest'
 
 import {
   isBulletListItemBlock,
@@ -10,13 +10,18 @@ import {
   isQuoteBlock,
 } from '../../src/internals/blocks'
 import type { Block, BlockWithInlineContent } from '../../src/internals/blocks'
+import * as dactyloConsole from '../../src/internals/console'
 import { DOM_ZERO_WIDTH_SPACE_UNICODE_CODEPOINT } from '../../src/internals/constants'
 import {
   getBlock,
   getBlockWithInlineContent,
 } from '../../src/internals/document'
+import type { DocumentStatus } from '../../src/internals/document'
+import type { DocumentJsonSchema } from '../../src/internals/document-json-schema'
 import { paintTextForDOM } from '../../src/internals/dom'
 import type { EditorContext } from '../../src/internals/editor-context'
+import { DactyloError } from '../../src/internals/errors'
+import { EventSource } from '../../src/internals/event-source'
 import type { Marks } from '../../src/internals/marks'
 import type { InlineNode } from '../../src/internals/nodes'
 import {
@@ -32,6 +37,10 @@ import {
 } from '../../src/internals/selection'
 import type { Selection, TextCursor } from '../../src/internals/selection'
 import { TransactionPipeline } from '../../src/internals/transaction'
+import type {
+  DocumentErrorEvent,
+  DocumentReadyEvent,
+} from '../../src/internals/transaction'
 
 /** Snapshot of a document used to assert undo restores structure, not timestamps. */
 export interface DocumentSnapshot {
@@ -74,16 +83,79 @@ type SerializedInline = {
 
 /** Builds a pipeline with markdown on, mentions off, autolink off by default (stable typing). */
 export function makePipeline(
-  opts: { markdown?: boolean; autolink?: boolean } = {},
+  opts: {
+    markdown?: boolean
+    autolink?: boolean
+    initialContent?: DocumentJsonSchema | string
+  } = {},
 ): TransactionPipeline {
   return new TransactionPipeline({
     autolink: { enabled: opts.autolink ?? false },
     commandTrigger: { character: '/', enabled: false },
     debug: false,
     engine: { locales: 'en-US' },
+    initialContent: opts.initialContent,
     markdown: { enabled: opts.markdown ?? true },
     mentions: { character: '@', enabled: false },
   })
+}
+
+function isDocumentStatus(event: unknown): event is DocumentStatus {
+  return event === 'initializing' || event === 'ready' || event === 'error'
+}
+
+function isDocumentReadyEvent(event: unknown): event is DocumentReadyEvent {
+  if (typeof event !== 'object' || event === null || !('durationMs' in event)) {
+    return false
+  }
+  if ('error' in event) {
+    return false
+  }
+  return typeof event.durationMs === 'number'
+}
+
+function isDocumentErrorEvent(event: unknown): event is DocumentErrorEvent {
+  if (typeof event !== 'object' || event === null || !('durationMs' in event)) {
+    return false
+  }
+  if (!('error' in event) || !(event.error instanceof DactyloError)) {
+    return false
+  }
+  return typeof event.durationMs === 'number'
+}
+
+/**
+ * Captures document status / ready / error payloads notified during `run`.
+ *
+ * Init events fire inside the constructor, so tests cannot subscribe in time.
+ */
+export function collectDocumentLifecycleNotifies(run: () => void): {
+  readonly errors: DocumentErrorEvent[]
+  readonly ready: DocumentReadyEvent[]
+  readonly statuses: DocumentStatus[]
+} {
+  const spy = vi.spyOn(EventSource.prototype, 'notify')
+  try {
+    run()
+    const payloads = spy.mock.calls.map(([event]) => event)
+    return {
+      errors: payloads.filter(isDocumentErrorEvent),
+      ready: payloads.filter(isDocumentReadyEvent),
+      statuses: payloads.filter(isDocumentStatus),
+    }
+  } finally {
+    spy.mockRestore()
+  }
+}
+
+/** Silences branded `error()` logs from init failures. */
+export function silenceDactyloErrorLog(): () => void {
+  const spy = vi.spyOn(dactyloConsole, 'error').mockImplementation(() => {
+    /* expected init failure */
+  })
+  return () => {
+    spy.mockRestore()
+  }
 }
 
 /** Places the caret at the end of the document. */

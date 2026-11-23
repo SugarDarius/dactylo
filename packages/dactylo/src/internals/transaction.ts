@@ -329,6 +329,21 @@ export interface Transaction {
   readonly policy?: TransactionPolicy
 }
 
+/** Event emitted when {@link DocumentStatus} is set to `ready`. */
+export interface DocumentReadyEvent {
+  /** The duration in milliseconds it took to set the {@link DocumentStatus} to `ready`. */
+  readonly durationMs: number
+}
+
+/** Event emitted when {@link DocumentStatus} is set to `error`. */
+export interface DocumentErrorEvent {
+  /** The error that occurred thrown by {@link TransactionPipeline}. */
+  readonly error: DactyloError
+
+  /** The duration in milliseconds it took to set the {@link DocumentStatus} to `error`. */
+  readonly durationMs: number
+}
+
 /** Alias for the emitted mention buffer event. */
 export type MentionBufferEvent = InlineBufferEvent<'mention'>
 
@@ -377,7 +392,13 @@ export interface TransactionPipelineEvents {
    * Subscribes to when the {@link DocumentStatus} is set to `ready`.
    * 👉🏻 Fires once the document is ready to work with.
    */
-  readonly documentReady: Observable<void>
+  readonly documentReady: Observable<DocumentReadyEvent>
+
+  /**
+   * Subscribes to when the {@link DocumentStatus} is set to `error`.
+   * 👉🏻 Fires once the document is in error state.
+   */
+  readonly documentError: Observable<DocumentErrorEvent>
 
   /**
    * Subscribes to the history stack changes.
@@ -425,7 +446,10 @@ export interface TransactionPipelineEventSources {
   readonly documentStatus: EventSource<DocumentStatus>
 
   /** The event source for when the {@link DocumentStatus} is set to `ready`. */
-  readonly documentReady: EventSource<void>
+  readonly documentReady: EventSource<DocumentReadyEvent>
+
+  /** The event source for when the {@link DocumentStatus} is set to `error`. */
+  readonly documentError: EventSource<DocumentErrorEvent>
 
   /** The event source for the {@link HistoryStack}. */
   readonly history: EventSource<HistoryEvent>
@@ -689,7 +713,8 @@ export class TransactionPipeline {
 
     this.#eventSources = {
       context: new EventSource<EditorContext>(),
-      documentReady: new EventSource<void>(),
+      documentError: new EventSource<DocumentErrorEvent>(),
+      documentReady: new EventSource<DocumentReadyEvent>(),
       documentStatus: new EventSource<DocumentStatus>(),
       history: new EventSource<HistoryEvent>(),
       mentionDidCreated: new EventSource<MentionDidCreatedEvent>(),
@@ -738,8 +763,9 @@ export class TransactionPipeline {
     }
 
     const { promise, resolve } = Promise.withResolvers<void>()
-    const unsub =
-      this.#eventSources.documentReady.observable.subscribeOnce(resolve)
+    const unsub = this.#eventSources.documentReady.observable.subscribeOnce(
+      () => resolve(),
+    )
 
     return promise.finally(unsub)
   }
@@ -774,18 +800,6 @@ export class TransactionPipeline {
     }
 
     return text === this.#commandTrigger.character
-  }
-
-  /** Notifies the document status changes. */
-  #notifyDocumentStatus(): void {
-    const status = this.#documentStatus
-    this.#eventSources.documentStatus.notify(status)
-
-    if (status === 'ready') {
-      this.#eventSources.documentReady.notify()
-    }
-
-    // todo: add status error state.
   }
 
   /** Notifies the history stack changes. */
@@ -932,8 +946,10 @@ export class TransactionPipeline {
   #buildInitialEditorContext(
     initialContent: DocumentJsonSchema | string | null,
   ): void {
+    const startedAt = Date.now()
+
     this.#documentStatus = 'initializing'
-    this.#notifyDocumentStatus()
+    this.#eventSources.documentStatus.notify(this.#documentStatus)
 
     try {
       let intent: BuilderOpsIntent | null = null
@@ -984,15 +1000,26 @@ export class TransactionPipeline {
         })
       }
 
+      const durationMs = Date.now() - startedAt
       this.#documentStatus = 'ready'
-      this.#notifyDocumentStatus()
+
+      this.#eventSources.documentStatus.notify(this.#documentStatus)
+      this.#eventSources.documentReady.notify({
+        durationMs,
+      })
     } catch (err: unknown) {
+      const durationMs = Date.now() - startedAt
+
       const wrapped = DactyloError.wrap(err)
       error(wrapped.message, wrapped.stack)
 
       // @todo: add document error event
       this.#documentStatus = 'error'
-      this.#notifyDocumentStatus()
+      this.#eventSources.documentStatus.notify(this.#documentStatus)
+      this.#eventSources.documentError.notify({
+        durationMs,
+        error: wrapped,
+      })
 
       throw wrapped
     }
@@ -1023,6 +1050,7 @@ export class TransactionPipeline {
     return {
       commandTriggerBuffer: this.#commandTriggerBuffer.observable,
       context: this.#eventSources.context.observable,
+      documentError: this.#eventSources.documentError.observable,
       documentReady: this.#eventSources.documentReady.observable,
       documentStatus: this.#eventSources.documentStatus.observable,
       history: this.#eventSources.history.observable,

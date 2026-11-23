@@ -141,6 +141,8 @@ export type {
 export { shallow } from './internals/shallow'
 export type {
   CommandTriggerBufferEvent,
+  DocumentErrorEvent,
+  DocumentReadyEvent,
   MentionBufferEvent,
   MentionDidCreatedEvent,
   Transaction,

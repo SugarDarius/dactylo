@@ -54,6 +54,8 @@ import type {
 import { shallow } from '../internals/shallow'
 import type {
   CommandTriggerBufferEvent,
+  DocumentErrorEvent,
+  DocumentReadyEvent,
   MentionBufferEvent,
   MentionDidCreatedEvent,
   Transaction,
@@ -335,12 +337,36 @@ export function useDocumentStatusListener(
  * })
  * ```
  */
-export function useDocumentReadyListener(listener: () => void): void {
+export function useDocumentReadyListener(
+  listener: (event: DocumentReadyEvent) => void,
+): void {
   const { editor } = useComposer()
   const stableListener = useStableCallback(listener)
 
   useEffect(
     () => editor.events.documentReady.subscribeOnce(stableListener),
+    [editor, stableListener],
+  )
+}
+
+/**
+ * Get informed once when the document is in error state.
+ *
+ * @example
+ * ```tsx
+ * useDocumentErrorListener((event) => {
+ *   console.log('Document is in error state', event.error)
+ * })
+ * ```
+ */
+export function useDocumentErrorListener(
+  listener: (event: DocumentErrorEvent) => void,
+): void {
+  const { editor } = useComposer()
+  const stableListener = useStableCallback(listener)
+
+  useEffect(
+    () => editor.events.documentError.subscribeOnce(stableListener),
     [editor, stableListener],
   )
 }

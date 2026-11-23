@@ -14,6 +14,7 @@ export {
   useComposerInput,
   useCursorSelection,
   useDividers,
+  useDocumentErrorListener,
   useDocumentStatus,
   useDocumentStatusListener,
   useDocumentReadyListener,

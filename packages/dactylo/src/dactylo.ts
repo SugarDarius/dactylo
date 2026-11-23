@@ -78,6 +78,8 @@ import type {
 import { TransactionPipeline } from './internals/transaction'
 import type {
   CommandTriggerBufferEvent,
+  DocumentErrorEvent,
+  DocumentReadyEvent,
   MentionBufferEvent,
   MentionDidCreatedEvent,
   Transaction,
@@ -488,7 +490,18 @@ export interface DactyloEventsApi {
    *  console.log('Document is ready to work with')
    * })
    */
-  readonly documentReady: Observable<void>
+  readonly documentReady: Observable<DocumentReadyEvent>
+
+  /**
+   * Subscribes to when the {@link DocumentStatus} is set to `error`.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.documentError.subscribeOnce((event) => {
+   *  console.log('Document is in error state', event.error)
+   * })
+   */
+  readonly documentError: Observable<DocumentErrorEvent>
 
   /**
    * Subscribes to the history stack changes.
@@ -1875,6 +1888,9 @@ export class Dactylo {
 
       /** Subscribes to the commands executed by the user/ai-agent. */
       commands: this.#eventSources.commands.observable,
+
+      /** Subscribes to when the {@link DocumentStatus} is set to `error`. */
+      documentError: this.#pipeline.events.documentError,
 
       /** Subscribes to when the {@link DocumentStatus} is set to `ready`. */
       documentReady: this.#pipeline.events.documentReady,
