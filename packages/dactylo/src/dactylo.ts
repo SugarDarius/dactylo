@@ -1559,7 +1559,10 @@ export class Dactylo {
       return true
     }, 'Mention and command trigger characters must be different')
 
-    if (options.initialContent !== undefined) {
+    if (
+      options.initialContent !== undefined &&
+      typeof options.initialContent !== 'string'
+    ) {
       validateDocumentJsonSchema(options.initialContent)
     }
 
