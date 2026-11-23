@@ -1,7 +1,7 @@
 {
   "name": "@sugardarius/dactylo",
   "version": "1.0.0-alpha.1",
-  "description": "A block-based rich-text markdown editor.",
+  "description": "A headless block-based rich-text markdown editor.",
   "keywords": [
     "block-based",
     "editor",
