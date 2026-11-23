@@ -39,6 +39,7 @@ import {
   isBlockWithInlineContentEmpty,
 } from './internals/document'
 import type { DocumentStatus } from './internals/document'
+import { validateDocumentJsonSchema } from './internals/document-json-schema'
 import type { DocumentJsonSchema } from './internals/document-json-schema'
 import { DOMManager } from './internals/dom-manager'
 import { isMarkActiveInContext } from './internals/editor-context'
@@ -1557,6 +1558,10 @@ export class Dactylo {
 
       return true
     }, 'Mention and command trigger characters must be different')
+
+    if (options.initialContent !== undefined) {
+      validateDocumentJsonSchema(options.initialContent)
+    }
 
     this.#editable = options.editable ?? true
     this.#debug = options.debug ?? false

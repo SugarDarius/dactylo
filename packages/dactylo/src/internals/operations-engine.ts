@@ -38,6 +38,7 @@ import {
   resolveInsertAfterBlockId,
   resolveMarkerNumberingForInsert,
 } from './document'
+import type { DocumentJsonSchema } from './document-json-schema'
 import type { EditorContext } from './editor-context'
 import { ExitCodeMarkOpsBuilder } from './exit-code-mark-ops-builder'
 import { GraphemeOffsetCaret } from './grapheme'
@@ -270,6 +271,22 @@ export class OperationsEngine {
     ]
 
     return { label: 'initialize-empty-document', ops }
+  }
+
+  /**
+   * Builds operations to initialize a document from a {@link DocumentJsonSchema}.
+   * When blocks from json schema are empty, we build an empty document.
+   */
+  buildInitialDocumentOps(jsonDocument: DocumentJsonSchema): BuilderOpsIntent {
+    const { blocks } = jsonDocument
+
+    if (blocks.length <= 0) {
+      return this.buildEmptyDocumentOps()
+    }
+
+    const ops: Operation[] = []
+
+    return { label: 'initialize-document-from-json', ops }
   }
 
   // --- Marks operations ─────────────────────────────────────────----
