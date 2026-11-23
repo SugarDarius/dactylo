@@ -147,9 +147,9 @@ describe('metadata aliases', () => {
 
     editor.blocks.commands.insert({
       spec: {
-        type: 'paragraph',
         // @ts-expect-error nested objects are not a valid Metadata value
         metadata: { fontSize: { nested: true } },
+        type: 'paragraph',
       },
     })
   })
@@ -164,16 +164,16 @@ describe('metadata aliases', () => {
     editor.blocks.commands.patch({
       blockId,
       spec: {
+        metadata: { policy: 'merge', value: { source: 'import' } },
         type: 'paragraph',
-        metadata: { value: { source: 'import' }, policy: 'merge' },
       },
     })
     editor.blocks.commands.patch({
       blockId,
       spec: {
-        type: 'paragraph',
         // @ts-expect-error patch metadata is { value, policy? }, not the bag
         metadata: { source: 'import' },
+        type: 'paragraph',
       },
     })
   })
@@ -227,7 +227,7 @@ describe('WithUnless', () => {
   test('DactyloOptions accepts optional initialContent as JSON or markdown', () => {
     expectTypeOf({ initialContent: '# Hello' }).toExtend<DactyloOptions>()
     expectTypeOf({
-      initialContent: { type: 'paragraph' },
+      initialContent: { blocks: [] },
     }).toExtend<DactyloOptions>()
   })
 })
