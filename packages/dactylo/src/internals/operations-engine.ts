@@ -38,8 +38,8 @@ import {
   resolveInsertAfterBlockId,
   resolveMarkerNumberingForInsert,
 } from './document'
-import { createBlockFromJson } from './document-json'
-import type { DocumentJsonSchema } from './document-json-schema'
+import type { DocumentJsonInput } from './document-json-input'
+import { createBlockFromJsonInput } from './document-json-input'
 import type { EditorContext } from './editor-context'
 import { ExitCodeMarkOpsBuilder } from './exit-code-mark-ops-builder'
 import { GraphemeOffsetCaret } from './grapheme'
@@ -275,13 +275,13 @@ export class OperationsEngine {
   }
 
   /**
-   * Builds operations to initialize a document from a {@link DocumentJsonSchema}.
+   * Builds operations to initialize a document from a {@link DocumentJsonInput}.
    * When blocks from json schema are empty, we build an empty document.
    *
    * Nested blocks are not supported yet.
    */
-  buildInitialDocumentOps(jsonDocument: DocumentJsonSchema): BuilderOpsIntent {
-    const { blocks } = jsonDocument
+  buildInitialDocumentOps(input: DocumentJsonInput): BuilderOpsIntent {
+    const { blocks } = input
 
     if (blocks.length <= 0) {
       warnIf(
@@ -298,7 +298,7 @@ export class OperationsEngine {
     let posKey = makeInitialPosition()
 
     for (const jsonBlock of blocks) {
-      const block = createBlockFromJson(jsonBlock, posKey, {
+      const block = createBlockFromJsonInput(jsonBlock, posKey, {
         initialMetadata: this.#initialMetadata,
       })
 

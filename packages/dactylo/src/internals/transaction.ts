@@ -20,8 +20,8 @@ import {
   INLINE_DETECTOR_TRIGGER_CHARACTER,
 } from './constants'
 import type { DocumentStatus } from './document'
-import { validateDocumentJsonSchema } from './document-json-schema'
-import type { DocumentJsonSchema } from './document-json-schema'
+import { validateDocumentJsonInput } from './document-json-input'
+import type { DocumentJsonInput } from './document-json-input'
 import {
   createEditorContext,
   findInlineBufferPointerAtCursor,
@@ -473,7 +473,7 @@ export interface TransactionPipelineOptions {
   readonly debug: boolean
 
   /** Initial developer-provided content to initialize the {@link EditorContext}. */
-  readonly initialContent?: DocumentJsonSchema | string
+  readonly initialContent?: DocumentJsonInput | string
 
   /**
    * Configuration for creating initial metadata in {@link DocumentState}
@@ -935,7 +935,7 @@ export class TransactionPipeline {
    * with a single {@link ParagraphBlock} owning a single {@link TextNode}.
    *
    * Otherwise we build the initial {@link DocumentState} provided from either:
-   *  - A {@link DocumentJsonSchema} validated against the current schema version.
+   *  - A {@link DocumentJsonInput} validated against the current schema version.
    *  - A markdown string validated against the current schema version.
    *
    * This initialization creates a list of ops to apply to the default {@link EditorContext}
@@ -943,9 +943,7 @@ export class TransactionPipeline {
    *
    * {@link NumberedListItemBlock}s are re-indexed to maintain correct numbering.
    */
-  #buildInitialEditorContext(
-    initialContent: DocumentJsonSchema | string | null,
-  ): void {
+  #buildInitialEditorContext(input: DocumentJsonInput | string | null): void {
     const startedAt = Date.now()
 
     this.#documentStatus = 'initializing'
@@ -955,17 +953,16 @@ export class TransactionPipeline {
       let intent: BuilderOpsIntent | null = null
       let source: Extract<TransactionSource, 'editor' | 'import'> = 'editor'
 
-      if (initialContent !== null) {
-        if (typeof initialContent === 'string') {
+      if (input !== null) {
+        if (typeof input === 'string') {
           warnIf(
             this.#debug,
             `Initializing editor context from provided initial markdown string is not supported yet.`,
           )
-        } else if (isJsonObject(initialContent)) {
-          validateDocumentJsonSchema(initialContent)
+        } else if (isJsonObject(input)) {
+          validateDocumentJsonInput(input)
 
-          intent =
-            this.#operationsEngine.buildInitialDocumentOps(initialContent)
+          intent = this.#operationsEngine.buildInitialDocumentOps(input)
           source = 'import'
         }
       }

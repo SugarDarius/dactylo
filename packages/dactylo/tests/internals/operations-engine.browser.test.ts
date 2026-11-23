@@ -4,7 +4,7 @@ import {
   isNumberedListItemBlock,
   isParagraphBlock,
 } from '../../src/internals/blocks'
-import type { DocumentJsonSchema } from '../../src/internals/document-json-schema'
+import type { DocumentJsonInput } from '../../src/internals/document-json-input'
 import { isTextNode } from '../../src/internals/nodes'
 import type { InsertBlockOp } from '../../src/internals/operations'
 import type { OperationsBuilderInitialMetadata } from '../../src/internals/operations-builder'
@@ -50,7 +50,7 @@ function textNode(text = 'Hello') {
   }
 }
 
-function coveringDocument(): DocumentJsonSchema {
+function coveringDocument(): DocumentJsonInput {
   return {
     blocks: [
       {

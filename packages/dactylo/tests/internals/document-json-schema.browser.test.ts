@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { validateDocumentJsonSchema } from '../../src/internals/document-json-schema'
+import { validateDocumentJsonInput } from '../../src/internals/document-json-input'
 import { DactyloError, isDactyloError } from '../../src/internals/errors'
 
 const CREATED_AT = '2026-11-23T00:00:00.000Z'
@@ -121,30 +121,30 @@ function coveringDocument() {
 
 function expectSchemaError(json: unknown): void {
   try {
-    validateDocumentJsonSchema(json)
+    validateDocumentJsonInput(json)
   } catch (error) {
     expect(error).toBeInstanceOf(DactyloError)
     expect(isDactyloError(error) ? error.code : undefined).toBe(
-      'DESERIALIZE_DOCUMENT_JSON_SCHEMA',
+      'DESERIALIZE_DOCUMENT_JSON_INPUT',
     )
     return
   }
 
-  expect.unreachable('Expected validateDocumentJsonSchema to throw')
+  expect.unreachable('Expected validateDocumentJsonInput to throw')
 }
 
-describe('validateDocumentJsonSchema', () => {
+describe('validateDocumentJsonInput', () => {
   test('accepts an empty blocks array', () => {
-    expect(() => validateDocumentJsonSchema({ blocks: [] })).not.toThrow()
+    expect(() => validateDocumentJsonInput({ blocks: [] })).not.toThrow()
   })
 
   test('accepts every block and inline type', () => {
-    expect(() => validateDocumentJsonSchema(coveringDocument())).not.toThrow()
+    expect(() => validateDocumentJsonInput(coveringDocument())).not.toThrow()
   })
 
   test('accepts a block with parentId omitted', () => {
     expect(() =>
-      validateDocumentJsonSchema(
+      validateDocumentJsonInput(
         documentOf({
           content: [textNode()],
           createdAt: CREATED_AT,
@@ -158,7 +158,7 @@ describe('validateDocumentJsonSchema', () => {
 
   test('accepts a content dump that omits optional node and mark fields', () => {
     expect(() =>
-      validateDocumentJsonSchema({
+      validateDocumentJsonInput({
         blocks: [
           {
             content: [{ text: 'Welcome', type: 'text' }],

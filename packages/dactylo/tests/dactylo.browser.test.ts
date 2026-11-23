@@ -33,7 +33,7 @@ import {
   DEFAULT_PARAGRAPH_PLACEHOLDER,
   DEFAULT_QUOTE_PLACEHOLDER,
 } from '../src/internals/constants'
-import type { DocumentJsonSchema } from '../src/internals/document-json-schema'
+import type { DocumentJsonInput } from '../src/internals/document-json-input'
 import { DactyloError } from '../src/internals/errors'
 import type { HistoryEvent } from '../src/internals/history'
 import { isMarkEnabled } from '../src/internals/marks'
@@ -74,7 +74,9 @@ import {
 } from './utils/pipeline'
 
 /** JSON that fails schema validation so init can reach the error path. */
-const INVALID_DOCUMENT_JSON = { blocks: {} } as unknown as DocumentJsonSchema
+const INVALID_DOCUMENT_JSON = {
+  blocks: {},
+} as unknown as DocumentJsonInput
 
 function threeNumberedEditor() {
   const editor = makeTypingEditor()
@@ -375,7 +377,7 @@ describe('Dactylo document status', () => {
       expect(lifecycle.errors[0]?.durationMs).toBeGreaterThanOrEqual(0)
       expect(lifecycle.errors[0]?.error).toBeInstanceOf(DactyloError)
       expect(lifecycle.errors[0]?.error.code).toBe(
-        'DESERIALIZE_DOCUMENT_JSON_SCHEMA',
+        'DESERIALIZE_DOCUMENT_JSON_INPUT',
       )
     } finally {
       restoreErrorLog()

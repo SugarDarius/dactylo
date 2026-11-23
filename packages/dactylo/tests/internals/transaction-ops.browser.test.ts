@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import type { BlockId } from '../../src/internals/blocks'
 import { isNumberedListItemBlock } from '../../src/internals/blocks'
-import type { DocumentJsonSchema } from '../../src/internals/document-json-schema'
+import type { DocumentJsonInput } from '../../src/internals/document-json-input'
 import { DactyloError } from '../../src/internals/errors'
 import {
   createLineBreakNode,
@@ -26,7 +26,9 @@ import {
 } from '../utils/pipeline'
 
 /** JSON that fails schema validation so init can reach the error path. */
-const INVALID_DOCUMENT_JSON = { blocks: {} } as unknown as DocumentJsonSchema
+const INVALID_DOCUMENT_JSON = {
+  blocks: {},
+} as unknown as DocumentJsonInput
 
 describe('TransactionPipeline initialization', () => {
   test('starts with one empty paragraph and no history', () => {
@@ -96,7 +98,7 @@ describe('TransactionPipeline initialization', () => {
       expect(lifecycle.errors[0]?.durationMs).toBeGreaterThanOrEqual(0)
       expect(lifecycle.errors[0]?.error).toBeInstanceOf(DactyloError)
       expect(lifecycle.errors[0]?.error.code).toBe(
-        'DESERIALIZE_DOCUMENT_JSON_SCHEMA',
+        'DESERIALIZE_DOCUMENT_JSON_INPUT',
       )
     } finally {
       restoreErrorLog()

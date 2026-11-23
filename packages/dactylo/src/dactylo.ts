@@ -39,7 +39,7 @@ import {
   isBlockWithInlineContentEmpty,
 } from './internals/document'
 import type { DocumentStatus } from './internals/document'
-import type { DocumentJsonSchema } from './internals/document-json-schema'
+import type { DocumentJsonInput } from './internals/document-json-input'
 import { DOMManager } from './internals/dom-manager'
 import { isMarkActiveInContext } from './internals/editor-context'
 import type { EditorContext } from './internals/editor-context'
@@ -1269,7 +1269,7 @@ export interface DactyloBaseOptions {
    * When no provided, the editor will be initialized with an empty document
    * containing a single {@link ParagraphBlock} owning a single {@link TextNode}.
    *
-   * It can be a {@link DocumentJsonSchema} or a markdown string.
+   * It can be a {@link DocumentJsonInput} or a markdown string.
    *
    * @example
    * ```ts
@@ -1287,7 +1287,7 @@ export interface DactyloBaseOptions {
    * })
    * ```
    */
-  readonly initialContent?: DocumentJsonSchema | string
+  readonly initialContent?: DocumentJsonInput | string
 
   /**
    * Whether the editor is editable.

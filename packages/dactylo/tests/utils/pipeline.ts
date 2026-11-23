@@ -17,7 +17,7 @@ import {
   getBlockWithInlineContent,
 } from '../../src/internals/document'
 import type { DocumentStatus } from '../../src/internals/document'
-import type { DocumentJsonSchema } from '../../src/internals/document-json-schema'
+import type { DocumentJsonInput } from '../../src/internals/document-json-input'
 import { paintTextForDOM } from '../../src/internals/dom'
 import type { EditorContext } from '../../src/internals/editor-context'
 import { DactyloError } from '../../src/internals/errors'
@@ -86,7 +86,7 @@ export function makePipeline(
   opts: {
     markdown?: boolean
     autolink?: boolean
-    initialContent?: DocumentJsonSchema | string
+    initialContent?: DocumentJsonInput | string
   } = {},
 ): TransactionPipeline {
   return new TransactionPipeline({

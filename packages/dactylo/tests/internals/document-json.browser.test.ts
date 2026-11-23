@@ -10,14 +10,14 @@ import {
   isQuoteBlock,
 } from '../../src/internals/blocks'
 import {
-  createBlockFromJson,
-  createInlineContentFromJson,
-  createInlineNodeFromJson,
-} from '../../src/internals/document-json'
+  createBlockFromJsonInput,
+  createInlineContentFromJsonInput,
+  createInlineNodeFromJsonInput,
+} from '../../src/internals/document-json-input'
 import type {
-  BlockJsonSchema,
-  InlineNodeJsonSchema,
-} from '../../src/internals/document-json-schema'
+  BlockJsonInput,
+  InlineNodeJsonInput,
+} from '../../src/internals/document-json-input'
 import { createBaseMarks } from '../../src/internals/marks'
 import {
   isLineBreakNode,
@@ -74,7 +74,7 @@ function marks(overrides: Partial<ReturnType<typeof createBaseMarks>> = {}) {
 function textJson(
   text = 'Hello',
   markOverrides: Partial<ReturnType<typeof createBaseMarks>> = {},
-): Extract<InlineNodeJsonSchema, { type: 'text' }> {
+): Extract<InlineNodeJsonInput, { type: 'text' }> {
   return {
     ...nodeBase(),
     marks: marks(markOverrides),
@@ -84,8 +84,8 @@ function textJson(
 }
 
 function paragraphJson(
-  content: InlineNodeJsonSchema[] = [textJson()],
-): Extract<BlockJsonSchema, { type: 'paragraph' }> {
+  content: InlineNodeJsonInput[] = [textJson()],
+): Extract<BlockJsonInput, { type: 'paragraph' }> {
   return {
     ...blockBase(),
     content,
@@ -93,9 +93,9 @@ function paragraphJson(
   }
 }
 
-describe('createInlineNodeFromJson', () => {
+describe('createInlineNodeFromJsonInput', () => {
   test('mints a text node, copies marks, and sanitizes control characters', () => {
-    const node = createInlineNodeFromJson(
+    const node = createInlineNodeFromJsonInput(
       textJson('a\u0000b', { bold: true }),
       JSON_OPTS,
     )
@@ -114,7 +114,7 @@ describe('createInlineNodeFromJson', () => {
   })
 
   test('mints a link node and strips a javascript href', () => {
-    const node = createInlineNodeFromJson(
+    const node = createInlineNodeFromJsonInput(
       {
         ...nodeBase(),
         marks: marks({ italic: true }),
@@ -141,7 +141,7 @@ describe('createInlineNodeFromJson', () => {
   })
 
   test('mints a mention node with the JSON entity', () => {
-    const node = createInlineNodeFromJson(
+    const node = createInlineNodeFromJsonInput(
       {
         ...nodeBase(),
         entity: { data: { email: 'jane@example.com' }, id: 'user_1' },
@@ -162,7 +162,7 @@ describe('createInlineNodeFromJson', () => {
   })
 
   test('mints a line break node', () => {
-    const node = createInlineNodeFromJson(
+    const node = createInlineNodeFromJsonInput(
       {
         ...nodeBase(),
         type: 'line_break',
@@ -176,7 +176,7 @@ describe('createInlineNodeFromJson', () => {
   })
 
   test('fills omitted metadata from initialMetadata and merges partial marks', () => {
-    const node = createInlineNodeFromJson(
+    const node = createInlineNodeFromJsonInput(
       { marks: { code: true }, text: 'Hello', type: 'text' },
       JSON_OPTS,
     )
@@ -191,7 +191,7 @@ describe('createInlineNodeFromJson', () => {
   })
 
   test('parses JSON updatedAt onto the node', () => {
-    const node = createInlineNodeFromJson(
+    const node = createInlineNodeFromJsonInput(
       { ...textJson(), updatedAt: UPDATED_AT },
       JSON_OPTS,
     )
@@ -200,7 +200,7 @@ describe('createInlineNodeFromJson', () => {
   })
 
   test('uses initialMetadata when JSON omits it on link, mention, and line break', () => {
-    const link = createInlineNodeFromJson(
+    const link = createInlineNodeFromJsonInput(
       {
         text: 'click',
         type: 'link',
@@ -208,14 +208,14 @@ describe('createInlineNodeFromJson', () => {
       },
       JSON_OPTS,
     )
-    const mention = createInlineNodeFromJson(
+    const mention = createInlineNodeFromJsonInput(
       {
         entity: { data: { email: 'jane@example.com' }, id: 'user_1' },
         type: 'mention',
       },
       JSON_OPTS,
     )
-    const lineBreak = createInlineNodeFromJson(
+    const lineBreak = createInlineNodeFromJsonInput(
       { type: 'line_break' },
       JSON_OPTS,
     )
@@ -226,9 +226,9 @@ describe('createInlineNodeFromJson', () => {
   })
 })
 
-describe('createInlineContentFromJson', () => {
+describe('createInlineContentFromJsonInput', () => {
   test('inserts one empty text node when the JSON array is empty', () => {
-    const content = createInlineContentFromJson([], JSON_OPTS)
+    const content = createInlineContentFromJsonInput([], JSON_OPTS)
 
     expect(content).toHaveLength(1)
     const [node] = content
@@ -243,7 +243,7 @@ describe('createInlineContentFromJson', () => {
   })
 
   test('maps JSON nodes in order and ignores the empty-text metadata bag', () => {
-    const content = createInlineContentFromJson(
+    const content = createInlineContentFromJsonInput(
       [
         textJson('Hello'),
         {
@@ -268,11 +268,11 @@ describe('createInlineContentFromJson', () => {
   })
 })
 
-describe('createBlockFromJson', () => {
+describe('createBlockFromJsonInput', () => {
   const posKey = makeInitialPosition()
 
   test('builds a paragraph, drops JSON parentId, and uses the given posKey', () => {
-    const block = createBlockFromJson(paragraphJson(), posKey, JSON_OPTS)
+    const block = createBlockFromJsonInput(paragraphJson(), posKey, JSON_OPTS)
 
     expect(isParagraphBlock(block)).toBe(true)
     if (!isParagraphBlock(block)) {
@@ -292,7 +292,7 @@ describe('createBlockFromJson', () => {
   })
 
   test('fills empty inline content with an empty text node', () => {
-    const block = createBlockFromJson(paragraphJson([]), posKey, JSON_OPTS)
+    const block = createBlockFromJsonInput(paragraphJson([]), posKey, JSON_OPTS)
 
     expect(isParagraphBlock(block)).toBe(true)
     if (!isParagraphBlock(block)) {
@@ -306,12 +306,16 @@ describe('createBlockFromJson', () => {
   })
 
   test('fills omitted block metadata from initialMetadata', () => {
-    const paragraph = createBlockFromJson(
+    const paragraph = createBlockFromJsonInput(
       { content: [{ text: 'Hello', type: 'text' }], type: 'paragraph' },
       posKey,
       JSON_OPTS,
     )
-    const divider = createBlockFromJson({ type: 'divider' }, posKey, JSON_OPTS)
+    const divider = createBlockFromJsonInput(
+      { type: 'divider' },
+      posKey,
+      JSON_OPTS,
+    )
 
     expect(paragraph.metadata).toEqual(INITIAL_METADATA.paragraph)
     expect(paragraph.parentId).toBeNull()
@@ -319,7 +323,7 @@ describe('createBlockFromJson', () => {
   })
 
   test('parses JSON updatedAt onto the block', () => {
-    const block = createBlockFromJson(
+    const block = createBlockFromJsonInput(
       { ...paragraphJson(), updatedAt: UPDATED_AT },
       posKey,
       JSON_OPTS,
@@ -329,7 +333,7 @@ describe('createBlockFromJson', () => {
   })
 
   test('builds a heading with the JSON level', () => {
-    const block = createBlockFromJson(
+    const block = createBlockFromJsonInput(
       {
         ...blockBase(),
         content: [textJson('Title')],
@@ -353,7 +357,7 @@ describe('createBlockFromJson', () => {
   })
 
   test('builds quote and bullet list item blocks', () => {
-    const quote = createBlockFromJson(
+    const quote = createBlockFromJsonInput(
       {
         ...blockBase(),
         content: [textJson('quoted')],
@@ -362,7 +366,7 @@ describe('createBlockFromJson', () => {
       posKey,
       JSON_OPTS,
     )
-    const bullet = createBlockFromJson(
+    const bullet = createBlockFromJsonInput(
       {
         ...blockBase(),
         content: [textJson('item')],
@@ -377,7 +381,7 @@ describe('createBlockFromJson', () => {
   })
 
   test('keeps numbered-list variant and marker numbering as written', () => {
-    const block = createBlockFromJson(
+    const block = createBlockFromJsonInput(
       {
         ...blockBase(),
         content: [textJson('one')],
@@ -399,7 +403,7 @@ describe('createBlockFromJson', () => {
   })
 
   test('builds a checkbox list item with the JSON checked flag', () => {
-    const block = createBlockFromJson(
+    const block = createBlockFromJsonInput(
       {
         ...blockBase(),
         checked: true,
@@ -419,7 +423,7 @@ describe('createBlockFromJson', () => {
   })
 
   test('builds a divider and drops leftover JSON content', () => {
-    const block = createBlockFromJson(
+    const block = createBlockFromJsonInput(
       {
         ...blockBase(),
         type: 'divider',
