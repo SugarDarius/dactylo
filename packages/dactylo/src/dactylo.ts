@@ -930,7 +930,7 @@ export interface DactyloBlocksTools {
 export interface DactyloBlocksCommands {
   /**
    * Inserts a {@link Block} into the document based on the given spec and position.
-   * By defaults it inserts after the current selection.
+   * By defaults it inserts after the current selection and set the selection to the end of the inserted block.
    *
    * Returns the {@link BlockId} of the inserted block on success,
    * or `null` if no ops were applied.
@@ -2331,7 +2331,7 @@ export class Dactylo {
 
         /**
          * Inserts a {@link Block} into the document based on the given spec and position.
-         * By defaults it inserts after the current selection.
+         * By defaults it inserts after the current selection and set the selection to the end of the inserted block.
          *
          * Returns the {@link BlockId} of the inserted block on success,
          * or `null` if no ops were applied.
