@@ -159,7 +159,6 @@ describe('Dactylo construction', () => {
     const context = editor.getContext()
     const block = firstInlineBlock(context)
 
-    expect(context.state.schemaVersion).toBe(1)
     expect(context.state.blockOrderById).toHaveLength(1)
     expect(context.selection).toBeNull()
     expect(editor.canEdit()).toBe(true)

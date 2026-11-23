@@ -129,7 +129,6 @@ describe('createDocumentState', () => {
   test('starts with no blocks', () => {
     const state = createDocumentState()
 
-    expect(state.schemaVersion).toBe(1)
     expect(state.blockOrderById).toEqual([])
     expect(state.blocks.size).toBe(0)
   })

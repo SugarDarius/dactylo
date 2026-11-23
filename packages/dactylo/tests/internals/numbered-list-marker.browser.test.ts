@@ -54,7 +54,6 @@ function stateOf(blocks: Block[]): DocumentState {
   return {
     blockOrderById: order,
     blocks: map,
-    schemaVersion: 1,
   }
 }
 
