@@ -1421,7 +1421,25 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
               type: 'paragraph',
             },
             {
-              content: [{ text: 'Make it yours', type: 'text' }],
+              type: 'checkbox_list_item',
+              checked: false,
+              content: [{ type: 'text', text: 'Try markdown shortcuts' }],
+            },
+            {
+              type: 'checkbox_list_item',
+              checked: false,
+              content: [{ type: 'text', text: 'Try a slash command' }],
+            },
+            {
+              type: 'checkbox_list_item',
+              checked: false,
+              content: [{ type: 'text', text: 'Mention someone' }],
+            },
+            {
+              type: 'divider',
+            },
+            {
+              content: [{ text: 'Make it yours 🪄', type: 'text' }],
               level: 3,
               type: 'heading',
             },
