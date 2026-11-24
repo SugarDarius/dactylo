@@ -80,6 +80,17 @@ export type JsonArray = JsonValue[] | readonly JsonValue[]
 /** Any JSON valid value. */
 export type JsonValue = JsonPrimitive | JsonObject | JsonArray
 
+/** Converts all dates in a type to strings in ISO format. */
+export type DateToString<T> = {
+  [P in keyof T]: T[P] extends Date
+    ? string
+    : T[P] extends Date | null
+      ? string | null
+      : T[P] extends Date | undefined
+        ? string | undefined
+        : T[P]
+}
+
 /** Metadata type to store custom data */
 export type Metadata = Record<
   string,

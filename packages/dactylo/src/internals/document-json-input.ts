@@ -1,17 +1,3 @@
-import type {
-  BBM,
-  CBM,
-  DBM,
-  HBM,
-  LBNM,
-  LNM,
-  MNED,
-  MNM,
-  NBM,
-  PBM,
-  QBM,
-  TNM,
-} from './augmentation'
 import {
   createBulletListItemBlock,
   createCheckboxListItemBlock,
@@ -21,86 +7,53 @@ import {
   createParagraphBlock,
   createQuoteBlock,
 } from './blocks'
-import type { Block } from './blocks'
+import type {
+  Block,
+  BulletListItemBlock,
+  CheckboxListItemBlock,
+  DividerBlock,
+  HeadingBlock,
+  NumberedListItemBlock,
+  ParagraphBlock,
+  QuoteBlock,
+} from './blocks'
+import type {
+  ToContentJsonInput,
+  ToJsonInput,
+  ToMarksJsonInput,
+} from './document-json-schema'
 import { DactyloError } from './errors'
-import type { Marks } from './marks'
 import { createBaseMarks } from './marks'
+import type { Marks } from './marks'
 import {
   createLineBreakNode,
   createLinkNode,
   createMentionNode,
   createTextNode,
 } from './nodes'
-import type { InlineNode } from './nodes'
+import type {
+  InlineNode,
+  LineBreakNode,
+  LinkNode,
+  MentionNode,
+  TextNode,
+} from './nodes'
 import type { OperationsBuilderInitialMetadata } from './operations-builder'
 import type { PosKey } from './position'
-import type { JsonObject, Metadata } from './types'
+import type { JsonObject } from './types'
 import { assertNever, isJsonObject, isJsonValue, isPlainObject } from './utils'
 
-/** JSON input schema for {@link Marks}. */
-export type MarksJsonInput = Partial<Marks>
-
-/** JSON input schema for {@link INode}. */
-export interface INodeJsonInput<M extends Metadata = Metadata> {
-  /** Date as string in ISO format When the node was created.  */
-  readonly createdAt?: string
-
-  /** Date as string in ISO format When the node was last updated. */
-  readonly updatedAt?: string | null
-
-  /** Custom metadata defined by developers. */
-  readonly metadata?: M
-}
-
 /** JSON input schema for {@link TextNode}. */
-export interface TextNodeJsonInput extends INodeJsonInput<TNM> {
-  readonly type: 'text'
-
-  /** Text content of the node. */
-  readonly text: string
-
-  /** Marks decorating the text content */
-  readonly marks?: MarksJsonInput
-}
+export type TextNodeJsonInput = ToMarksJsonInput<ToJsonInput<TextNode>>
 
 /** JSON input schema for {@link LinkNode}. */
-export interface LinkNodeJsonInput extends INodeJsonInput<LNM> {
-  readonly type: 'link'
-
-  /** URL of the link. */
-  readonly url: {
-    /** Href of the link. */
-    readonly href: string
-
-    /** Title of the link. */
-    readonly title: string
-  }
-
-  /** Text content of the node. */
-  readonly text: string
-
-  /** Marks decorating the text content */
-  readonly marks?: MarksJsonInput
-}
+export type LinkNodeJsonInput = ToMarksJsonInput<ToJsonInput<LinkNode>>
 
 /** JSON input schema for {@link MentionNode}. */
-export interface MentionNodeJsonInput extends INodeJsonInput<MNM> {
-  readonly type: 'mention'
-
-  /** Entity related to the mention. */
-  readonly entity: {
-    /** Id referencing the mention's entity in the code. */
-    readonly id: string
-
-    /** Developer-provided additional JSON structured data to store with the mention's entity. */
-    readonly data: MNED
-  }
-}
+export type MentionNodeJsonInput = ToJsonInput<MentionNode>
 
 /** JSON input schema for {@link LineBreakNode}. */
-export interface LineBreakNodeJsonInput extends INodeJsonInput<LBNM> {
-  readonly type: 'line_break'
-}
+export type LineBreakNodeJsonInput = ToJsonInput<LineBreakNode>
 
 /** JSON input schema for {@link InlineNode}. */
 export type InlineNodeJsonInput =
@@ -109,75 +62,44 @@ export type InlineNodeJsonInput =
   | MentionNodeJsonInput
   | LineBreakNodeJsonInput
 
-/** JSON input schema for {@link IBlock}. */
-export interface IBlockJsonInput<M extends Metadata = Metadata> {
-  /** Parent block identifier with nested blocks like list or quotes. */
-  readonly parentId?: string | null
-
-  /** Date as string in ISO format When the block was created.  */
-  readonly createdAt?: string
-
-  /** Date as string in ISO format When the block was last updated. */
-  readonly updatedAt?: string | null
-
-  /** Custom metadata defined by developers. */
-  readonly metadata?: M
-}
-
-/** JSON input schema for {@link IBlockWithInlineContext}. */
-export interface IBlockWithInlineContextJsonInput<
-  M extends Metadata = Metadata,
-> extends IBlockJsonInput<M> {
-  /** Inline content tree for the block. */
-  readonly content: readonly InlineNodeJsonInput[]
-}
-
 /** JSON input schema for {@link HeadingBlock}. */
-export interface HeadingBlockJsonInput extends IBlockWithInlineContextJsonInput<HBM> {
-  readonly type: 'heading'
-
-  /** Level of the heading. */
-  readonly level: 1 | 2 | 3 | 4 | 5 | 6
-}
+export type HeadingBlockJsonInput = ToContentJsonInput<
+  ToJsonInput<HeadingBlock>,
+  InlineNodeJsonInput
+>
 
 /** JSON input schema for {@link ParagraphBlock}. */
-export interface ParagraphBlockJsonInput extends IBlockWithInlineContextJsonInput<PBM> {
-  readonly type: 'paragraph'
-}
+export type ParagraphBlockJsonInput = ToContentJsonInput<
+  ToJsonInput<ParagraphBlock>,
+  InlineNodeJsonInput
+>
 
 /** JSON input schema for {@link QuoteBlock}. */
-export interface QuoteBlockJsonInput extends IBlockWithInlineContextJsonInput<QBM> {
-  readonly type: 'quote'
-}
+export type QuoteBlockJsonInput = ToContentJsonInput<
+  ToJsonInput<QuoteBlock>,
+  InlineNodeJsonInput
+>
 
 /** JSON input schema for {@link BulletListItemBlock}. */
-export interface BulletListItemBlockJsonInput extends IBlockWithInlineContextJsonInput<BBM> {
-  readonly type: 'bullet_list_item'
-}
+export type BulletListItemBlockJsonInput = ToContentJsonInput<
+  ToJsonInput<BulletListItemBlock>,
+  InlineNodeJsonInput
+>
 
 /** JSON input schema for {@link NumberedListItemBlock}. */
-export interface NumberedListItemBlockJsonInput extends IBlockWithInlineContextJsonInput<NBM> {
-  readonly type: 'numbered_list_item'
-
-  /** Variant to use in order to display item marker. */
-  readonly variant: 'default' | 'alpha' | 'roman'
-
-  /** Marker numbering for this item (`1.`, `a.`, `ii.`). */
-  readonly markerNumbering: string
-}
+export type NumberedListItemBlockJsonInput = ToContentJsonInput<
+  ToJsonInput<NumberedListItemBlock>,
+  InlineNodeJsonInput
+>
 
 /** JSON input schema for {@link CheckboxListItemBlock}. */
-export interface CheckboxListItemBlockJsonInput extends IBlockWithInlineContextJsonInput<CBM> {
-  readonly type: 'checkbox_list_item'
-
-  /** Whether the item is checked. */
-  readonly checked: boolean
-}
+export type CheckboxListItemBlockJsonInput = ToContentJsonInput<
+  ToJsonInput<CheckboxListItemBlock>,
+  InlineNodeJsonInput
+>
 
 /** JSON input schema for {@link DividerBlock}. */
-export interface DividerBlockJsonInput extends IBlockJsonInput<DBM> {
-  readonly type: 'divider'
-}
+export type DividerBlockJsonInput = ToJsonInput<DividerBlock>
 
 /** JSON input schema for {@link Block}. */
 export type BlockJsonInput =
@@ -373,7 +295,7 @@ export function isBlockType(value: unknown): value is BlockJsonInput['type'] {
 export function validateMarks(
   value: unknown,
   payload: Record<string, unknown>,
-): asserts value is MarksJsonInput {
+): asserts value is Partial<Marks> {
   if (!isPlainObject(value)) {
     documentJsonInputError('Marks must be a plain object.', payload)
   }
@@ -587,6 +509,7 @@ export function createInlineNodeFromJsonInput(
   opts: { initialMetadata: OperationsBuilderInitialMetadata },
 ): InlineNode {
   const { type } = jsonNode
+
   switch (type) {
     case 'text': {
       return createTextNode({
