@@ -21,9 +21,9 @@ export type InputSeededModelProperties =
 
 /**
  * Renames the `__type` property to `type` in the JSON input schema.
- * Sadly we're forced to do it as some frameworks don't support properties starting with `_` in JSON.
+ * Some frameworks don't support properties starting with `__` in JSON.
  */
-export type RenameInputType<T> = T extends { readonly __type: infer D }
+export type RenameInputTypeProp<T> = T extends { readonly __type: infer D }
   ? Omit<T, '__type'> & { readonly type: D }
   : T
 
@@ -37,7 +37,7 @@ export type OptionalInputSeededModelProperties<T> = Omit<
 /** Converts a type from Dactylo model node or block to its JSON input schema. */
 export type ToJsonInput<T> = T extends unknown
   ? OptionalInputSeededModelProperties<
-      DateToString<Omit<RenameInputType<T>, OwnedModelProperties>>
+      DateToString<Omit<RenameInputTypeProp<T>, OwnedModelProperties>>
     >
   : never
 
