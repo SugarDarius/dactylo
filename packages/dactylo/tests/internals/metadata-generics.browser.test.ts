@@ -49,7 +49,7 @@ describe('metadata aliases', () => {
     expectTypeOf(editor.blocks.commands.patch).returns.toEqualTypeOf<boolean>()
     expectTypeOf<Extract<PatchBlockSpec, { type: 'paragraph' }>>().toExtend<{
       type: 'paragraph'
-      content?: unknown
+      content?: InlineNodeJsonInput[]
       metadata?: { value: PBM; policy?: PatchMetadataPolicy }
     }>()
     expectTypeOf(editor.blocks.commands.delete).returns.toEqualTypeOf<boolean>()
@@ -75,7 +75,7 @@ describe('metadata aliases', () => {
     expectTypeOf<Extract<PatchBlockSpec, { type: 'heading' }>>().toExtend<{
       type: 'heading'
       level?: unknown
-      content?: unknown
+      content?: InlineNodeJsonInput[]
       metadata?: { value: HBM; policy?: PatchMetadataPolicy }
     }>()
 

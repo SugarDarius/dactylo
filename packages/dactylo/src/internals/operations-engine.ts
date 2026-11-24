@@ -72,6 +72,7 @@ import {
   buildReindexAfterRemovedNumberedItemOps,
   buildReindexNumberedListRunsOps,
   buildReindexNumberedListSuffixOps,
+  resolvePatchContent,
   resolvePatchMetadata,
   withTrailingSelectionOp,
 } from './operations-builder'
@@ -835,7 +836,9 @@ export class OperationsEngine {
     let offset = 0
 
     if (spec.content !== undefined) {
-      validateInlineContent(spec.content, { spec })
+      validateInlineContent(spec.content, {
+        hint: 'OperationsEngine/buildInsertBlockOps',
+      })
 
       const contentFromInsert = createInlineContentFromJsonInput(spec.content, {
         initialMetadata: this.#initialMetadata,
@@ -1112,7 +1115,11 @@ export class OperationsEngine {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
-              content: spec.content ?? [...source.content],
+              content: resolvePatchContent({
+                source: [...source.content],
+                patch: spec.content,
+                initialMetadata: this.#initialMetadata,
+              }),
               metadata: spec.metadata
                 ? resolvePatchMetadata(
                     source.metadata,
@@ -1138,7 +1145,11 @@ export class OperationsEngine {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
-              content: spec.content ?? [...source.content],
+              content: resolvePatchContent({
+                source: [...source.content],
+                patch: spec.content,
+                initialMetadata: this.#initialMetadata,
+              }),
               metadata: spec.metadata
                 ? resolvePatchMetadata(
                     source.metadata,
@@ -1164,7 +1175,11 @@ export class OperationsEngine {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
-              content: spec.content ?? [...source.content],
+              content: resolvePatchContent({
+                source: [...source.content],
+                patch: spec.content,
+                initialMetadata: this.#initialMetadata,
+              }),
               level: spec.level ?? source.level,
               metadata: spec.metadata
                 ? resolvePatchMetadata(
@@ -1196,7 +1211,11 @@ export class OperationsEngine {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
-              content: spec.content ?? [...source.content],
+              content: resolvePatchContent({
+                source: [...source.content],
+                patch: spec.content,
+                initialMetadata: this.#initialMetadata,
+              }),
               metadata: spec.metadata
                 ? resolvePatchMetadata(
                     source.metadata,
@@ -1235,7 +1254,11 @@ export class OperationsEngine {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
-              content: spec.content ?? source.content,
+              content: resolvePatchContent({
+                source: [...source.content],
+                patch: spec.content,
+                initialMetadata: this.#initialMetadata,
+              }),
               markerNumbering,
               metadata: spec.metadata
                 ? resolvePatchMetadata(
@@ -1283,7 +1306,11 @@ export class OperationsEngine {
             patch: touchBlock({
               ...source,
               checked: spec.checked ?? source.checked,
-              content: spec.content ?? source.content,
+              content: resolvePatchContent({
+                source: [...source.content],
+                patch: spec.content,
+                initialMetadata: this.#initialMetadata,
+              }),
               metadata: spec.metadata
                 ? resolvePatchMetadata(
                     source.metadata,

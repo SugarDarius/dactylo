@@ -1580,6 +1580,35 @@ describe('Dactylo blocks', () => {
       expect(patched.metadata).toEqual({ a: 1 })
     }
   })
+
+  test('patch uses the given spec content', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    const paragraphId = firstInlineBlock(editor.getContext()).id
+
+    expect(
+      editor.blocks.commands.patch({
+        blockId: paragraphId,
+        spec: {
+          content: [{ text: 'World', type: 'text' }],
+          type: 'paragraph',
+        },
+      }),
+    ).toBe(true)
+
+    const patched = firstInlineBlock(editor.getContext())
+    const [node] = patched.content
+    if (node === undefined || !isTextNode(node)) {
+      throw new Error('Expected a text node')
+    }
+
+    expect(patched.id).toBe(paragraphId)
+    expect(isParagraphBlock(patched)).toBe(true)
+    expect(patched.content).toHaveLength(1)
+    expect(node.text).toBe('World')
+    expect(blockTexts(editor.getContext())).toEqual(['World'])
+  })
 })
 
 describe('Dactylo mentions', () => {

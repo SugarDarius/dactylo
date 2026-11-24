@@ -24,6 +24,10 @@ import type {
 } from './blocks'
 import { getBlock, isNumberedListRunContainingBlock } from './document'
 import type { DocumentState } from './document'
+import {
+  createInlineContentFromJsonInput,
+  validateInlineContent,
+} from './document-json-input'
 import type { InlineNodeJsonInput } from './document-json-input'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
@@ -276,13 +280,40 @@ export function resolvePatchMetadata<M extends Metadata>(
   return patch
 }
 
+/**
+ * Resolves the content to patch based on the source and patch.
+ * If the patch is empty, source content is kept.
+ */
+export function resolvePatchContent(opts: {
+  source: InlineNode[]
+  patch?: InlineNodeJsonInput[]
+  initialMetadata: OperationsBuilderInitialMetadata
+}): InlineNode[] {
+  if (!opts.patch) {
+    return opts.source
+  }
+
+  const { source, patch, initialMetadata } = opts
+  validateInlineContent(patch, {
+    hint: 'OperationsBuilder/resolvePatchContent',
+  })
+
+  if (patch.length === 0) {
+    return source
+  }
+
+  return createInlineContentFromJsonInput(patch, {
+    initialMetadata,
+  })
+}
+
 /** Describes which block to patch. */
 export type PatchBlockSpec = Relax<
   | {
       readonly type: 'paragraph'
 
-      /** {@link ParagraphBlock}'s content.  */
-      readonly content?: InlineNode[]
+      /** {@link ParagraphBlock}'s content as JSON input.  */
+      readonly content?: InlineNodeJsonInput[]
 
       /** {@link ParagraphBlock}'s metadata. */
       readonly metadata?: {
@@ -296,8 +327,8 @@ export type PatchBlockSpec = Relax<
   | {
       readonly type: 'quote'
 
-      /** {@link QuoteBlock}'s content. */
-      readonly content?: InlineNode[]
+      /** {@link QuoteBlock}'s content as JSON input. */
+      readonly content?: InlineNodeJsonInput[]
 
       /** {@link QuoteBlock}'s metadata. */
       readonly metadata?: {
@@ -314,8 +345,8 @@ export type PatchBlockSpec = Relax<
       /** {@link HeadingBlock}'s level. */
       readonly level?: HeadingBlock['level']
 
-      /** {@link HeadingBlock}'s content. */
-      readonly content?: InlineNode[]
+      /** {@link HeadingBlock}'s content as JSON input. */
+      readonly content?: InlineNodeJsonInput[]
 
       /** {@link HeadingBlock}'s metadata. */
       readonly metadata?: {
@@ -329,8 +360,8 @@ export type PatchBlockSpec = Relax<
   | {
       readonly type: 'bullet_list_item'
 
-      /** {@link BulletListItemBlock}'s content. */
-      readonly content?: InlineNode[]
+      /** {@link BulletListItemBlock}'s content as JSON input. */
+      readonly content?: InlineNodeJsonInput[]
 
       /** {@link BulletListItemBlock}'s metadata. */
       readonly metadata?: {
@@ -347,8 +378,8 @@ export type PatchBlockSpec = Relax<
       /** {@link NumberedListItemBlock}'s variant. */
       readonly variant?: NumberedListItemBlock['variant']
 
-      /** {@link NumberedListItemBlock}'s content. */
-      readonly content?: InlineNode[]
+      /** {@link NumberedListItemBlock}'s content as JSON input. */
+      readonly content?: InlineNodeJsonInput[]
 
       /** {@link NumberedListItemBlock}'s metadata. */
       readonly metadata?: {
@@ -365,8 +396,8 @@ export type PatchBlockSpec = Relax<
       /** Whether the item is checked. */
       readonly checked?: boolean
 
-      /** {@link CheckboxListItemBlock}'s content. */
-      readonly content?: InlineNode[]
+      /** {@link CheckboxListItemBlock}'s content as JSON input. */
+      readonly content?: InlineNodeJsonInput[]
 
       /** {@link CheckboxListItemBlock}'s metadata. */
       readonly metadata?: {

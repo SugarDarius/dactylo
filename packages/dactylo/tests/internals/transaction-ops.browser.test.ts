@@ -1002,6 +1002,111 @@ describe('TransactionPipeline block commands', () => {
     ).toBe(false)
     expect(snapshot(pipeline.context)).toEqual(afterInsert)
   })
+
+  test('patchBlock uses the given spec content', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'Hello')
+
+    const [paragraphId] = pipeline.context.state.blockOrderById
+    if (!paragraphId) {
+      throw new Error('Expected the initial paragraph')
+    }
+
+    expect(
+      pipeline.patchBlock(
+        {
+          blockId: paragraphId,
+          spec: {
+            content: [{ text: 'World', type: 'text' }],
+            type: 'paragraph',
+          },
+        },
+        'user',
+      ),
+    ).toBe(true)
+
+    const patched = pipeline.context.state.blocks.get(paragraphId)
+    if (patched?.__type !== 'paragraph') {
+      throw new Error('Expected a paragraph block')
+    }
+
+    const [node] = patched.content
+    if (node === undefined || !isTextNode(node)) {
+      throw new Error('Expected a text node')
+    }
+
+    expect(patched.content).toHaveLength(1)
+    expect(node.text).toBe('World')
+    expect(blockTexts(pipeline.context)).toEqual(['World'])
+  })
+
+  test('patchBlock keeps source content when spec content is empty', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'Hello')
+
+    const [paragraphId] = pipeline.context.state.blockOrderById
+    if (!paragraphId) {
+      throw new Error('Expected the initial paragraph')
+    }
+
+    const source = pipeline.context.state.blocks.get(paragraphId)
+    if (source?.__type !== 'paragraph') {
+      throw new Error('Expected a paragraph block')
+    }
+    const { content } = source
+
+    expect(
+      pipeline.patchBlock(
+        {
+          blockId: paragraphId,
+          spec: { content: [], type: 'paragraph' },
+        },
+        'user',
+      ),
+    ).toBe(true)
+
+    const patched = pipeline.context.state.blocks.get(paragraphId)
+    if (patched?.__type !== 'paragraph') {
+      throw new Error('Expected a paragraph block')
+    }
+
+    expect(patched.content).toEqual(content)
+    expect(blockTexts(pipeline.context)).toEqual(['Hello'])
+  })
+
+  test('patchBlock rejects invalid JSON spec content', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'Hello')
+
+    const [paragraphId] = pipeline.context.state.blockOrderById
+    if (!paragraphId) {
+      throw new Error('Expected the initial paragraph')
+    }
+
+    try {
+      pipeline.patchBlock(
+        {
+          blockId: paragraphId,
+          spec: {
+            content: [{ type: 'unknown' }] as unknown as InlineNodeJsonInput[],
+            type: 'paragraph',
+          },
+        },
+        'user',
+      )
+    } catch (error) {
+      expect(error).toBeInstanceOf(DactyloError)
+      expect(error instanceof DactyloError ? error.code : undefined).toBe(
+        'DESERIALIZE_DOCUMENT_JSON_INPUT',
+      )
+      return
+    }
+
+    expect.unreachable('Expected patchBlock to throw')
+  })
 })
 
 describe('TransactionPipeline selection', () => {

@@ -725,6 +725,7 @@ export function useBlocks() {
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { fontColor: 'red' }  })
+ * patch(blockId, { content: [{ type: 'text', text: 'World' }] })
  * patch(blockId, {}, 'ai-agent')
  *
  * // tools
@@ -760,11 +761,21 @@ export function useParagraphs() {
   const patch = useStableCallback(
     (
       blockId: BlockId,
-      opts: { metadata?: { value: PBM; policy?: PatchMetadataPolicy } },
+      opts: {
+        content?: InlineNodeJsonInput[]
+        metadata?: { value: PBM; policy?: PatchMetadataPolicy }
+      },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
       editor.blocks.commands.patch(
-        { blockId, spec: { metadata: opts.metadata, type: 'paragraph' } },
+        {
+          blockId,
+          spec: {
+            content: opts.content,
+            metadata: opts.metadata,
+            type: 'paragraph',
+          },
+        },
         source,
       ),
   )
@@ -794,6 +805,7 @@ export function useParagraphs() {
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { fontColor: 'red' }  })
+ * patch(blockId, { content: [{ type: 'text', text: 'World' }] })
  * patch(blockId, {}, 'ai-agent')
  *
  * // tools
@@ -829,11 +841,21 @@ export function useQuotes() {
   const patch = useStableCallback(
     (
       blockId: BlockId,
-      opts: { metadata?: { value: QBM; policy?: PatchMetadataPolicy } },
+      opts: {
+        content?: InlineNodeJsonInput[]
+        metadata?: { value: QBM; policy?: PatchMetadataPolicy }
+      },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
       editor.blocks.commands.patch(
-        { blockId, spec: { metadata: opts?.metadata, type: 'quote' } },
+        {
+          blockId,
+          spec: {
+            content: opts?.content,
+            metadata: opts?.metadata,
+            type: 'quote',
+          },
+        },
         source,
       ),
   )
@@ -864,6 +886,7 @@ export function useQuotes() {
  * insert(3, {}, 'ai-agent')
  *
  * patch(blockId, { level: 3 })
+ * patch(blockId, { content: [{ type: 'text', text: 'World' }] })
  * patch(blockId, {}, 'ai-agent')
  *
  * // tools
@@ -903,6 +926,7 @@ export function useHeadings() {
       blockId: BlockId,
       opts: {
         level?: HeadingBlock['level']
+        content?: InlineNodeJsonInput[]
         metadata?: { value: HBM; policy?: PatchMetadataPolicy }
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -912,6 +936,7 @@ export function useHeadings() {
           blockId,
           spec: {
             level: opts?.level,
+            content: opts?.content,
             metadata: opts?.metadata,
             type: 'heading',
           },
@@ -974,11 +999,19 @@ export function useDividers() {
   const patch = useStableCallback(
     (
       blockId: BlockId,
-      opts: { metadata?: { value: DBM; policy?: PatchMetadataPolicy } },
+      opts: {
+        metadata?: { value: DBM; policy?: PatchMetadataPolicy }
+      },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
       editor.blocks.commands.patch(
-        { blockId, spec: { metadata: opts?.metadata, type: 'divider' } },
+        {
+          blockId,
+          spec: {
+            metadata: opts?.metadata,
+            type: 'divider',
+          },
+        },
         source,
       ),
   )
@@ -1003,6 +1036,7 @@ export function useDividers() {
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { frontColor: 'red' }  })
+ * patch(blockId, { content: [{ type: 'text', text: 'World' }] })
  * patch(blockId, {}, 'ai-agent')
  *
  * // tools
@@ -1038,13 +1072,20 @@ export function useBulletLists() {
   const patch = useStableCallback(
     (
       blockId: BlockId,
-      opts: { metadata?: { value: BBM; policy?: PatchMetadataPolicy } },
+      opts: {
+        content?: InlineNodeJsonInput[]
+        metadata?: { value: BBM; policy?: PatchMetadataPolicy }
+      },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
       editor.blocks.commands.patch(
         {
           blockId,
-          spec: { metadata: opts?.metadata, type: 'bullet_list_item' },
+          spec: {
+            content: opts?.content,
+            metadata: opts?.metadata,
+            type: 'bullet_list_item',
+          },
         },
         source,
       ),
@@ -1076,6 +1117,7 @@ export function useBulletLists() {
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { variant: '1' })
+ * patch(blockId, { content: [{ type: 'text', text: 'World' }] })
  * patch(blockId, {}, 'ai-agent')
  *
  * // tools
@@ -1115,6 +1157,7 @@ export function useNumberedLists() {
       blockId: BlockId,
       opts: {
         variant?: NumberedListItemBlock['variant']
+        content?: InlineNodeJsonInput[]
         metadata?: { value: NBM; policy?: PatchMetadataPolicy }
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -1123,6 +1166,7 @@ export function useNumberedLists() {
         {
           blockId,
           spec: {
+            content: opts?.content,
             metadata: opts?.metadata,
             type: 'numbered_list_item',
             variant: opts?.variant,
@@ -1158,6 +1202,7 @@ export function useNumberedLists() {
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { checked: true })
+ * patch(blockId, { content: [{ type: 'text', text: 'World' }] })
  * patch(blockId, {}, 'ai-agent')
  *
  * // tools
@@ -1195,6 +1240,7 @@ export function useCheckboxLists() {
       blockId: BlockId,
       opts: {
         checked?: boolean
+        content?: InlineNodeJsonInput[]
         metadata?: { value: CBM; policy?: PatchMetadataPolicy }
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -1204,6 +1250,7 @@ export function useCheckboxLists() {
           blockId,
           spec: {
             checked: opts?.checked,
+            content: opts?.content,
             metadata: opts?.metadata,
             type: 'checkbox_list_item',
           },

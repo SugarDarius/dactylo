@@ -966,6 +966,9 @@ export interface DactyloBlocksCommands {
    * Inserts a {@link Block} into the document based on the given spec and position.
    * By defaults it inserts after the current selection and set the selection to the end of the inserted block.
    *
+   * You can insert content by providing the `content` property in the spec.
+   * Metadata can be set by providing the `metadata` property in the spec.
+   *
    * Returns the {@link BlockId} of the inserted block on success,
    * or `null` if no ops were applied.
    *
@@ -973,6 +976,7 @@ export interface DactyloBlocksCommands {
    * ```ts
    * const blockId = editor.blocks.commands.insert({ spec: { type: 'paragraph' } })
    * const blockId = editor.blocks.commands.insert({ spec: { type: 'paragraph' }, pos: { type: 'after', blockId: targetId } })
+   * const blockId = editor.blocks.commands.insert({ spec: { type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] } })
    * const blockId = editor.blocks.commands.insert({ spec: { type: 'paragraph' }, pos: { type: 'start' } }, 'ai-agent')
    * ```
    */
@@ -1049,13 +1053,20 @@ export interface DactyloBlocksCommands {
 
   /**
    * Patches a {@link Block} in place based on the given spec.
+   *
+   * Block's content can be patched by providing the `content` property in the spec.
+   *
+   * Metadata can be patched by providing the `metadata` property in the spec.
+   * By default metadata are replaced with the provides ones.
+   * Set the `policy` property to `'merge'` to merge the existing metadata with the provided ones.
+   *
    * Returns a boolean indicating whether the patch command was successful.
    *
    * @example
    * ```ts
    * const patched = editor.blocks.commands.patch({ spec: { type: 'paragraph', metadata: { fontColor: 'purple' } }, blockId })
    * const patched = editor.blocks.commands.patch({ spec: { type: 'heading', level: 3 }, blockId })
-   * const patched = editor.blocks.commands.patch({ spec: { type: 'paragraph', content }, blockId }, 'ai-agent')
+   * const patched = editor.blocks.commands.patch({ spec: { type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] }, blockId }, 'ai-agent')
    * ```
    */
   readonly patch: (
