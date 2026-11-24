@@ -39,11 +39,7 @@ import {
   resolveMarkerNumberingForInsert,
 } from './document'
 import type { DocumentJsonInput } from './document-json-input'
-import {
-  createBlockFromJsonInput,
-  createInlineContentFromJsonInput,
-  validateInlineContent,
-} from './document-json-input'
+import { createBlockFromJsonInput } from './document-json-input'
 import type { EditorContext } from './editor-context'
 import { ExitCodeMarkOpsBuilder } from './exit-code-mark-ops-builder'
 import { GraphemeOffsetCaret } from './grapheme'
@@ -835,15 +831,9 @@ export class OperationsEngine {
     let offset = 0
 
     if (spec.content !== undefined) {
-      validateInlineContent(spec.content, { spec })
-
-      const contentFromPatch = createInlineContentFromJsonInput(spec.content, {
-        initialMetadata: this.#initialMetadata,
-      })
-
-      const last = contentFromPatch[contentFromPatch.length - 1]
+      const last = spec.content[spec.content.length - 1]
       if (last !== undefined) {
-        content = [...contentFromPatch]
+        content = [...spec.content]
 
         /** If the last node is an editable text node, use its text length as the offset. */
         if (isInlineNodeWithEditableText(last)) {
