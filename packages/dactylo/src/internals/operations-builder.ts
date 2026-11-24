@@ -24,6 +24,7 @@ import type {
 } from './blocks'
 import { getBlock, isNumberedListRunContainingBlock } from './document'
 import type { DocumentState } from './document'
+import type { InlineNodeJsonInput } from './document-json-input'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
 import { createBaseMarks, isMarksEqual } from './marks'
@@ -188,7 +189,7 @@ export type InsertBlockSpec = Relax<
       readonly type: 'paragraph'
 
       /** Initial content. */
-      readonly content?: InlineNode[]
+      readonly content?: InlineNodeJsonInput[]
 
       /** Metadata to attach. */
       readonly metadata?: PBM
@@ -197,7 +198,7 @@ export type InsertBlockSpec = Relax<
       readonly type: 'quote'
 
       /** Initial content. */
-      readonly content?: InlineNode[]
+      readonly content?: InlineNodeJsonInput[]
 
       /** Metadata to attach. */
       readonly metadata?: QBM
@@ -209,7 +210,7 @@ export type InsertBlockSpec = Relax<
       readonly level: HeadingBlock['level']
 
       /** Initial content. */
-      readonly content?: InlineNode[]
+      readonly content?: InlineNodeJsonInput[]
 
       /** Metadata to attach. */
       readonly metadata?: HBM
@@ -218,7 +219,7 @@ export type InsertBlockSpec = Relax<
       readonly type: 'bullet_list_item'
 
       /** Initial content. */
-      readonly content?: InlineNode[]
+      readonly content?: InlineNodeJsonInput[]
 
       /** Metadata to attach. */
       readonly metadata?: BBM
@@ -230,7 +231,7 @@ export type InsertBlockSpec = Relax<
       readonly variant?: NumberedListItemBlock['variant']
 
       /** Initial content. */
-      readonly content?: InlineNode[]
+      readonly content?: InlineNodeJsonInput[]
 
       /** Metadata to attach. */
       readonly metadata?: NBM
@@ -242,7 +243,7 @@ export type InsertBlockSpec = Relax<
       readonly checked?: boolean
 
       /** Initial content. */
-      readonly content?: InlineNode[]
+      readonly content?: InlineNodeJsonInput[]
 
       /** Metadata to attach. */
       readonly metadata?: CBM

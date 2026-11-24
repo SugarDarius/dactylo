@@ -14,7 +14,6 @@ export default defineConfig({
   minify: true,
   platform: 'neutral',
   publint: true,
-  sourcemap: true,
   target: false,
   treeshake: true,
 })

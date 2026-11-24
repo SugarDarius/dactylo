@@ -655,7 +655,7 @@ export function createInlineContentFromJsonInput(
   content: readonly InlineNodeJsonInput[],
   opts: { initialMetadata: OperationsBuilderInitialMetadata },
 ): InlineNode[] {
-  if (content.length === 0) {
+  if (content.length <= 0) {
     return [createTextNode({ metadata: opts.initialMetadata.text, text: '' })]
   }
 
