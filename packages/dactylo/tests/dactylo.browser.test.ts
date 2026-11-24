@@ -38,8 +38,6 @@ import { DactyloError } from '../src/internals/errors'
 import type { HistoryEvent } from '../src/internals/history'
 import { isMarkEnabled } from '../src/internals/marks'
 import {
-  createLineBreakNode,
-  createTextNode,
   generateNodeId,
   isInlineNodeWithEditableText,
   isLineBreakNode,
@@ -877,35 +875,41 @@ describe('Dactylo blocks', () => {
   test('insert uses the given spec content', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
-    const text = createTextNode({ text: 'Hello' })
 
     const blockId = editor.blocks.commands.insert({
-      spec: { content: [text], type: 'paragraph' },
+      spec: { content: [{ text: 'Hello', type: 'text' }], type: 'paragraph' },
     })
     if (!blockId) {
       throw new Error('Expected an inserted paragraph')
     }
 
     const inserted = nthInlineBlock(editor.getContext(), 1)
+    const [node] = inserted.content
+    if (node === undefined || !isTextNode(node)) {
+      throw new Error('Expected a text node')
+    }
+
     expect(inserted.id).toBe(blockId)
     expect(isParagraphBlock(inserted)).toBe(true)
-    expect(inserted.content).toEqual([text])
+    expect(inserted.content).toHaveLength(1)
+    expect(node.text).toBe('Hello')
     expect(blockTexts(editor.getContext())).toEqual(['', 'Hello'])
     expect(requireCursor(editor.getContext())).toMatchObject({
       blockId,
-      nodeId: text.id,
-      offset: text.text.length,
+      nodeId: node.id,
+      offset: node.text.length,
     })
   })
 
   test('insert appends an empty text node when spec content ends without editable text', () => {
     const editor = makeTypingEditor()
     editor.selection.commands.focus()
-    const hello = createTextNode({ text: 'Hello' })
-    const lineBreak = createLineBreakNode()
 
     const blockId = editor.blocks.commands.insert({
-      spec: { content: [hello, lineBreak], type: 'paragraph' },
+      spec: {
+        content: [{ text: 'Hello', type: 'text' }, { type: 'line_break' }],
+        type: 'paragraph',
+      },
     })
     if (!blockId) {
       throw new Error('Expected an inserted paragraph')
@@ -916,8 +920,11 @@ describe('Dactylo blocks', () => {
 
     expect(inserted.id).toBe(blockId)
     expect(inserted.content).toHaveLength(3)
-    expect(first).toEqual(hello)
-    expect(second).toEqual(lineBreak)
+    if (first === undefined || !isTextNode(first)) {
+      throw new Error('Expected a leading text node')
+    }
+    expect(first.text).toBe('Hello')
+    expect(second !== undefined && isLineBreakNode(second)).toBe(true)
 
     if (trailing === undefined || !isTextNode(trailing)) {
       throw new Error('Expected a trailing empty text node')

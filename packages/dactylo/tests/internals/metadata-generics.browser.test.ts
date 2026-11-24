@@ -6,6 +6,7 @@ import type {
   BBM,
   CBM,
   HBM,
+  InlineNodeJsonInput,
   InsertBlockSpec,
   Metadata,
   NBM,
@@ -39,7 +40,7 @@ describe('metadata aliases', () => {
     ).returns.toEqualTypeOf<BlockId | null>()
     expectTypeOf<Extract<InsertBlockSpec, { type: 'paragraph' }>>().toExtend<{
       type: 'paragraph'
-      content?: unknown
+      content?: InlineNodeJsonInput[]
       metadata?: PBM
     }>()
     expectTypeOf(editor.blocks.commands.patch)

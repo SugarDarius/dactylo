@@ -34,6 +34,7 @@ import {
   EDITABLE_NODE_UNDERLINE_MARK_DATA_NAME,
 } from '../internals/constants'
 import type { DocumentState, DocumentStatus } from '../internals/document'
+import type { InlineNodeJsonInput } from '../internals/document-json-input'
 import { paintTextForDOM } from '../internals/dom'
 import type { EditorContext } from '../internals/editor-context'
 import { isMarkEnabled } from '../internals/marks'
@@ -720,6 +721,7 @@ export function useBlocks() {
  *
  * // commands
  * insert({ pos: { type: 'end'}, metadata: { fontColor: 'purple' } })
+ * insert({content: [{ type: 'text', text: 'Hello' }], metadata: { fontColor: 'purple' } })
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { fontColor: 'red' }  })
@@ -737,6 +739,7 @@ export function useParagraphs() {
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
+        content?: InlineNodeJsonInput[]
         metadata?: PBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -744,7 +747,11 @@ export function useParagraphs() {
       editor.blocks.commands.insert(
         {
           pos: opts?.pos,
-          spec: { metadata: opts?.metadata, type: 'paragraph' },
+          spec: {
+            metadata: opts?.metadata,
+            content: opts?.content,
+            type: 'paragraph',
+          },
         },
         source,
       ),
@@ -783,6 +790,7 @@ export function useParagraphs() {
  *
  * // commands
  * insert({ pos: { type: 'end' } })
+ * insert({ content: [{ type: 'text', text: 'This is a quote' }], metadata: { fontColor: 'purple' } })
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { fontColor: 'red' }  })
@@ -800,12 +808,20 @@ export function useQuotes() {
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
+        content?: InlineNodeJsonInput[]
         metadata?: QBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
       editor.blocks.commands.insert(
-        { pos: opts?.pos, spec: { metadata: opts?.metadata, type: 'quote' } },
+        {
+          pos: opts?.pos,
+          spec: {
+            metadata: opts?.metadata,
+            content: opts?.content,
+            type: 'quote',
+          },
+        },
         source,
       ),
   )
@@ -844,6 +860,7 @@ export function useQuotes() {
  * // commands
  * insert(1)
  * insert(2, { pos: { type: 'end' } })
+ * insert(3, { content: [{ type: 'text', text: 'This is a heading' }], metadata: { fontColor: 'purple' } })
  * insert(3, {}, 'ai-agent')
  *
  * patch(blockId, { level: 3 })
@@ -862,6 +879,7 @@ export function useHeadings() {
       level: HeadingBlock['level'],
       opts?: {
         pos?: InsertOrMoveBlockPosition
+        content?: InlineNodeJsonInput[]
         metadata?: HBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -869,7 +887,12 @@ export function useHeadings() {
       editor.blocks.commands.insert(
         {
           pos: opts?.pos,
-          spec: { level, metadata: opts?.metadata, type: 'heading' },
+          spec: {
+            level,
+            metadata: opts?.metadata,
+            content: opts?.content,
+            type: 'heading',
+          },
         },
         source,
       ),
@@ -937,7 +960,13 @@ export function useDividers() {
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
     ) =>
       editor.blocks.commands.insert(
-        { pos: opts?.pos, spec: { metadata: opts?.metadata, type: 'divider' } },
+        {
+          pos: opts?.pos,
+          spec: {
+            metadata: opts?.metadata,
+            type: 'divider',
+          },
+        },
         source,
       ),
   )
@@ -970,6 +999,7 @@ export function useDividers() {
  * // commands
  * insert()
  * insert({ pos: { type: 'end' } })
+ * insert({ content: [{ type: 'text', text: 'This is a bullet list item' }], metadata: { fontColor: 'purple' } })
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { metadata: { frontColor: 'red' }  })
@@ -987,6 +1017,7 @@ export function useBulletLists() {
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
+        content?: InlineNodeJsonInput[]
         metadata?: BBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -994,7 +1025,11 @@ export function useBulletLists() {
       editor.blocks.commands.insert(
         {
           pos: opts?.pos,
-          spec: { metadata: opts?.metadata, type: 'bullet_list_item' },
+          spec: {
+            metadata: opts?.metadata,
+            content: opts?.content,
+            type: 'bullet_list_item',
+          },
         },
         source,
       ),
@@ -1037,6 +1072,7 @@ export function useBulletLists() {
  * // commands
  * insert()
  * insert({ pos: { type: 'end' } })
+ * insert({ content: [{ type: 'text', text: 'This is a numbered list item' }], metadata: { fontColor: 'purple' } })
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { variant: '1' })
@@ -1055,6 +1091,7 @@ export function useNumberedLists() {
       opts?: {
         pos?: InsertOrMoveBlockPosition
         variant?: NumberedListItemBlock['variant']
+        content?: InlineNodeJsonInput[]
         metadata?: NBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -1064,6 +1101,7 @@ export function useNumberedLists() {
           pos: opts?.pos,
           spec: {
             metadata: opts?.metadata,
+            content: opts?.content,
             type: 'numbered_list_item',
             variant: opts?.variant,
           },
@@ -1116,6 +1154,7 @@ export function useNumberedLists() {
  * // commands
  * insert()
  * insert({ pos: { type: 'end' } })
+ * insert({ content: [{ type: 'text', text: 'This is a checkbox list item' }], metadata: { fontColor: 'purple' } })
  * insert({}, 'ai-agent')
  *
  * patch(blockId, { checked: true })
@@ -1133,6 +1172,7 @@ export function useCheckboxLists() {
     (
       opts?: {
         pos?: InsertOrMoveBlockPosition
+        content?: InlineNodeJsonInput[]
         metadata?: CBM
       },
       source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
@@ -1140,7 +1180,11 @@ export function useCheckboxLists() {
       editor.blocks.commands.insert(
         {
           pos: opts?.pos,
-          spec: { metadata: opts?.metadata, type: 'checkbox_list_item' },
+          spec: {
+            metadata: opts?.metadata,
+            content: opts?.content,
+            type: 'checkbox_list_item',
+          },
         },
         source,
       ),

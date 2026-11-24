@@ -2,13 +2,12 @@ import { describe, expect, test } from 'vitest'
 
 import type { BlockId } from '../../src/internals/blocks'
 import { isNumberedListItemBlock } from '../../src/internals/blocks'
-import type { DocumentJsonInput } from '../../src/internals/document-json-input'
+import type {
+  DocumentJsonInput,
+  InlineNodeJsonInput,
+} from '../../src/internals/document-json-input'
 import { DactyloError } from '../../src/internals/errors'
-import {
-  createLineBreakNode,
-  createTextNode,
-  isTextNode,
-} from '../../src/internals/nodes'
+import { isLineBreakNode, isTextNode } from '../../src/internals/nodes'
 import type { MutateBlockSpec } from '../../src/internals/operations-builder'
 import {
   assertUndoRedo,
@@ -229,10 +228,15 @@ describe('TransactionPipeline block commands', () => {
   test('insertBlock uses the given spec content', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
-    const text = createTextNode({ text: 'Hello' })
 
     const blockId = pipeline.insertBlock(
-      { spec: { content: [text], level: 2, type: 'heading' } },
+      {
+        spec: {
+          content: [{ text: 'Hello', type: 'text' }],
+          level: 2,
+          type: 'heading',
+        },
+      },
       'user',
     )
     if (!blockId) {
@@ -241,23 +245,37 @@ describe('TransactionPipeline block commands', () => {
 
     const inserted = pipeline.context.state.blocks.get(blockId)
     expect(inserted?.__type).toBe('heading')
-    expect(inserted).toMatchObject({ content: [text], level: 2 })
+    if (inserted?.__type !== 'heading') {
+      throw new Error('Expected a heading block')
+    }
+
+    const [node] = inserted.content
+    if (node === undefined || !isTextNode(node)) {
+      throw new Error('Expected a text node')
+    }
+
+    expect(inserted.level).toBe(2)
+    expect(inserted.content).toHaveLength(1)
+    expect(node.text).toBe('Hello')
     expect(blockTexts(pipeline.context)).toEqual(['', 'Hello'])
     expect(requireCursor(pipeline.context)).toMatchObject({
       blockId,
-      nodeId: text.id,
-      offset: text.text.length,
+      nodeId: node.id,
+      offset: node.text.length,
     })
   })
 
   test('insertBlock appends an empty text node when spec content ends without editable text', () => {
     const pipeline = makePipeline({ markdown: false })
     focus(pipeline)
-    const hello = createTextNode({ text: 'Hello' })
-    const lineBreak = createLineBreakNode()
 
     const blockId = pipeline.insertBlock(
-      { spec: { content: [hello, lineBreak], type: 'quote' } },
+      {
+        spec: {
+          content: [{ text: 'Hello', type: 'text' }, { type: 'line_break' }],
+          type: 'quote',
+        },
+      },
       'user',
     )
     if (!blockId) {
@@ -271,8 +289,11 @@ describe('TransactionPipeline block commands', () => {
     const [first, second, trailing] = inserted.content
 
     expect(inserted.content).toHaveLength(3)
-    expect(first).toEqual(hello)
-    expect(second).toEqual(lineBreak)
+    if (first === undefined || !isTextNode(first)) {
+      throw new Error('Expected a leading text node')
+    }
+    expect(first.text).toBe('Hello')
+    expect(second !== undefined && isLineBreakNode(second)).toBe(true)
 
     if (trailing === undefined || !isTextNode(trailing)) {
       throw new Error('Expected a trailing empty text node')
@@ -285,6 +306,31 @@ describe('TransactionPipeline block commands', () => {
       nodeId: trailing.id,
       offset: 0,
     })
+  })
+
+  test('insertBlock rejects invalid JSON spec content', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+
+    try {
+      pipeline.insertBlock(
+        {
+          spec: {
+            content: [{ type: 'unknown' }] as unknown as InlineNodeJsonInput[],
+            type: 'paragraph',
+          },
+        },
+        'user',
+      )
+    } catch (error) {
+      expect(error).toBeInstanceOf(DactyloError)
+      expect(error instanceof DactyloError ? error.code : undefined).toBe(
+        'DESERIALIZE_DOCUMENT_JSON_INPUT',
+      )
+      return
+    }
+
+    expect.unreachable('Expected insertBlock to throw')
   })
 
   test('insert block commands return null without a position or selection', () => {
