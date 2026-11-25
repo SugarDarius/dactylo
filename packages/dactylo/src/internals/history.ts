@@ -347,7 +347,6 @@ export interface HistoryStackOptions {
  * - New user transaction → `push()` clears redo branch
  * - `popUndo()` → pipeline applies `inverseOps` with `pushToHistory: false`
  * - `popRedo()` → pipeline applies forward `ops`
- * - `Batch.run()` → one history entry for entire batch
  * - Selection-only → `pushToHistory: false` on `TransactionPolicy`
  *
  * ## Two layers of coalesce

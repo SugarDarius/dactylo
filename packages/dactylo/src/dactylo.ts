@@ -1350,12 +1350,6 @@ export interface DactyloBaseOptions {
 
   /** Configuration for the transaction pipeline */
   readonly pipeline?: {
-    /** Configuration for the batch of the transaction pipeline */
-    readonly batch?: {
-      /** Max ops queued before auto-flush. Default 512. Use Infinity for large paste. */
-      readonly maxSize?: number
-    }
-
     /** Configuration for the history of the transaction pipeline */
     readonly history?: HistoryStackOptions
   }
@@ -1662,7 +1656,6 @@ export class Dactylo {
       autolink: {
         enabled: this.#config.autolink.enabled,
       },
-      batch: options.pipeline?.batch,
       commandTrigger: {
         character: this.#config.commandTrigger.character,
         enabled: this.#config.commandTrigger.enabled,
