@@ -2110,8 +2110,10 @@ describe('Dactylo mentions', () => {
         blockId: block.id,
         createdAt: mention.createdAt,
         entity,
+        from: 'confirm-buffered-inline-mention',
         metadata: { bgColor: 'blue' },
         nodeId: mention.id,
+        source: 'user',
       },
     ])
 
@@ -2143,8 +2145,12 @@ describe('Dactylo mentions', () => {
   test('confirm records the transaction source', () => {
     const editor = makeMentionsEditor()
     const applied: Transaction[] = []
+    const created: MentionDidCreatedEvent[] = []
     editor.events.transactionDidApply.subscribe((transaction) => {
       applied.push(transaction)
+    })
+    editor.events.mentionDidCreated.subscribe((event) => {
+      created.push(event)
     })
 
     editor.selection.commands.focus()
@@ -2156,6 +2162,12 @@ describe('Dactylo mentions', () => {
         source: 'ai-agent',
       }),
     )
+    expect(created).toEqual([
+      expect.objectContaining({
+        from: 'confirm-buffered-inline-mention',
+        source: 'ai-agent',
+      }),
+    ])
   })
 
   test('commands are no-ops and tools return fallbacks while read-only', () => {
@@ -2173,6 +2185,264 @@ describe('Dactylo mentions', () => {
     editor.setEditable(true)
     expect(editor.mentions.tools.isBuffering()).toBe(true)
     expect(editor.mentions.tools.getBufferedText()).toBe('john')
+  })
+
+  test('events.mentionDidCreated fires after insert with mention content', () => {
+    const editor = makeTypingEditor()
+    const events: MentionDidCreatedEvent[] = []
+    editor.events.mentionDidCreated.subscribe((event) => {
+      events.push(event)
+    })
+    editor.selection.commands.focus()
+
+    const blockId = editor.blocks.commands.insert({
+      spec: {
+        content: [
+          { entity, metadata: { bgColor: 'blue' }, type: 'mention' },
+          { text: 'hello', type: 'text' },
+        ],
+        type: 'paragraph',
+      },
+    })
+    if (!blockId) {
+      throw new Error('Expected an inserted paragraph')
+    }
+
+    const inserted = nthInlineBlock(editor.getContext(), 1)
+    const mention = inserted.content.find(isMentionNode)
+    if (!mention) {
+      throw new Error('Expected a mention node')
+    }
+
+    expect(events).toEqual([
+      {
+        blockId,
+        createdAt: mention.createdAt,
+        entity,
+        from: 'insert-block',
+        metadata: { bgColor: 'blue' },
+        nodeId: mention.id,
+        source: 'user',
+      },
+    ])
+  })
+
+  test('events.mentionDidCreated records the insert source and each mention', () => {
+    const editor = makeTypingEditor()
+    const events: MentionDidCreatedEvent[] = []
+    editor.events.mentionDidCreated.subscribe((event) => {
+      events.push(event)
+    })
+    editor.selection.commands.focus()
+
+    const other = { data: { name: 'Jane' }, id: 'user-456' } as const
+    const blockId = editor.blocks.commands.insert(
+      {
+        spec: {
+          content: [
+            { entity, type: 'mention' },
+            { entity: other, type: 'mention' },
+          ],
+          type: 'quote',
+        },
+      },
+      'ai-agent',
+    )
+    if (!blockId) {
+      throw new Error('Expected an inserted quote')
+    }
+
+    const inserted = nthInlineBlock(editor.getContext(), 1)
+    const mentions = inserted.content.filter(isMentionNode)
+    const [first, second] = mentions
+    if (!(first && second)) {
+      throw new Error('Expected two mention nodes')
+    }
+
+    expect(events).toEqual([
+      {
+        blockId,
+        createdAt: first.createdAt,
+        entity,
+        from: 'insert-block',
+        metadata: {},
+        nodeId: first.id,
+        source: 'ai-agent',
+      },
+      {
+        blockId,
+        createdAt: second.createdAt,
+        entity: other,
+        from: 'insert-block',
+        metadata: {},
+        nodeId: second.id,
+        source: 'ai-agent',
+      },
+    ])
+  })
+
+  test('events.mentionDidCreated does not fire when insert has no mentions', () => {
+    const editor = makeTypingEditor()
+    const events: MentionDidCreatedEvent[] = []
+    editor.events.mentionDidCreated.subscribe((event) => {
+      events.push(event)
+    })
+    editor.selection.commands.focus()
+
+    expect(
+      editor.blocks.commands.insert({
+        spec: { content: [{ text: 'Hello', type: 'text' }], type: 'paragraph' },
+      }),
+    ).not.toBeNull()
+    expect(
+      editor.blocks.commands.insert({ spec: { type: 'divider' } }),
+    ).not.toBeNull()
+
+    expect(events).toEqual([])
+  })
+
+  test('events.mentionDidCreated fires after patch with mention content', () => {
+    const editor = makeTypingEditor()
+    const events: MentionDidCreatedEvent[] = []
+    editor.events.mentionDidCreated.subscribe((event) => {
+      events.push(event)
+    })
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    const blockId = firstInlineBlock(editor.getContext()).id
+    expect(
+      editor.blocks.commands.patch({
+        blockId,
+        spec: {
+          content: [{ entity, metadata: { bgColor: 'blue' }, type: 'mention' }],
+          type: 'paragraph',
+        },
+      }),
+    ).toBe(true)
+
+    const patched = firstInlineBlock(editor.getContext())
+    const mention = patched.content.find(isMentionNode)
+    if (!mention) {
+      throw new Error('Expected a mention node')
+    }
+
+    expect(events).toEqual([
+      {
+        blockId,
+        createdAt: mention.createdAt,
+        entity,
+        from: 'patch-block',
+        metadata: { bgColor: 'blue' },
+        nodeId: mention.id,
+        source: 'user',
+      },
+    ])
+  })
+
+  test('events.mentionDidCreated does not fire when patch keeps or omits mentions', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const blockId = firstInlineBlock(editor.getContext()).id
+    expect(
+      editor.blocks.commands.patch({
+        blockId,
+        spec: {
+          content: [{ entity, type: 'mention' }],
+          type: 'paragraph',
+        },
+      }),
+    ).toBe(true)
+
+    const events: MentionDidCreatedEvent[] = []
+    editor.events.mentionDidCreated.subscribe((event) => {
+      events.push(event)
+    })
+
+    expect(
+      editor.blocks.commands.patch({
+        blockId,
+        spec: { metadata: { value: { a: 1 } }, type: 'paragraph' },
+      }),
+    ).toBe(true)
+    expect(
+      editor.blocks.commands.patch({
+        blockId,
+        spec: { content: [], type: 'paragraph' },
+      }),
+    ).toBe(true)
+    expect(
+      editor.blocks.commands.patch({
+        blockId,
+        spec: { content: [{ text: 'Hello', type: 'text' }], type: 'paragraph' },
+      }),
+    ).toBe(true)
+
+    expect(events).toEqual([])
+  })
+
+  test('events.mentionDidCreated fires after duplicating a block that has mentions', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const sourceId = editor.blocks.commands.insert({
+      spec: {
+        content: [{ entity, metadata: { bgColor: 'blue' }, type: 'mention' }],
+        type: 'paragraph',
+      },
+    })
+    if (!sourceId) {
+      throw new Error('Expected an inserted paragraph')
+    }
+
+    const events: MentionDidCreatedEvent[] = []
+    editor.events.mentionDidCreated.subscribe((event) => {
+      events.push(event)
+    })
+
+    expect(editor.blocks.commands.duplicate(sourceId)).toBe(true)
+
+    const clone = nthInlineBlock(editor.getContext(), 2)
+    const mention = clone.content.find(isMentionNode)
+    if (!mention) {
+      throw new Error('Expected a cloned mention node')
+    }
+
+    expect(clone.id).not.toBe(sourceId)
+    expect(events).toEqual([
+      {
+        blockId: clone.id,
+        createdAt: mention.createdAt,
+        entity,
+        from: 'duplicate-block',
+        metadata: { bgColor: 'blue' },
+        nodeId: mention.id,
+        source: 'user',
+      },
+    ])
+  })
+
+  test('events.mentionDidCreated does not fire when duplicating a block without mentions', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+
+    const events: MentionDidCreatedEvent[] = []
+    editor.events.mentionDidCreated.subscribe((event) => {
+      events.push(event)
+    })
+
+    const sourceId = firstInlineBlock(editor.getContext()).id
+    expect(editor.blocks.commands.duplicate(sourceId)).toBe(true)
+
+    const dividerId = editor.blocks.commands.insert({
+      spec: { type: 'divider' },
+    })
+    if (!dividerId) {
+      throw new Error('Expected an inserted divider')
+    }
+    expect(editor.blocks.commands.duplicate(dividerId)).toBe(true)
+
+    expect(events).toEqual([])
   })
 })
 

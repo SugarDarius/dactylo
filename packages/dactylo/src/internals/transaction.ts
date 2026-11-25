@@ -37,7 +37,7 @@ import { InlineBuffer } from './inline-buffer'
 import type { InlineBufferEvent } from './inline-buffer'
 import { detectPlatformShortcut } from './keyboard'
 import type { MarkKey } from './marks'
-import type { NodeId } from './nodes'
+import type { MentionNode, NodeId } from './nodes'
 import type { Operation } from './operations'
 import { buildReindexNumberedListItemsOps } from './operations-builder'
 import type {
@@ -372,6 +372,16 @@ export interface MentionDidCreatedEvent {
 
   /** Metadata associated with the mention that was created. */
   readonly metadata: MNM
+
+  /** Where from the mention was created. */
+  readonly from:
+    | 'confirm-buffered-inline-mention'
+    | 'insert-block'
+    | 'patch-block'
+    | 'duplicate-block'
+
+  /** Who/what created the mention. */
+  readonly source: Extract<TransactionSource, 'user' | 'ai-agent'>
 }
 
 /** Events emitted by the transaction pipeline */
@@ -846,12 +856,13 @@ export class TransactionPipeline {
     )
   }
 
-  /** Runs the transaction pipeline and updates editor context. */
   /**
+   * Runs the transaction pipeline and updates editor context.
+   *
    * Dispatches a transaction by running the full pipeline:
-   * 1. Validate or reject the operation
-   * 2. └- Apply the operation and get the invert operation for history
-   * 3. └- Commit effects: push to history; notify events to subscribers
+   *   1. Validate or reject the operation
+   *   2. └- Apply the operation and get the invert operation for history
+   *   3. └- Commit effects: push to history; notify events to subscribers
    *
    * Does not mutate the inputs.
    */
@@ -1149,6 +1160,26 @@ export class TransactionPipeline {
 
   // --- Composing operations ─────────────────────────────────────────
 
+  /** Notifies the mentions that were created. */
+  #notifyMentions(
+    blockId: BlockId,
+    mentions: MentionNode[],
+    from: MentionDidCreatedEvent['from'],
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): void {
+    for (const mention of mentions) {
+      this.#eventSources.mentionDidCreated.notify({
+        blockId,
+        createdAt: mention.createdAt,
+        entity: mention.entity,
+        metadata: mention.metadata,
+        nodeId: mention.id,
+        from,
+        source,
+      })
+    }
+  }
+
   /**
    * Confirms a mention buffer by inserting a mention node into the document.
    *
@@ -1221,13 +1252,12 @@ export class TransactionPipeline {
       syncInlineBuffers: false,
     })
 
-    this.#eventSources.mentionDidCreated.notify({
-      blockId: pointer.blockId,
-      createdAt: mention.createdAt,
-      entity: mention.entity,
-      metadata: mention.metadata,
-      nodeId: mention.id,
-    })
+    this.#notifyMentions(
+      pointer.blockId,
+      [mention],
+      'confirm-buffered-inline-mention',
+      source,
+    )
 
     return true
   }
@@ -2017,7 +2047,7 @@ export class TransactionPipeline {
       return null
     }
 
-    const [intent, blockId] = tuple
+    const [intent, blockId, mentions] = tuple
 
     const { ops, label } = intent
     this.#commit(ops, {
@@ -2025,6 +2055,10 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    if (mentions !== null && mentions.length > 0) {
+      this.#notifyMentions(blockId, mentions, 'insert-block', source)
+    }
 
     return blockId
   }
@@ -2039,15 +2073,17 @@ export class TransactionPipeline {
     },
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): boolean {
-    const intent = this.#operationsEngine.buildPatchBlockOps(
+    const tuple = this.#operationsEngine.buildPatchBlockOps(
       this.#context,
       opts.blockId,
       opts.spec,
     )
 
-    if (intent === null) {
+    if (tuple === null) {
       return false
     }
+
+    const [intent, mentions] = tuple
 
     const { ops, label } = intent
     this.#commit(ops, {
@@ -2055,6 +2091,10 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    if (mentions !== null && mentions.length > 0) {
+      this.#notifyMentions(opts.blockId, mentions, 'patch-block', source)
+    }
 
     return true
   }
@@ -2064,14 +2104,16 @@ export class TransactionPipeline {
     blockId: BlockId,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): boolean {
-    const intent = this.#operationsEngine.buildDuplicateBlockOps(
+    const tuple = this.#operationsEngine.buildDuplicateBlockOps(
       this.#context,
       blockId,
     )
 
-    if (intent === null) {
+    if (tuple === null) {
       return false
     }
+
+    const [intent, cloneBlockId, mentions] = tuple
 
     const { ops, label } = intent
     this.#commit(ops, {
@@ -2079,6 +2121,10 @@ export class TransactionPipeline {
       pushToHistory: true,
       source,
     })
+
+    if (mentions !== null && mentions.length > 0) {
+      this.#notifyMentions(cloneBlockId, mentions, 'duplicate-block', source)
+    }
 
     return true
   }

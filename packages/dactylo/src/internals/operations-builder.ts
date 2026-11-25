@@ -42,6 +42,7 @@ import {
   isCanonicalEmptyInlineContent,
   isInlineContentTextEmpty,
   isInlineNodeWithEditableText,
+  isMentionNode,
   isTextNode,
   joinInlineContentAtMergeSeam,
   touchInlineNode,
@@ -49,6 +50,7 @@ import {
 import type {
   InlineNode,
   InlineNodeWithEditableText,
+  MentionNode,
   NodeId,
   TextNode,
 } from './nodes'
@@ -281,30 +283,42 @@ export function resolvePatchMetadata<M extends Metadata>(
 }
 
 /**
- * Resolves the content to patch based on the source and patch.
+ * Resolves the content to patch based on the source and patch json input spec.
  * If the patch is empty, source content is kept.
+ *
+ * Returns a tuple with the resolved content to patch in the block
+ * and the mentions that were created if any.
  */
 export function resolvePatchContent(opts: {
   source: InlineNode[]
-  patch?: InlineNodeJsonInput[]
+  patchJsonInput?: InlineNodeJsonInput[]
   initialMetadata: OperationsBuilderInitialMetadata
-}): InlineNode[] {
-  if (!opts.patch) {
-    return opts.source
+}): [InlineNode[], MentionNode[] | null] {
+  if (!opts.patchJsonInput) {
+    return [opts.source, null]
   }
 
-  const { source, patch, initialMetadata } = opts
-  validateInlineContent(patch, {
+  const { source, patchJsonInput, initialMetadata } = opts
+  validateInlineContent(patchJsonInput, {
     hint: 'OperationsBuilder/resolvePatchContent',
   })
 
-  if (patch.length === 0) {
-    return source
+  if (patchJsonInput.length === 0) {
+    return [source, null]
   }
 
-  return createInlineContentFromJsonInput(patch, {
+  const patch = createInlineContentFromJsonInput(patchJsonInput, {
     initialMetadata,
   })
+
+  const mentions: MentionNode[] = []
+  for (const inlineNode of patch) {
+    if (isMentionNode(inlineNode)) {
+      mentions.push(inlineNode)
+    }
+  }
+
+  return [patch, mentions]
 }
 
 /** Describes which block to patch. */

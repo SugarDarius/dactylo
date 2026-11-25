@@ -5,9 +5,14 @@ import {
   isParagraphBlock,
 } from '../../src/internals/blocks'
 import type { DocumentJsonInput } from '../../src/internals/document-json-input'
-import { isTextNode } from '../../src/internals/nodes'
+import {
+  createTextNode,
+  isMentionNode,
+  isTextNode,
+} from '../../src/internals/nodes'
 import type { InsertBlockOp } from '../../src/internals/operations'
 import type { OperationsBuilderInitialMetadata } from '../../src/internals/operations-builder'
+import { resolvePatchContent } from '../../src/internals/operations-builder'
 import { OperationsEngine } from '../../src/internals/operations-engine'
 import { makeInitialPosition, makePosition } from '../../src/internals/position'
 import { TransactionPipeline } from '../../src/internals/transaction'
@@ -355,5 +360,65 @@ describe('TransactionPipeline JSON initialContent', () => {
     })
 
     expect(markers).toEqual(['1.', '2.', '', 'c.', 'd.'])
+  })
+})
+
+describe('resolvePatchContent', () => {
+  const source = [createTextNode({ text: 'Hello' })]
+
+  test('keeps source and returns no mentions when patchJsonInput is omitted', () => {
+    const [content, mentions] = resolvePatchContent({
+      initialMetadata: emptyInitialMetadata(),
+      source,
+    })
+
+    expect(content).toBe(source)
+    expect(mentions).toBeNull()
+  })
+
+  test('keeps source and returns no mentions when patchJsonInput is empty', () => {
+    const [content, mentions] = resolvePatchContent({
+      initialMetadata: emptyInitialMetadata(),
+      patchJsonInput: [],
+      source,
+    })
+
+    expect(content).toBe(source)
+    expect(mentions).toBeNull()
+  })
+
+  test('replaces content and returns an empty mentions list for text-only patches', () => {
+    const [content, mentions] = resolvePatchContent({
+      initialMetadata: emptyInitialMetadata(),
+      patchJsonInput: [{ text: 'World', type: 'text' }],
+      source,
+    })
+
+    expect(content).not.toBe(source)
+    expect(content).toHaveLength(1)
+    const [node] = content
+    if (node === undefined || !isTextNode(node)) {
+      throw new Error('Expected a text node')
+    }
+    expect(node.text).toBe('World')
+    expect(mentions).toEqual([])
+  })
+
+  test('collects mentions created from the patch json input', () => {
+    const [content, mentions] = resolvePatchContent({
+      initialMetadata: emptyInitialMetadata(),
+      patchJsonInput: [
+        {
+          entity: { data: { email: 'jane@example.com' }, id: 'user_1' },
+          type: 'mention',
+        },
+        { text: 'hi', type: 'text' },
+      ],
+      source,
+    })
+
+    expect(content.map((node) => node.__type)).toEqual(['mention', 'text'])
+    expect(mentions).toHaveLength(1)
+    expect(mentions?.[0]).toBe(content.find(isMentionNode))
   })
 })

@@ -58,6 +58,7 @@ import {
   createTextNode,
   getInlineNodeTextLength,
   isInlineNodeWithEditableText,
+  isMentionNode,
   isTextNode,
 } from './nodes'
 import type { InlineNode, MentionNode, NodeId } from './nodes'
@@ -116,7 +117,7 @@ export function mutateOpsNoOpWarning(
 }
 
 /** Warns about a patch operation being no-op. */
-export function patchOpsNoOPWarning(
+export function patchOpsNoOpWarning(
   debug: boolean,
   blockId: BlockId,
   targetBlockType: BlockType,
@@ -125,7 +126,7 @@ export function patchOpsNoOPWarning(
   warnIf(
     debug,
     `Cannot patch block ${blockId} because source type is ${sourceBlockType} instead of ${targetBlockType}`,
-    'OperationsEngine/patchOpsNoOPWarning',
+    'OperationsEngine/patchOpsNoOpWarning',
   )
 }
 
@@ -801,7 +802,7 @@ export class OperationsEngine {
     context: EditorContext,
     spec: InsertBlockSpec,
     pos?: InsertOrMoveBlockPosition,
-  ): [BuilderOpsIntent, BlockId] | null {
+  ): [BuilderOpsIntent, BlockId, MentionNode[] | null] | null {
     const { state, selection } = context
 
     /** Do not insert if `pos` isn't given or selection is not active. */
@@ -866,6 +867,13 @@ export class OperationsEngine {
       }
     }
 
+    const mentions: MentionNode[] = []
+    for (const inlineNode of content) {
+      if (isMentionNode(inlineNode)) {
+        mentions.push(inlineNode)
+      }
+    }
+
     const { type } = spec
     switch (type) {
       case 'paragraph': {
@@ -892,7 +900,7 @@ export class OperationsEngine {
           },
         ]
 
-        return [{ label: 'insert-paragraph', ops }, paragraph.id]
+        return [{ label: 'insert-paragraph', ops }, paragraph.id, mentions]
       }
       case 'quote': {
         const quote = createQuoteBlock({
@@ -918,7 +926,7 @@ export class OperationsEngine {
           },
         ]
 
-        return [{ label: 'insert-quote', ops }, quote.id]
+        return [{ label: 'insert-quote', ops }, quote.id, mentions]
       }
       case 'heading': {
         const heading = createHeadingBlock({
@@ -945,7 +953,7 @@ export class OperationsEngine {
           },
         ]
 
-        return [{ label: 'insert-heading', ops }, heading.id]
+        return [{ label: 'insert-heading', ops }, heading.id, mentions]
       }
       case 'bullet_list_item': {
         const bulletListItem = createBulletListItemBlock({
@@ -971,7 +979,11 @@ export class OperationsEngine {
           },
         ]
 
-        return [{ label: 'insert-bullet-list-item', ops }, bulletListItem.id]
+        return [
+          { label: 'insert-bullet-list-item', ops },
+          bulletListItem.id,
+          mentions,
+        ]
       }
       case 'numbered_list_item': {
         const variant = spec.variant ?? 'default'
@@ -1012,6 +1024,7 @@ export class OperationsEngine {
         return [
           { label: 'insert-numbered-list-item', ops },
           numberedListItem.id,
+          mentions,
         ]
       }
       case 'checkbox_list_item': {
@@ -1042,6 +1055,7 @@ export class OperationsEngine {
         return [
           { label: 'insert-checkbox-list-item', ops },
           checkboxListItem.id,
+          mentions,
         ]
       }
       case 'divider': {
@@ -1086,7 +1100,7 @@ export class OperationsEngine {
           },
         ]
 
-        return [{ label: 'insert-divider', ops }, divider.id]
+        return [{ label: 'insert-divider', ops }, divider.id, null]
       }
       default: {
         assertNever(type, { hint: 'OperationsEngine/buildInsertBlockOps' })
@@ -1099,27 +1113,29 @@ export class OperationsEngine {
     context: EditorContext,
     blockId: BlockId,
     spec: PatchBlockSpec,
-  ): BuilderOpsIntent | null {
+  ): [BuilderOpsIntent, MentionNode[] | null] | null {
     const source = getBlock(context.state, blockId)
 
     const { type } = spec
     switch (type) {
       case 'paragraph': {
         if (!isParagraphBlock(source)) {
-          patchOpsNoOPWarning(this.#debug, blockId, 'paragraph', source.__type)
+          patchOpsNoOpWarning(this.#debug, blockId, 'paragraph', source.__type)
           return null
         }
+
+        const [content, mentions] = resolvePatchContent({
+          source: [...source.content],
+          patchJsonInput: spec.content,
+          initialMetadata: this.#initialMetadata,
+        })
 
         const ops: Operation[] = [
           {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
-              content: resolvePatchContent({
-                source: [...source.content],
-                patch: spec.content,
-                initialMetadata: this.#initialMetadata,
-              }),
+              content,
               metadata: spec.metadata
                 ? resolvePatchMetadata(
                     source.metadata,
@@ -1132,24 +1148,26 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'patch-paragraph', ops }
+        return [{ label: 'patch-paragraph', ops }, mentions]
       }
       case 'quote': {
         if (!isQuoteBlock(source)) {
-          patchOpsNoOPWarning(this.#debug, blockId, 'quote', source.__type)
+          patchOpsNoOpWarning(this.#debug, blockId, 'quote', source.__type)
           return null
         }
+
+        const [content, mentions] = resolvePatchContent({
+          source: [...source.content],
+          patchJsonInput: spec.content,
+          initialMetadata: this.#initialMetadata,
+        })
 
         const ops: Operation[] = [
           {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
-              content: resolvePatchContent({
-                source: [...source.content],
-                patch: spec.content,
-                initialMetadata: this.#initialMetadata,
-              }),
+              content,
               metadata: spec.metadata
                 ? resolvePatchMetadata(
                     source.metadata,
@@ -1162,24 +1180,26 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'patch-quote', ops }
+        return [{ label: 'patch-quote', ops }, mentions]
       }
       case 'heading': {
         if (!isHeadingBlock(source)) {
-          patchOpsNoOPWarning(this.#debug, blockId, 'heading', source.__type)
+          patchOpsNoOpWarning(this.#debug, blockId, 'heading', source.__type)
           return null
         }
+
+        const [content, mentions] = resolvePatchContent({
+          source: [...source.content],
+          patchJsonInput: spec.content,
+          initialMetadata: this.#initialMetadata,
+        })
 
         const ops: Operation[] = [
           {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
-              content: resolvePatchContent({
-                source: [...source.content],
-                patch: spec.content,
-                initialMetadata: this.#initialMetadata,
-              }),
+              content,
               level: spec.level ?? source.level,
               metadata: spec.metadata
                 ? resolvePatchMetadata(
@@ -1193,11 +1213,11 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'patch-heading', ops }
+        return [{ label: 'patch-heading', ops }, mentions]
       }
       case 'bullet_list_item': {
         if (!isBulletListItemBlock(source)) {
-          patchOpsNoOPWarning(
+          patchOpsNoOpWarning(
             this.#debug,
             blockId,
             'bullet_list_item',
@@ -1206,16 +1226,18 @@ export class OperationsEngine {
           return null
         }
 
+        const [content, mentions] = resolvePatchContent({
+          source: [...source.content],
+          patchJsonInput: spec.content,
+          initialMetadata: this.#initialMetadata,
+        })
+
         const ops: Operation[] = [
           {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
-              content: resolvePatchContent({
-                source: [...source.content],
-                patch: spec.content,
-                initialMetadata: this.#initialMetadata,
-              }),
+              content,
               metadata: spec.metadata
                 ? resolvePatchMetadata(
                     source.metadata,
@@ -1228,11 +1250,11 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'patch-bullet-list-item', ops }
+        return [{ label: 'patch-bullet-list-item', ops }, mentions]
       }
       case 'numbered_list_item': {
         if (!isNumberedListItemBlock(source)) {
-          patchOpsNoOPWarning(
+          patchOpsNoOpWarning(
             this.#debug,
             blockId,
             'numbered_list_item',
@@ -1240,6 +1262,12 @@ export class OperationsEngine {
           )
           return null
         }
+
+        const [content, mentions] = resolvePatchContent({
+          source: [...source.content],
+          patchJsonInput: spec.content,
+          initialMetadata: this.#initialMetadata,
+        })
 
         const variant = spec.variant ?? source.variant
         const ordinal =
@@ -1254,11 +1282,7 @@ export class OperationsEngine {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
-              content: resolvePatchContent({
-                source: [...source.content],
-                patch: spec.content,
-                initialMetadata: this.#initialMetadata,
-              }),
+              content,
               markerNumbering,
               metadata: spec.metadata
                 ? resolvePatchMetadata(
@@ -1287,11 +1311,11 @@ export class OperationsEngine {
           )
         }
 
-        return { label: 'patch-numbered-list-item', ops }
+        return [{ label: 'patch-numbered-list-item', ops }, mentions]
       }
       case 'checkbox_list_item': {
         if (!isCheckboxListItemBlock(source)) {
-          patchOpsNoOPWarning(
+          patchOpsNoOpWarning(
             this.#debug,
             blockId,
             'checkbox_list_item',
@@ -1300,17 +1324,19 @@ export class OperationsEngine {
           return null
         }
 
+        const [content, mentions] = resolvePatchContent({
+          source: [...source.content],
+          patchJsonInput: spec.content,
+          initialMetadata: this.#initialMetadata,
+        })
+
         const ops: Operation[] = [
           {
             __type: 'update_block',
             patch: touchBlock({
               ...source,
               checked: spec.checked ?? source.checked,
-              content: resolvePatchContent({
-                source: [...source.content],
-                patch: spec.content,
-                initialMetadata: this.#initialMetadata,
-              }),
+              content,
               metadata: spec.metadata
                 ? resolvePatchMetadata(
                     source.metadata,
@@ -1323,11 +1349,11 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'patch-checkbox-list-item', ops }
+        return [{ label: 'patch-checkbox-list-item', ops }, mentions]
       }
       case 'divider': {
         if (!isDividerBlock(source)) {
-          patchOpsNoOPWarning(this.#debug, blockId, 'divider', source.__type)
+          patchOpsNoOpWarning(this.#debug, blockId, 'divider', source.__type)
           return null
         }
 
@@ -1348,7 +1374,7 @@ export class OperationsEngine {
           },
         ]
 
-        return { label: 'patch-divider', ops }
+        return [{ label: 'patch-divider', ops }, null]
       }
       default: {
         assertNever(type, { hint: 'OperationsEngine/buildPatchBlockOps' })
@@ -1360,7 +1386,7 @@ export class OperationsEngine {
   buildDuplicateBlockOps(
     context: EditorContext,
     blockId: BlockId,
-  ): BuilderOpsIntent | null {
+  ): [BuilderOpsIntent, BlockId, MentionNode[] | null] | null {
     const { state, selection } = context
     const source = getBlock(state, blockId)
 
@@ -1408,7 +1434,17 @@ export class OperationsEngine {
       })
     }
 
-    return { label: 'duplicate', ops }
+    let mentions: MentionNode[] | null = null
+    if (isBlockWithInlineContent(clone)) {
+      mentions = []
+      for (const inlineNode of clone.content) {
+        if (isMentionNode(inlineNode)) {
+          mentions.push(inlineNode)
+        }
+      }
+    }
+
+    return [{ label: 'duplicate', ops }, clone.id, mentions]
   }
 
   /** Builds operations to move a {@link Block} by ID to a new document position. */
