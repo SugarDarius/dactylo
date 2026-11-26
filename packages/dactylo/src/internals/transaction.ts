@@ -15,7 +15,10 @@ import type {
 import type { BlockId } from './blocks'
 import { readTransferredData } from './clipboard'
 import { error, logOnceIf, warn, warnIf, warnOnceIf } from './console'
-import { INLINE_DETECTOR_TRIGGER_CHARACTER } from './constants'
+import {
+  DEFAULT_MAX_TRANSACTION_BATCH_MAX_DEPTH,
+  INLINE_DETECTOR_TRIGGER_CHARACTER,
+} from './constants'
 import type { DocumentStatus } from './document'
 import { validateDocumentJsonInput } from './document-json-input'
 import type { DocumentJsonInput } from './document-json-input'
@@ -48,7 +51,8 @@ import type {
 import { OperationsEngine } from './operations-engine'
 import type { OperationsEngineOptions } from './operations-engine'
 import type { Selection } from './selection'
-import { isJsonObject } from './utils'
+import type { Awaitable } from './types'
+import { isJsonObject, isPromise } from './utils'
 
 /** The source of a transaction. */
 export type TransactionSource =
@@ -135,6 +139,18 @@ export function historyError(message: string, hint: string): never {
 }
 
 /**
+ * Throws a {@link DactyloError} when {@link TransactionBatch} is already in use in a way that would corrupt undo or overlap
+ * two batch runs.
+ */
+export function transactionBatchError(message: string, hint: string): never {
+  throw DactyloError.from({
+    code: 'TRANSACTION_BATCH_NOT_ALLOWED',
+    hint,
+    message,
+  })
+}
+
+/**
  * A bundle of operations with policy metadata about
  * how to commit them through the pipeline
  */
@@ -144,6 +160,346 @@ export interface Transaction {
 
   /** The policy metadata about the transaction */
   readonly policy?: TransactionPolicy
+}
+
+/**
+ * Pair of source ops and inverse ops for an applied {@link Transaction}
+ * from the operations runtime validation stage.
+ */
+export interface AppliedTransactionOps {
+  /** Forward ops that were just applied. */
+  readonly sourceOps: readonly Operation[]
+
+  /** Inverse ops, already in undo order for this command. */
+  readonly inverseOps: readonly Operation[]
+}
+
+/**
+ * Behavior for notifying {@link EditorContext} subscribers
+ * about work inside a {@link TransactionBatch}.
+ *
+ * - `end` → Notify once, when the batch function settles. Right default for tool-calling agents
+ *   and for a full document replace (no flicker of half-built state).
+ * - `each` → Notify after every commands. Useful when tokens steam into the document
+ *   and users should see them land.
+ */
+export type TransactionBatchNotifyBehavior = 'end' | 'each'
+
+/** Policy for a {@link TransactionBatch}. */
+export interface TransactionBatchPolicy {
+  /** Human-readable label of the transaction for debugging, DevTools, Ai tracing, ... */
+  readonly label?: string
+
+  /** Who/what initiated the batch. */
+  readonly source?: Extract<TransactionSource, 'user' | 'ai-agent'>
+}
+
+/**
+ * Open outermost batch run state.
+ *
+ * There is only one batch run state at a time. Nested `run()` calls append there.
+ * See this state as an accumulator.
+ *
+ * Other calls to `run()` do not create a new state. `editorContextSnapshot` is the
+ * {@link EditorContext} from before the first command, so a throw can restore it for free.
+ */
+export interface TransactionBatchRunState {
+  /** Either the {@link EditorContext} was updated during this batch run (`notify: 'each'`). */
+  didNotify: boolean
+
+  /** Behavior for notifying {@link EditorContext} subscribers about work inside this batch run. */
+  readonly notifyBehavior: TransactionBatchNotifyBehavior
+
+  /** Forward ops for the whole batch run, in command order */
+  sourceOps: Operation[]
+
+  /** Inverse ops accumulated for undo. */
+  inverseOps: Operation[]
+
+  /** Commit-time policy for the flushed history entry. */
+  readonly policy?: TransactionBatchPolicy
+
+  /** {@link EditorContext} before the first command in this batch run. */
+  readonly editorContextSnapshot: EditorContext
+}
+
+/** Parameters for flushing a {@link TransactionBatchFlushCallback}. */
+export interface TransactionBatchFlushCallbackParams {
+  /** Pair of source ops and inverse ops for an applied {@link Transaction}. */
+  readonly applied: AppliedTransactionOps
+
+  /** Commit-time policy for the flushed history entry. */
+  readonly policy?: TransactionBatchPolicy
+
+  /** Behavior for notifying {@link EditorContext} subscribers about work inside this batch run. */
+  readonly notifyBehavior: TransactionBatchNotifyBehavior
+}
+/**
+ * Callback called when the outermost `run()` call succeeds and there is something to commit.
+ * 👉🏻 This is where after a batch run history and {@link EditorContext} notify happen.
+ */
+export type TransactionBatchFlushCallback = (
+  params: TransactionBatchFlushCallbackParams,
+) => void
+
+/** Parameters for rolling back a {@link TransactionBatch}. */
+export interface TransactionBatchRollbackCallbackParams {
+  /** {@link EditorContext} before the first command in this batch run. */
+  readonly editorContextSnapshot: EditorContext
+
+  /** Either the {@link EditorContext} was updated during this batch run (`notify: 'each'`). */
+  readonly didNotify: boolean
+}
+
+/**
+ * Callback called when the outermost `run()` call throws.
+ * Restore `editorContextSnapshot`. Notify `context` only if we already painted during the batch run.
+ */
+export type TransactionBatchRollbackCallback = (
+  params: TransactionBatchRollbackCallbackParams,
+) => void
+
+/** Options for constructing a {@link TransactionBatch}. */
+export interface TransactionBatchOptions {
+  /** Finish the batch run: history + subscribers. */
+  readonly onFlush: TransactionBatchFlushCallback
+
+  /** Undo in-memory work after a throw, without touching history. */
+  readonly onRollback: TransactionBatchRollbackCallback
+
+  /**
+   * How many `run()` frames {@link TransactionBatch} can nest.
+   * Default to {@link DEFAULT_MAX_TRANSACTION_BATCH_MAX_DEPTH} and capped at it.
+   */
+  readonly maxDepth?: number
+}
+
+/**
+ * Groups already-validated operations into one undoable transaction.
+ * Made for use cases like big Ai agents edits.
+ *
+ * Mental model:
+ * ```md
+ * run(fn)
+ *   command → apply now (live context, real ids)
+ *          → accumulate into the batch run
+ *   fn settles
+ *          → one history entry
+ *          → context notify ('end'), or already notified ('each')
+ * ```
+ *
+ * Nested `run()` calls from inside `fn` is the same undo step (helpers).
+ * A second `run()` call while `fn` is awaiting (promises) throws.
+ *
+ * Depth is capped at {@link DEFAULT_MAX_TRANSACTION_BATCH_MAX_DEPTH}.
+ *
+ * To avoid splitting undo we throw instead of auto-flushing a nested run call.
+ */
+export class TransactionBatch {
+  /** Callback called when the outermost `run()` call succeeds and there is something to commit. */
+  readonly #onFlush: TransactionBatchFlushCallback
+
+  /** Callback called when the outermost `run()` call throws. */
+  readonly #onRollback: TransactionBatchRollbackCallback
+
+  /** Maximum nesting depth for {@link TransactionBatch}. */
+  readonly #maxDepth: number
+
+  /** How many `run()` frames are open. */
+  #depth = 0
+
+  /** Whether a batch run is currently in progress. */
+  #invoking = false
+
+  /** The open batch run state, or `null` when idle. */
+  #state: TransactionBatchRunState | null
+
+  constructor(options: TransactionBatchOptions) {
+    this.#onFlush = options.onFlush
+    this.#onRollback = options.onRollback
+
+    this.#maxDepth = options.maxDepth
+      ? Math.min(options.maxDepth, DEFAULT_MAX_TRANSACTION_BATCH_MAX_DEPTH)
+      : DEFAULT_MAX_TRANSACTION_BATCH_MAX_DEPTH
+
+    this.#state = null
+  }
+
+  /**
+   * Whether a batch run is currently in progress.
+   * Including while a batch run is awaiting (promises).
+   */
+  get active(): boolean {
+    return this.#state !== null
+  }
+
+  /** Nesting level. `0` means nothing is running. */
+  get depth(): number {
+    return this.#depth
+  }
+
+  /**
+   * Paint policy for the open batch run.
+   * `'end'` when idle, so `#commit` can stay branch-free.
+   */
+  get notifyBehavior(): TransactionBatchNotifyBehavior {
+    return this.#state?.notifyBehavior ?? 'end'
+  }
+
+  /** Flush the current batch. */
+  #flush(): void {
+    const state = this.#state
+    this.#state = null
+
+    if (state === null || state.sourceOps.length <= 0) {
+      return
+    }
+
+    this.#onFlush({
+      applied: {
+        sourceOps: state.sourceOps,
+        inverseOps: state.inverseOps,
+      },
+      policy: state.policy,
+      notifyBehavior: state.notifyBehavior,
+    })
+  }
+
+  /** Rollback the current batch. */
+  #rollback(): void {
+    const snapshot = this.#state?.editorContextSnapshot
+    const didNotify = this.#state?.didNotify ?? false
+
+    this.#state = null
+
+    if (snapshot !== undefined) {
+      this.#onRollback({
+        editorContextSnapshot: snapshot,
+        didNotify,
+      })
+    }
+  }
+
+  /** Complete a batch run. */
+  #completeRun(): void {
+    this.#depth -= 1
+    if (this.#depth > 0) {
+      return
+    }
+
+    this.#flush()
+  }
+
+  /** Abort a batch run. */
+  #abortRun(): void {
+    this.#rollback()
+
+    this.#state = null
+    this.#depth = 0
+  }
+
+  /**
+   * Remember that `context` subscribers already saw this batch run.
+   * Rollback uses this to decide whether to paint the restored snapshot.
+   */
+  markAsNotified(): void {
+    if (this.#state !== null) {
+      this.#state.didNotify = true
+    }
+  }
+
+  /**
+   * Accumulate a validated {@link Transaction} into the batch run state.
+   * Inverse ops go to the front, so undo walks the work backwards.
+   */
+  accumulate(validated: AppliedTransactionOps): void {
+    if (this.#state === null) {
+      transactionBatchError(
+        '`accumulate()` needs an open batch run. Call it from inside `run()`.',
+        'TransactionBatch/accumulate',
+      )
+    }
+
+    this.#state.sourceOps.push(...validated.sourceOps)
+    this.#state.inverseOps.unshift(...validated.inverseOps)
+  }
+
+  /**
+   * Runs a function as (or inside) one batch run.
+   *
+   * `editorContextSnapshot` and `policy` / `notifyBehavior` are kept only on the outermost enter.
+   * Nested `run()` calls ignore them and just shares the accumulator.
+   *
+   * Always returns a Promise so it can wrap async calls.
+   * A sync `fn` still works — we resolve immediately.
+   */
+  run<T>(
+    /** The batch function to run. */
+    fn: () => Awaitable<T>,
+    opts: {
+      /** The editor context snapshot. */
+      editorContextSnapshot: EditorContext
+      /** The policy for the batch run. */
+      policy?: TransactionBatchPolicy
+      /** The behavior for notifying the editor context subscribers. Defaults to `'end'`. */
+      notifyBehavior?: TransactionBatchNotifyBehavior
+    },
+  ): Awaitable<T> {
+    const { editorContextSnapshot, policy, notifyBehavior = 'end' } = opts
+    if (this.#depth > 0 && !this.#invoking) {
+      transactionBatchError(
+        'Another batch run is already running. Wait for it to finish before starting a new one.',
+        'TransactionBatch/run',
+      )
+    }
+
+    if (this.#depth >= this.#maxDepth) {
+      transactionBatchError(
+        `Batch run nested too deep (max ${this.#maxDepth}). You probably have a recursive helper calling run().`,
+        'TransactionBatch/run',
+      )
+    }
+
+    this.#depth += 1
+
+    if (this.#depth === 1) {
+      this.#state = {
+        didNotify: false,
+        notifyBehavior: notifyBehavior ?? 'end',
+        policy,
+        sourceOps: [],
+        inverseOps: [],
+        editorContextSnapshot,
+      }
+    }
+
+    this.#invoking = true
+
+    try {
+      const result = fn()
+      this.#invoking = false
+
+      if (isPromise(result)) {
+        return Promise.resolve(result)
+          .then((value) => {
+            this.#completeRun()
+            return value as T
+          })
+          .catch((err: unknown) => {
+            this.#abortRun()
+            throw err
+          })
+      }
+
+      this.#completeRun()
+      return Promise.resolve(result)
+    } catch (err: unknown) {
+      this.#invoking = false
+      this.#abortRun()
+
+      return Promise.reject(err)
+    }
+  }
 }
 
 /** Event emitted when {@link DocumentStatus} is set to `ready`. */
@@ -310,6 +666,12 @@ export interface TransactionPipelineOptions {
    */
   readonly initialMetadata?: OperationsBuilderInitialMetadata
 
+  /** Configuration for {@link TransactionBatch}. */
+  readonly batch?: {
+    /** Max depth of how many run frames are open. Defaults to `16`. */
+    readonly maxDepth?: number
+  }
+
   /** Configuration for the history of the transaction pipeline */
   readonly history?: HistoryStackOptions
 
@@ -445,6 +807,9 @@ export class TransactionPipeline {
    */
   #isIMEComposing = false
 
+  /** Groups already-validated commands into one undo step. */
+  readonly #batch: TransactionBatch
+
   /** Operations engine instance. */
   readonly #operationsEngine: OperationsEngine
 
@@ -509,6 +874,12 @@ export class TransactionPipeline {
       enabled: this.#commandTrigger.enabled,
       eventKind: 'command-trigger',
       name: 'CommandTriggerBuffer',
+    })
+
+    this.#batch = new TransactionBatch({
+      onFlush: (params) => this.#flushBatch(params),
+      onRollback: (params) => this.#rollbackBatch(params),
+      maxDepth: options.batch?.maxDepth,
     })
 
     this.#operationsEngine = new OperationsEngine({
@@ -656,16 +1027,10 @@ export class TransactionPipeline {
   }
 
   /**
-   * Runs the transaction pipeline and updates editor context.
-   *
-   * Dispatches a transaction by running the full pipeline:
-   *   1. Validate or reject the operation
-   *   2. └- Apply the operation and get the invert operation for history
-   *   3. └- Commit effects: push to history; notify events to subscribers
-   *
-   * Does not mutate the inputs.
+   * Validates/rejects and applies operations in the {@link Transaction}.
+   * Compute the inverse operations for history.
    */
-  #dispatch(transaction: Transaction): void {
+  #apply(transaction: Transaction): AppliedTransactionOps | null {
     const { ops } = transaction
 
     /**
@@ -678,7 +1043,7 @@ export class TransactionPipeline {
         'TransactionPipeline/dispatch: no operations declared in transaction.',
         JSON.stringify(transaction, null, 2),
       )
-      return
+      return null
     }
 
     let next = { ...this.#context }
@@ -713,6 +1078,30 @@ export class TransactionPipeline {
 
     this.#context = next
 
+    return {
+      sourceOps: [...ops],
+      inverseOps: [...inverseDocumentOps, ...inverseSelectionOps],
+    }
+  }
+
+  /**
+   * Runs the transaction pipeline and updates editor context.
+   *
+   * Dispatches a transaction by running the full pipeline:
+   *   1. Validate or reject each operations
+   *   2. └- Apply the operation and get the invert operation for history
+   *   3. └- Side effects: push to history; notify events to subscribers
+   *
+   * Does not mutate the inputs.
+   */
+  #dispatch(transaction: Transaction): void {
+    const applied = this.#apply(transaction)
+    if (applied === null) {
+      return
+    }
+
+    const { inverseOps, sourceOps } = applied
+
     if (!skipHistoryPush(transaction.policy)) {
       /** Only coalesce history entries for transactions initiated by a user. */
       const coalesce =
@@ -721,8 +1110,8 @@ export class TransactionPipeline {
 
       this.#history.push(
         {
-          inverseOps: [...inverseDocumentOps, ...inverseSelectionOps],
-          ops: [...ops],
+          inverseOps: [...inverseOps],
+          ops: [...sourceOps],
         },
         coalesce,
       )
@@ -732,7 +1121,7 @@ export class TransactionPipeline {
       this.#syncInlineBuffers()
     }
 
-    this.#eventSources.context.notify(next)
+    this.#eventSources.context.notify(this.#context)
     this.#eventSources.transactionDidApply.notify(transaction)
 
     this.#notifyHistory()
@@ -740,14 +1129,30 @@ export class TransactionPipeline {
 
   /**
    * Commits a transaction by dispatching the operations to the transaction pipeline.
-   * Mk Refactor: for now it's passthrough to the `#dispatch` method util the new transaction
-   * architecture is implemented.
+   * If the batch is active, the operations are accumulated and notified to the subscribers.
+   * Otherwise, the operations are dispatched immediately.
    */
   #commit(ops: Operation[], policy?: TransactionPolicy): void {
-    this.#dispatch({
+    const transaction: Transaction = {
       ops,
       policy: { source: 'editor', ...policy },
-    })
+    }
+
+    if (this.#batch.active) {
+      const applied = this.#apply(transaction)
+      if (applied === null) {
+        return
+      }
+
+      this.#batch.accumulate(applied)
+
+      if (this.#batch.notifyBehavior === 'each') {
+        this.#eventSources.context.notify(this.#context)
+        this.#batch.markAsNotified()
+      }
+    } else {
+      this.#dispatch(transaction)
+    }
   }
 
   /**
@@ -795,27 +1200,21 @@ export class TransactionPipeline {
       }
 
       const { ops, label } = intent
-      this.#dispatch({
-        ops,
-        policy: {
-          label: transactionPolicyLabel('editor-context', label),
-          pushToHistory: false,
-          source,
-        },
+      this.#commit(ops, {
+        label: transactionPolicyLabel('editor-context', label),
+        pushToHistory: false,
+        source,
       })
 
       const reindexOps = buildReindexNumberedListItemsOps(this.#context.state)
       if (reindexOps.length > 0) {
-        this.#dispatch({
-          ops: reindexOps,
-          policy: {
-            label: transactionPolicyLabel(
-              'editor-context',
-              'reindex-numbered-list-items',
-            ),
-            pushToHistory: false,
-            source,
-          },
+        this.#commit(reindexOps, {
+          label: transactionPolicyLabel(
+            'editor-context',
+            'reindex-numbered-list-items',
+          ),
+          pushToHistory: false,
+          source,
         })
       }
 
@@ -832,8 +1231,8 @@ export class TransactionPipeline {
       const wrapped = DactyloError.wrap(err)
       error(wrapped.message, wrapped.stack)
 
-      // @todo: add document error event
       this.#documentStatus = 'error'
+
       this.#eventSources.documentStatus.notify(this.#documentStatus)
       this.#eventSources.documentError.notify({
         durationMs,
@@ -862,20 +1261,87 @@ export class TransactionPipeline {
     }
   }
 
+  // ─── Batching ─────────────────────────────────────────────────----
+
+  /**
+   * Flushes the batch by pushing the applied operations
+   * as one history entry to the history stack.
+   *
+   * Notifies {@link EditorContext} subscribers and history subscribers.
+   */
+  #flushBatch(params: TransactionBatchFlushCallbackParams): void {
+    const { applied, policy, notifyBehavior } = params
+    this.#history.push({
+      ops: [...applied.sourceOps],
+      inverseOps: [...applied.inverseOps],
+    })
+
+    if (notifyBehavior === 'end') {
+      this.#eventSources.context.notify(this.#context)
+    }
+
+    this.#eventSources.transactionDidApply.notify({
+      ops: [...applied.sourceOps],
+      policy: {
+        ...policy,
+        source: policy?.source ?? 'editor',
+      },
+    })
+
+    this.#notifyHistory()
+  }
+
+  /**
+   * Rolls back a batch by restoring the {@link EditorContext} to the snapshot
+   * and notifying the subscribers if the {@link EditorContext} was updated during the batch run.
+   */
+  #rollbackBatch(params: TransactionBatchRollbackCallbackParams): void {
+    const { editorContextSnapshot, didNotify } = params
+
+    this.#context = editorContextSnapshot
+    if (didNotify) {
+      this.#eventSources.context.notify(this.#context)
+    }
+  }
+
+  /** Runs a batch of grouped operations as one single transaction. */
+  runBatch<T>(
+    /** The batch function to run. */
+    fn: () => Awaitable<T>,
+    opts: {
+      /** The policy for the batch run. */
+      policy?: TransactionBatchPolicy
+      /** The behavior for notifying the editor context subscribers. Defaults to `'end'`. */
+      notifyBehavior?: TransactionBatchNotifyBehavior
+    } = {},
+  ): Awaitable<T> {
+    return this.#batch.run(fn, {
+      editorContextSnapshot: this.#context,
+      ...opts,
+    })
+  }
+
   // --- History operations ─────────────────────────────────────────--
 
   /** Whether at least one undo entry is available. */
   canUndo(): boolean {
-    return this.#history.canUndo()
+    return !this.#batch.active && this.#history.canUndo()
   }
 
   /** Whether at least one redo entry is available. */
   canRedo(): boolean {
-    return this.#history.canRedo()
+    return !this.#batch.active && this.#history.canRedo()
   }
 
   /** Applies the newest undo entry's inverse operations. */
   undo(): void {
+    if (this.#batch.active) {
+      historyError(
+        'Cannot undo while a batch run is open.',
+        'TransactionPipeline/undo',
+      )
+    }
+
     const entry = this.#history.popUndo()
     if (!entry) {
       return
@@ -892,6 +1358,13 @@ export class TransactionPipeline {
 
   /** Re-applies the newest redo entry's forward operations. */
   redo(): void {
+    if (this.#batch.active) {
+      historyError(
+        'Cannot redo while a batch run is open.',
+        'TransactionPipeline/redo',
+      )
+    }
+
     const entry = this.#history.popRedo()
     if (!entry) {
       return

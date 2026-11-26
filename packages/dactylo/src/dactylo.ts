@@ -83,9 +83,11 @@ import type {
   MentionBufferEvent,
   MentionDidCreatedEvent,
   Transaction,
+  TransactionBatchNotifyBehavior,
   TransactionSource,
 } from './internals/transaction'
 import type {
+  Awaitable,
   CancelCallback,
   OptionalTupleUnless,
   Relax,
@@ -1266,6 +1268,53 @@ export type DactyloCommandTriggerApi = DactyloAspectApi<
   DactyloCommandTriggerCommands
 >
 
+/** Api to run actions around editor's commands. */
+export interface DactyloCommandsApi {
+  /**
+   * Runs a group of commands as one single undoable batch.
+   *
+   * Commands inside `fn` still apply immediately; history waits until `fn` settles.
+   * Reads (`*.tools.*`, `getContext`) are fine.
+   *
+   * ⚠️  Don’t call undo/redo inside `fn`. ⚠️
+   *
+   * @example
+   * ```ts
+   * await editor.commands.batch(async () => {
+   *   const { output } = await generateText({
+   *     model: 'spacex/grok-4.7,
+   *     prompt: 'Creates a tech design with some blocks and text.',
+   *     output: Output.object({
+   *       blocks: array(...) // {@link BlockJsonInput}
+   *     })
+   *   })
+   *
+   *   for (const block of output.blocks) {
+   *     editor.blocks.commands.insert(
+   *       {
+   *         spec: { type: block.type, content: block.content, metadata: block.metadata },
+   *         pos: 'end',
+   *       },
+   *       'end',
+   *       'ai-agent'
+   *     )
+   * }, { label: 'agent-edit' })
+   * ```
+   */
+  readonly batch: <T>(
+    /** The batch function to run. */
+    fn: () => Awaitable<T>,
+    opts: {
+      /** Human-readable label of the transaction for debugging, DevTools, Ai tracing, ... */
+      readonly label?: string
+      /** Who/what initiated the batch. */
+      readonly source?: Extract<TransactionSource, 'user' | 'ai-agent'>
+      /** The behavior for notifying the editor context subscribers. Defaults to `'end'`. */
+      readonly notifyBehavior?: TransactionBatchNotifyBehavior
+    },
+  ) => Awaitable<T>
+}
+
 /** Base options for constructing a {@link Dactylo} instance. */
 export interface DactyloBaseOptions {
   /**
@@ -1350,6 +1399,12 @@ export interface DactyloBaseOptions {
 
   /** Configuration for the transaction pipeline */
   readonly pipeline?: {
+    /** Configuration for {@link TransactionBatch}. */
+    readonly batch?: {
+      /** Max depth of how many run frames are open. Defaults to `16`. */
+      readonly maxDepth?: number
+    }
+
     /** Configuration for the history of the transaction pipeline */
     readonly history?: HistoryStackOptions
   }
@@ -1655,6 +1710,9 @@ export class Dactylo {
     this.#pipeline = new TransactionPipeline({
       autolink: {
         enabled: this.#config.autolink.enabled,
+      },
+      batch: {
+        maxDepth: options.pipeline?.batch?.maxDepth,
       },
       commandTrigger: {
         character: this.#config.commandTrigger.character,
@@ -2676,6 +2734,35 @@ export class Dactylo {
             { clientOnly: true },
           ),
       },
+    }
+  }
+
+  /** Returns the api to run actions around editor's commands. */
+  get commands(): DactyloCommandsApi {
+    return {
+      /**
+       * Runs a group of commands as one single undoable batch.
+       *
+       * Commands inside `fn` still apply immediately; history waits until `fn` settles.
+       * Reads (`*.tools.*`, `getContext`) are fine.
+       *
+       * ⚠️  Don’t call undo/redo inside `fn`. ⚠️
+       */
+      batch: <T>(
+        fn: () => Awaitable<T>,
+        opts: {
+          label?: string
+          source?: Extract<TransactionSource, 'user' | 'ai-agent'>
+          notifyBehavior?: TransactionBatchNotifyBehavior
+        },
+      ): Awaitable<T> =>
+        this.#pipeline.runBatch<T>(fn, {
+          policy: {
+            label: opts.label,
+            source: opts.source,
+          },
+          notifyBehavior: opts.notifyBehavior,
+        }),
     }
   }
 

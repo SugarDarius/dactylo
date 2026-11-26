@@ -12,38 +12,60 @@ export function isDactyloError(err: unknown): err is DactyloError {
 export type DactyloErrorCode =
   /** Unexpected failure; default when {@link DactyloError.wrap} receives a non-`DactyloError`. */
   | 'UNKNOWN'
+
   /** Unexpected bad configuration option. */
   | 'BAD_CONFIG_OPTION'
+
   /** Unexpected fractional position error when computing a position key. */
   | 'FRACTIONAL_POSITION'
+
   /** Unexpected collapsed range selection. */
   | 'RANGE_SELECTION_COLLAPSED'
+
   /** Unexpected range selection with no text spans. */
   | 'RANGE_SELECTION_NO_TEXT_SPANS'
+
   /** Failed to validate a transaction operations. */
   | 'VALIDATE_TRANSACTION_OPERATIONS'
+
   /** Failed to apply a transaction operations. */
   | 'APPLY_TRANSACTION_OPERATIONS'
+
   /** Failed to invert a transaction operations. */
   | 'INVERT_TRANSACTION_OPERATIONS'
+
   /** History is not allowed to execute. */
   | 'HISTORY_NOT_ALLOWED'
+
   /** Failed to build a transaction operations. */
   | 'BUILD_TRANSACTION_OPERATIONS'
+
   /** Block is not allowed to have inline content. */
   | 'BLOCK_NOT_ALLOWED_TO_HAVE_INLINE_CONTENT'
+
   /* Block has no content. */
   | 'BLOCK_HAS_NO_CONTENT'
+
   /** Failed to resolve a block in the document. */
   | 'UNKNOWN_BLOCK_IN_DOCUMENT'
+
   /** Node is not found in the block. */
   | 'UNKNOWN_NODE_IN_BLOCK'
+
   /** No window selection found. */
   | 'NO_WINDOW_SELECTION'
+
   /** Unexpected failure when painting selection into the DOM. */
   | 'SELECTION_MANAGER_PAINTING'
+
   /** Failed to deserialize a document from JSON input. */
   | 'DESERIALIZE_DOCUMENT_JSON_INPUT'
+
+  /**
+   * Failed to run a {@link TransactionBatch}: nested too deep, another batch run is
+   * already in flight, or undo/redo was called in the middle of a batch run.
+   */
+  | 'TRANSACTION_BATCH_NOT_ALLOWED'
 
 /**
  * Typed error for Dactylo operations.

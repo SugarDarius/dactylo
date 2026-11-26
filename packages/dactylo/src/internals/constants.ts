@@ -44,6 +44,9 @@ export const DEFAULT_AUTOLINK_ENABLED = true as const
 /** Default markdown shortcuts enabled. */
 export const DEFAULT_MARKDOWN_SHORTCUTS_ENABLED = true as const
 
+/** Default maximum nesting depth for {@link TransactionBatch}. */
+export const DEFAULT_MAX_TRANSACTION_BATCH_MAX_DEPTH = 16 as const
+
 /** Default max depth for the history stack. */
 export const DEFAULT_HISTORY_STACK_MAX_DEPTH = 100 as const
 

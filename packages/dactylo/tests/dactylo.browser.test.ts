@@ -3522,3 +3522,243 @@ describe('Dactylo safe-execute opts', () => {
     expect(errors).toEqual([])
   })
 })
+
+describe('Dactylo commands batch', () => {
+  test('groups several commands into one undo', async () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const before = snapshot(editor.getContext())
+
+    await editor.commands.batch(() => {
+      if (
+        !editor.blocks.commands.insert({
+          pos: { type: 'end' },
+          spec: { type: 'quote' },
+        })
+      ) {
+        throw new Error('Expected an inserted quote')
+      }
+      if (
+        !editor.blocks.commands.insert({
+          pos: { type: 'end' },
+          spec: { type: 'divider' },
+        })
+      ) {
+        throw new Error('Expected an inserted divider')
+      }
+    }, {})
+
+    expect(editor.getContext().state.blockOrderById.length).toBeGreaterThan(
+      before.blocks.length,
+    )
+    expect(editor.history.tools.canUndo()).toBe(true)
+
+    editor.history.commands.undo()
+    expect(snapshot(editor.getContext())).toEqual(before)
+    expect(editor.history.tools.canRedo()).toBe(true)
+  })
+
+  test('is the path for an AI agent step: apply now, one commit, one undo', async () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const before = snapshot(editor.getContext())
+
+    const applied: Transaction[] = []
+    editor.events.transactionDidApply.subscribe((transaction) => {
+      applied.push(transaction)
+    })
+    const commands: DactyloCommandEvent[] = []
+    editor.events.commands.subscribe((event) => {
+      commands.push(event)
+    })
+
+    await editor.commands.batch(
+      async () => {
+        const output = await Promise.resolve({
+          blocks: [
+            {
+              content: [{ text: 'Title', type: 'text' as const }],
+              level: 1 as const,
+              type: 'heading' as const,
+            },
+            {
+              content: [{ text: 'Body', type: 'text' as const }],
+              type: 'paragraph' as const,
+            },
+          ],
+        })
+
+        for (const spec of output.blocks) {
+          const blockId = editor.blocks.commands.insert(
+            { pos: { type: 'end' }, spec },
+            'ai-agent',
+          )
+          if (!blockId) {
+            throw new Error('Expected an inserted block')
+          }
+
+          expect(editor.getContext().state.blocks.has(blockId)).toBe(true)
+          expect(applied).toHaveLength(0)
+        }
+      },
+      { label: 'agent-edit', source: 'ai-agent' },
+    )
+
+    expect(blockTexts(editor.getContext())).toEqual(['', 'Title', 'Body'])
+    expect(applied).toHaveLength(1)
+    expect(applied[0]?.policy).toEqual(
+      expect.objectContaining({
+        label: 'agent-edit',
+        source: 'ai-agent',
+      }),
+    )
+    expect(
+      commands.filter((event) => event.command === 'blocks/insert'),
+    ).toHaveLength(2)
+
+    editor.history.commands.undo()
+    expect(snapshot(editor.getContext())).toEqual(before)
+  })
+
+  test('restores the snapshot when fn throws', async () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const before = snapshot(editor.getContext())
+
+    await expect(
+      editor.commands.batch(
+        () => {
+          if (!editor.blocks.commands.insert({ spec: { type: 'quote' } })) {
+            throw new Error('Expected an inserted quote')
+          }
+          throw new Error('agent failed')
+        },
+        { source: 'ai-agent' },
+      ),
+    ).rejects.toThrow('agent failed')
+
+    expect(snapshot(editor.getContext())).toEqual(before)
+    expect(editor.history.tools.canUndo()).toBe(false)
+  })
+
+  test('notifies context once by default and after each command when notifyBehavior is each', async () => {
+    const endEditor = makeTypingEditor()
+    endEditor.selection.commands.focus()
+    let endPaints = 0
+    endEditor.subscribe(() => {
+      endPaints += 1
+    })
+
+    await endEditor.commands.batch(() => {
+      if (!endEditor.blocks.commands.insert({ spec: { type: 'quote' } })) {
+        throw new Error('Expected an inserted quote')
+      }
+      if (!endEditor.blocks.commands.insert({ spec: { type: 'divider' } })) {
+        throw new Error('Expected an inserted divider')
+      }
+      expect(endPaints).toBe(0)
+    }, {})
+
+    expect(endPaints).toBe(1)
+
+    const eachEditor = makeTypingEditor()
+    eachEditor.selection.commands.focus()
+    let eachPaints = 0
+    eachEditor.subscribe(() => {
+      eachPaints += 1
+    })
+
+    await eachEditor.commands.batch(
+      () => {
+        if (!eachEditor.blocks.commands.insert({ spec: { type: 'quote' } })) {
+          throw new Error('Expected an inserted quote')
+        }
+        expect(eachPaints).toBe(1)
+        if (!eachEditor.blocks.commands.insert({ spec: { type: 'divider' } })) {
+          throw new Error('Expected an inserted divider')
+        }
+        expect(eachPaints).toBe(2)
+      },
+      { notifyBehavior: 'each' },
+    )
+
+    expect(eachPaints).toBe(2)
+  })
+
+  test('nested batch shares the same undo', async () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const before = snapshot(editor.getContext())
+
+    await editor.commands.batch(
+      async () => {
+        await editor.commands.batch(() => {
+          if (!editor.blocks.commands.insert({ spec: { type: 'quote' } })) {
+            throw new Error('Expected an inserted quote')
+          }
+          if (!editor.blocks.commands.insert({ spec: { type: 'divider' } })) {
+            throw new Error('Expected an inserted divider')
+          }
+        }, {})
+      },
+      { source: 'ai-agent' },
+    )
+
+    editor.history.commands.undo()
+    expect(snapshot(editor.getContext())).toEqual(before)
+    expect(editor.history.tools.canRedo()).toBe(true)
+  })
+
+  test('rejects a second run while the first is awaiting', async () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+
+    const first = editor.commands.batch(
+      async () => {
+        await gate
+      },
+      { source: 'ai-agent' },
+    )
+
+    try {
+      void editor.commands.batch(() => {
+        /* overlap */
+      }, {})
+      throw new Error('Expected overlapping batch to throw')
+    } catch (error) {
+      expect(error).toBeInstanceOf(DactyloError)
+      expect((error as DactyloError).code).toBe('TRANSACTION_BATCH_NOT_ALLOWED')
+    }
+
+    release()
+    await first
+  })
+
+  test('cannot undo while a batch run is open', async () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const before = snapshot(editor.getContext())
+    const restoreErrorLog = silenceDactyloErrorLog()
+
+    try {
+      await expect(
+        editor.commands.batch(() => {
+          if (!editor.blocks.commands.insert({ spec: { type: 'quote' } })) {
+            throw new Error('Expected an inserted quote')
+          }
+          expect(editor.history.tools.canUndo()).toBe(false)
+          editor.history.commands.undo()
+        }, {}),
+      ).rejects.toThrow(DactyloError)
+    } finally {
+      restoreErrorLog()
+    }
+
+    expect(snapshot(editor.getContext())).toEqual(before)
+  })
+})

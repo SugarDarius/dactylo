@@ -124,3 +124,15 @@ export function omit<T extends object, K extends keyof T>(
     Object.entries(obj).filter(([key]) => !keys.includes(key as K)),
   ) as Omit<T, K>
 }
+
+/** Checks whether a value is a promise. */
+export function isPromise<T>(
+  value: unknown,
+): value is Promise<T> | PromiseLike<T> {
+  return (
+    value !== null &&
+    (typeof value === 'object' || typeof value === 'function') &&
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any
+    typeof (value as any).then === 'function'
+  )
+}
