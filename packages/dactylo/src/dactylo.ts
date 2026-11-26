@@ -1498,10 +1498,10 @@ export function validateConfigOption(
  * Dactylo is a block-based rich-text markdown editor whose runtime model is a structured document (blocks + inline nodes),
  * not a plain text buffer with regex parsing on every keystroke.
  *
- * Users edit through familiar markdown behaviors (`# ` for headings, `**bold**`, etc.)
+ * Users or Ai Agents edit through familiar markdown shortcuts (`# ` for headings, `**bold**`, etc.), keyboard strokes,
  * while the engine maintains a typed AST-like structure optimized for mutation, history, and future collaboration.
  *
- * The core spine of Dactylo is a transactional pipeline as it provides:
+ * The core spine of Dactylo is a transactional stage pipeline as it provides:
  *  1. Atomic batches
  *  2. Predictable and reversible mutations and optimistic local updates
  *  3. Side effects: history, events, ...
