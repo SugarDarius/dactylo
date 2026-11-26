@@ -3761,4 +3761,38 @@ describe('Dactylo commands batch', () => {
 
     expect(snapshot(editor.getContext())).toEqual(before)
   })
+
+  test('syncs an open mention buffer on flush', async () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    await editor.commands.batch(() => {
+      deleteBackward(editor)
+      expect(blockTexts(editor.getContext())).toEqual(['@joh'])
+      expect(editor.mentions.tools.getBufferedText()).toBe('john')
+    }, {})
+
+    expect(editor.mentions.tools.isBuffering()).toBe(true)
+    expect(editor.mentions.tools.getBufferedText()).toBe('joh')
+  })
+
+  test('aborts an open mention buffer on flush when the opener is gone', async () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+
+    await editor.commands.batch(() => {
+      deleteBackward(editor)
+      deleteBackward(editor)
+      deleteBackward(editor)
+      deleteBackward(editor)
+      deleteBackward(editor)
+      expect(editor.mentions.tools.isBuffering()).toBe(true)
+    }, {})
+
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+    expect(editor.mentions.tools.getBufferedText()).toBeNull()
+  })
 })

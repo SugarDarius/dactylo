@@ -489,6 +489,7 @@ export class TransactionBatch {
       }
 
       this.#completeRun()
+
       return Promise.resolve(result)
     } catch (err: unknown) {
       this.#invoking = false
@@ -1272,6 +1273,8 @@ export class TransactionPipeline {
       ops: [...applied.sourceOps],
       inverseOps: [...applied.inverseOps],
     })
+
+    this.#syncInlineBuffers()
 
     if (notifyBehavior === 'end') {
       this.#eventSources.context.notify(this.#context)
