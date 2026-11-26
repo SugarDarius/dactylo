@@ -1295,7 +1295,6 @@ export interface DactyloCommandsApi {
    *         spec: { type: block.type, content: block.content, metadata: block.metadata },
    *         pos: 'end',
    *       },
-   *       'end',
    *       'ai-agent'
    *     )
    * }, { label: 'agent-edit' })
