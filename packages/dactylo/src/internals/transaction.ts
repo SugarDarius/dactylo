@@ -138,10 +138,7 @@ export function historyError(message: string, hint: string): never {
   })
 }
 
-/**
- * Throws a {@link DactyloError} when {@link TransactionBatch} is already in use in a way that would corrupt undo or overlap
- * two batch runs.
- */
+/** Throws a {@link DactyloError} when {@link TransactionBatch} is already in use. */
 export function transactionBatchError(message: string, hint: string): never {
   throw DactyloError.from({
     code: 'TRANSACTION_BATCH_NOT_ALLOWED',
