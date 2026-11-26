@@ -1297,7 +1297,7 @@ export interface DactyloCommandsApi {
    *       },
    *       'ai-agent'
    *     )
-   * }, { label: 'agent-edit' })
+   * }, { label: 'agent-edit', source: 'ai-agent' })
    * ```
    */
   readonly batch: <T>(
