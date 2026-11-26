@@ -48,7 +48,10 @@ import type { EditorContext } from './editor-context'
 import { ExitCodeMarkOpsBuilder } from './exit-code-mark-ops-builder'
 import { GraphemeOffsetCaret } from './grapheme'
 import { HardBreakOpsBuilder } from './hard-break-ops-builder'
-import { InsertTextOpsBuilder } from './insert-text-ops-builder'
+import {
+  buildCursorInsertTextOps,
+  InsertTextOpsBuilder,
+} from './insert-text-ops-builder'
 import { MarkdownShortcutOpsBuilder } from './markdown-shortcut-ops-builder'
 import type { MarkKey } from './marks'
 import { MarksOpsBuilder } from './marks-ops-builder'
@@ -565,6 +568,64 @@ export class OperationsEngine {
     text: string,
   ): BuilderOpsIntent | null {
     return this.#insertTextOpsBuilder.build(context, { text })
+  }
+
+  /**
+   * Builds operations to insert text at a given editable-text node offset.
+   * Returns `null` when the target cannot receive the text.
+   */
+  buildInsertTextAtOps(
+    context: EditorContext,
+    opts: {
+      blockId: BlockId
+      nodeId: NodeId
+      offset: number
+      text: string
+    },
+  ): BuilderOpsIntent | null {
+    const { blockId, nodeId, offset, text } = opts
+
+    if (text.length === 0) {
+      return null
+    }
+
+    const block = context.state.blocks.get(blockId)
+    if (!block || !isBlockWithInlineContent(block)) {
+      warnIf(
+        this.#debug,
+        `Cannot insert text into block ${blockId} because it is missing or has no inline content.`,
+        'OperationsEngine/buildInsertTextAtOps',
+      )
+      return null
+    }
+
+    const found = findNodeInBlockWithInlineContent(block, nodeId)
+    if (!found || !isInlineNodeWithEditableText(found.node)) {
+      warnIf(
+        this.#debug,
+        `Cannot insert text into node ${nodeId} because it is missing or not an editable-text node.`,
+        'OperationsEngine/buildInsertTextAtOps',
+      )
+      return null
+    }
+
+    if (offset < 0 || offset > found.node.text.length) {
+      warnIf(
+        this.#debug,
+        `Cannot insert text at offset ${offset} in node ${nodeId}.`,
+        'OperationsEngine/buildInsertTextAtOps',
+      )
+      return null
+    }
+
+    return {
+      label: 'insert-text',
+      ops: buildCursorInsertTextOps(
+        { blockId, nodeId, offset },
+        context.selection,
+        text,
+      ),
+    }
   }
 
   /** Builds operations to delete content. */

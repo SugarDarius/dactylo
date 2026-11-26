@@ -2472,4 +2472,35 @@ export class TransactionPipeline {
 
     return true
   }
+
+  // ─── Inline nodes operations ────────────────────────────────------
+
+  /** Inserts text at a given {@link InlineNodeWithEditableText} offset. */
+  insertText(
+    opts: {
+      blockId: BlockId
+      nodeId: NodeId
+      offset: number
+      text: string
+    },
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): boolean {
+    const intent = this.#operationsEngine.buildInsertTextAtOps(
+      this.#context,
+      opts,
+    )
+
+    if (intent === null) {
+      return false
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('nodes', label),
+      pushToHistory: true,
+      source,
+    })
+
+    return true
+  }
 }

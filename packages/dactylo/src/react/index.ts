@@ -25,6 +25,7 @@ export {
   useFocus,
   useHeadings,
   useHistory,
+  useInsertText,
   useIsBlockWithInlineContentEmpty,
   useIsCommandTriggerBuffering,
   useIsFocused,

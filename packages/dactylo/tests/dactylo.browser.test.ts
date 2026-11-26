@@ -3038,6 +3038,339 @@ describe('Dactylo initial metadata', () => {
   })
 })
 
+describe('Dactylo insertText', () => {
+  test('inserts at offset 0, middle, and end without changing the node id', () => {
+    const editor = makeTypingEditor()
+    const block = firstInlineBlock(editor.getContext())
+    const [node] = block.content
+    if (!node || !isTextNode(node)) {
+      throw new Error('Expected an empty text node')
+    }
+
+    expect(
+      editor.nodes.commands.insertText({
+        blockId: block.id,
+        nodeId: node.id,
+        offset: 0,
+        text: 'Helo',
+      }),
+    ).toBe(true)
+    expect(
+      editor.nodes.commands.insertText({
+        blockId: block.id,
+        nodeId: node.id,
+        offset: 3,
+        text: 'l',
+      }),
+    ).toBe(true)
+    expect(
+      editor.nodes.commands.insertText({
+        blockId: block.id,
+        nodeId: node.id,
+        offset: 5,
+        text: '!',
+      }),
+    ).toBe(true)
+
+    const after = firstInlineBlock(editor.getContext())
+    const [afterNode] = after.content
+    if (!afterNode || !isTextNode(afterNode)) {
+      throw new Error('Expected the same text node')
+    }
+
+    expect(afterNode.id).toBe(node.id)
+    expect(afterNode.text).toBe('Hello!')
+    expect(blockTexts(editor.getContext())).toEqual(['Hello!'])
+    expect(requireCursor(editor.getContext())).toEqual({
+      blockId: block.id,
+      nodeId: node.id,
+      offset: 6,
+    })
+  })
+
+  test('returns false when the target cannot receive text', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hi')
+    const block = firstInlineBlock(editor.getContext())
+    const [node] = block.content
+    if (!node || !isTextNode(node)) {
+      throw new Error('Expected a text node')
+    }
+
+    const before = snapshot(editor.getContext())
+    const opts = { blockId: block.id, nodeId: node.id, offset: 2 }
+
+    expect(editor.nodes.commands.insertText({ ...opts, text: '' })).toBe(false)
+    expect(
+      editor.nodes.commands.insertText({
+        ...opts,
+        blockId: 'bl_missing' as BlockId,
+        text: 'x',
+      }),
+    ).toBe(false)
+    expect(
+      editor.nodes.commands.insertText({
+        ...opts,
+        nodeId: generateNodeId(),
+        text: 'x',
+      }),
+    ).toBe(false)
+    expect(
+      editor.nodes.commands.insertText({ ...opts, offset: -1, text: 'x' }),
+    ).toBe(false)
+    expect(
+      editor.nodes.commands.insertText({ ...opts, offset: 3, text: 'x' }),
+    ).toBe(false)
+    expect(snapshot(editor.getContext())).toEqual(before)
+  })
+
+  test('returns false for a divider, mention, or line break', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    const dividerId = editor.blocks.commands.insert({
+      spec: { type: 'divider' },
+    })
+    if (!dividerId) {
+      throw new Error('Expected an inserted divider')
+    }
+
+    const mentionBlockId = editor.blocks.commands.insert({
+      spec: {
+        content: [
+          { entity: { data: { name: 'Jane' }, id: 'user-1' }, type: 'mention' },
+          { text: 'hi', type: 'text' },
+        ],
+        type: 'paragraph',
+      },
+    })
+    if (!mentionBlockId) {
+      throw new Error('Expected an inserted mention paragraph')
+    }
+
+    const breakBlockId = editor.blocks.commands.insert({
+      spec: {
+        content: [{ text: 'Hello', type: 'text' }, { type: 'line_break' }],
+        type: 'paragraph',
+      },
+    })
+    if (!breakBlockId) {
+      throw new Error('Expected an inserted line-break paragraph')
+    }
+
+    const mentionBlock = editor.getContext().state.blocks.get(mentionBlockId)
+    if (!mentionBlock || !('content' in mentionBlock)) {
+      throw new Error('Expected a mention paragraph')
+    }
+    const mention = mentionBlock.content.find(isMentionNode)
+    if (!mention) {
+      throw new Error('Expected a mention node')
+    }
+
+    const breakBlock = editor.getContext().state.blocks.get(breakBlockId)
+    if (!breakBlock || !('content' in breakBlock)) {
+      throw new Error('Expected a line-break paragraph')
+    }
+    const lineBreak = breakBlock.content.find(isLineBreakNode)
+    if (!lineBreak) {
+      throw new Error('Expected a line break node')
+    }
+
+    const before = snapshot(editor.getContext())
+
+    expect(
+      editor.nodes.commands.insertText({
+        blockId: dividerId,
+        nodeId: mention.id,
+        offset: 0,
+        text: 'x',
+      }),
+    ).toBe(false)
+    expect(
+      editor.nodes.commands.insertText({
+        blockId: mentionBlockId,
+        nodeId: mention.id,
+        offset: 0,
+        text: 'x',
+      }),
+    ).toBe(false)
+    expect(
+      editor.nodes.commands.insertText({
+        blockId: breakBlockId,
+        nodeId: lineBreak.id,
+        offset: 0,
+        text: 'x',
+      }),
+    ).toBe(false)
+    expect(snapshot(editor.getContext())).toEqual(before)
+  })
+
+  test('inserts into a link node instead of exiting it', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const blockId = editor.blocks.commands.insert({
+      spec: {
+        content: [
+          {
+            text: 'docs',
+            type: 'link',
+            url: { href: 'https://example.com', title: '' },
+          },
+        ],
+        type: 'paragraph',
+      },
+    })
+    if (!blockId) {
+      throw new Error('Expected an inserted link paragraph')
+    }
+
+    const block = nthInlineBlock(editor.getContext(), 1)
+    const link = block.content.find(isLinkNode)
+    if (!link) {
+      throw new Error('Expected a link node')
+    }
+
+    expect(
+      editor.nodes.commands.insertText({
+        blockId,
+        nodeId: link.id,
+        offset: link.text.length,
+        text: '!',
+      }),
+    ).toBe(true)
+
+    const after = nthInlineBlock(editor.getContext(), 1).content.find(
+      isLinkNode,
+    )
+    if (!after) {
+      throw new Error('Expected the same link node')
+    }
+    expect(after.id).toBe(link.id)
+    expect(after.text).toBe('docs!')
+  })
+
+  test('leaves markdown and URLs as plain text', () => {
+    const editor = makeEditor({
+      autolink: { enabled: true },
+      markdown: { enabled: true },
+    })
+    const block = firstInlineBlock(editor.getContext())
+    const [node] = block.content
+    if (!node || !isTextNode(node)) {
+      throw new Error('Expected an empty text node')
+    }
+
+    expect(
+      editor.nodes.commands.insertText({
+        blockId: block.id,
+        nodeId: node.id,
+        offset: 0,
+        text: '**hi** https://example.com ',
+      }),
+    ).toBe(true)
+
+    const after = firstInlineBlock(editor.getContext())
+    expect(after.content.every((item) => isTextNode(item))).toBe(true)
+    expect(
+      after.content.every(
+        (item) =>
+          !isInlineNodeWithEditableText(item) ||
+          !isMarkEnabled(item.marks, 'bold'),
+      ),
+    ).toBe(true)
+    expect(blockTexts(editor.getContext())).toEqual([
+      '**hi** https://example.com ',
+    ])
+  })
+
+  test('undo/redo round-trip', () => {
+    const editor = makeTypingEditor()
+    const block = firstInlineBlock(editor.getContext())
+    const [node] = block.content
+    if (!node || !isTextNode(node)) {
+      throw new Error('Expected an empty text node')
+    }
+    const before = snapshot(editor.getContext())
+
+    expect(
+      editor.nodes.commands.insertText({
+        blockId: block.id,
+        nodeId: node.id,
+        offset: 0,
+        text: 'Hello',
+      }),
+    ).toBe(true)
+
+    const after = snapshot(editor.getContext())
+    editor.history.commands.undo()
+    expect(snapshot(editor.getContext())).toEqual(before)
+    editor.history.commands.redo()
+    expect(snapshot(editor.getContext())).toEqual(after)
+  })
+
+  test('applies with an ai-agent source', () => {
+    const editor = makeTypingEditor()
+    const applied: Transaction[] = []
+    editor.events.transactionDidApply.subscribe((transaction) => {
+      applied.push(transaction)
+    })
+
+    const block = firstInlineBlock(editor.getContext())
+    const [node] = block.content
+    if (!node || !isTextNode(node)) {
+      throw new Error('Expected an empty text node')
+    }
+
+    expect(
+      editor.nodes.commands.insertText(
+        { blockId: block.id, nodeId: node.id, offset: 0, text: 'Hi' },
+        'ai-agent',
+      ),
+    ).toBe(true)
+    expect(applied.at(-1)?.policy?.source).toBe('ai-agent')
+    expect(blockTexts(editor.getContext())).toEqual(['Hi'])
+  })
+
+  test('two calls inside commands.batch undo as one', async () => {
+    const editor = makeTypingEditor()
+    const block = firstInlineBlock(editor.getContext())
+    const [node] = block.content
+    if (!node || !isTextNode(node)) {
+      throw new Error('Expected an empty text node')
+    }
+    const before = snapshot(editor.getContext())
+
+    await editor.commands.batch(() => {
+      if (
+        !editor.nodes.commands.insertText({
+          blockId: block.id,
+          nodeId: node.id,
+          offset: 0,
+          text: 'Hello',
+        })
+      ) {
+        throw new Error('Expected the first insert')
+      }
+      if (
+        !editor.nodes.commands.insertText({
+          blockId: block.id,
+          nodeId: node.id,
+          offset: 5,
+          text: ' world',
+        })
+      ) {
+        throw new Error('Expected the second insert')
+      }
+    }, {})
+
+    expect(blockTexts(editor.getContext())).toEqual(['Hello world'])
+    editor.history.commands.undo()
+    expect(snapshot(editor.getContext())).toEqual(before)
+    expect(editor.history.tools.canRedo()).toBe(true)
+  })
+})
+
 describe('Dactylo read-only mode', () => {
   test('setEditable(false) clears selection and emits editable events', () => {
     const editor = makeTypingEditor()
@@ -3145,6 +3478,18 @@ describe('Dactylo read-only mode', () => {
       editor.blocks.commands.patch({
         blockId: paragraphId,
         spec: { metadata: { value: { a: 1 } }, type: 'divider' },
+      }),
+    ).toBe(false)
+    const [readOnlyNode] = firstInlineBlock(editor.getContext()).content
+    if (!readOnlyNode) {
+      throw new Error('Expected a text node')
+    }
+    expect(
+      editor.nodes.commands.insertText({
+        blockId: paragraphId,
+        nodeId: readOnlyNode.id,
+        offset: 5,
+        text: 'x',
       }),
     ).toBe(false)
 

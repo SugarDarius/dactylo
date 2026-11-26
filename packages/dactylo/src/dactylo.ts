@@ -349,6 +349,9 @@ export type DactyloCommand =
   | 'blocks/mutate'
   | 'blocks/patch'
 
+  /** Inline nodes commands. */
+  | 'nodes/insert-text'
+
   /** Mentions commands. */
   | 'mentions/confirm-buffer'
   | 'mentions/dismiss-buffer'
@@ -1081,6 +1084,50 @@ export interface DactyloBlocksCommands {
 export type DactyloBlocksApi = DactyloAspectApi<
   DactyloBlocksTools,
   DactyloBlocksCommands
+>
+
+/** Tools to query the {@link DocumentState} inline nodes of the editor. */
+// oxlint-disable-next-line typescript/no-empty-object-type typescript/no-empty-interface
+export interface DactyloInlineNodesTools {}
+
+/** Commands to mutate the {@link DocumentState} inline nodes of the editor. */
+export interface DactyloInlineNodesCommands {
+  /**
+   * Inserts text into an existing {@link InlineNodeWithEditableText} at the given offset.
+   * ⚠️ Does not run markdown shortcuts or autolink detection. ⚠️
+   *
+   * Returns a boolean indicating whether the insert command was successful.
+   *
+   * @example
+   * ```ts
+   * const inserted = editor.nodes.commands.insertText({
+   *   blockId,
+   *   nodeId,
+   *   offset: 0,
+   *   text: 'Hello',
+   * })
+   *
+   * const inserted = editor.nodes.commands.insertText(
+   *   { blockId, nodeId, offset: 5, text: ' world' },
+   *   'ai-agent',
+   * )
+   * ```
+   */
+  readonly insertText: (
+    opts: {
+      blockId: BlockId
+      nodeId: NodeId
+      offset: number
+      text: string
+    },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => boolean
+}
+
+/** Api to interact with the {@link DocumentState} inline nodes of the editor. */
+export type DactyloInlineNodesApi = DactyloAspectApi<
+  DactyloInlineNodesTools,
+  DactyloInlineNodesCommands
 >
 
 /** Tools to query mentions in the editor. */
@@ -2529,6 +2576,36 @@ export class Dactylo {
             { alwaysExecute: true },
           ),
       },
+    }
+  }
+
+  /** Returns the Api to interact with the {@link DocumentState} inline nodes of the editor. */
+  get nodes(): DactyloInlineNodesApi {
+    return {
+      commands: {
+        /**
+         * Inserts text into an existing {@link InlineNodeWithEditableText} at the given offset.
+         * ⚠️ Does not run markdown shortcuts or autolink detection. ⚠️
+         *
+         * Returns a boolean indicating whether the insert command was successful.
+         */
+        insertText: (
+          opts: {
+            blockId: BlockId
+            nodeId: NodeId
+            offset: number
+            text: string
+          },
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'nodes/insert-text',
+            () => this.#pipeline.insertText(opts, source),
+            negate,
+            { payload: { opts, source } },
+          ),
+      },
+      tools: {},
     }
   }
 

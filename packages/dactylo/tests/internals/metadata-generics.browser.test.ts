@@ -66,6 +66,9 @@ describe('metadata aliases', () => {
       .extract<{ kind: 'to_heading' }>()
       .toExtend<{ kind: 'to_heading'; level: unknown; metadata?: HBM }>()
     expectTypeOf(editor.blocks.commands.mutate).returns.toEqualTypeOf<boolean>()
+    expectTypeOf(
+      editor.nodes.commands.insertText,
+    ).returns.toEqualTypeOf<boolean>()
 
     expectTypeOf<Extract<InsertBlockSpec, { type: 'heading' }>>().toExtend<{
       type: 'heading'

@@ -13,6 +13,7 @@ import {
   assertUndoRedo,
   blockTexts,
   collectDocumentLifecycleNotifies,
+  firstInlineBlock,
   focus,
   hardBreak,
   makePipeline,
@@ -1106,6 +1107,33 @@ describe('TransactionPipeline block commands', () => {
     }
 
     expect.unreachable('Expected patchBlock to throw')
+  })
+})
+
+describe('TransactionPipeline insertText', () => {
+  test('inserts at a node offset and undo/redo round-trip', () => {
+    const pipeline = makePipeline({ markdown: false })
+    const block = firstInlineBlock(pipeline.context)
+    const [node] = block.content
+    if (!node || !isTextNode(node)) {
+      throw new Error('Expected an empty text node')
+    }
+    const before = snapshot(pipeline.context)
+
+    expect(
+      pipeline.insertText(
+        { blockId: block.id, nodeId: node.id, offset: 0, text: 'Hello' },
+        'user',
+      ),
+    ).toBe(true)
+
+    expect(blockTexts(pipeline.context)).toEqual(['Hello'])
+    expect(requireCursor(pipeline.context)).toEqual({
+      blockId: block.id,
+      nodeId: node.id,
+      offset: 5,
+    })
+    assertUndoRedo(pipeline, before)
   })
 })
 
