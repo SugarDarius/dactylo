@@ -31,6 +31,7 @@ import {
   useEditorConfig,
   useHeadings,
   useHistory,
+  useInsertText,
   useMark,
   useMarks,
   useMention,
@@ -38,8 +39,15 @@ import {
   useNumberedLists,
   useParagraphs,
   useQuotes,
+  useSelection,
   useSetEditable,
 } from '@sugardarius/dactylo/react'
+import type {
+  EmojiPickerListCategoryHeaderProps,
+  EmojiPickerListEmojiProps,
+  EmojiPickerListRowProps,
+} from 'frimousse'
+import { EmojiPicker } from 'frimousse'
 import {
   BadgeCheck,
   Bold,
@@ -63,6 +71,7 @@ import {
   Plus,
   Quote,
   Redo2,
+  Smile,
   SquareCheck,
   Strikethrough,
   TextAlignCenter,
@@ -73,7 +82,7 @@ import {
   Undo2,
   UserRoundPlus,
 } from 'lucide-react'
-import { Fragment, useCallback, useState } from 'react'
+import { Fragment, useCallback, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { Avatar, AvatarBadge, AvatarFallback } from '~/components/ui/avatar'
@@ -95,6 +104,11 @@ import {
   HoverCardTrigger,
 } from '~/components/ui/hover-card'
 import { Kbd } from '~/components/ui/kbd'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '~/components/ui/popover'
 import { Separator } from '~/components/ui/separator'
 import { ThemeSwitcher } from '~/components/ui/theme-switcher'
 import { toast } from '~/components/ui/toast'
@@ -266,6 +280,118 @@ export function ActionButton({
       />
       <TooltipContent>{tooltipContent}</TooltipContent>
     </Tooltip>
+  )
+}
+
+function EmojiPickerCategoryHeader({
+  category,
+  ...props
+}: EmojiPickerListCategoryHeaderProps) {
+  return (
+    <div
+      {...props}
+      className='bg-popover text-muted-foreground px-3 pt-3 pb-1.5 text-xs font-medium'
+    >
+      {category.label}
+    </div>
+  )
+}
+
+function EmojiPickerRow({ children, ...props }: EmojiPickerListRowProps) {
+  return (
+    <div className='scroll-my-1.5 px-1.5' {...props}>
+      {children}
+    </div>
+  )
+}
+
+function EmojiPickerEmoji({ emoji, ...props }: EmojiPickerListEmojiProps) {
+  return (
+    <button
+      type='button'
+      {...props}
+      className='data-active:bg-muted flex size-8 items-center justify-center rounded-md text-lg'
+    >
+      {emoji.emoji}
+    </button>
+  )
+}
+
+export function EmojiPickerButton() {
+  const canEdit = useCanEdit()
+  const selection = useSelection()
+  const { insertText } = useInsertText()
+  const [open, setOpen] = useState(false)
+  const selectionRef = useRef(selection)
+
+  return (
+    <Popover
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          selectionRef.current = selection
+        }
+        setOpen(nextOpen)
+      }}
+      open={open}
+    >
+      <Tooltip>
+        <PopoverTrigger
+          disabled={!canEdit}
+          render={
+            <TooltipTrigger
+              render={
+                <Button
+                  disabled={!canEdit}
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                  }}
+                  size='icon'
+                  variant='ghost'
+                >
+                  <Smile className='size-3.5' />
+                </Button>
+              }
+            />
+          }
+        />
+        <TooltipContent>Insert emoji</TooltipContent>
+      </Tooltip>
+      <PopoverContent align='start' className='w-fit overflow-hidden p-0'>
+        <EmojiPicker.Root
+          className='isolate flex h-92 w-fit flex-col bg-transparent'
+          onEmojiSelect={({ emoji }) => {
+            const at = selectionRef.current
+            if (at !== null) {
+              insertText({
+                blockId: at.anchor.blockId,
+                nodeId: at.anchor.nodeId,
+                offset: at.anchor.offset,
+                text: emoji,
+              })
+            }
+            setOpen(false)
+          }}
+        >
+          <EmojiPicker.Search className='bg-muted z-10 mx-2 mt-2 appearance-none rounded-md px-2.5 py-2 text-sm outline-hidden' />
+          <EmojiPicker.Viewport className='relative flex-1 outline-hidden'>
+            <EmojiPicker.Loading className='text-muted-foreground absolute inset-0 flex items-center justify-center text-sm'>
+              Loading…
+            </EmojiPicker.Loading>
+            <EmojiPicker.Empty className='text-muted-foreground absolute inset-0 flex items-center justify-center text-sm'>
+              No emoji found.
+            </EmojiPicker.Empty>
+            <EmojiPicker.List
+              className='pb-1.5 select-none'
+              components={{
+                CategoryHeader: EmojiPickerCategoryHeader,
+                Emoji: EmojiPickerEmoji,
+                Row: EmojiPickerRow,
+              }}
+            />
+          </EmojiPicker.Viewport>
+        </EmojiPicker.Root>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -732,6 +858,7 @@ export function Toolbar() {
               />
             </DropdownMenuContent>
           </DropdownMenu>
+          <EmojiPickerButton />
         </div>
         <Separator orientation='vertical' />
         <div className='flex items-center'>
