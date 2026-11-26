@@ -262,7 +262,7 @@ export function Editor() {
 | DOM API                      | 🚧 **In Progress** | Sync browser DOM native selection with Dactylo's selection                                      |
 | Blocks API                   | ✅ **Done**        | Mutate and reads blocks                                                                         |
 | Inline nodes API             | 🚧 **In Progress** | Mutate and reads inline nodes                                                                   |
-| Insert text API              | 🚧 **In Progress** | Insert text in the current selection                                                            |
+| Insert text API              | 🚧 **In Progress** | Insert text anywhere you can                                                                    |
 | Metadata API                 | ✅ **Done**        | Mutate and reads blocks and inline nodes metadata (config for globals metadata)                 |
 | Mentions API                 | 🚧 **In Progress** | Mutate and reads mentions as first-class citizen                                                |
 | OnChange/OnSubmit API        | 🚧 **In Progress** | Callback when document state is changing for saving in databases                                |
