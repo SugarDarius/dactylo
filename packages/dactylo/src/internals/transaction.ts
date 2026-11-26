@@ -739,6 +739,18 @@ export class TransactionPipeline {
   }
 
   /**
+   * Commits a transaction by dispatching the operations to the transaction pipeline.
+   * Mk Refactor: for now it's passthrough to the `#dispatch` method util the new transaction
+   * architecture is implemented.
+   */
+  #commit(ops: Operation[], policy?: TransactionPolicy): void {
+    this.#dispatch({
+      ops,
+      policy: { source: 'editor', ...policy },
+    })
+  }
+
+  /**
    * Builds the initial {@link EditorContext}.
    *
    * If no initial content is provided, then we created an initial {@link DocumentState}
@@ -830,18 +842,6 @@ export class TransactionPipeline {
 
       throw wrapped
     }
-  }
-
-  /**
-   * Commits a transaction by dispatching the operations to the transaction pipeline.
-   * Mk Refactor: for now it's passthrough to the `#dispatch` method util the new transaction
-   * architecture is implemented.
-   */
-  #commit(ops: Operation[], policy?: TransactionPolicy): void {
-    this.#dispatch({
-      ops,
-      policy: { source: 'editor', ...policy },
-    })
   }
 
   // ─── Events ───────────────────────────────────────────────────----
