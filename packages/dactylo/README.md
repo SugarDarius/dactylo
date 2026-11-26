@@ -206,9 +206,9 @@ export function Editor() {
 | Locales                                          | 🚧 **In Progress** | Set the locales in the current language                                                 |
 | Spellcheck config                                | 📆 **Planned**     | Enable or disable spellcheck                                                            |
 | Nested blocks (parent / child)                   | 📆 **Planned**     | Manage nested blocks at level -1                                                        |
-| Strings security                                 | 🚧 **In Progress** | Prevents scripting and injections when inserting text                                   |
-| DOM sync                                         | 🚧 **In Progress** | Sync DOM selection with Dactylo Selection                                               |
-| Dactylo owned errors                             | 🚧 **In Progress** | Exposes errors defined by Dactylo                                                       |
+| Strings security                                 | ✅ **Done**        | Prevents scripting and injections when inserting text                                   |
+| DOM sync                                         | ✅ **Done**        | Sync DOM selection with Dactylo Selection                                               |
+| Dactylo owned errors                             | ✅ **Done**        | Exposes errors defined by Dactylo                                                       |
 | Collaboration                                    | 📆 **Planned**     | Enables collaboration through external providers as adapters                            |
 | Emojis inline trigger (`:…`)                     | 📆 **Planned**     | Enables inline composition for inserting emojis (configurable)                          |
 | Hashtags (`#…`)                                  | 📆 **Planned**     | Enables built-in support for hashtags                                                   |
@@ -268,7 +268,7 @@ export function Editor() {
 | OnChange/OnSubmit API        | 🚧 **In Progress** | Callback when document state is changing for saving in databases                                |
 | Export JSON and Markdown API | 📆 **Planned**     | Export document state as JSON and Markdown                                                      |
 | Stats API                    | 📆 **Planned**     | Provides stats like total text length, # of blocks, # number of nodes, # of words & chars       |
-| Batching transactions        | 🚧 **In Progress** | Supports for batching big number for transactions (Ai Agent use case)                           |
+| Batching transactions        | ✅ **Done**        | Supports for batching big number for transactions (Ai Agent use case)                           |
 | Table of contents            | 📆 **Planned**     | Build-in table of content based on headings contained in the document                           |
 | Find & Replace API           | 📆 **Planned**     | Build-in find and replace actions in the document                                               |
 
