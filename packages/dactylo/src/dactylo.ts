@@ -1311,7 +1311,7 @@ export interface DactyloCommandsApi {
       /** The behavior for notifying the editor context subscribers. Defaults to `'end'`. */
       readonly notifyBehavior?: TransactionBatchNotifyBehavior
     },
-  ) => Awaitable<T>
+  ) => Promise<T>
 }
 
 /** Base options for constructing a {@link Dactylo} instance. */
@@ -2754,7 +2754,7 @@ export class Dactylo {
           source?: Extract<TransactionSource, 'user' | 'ai-agent'>
           notifyBehavior?: TransactionBatchNotifyBehavior
         },
-      ): Awaitable<T> =>
+      ): Promise<T> =>
         this.#pipeline.runBatch<T>(fn, {
           policy: {
             label: opts.label,

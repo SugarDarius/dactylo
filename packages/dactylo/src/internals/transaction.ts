@@ -441,7 +441,7 @@ export class TransactionBatch {
       /** The behavior for notifying the editor context subscribers. Defaults to `'end'`. */
       notifyBehavior?: TransactionBatchNotifyBehavior
     },
-  ): Awaitable<T> {
+  ): Promise<T> {
     const { editorContextSnapshot, policy, notifyBehavior = 'end' } = opts
     if (this.#depth > 0 && !this.#invoking) {
       transactionBatchError(
@@ -1311,7 +1311,7 @@ export class TransactionPipeline {
       /** The behavior for notifying the editor context subscribers. Defaults to `'end'`. */
       notifyBehavior?: TransactionBatchNotifyBehavior
     } = {},
-  ): Awaitable<T> {
+  ): Promise<T> {
     return this.#batch.run(fn, {
       editorContextSnapshot: this.#context,
       ...opts,
