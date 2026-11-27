@@ -45,6 +45,7 @@ import {
   isMentionNode,
   isTextNode,
 } from '../src/internals/nodes'
+import { createRange } from '../src/internals/selection'
 import type {
   MentionDidCreatedEvent,
   Transaction,
@@ -3371,6 +3372,139 @@ describe('Dactylo insertText', () => {
   })
 })
 
+describe('Dactylo insertTextAt', () => {
+  test('inserts at the live caret', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+
+    expect(editor.nodes.commands.insertTextAt({ text: 'Hi' })).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual(['Hi'])
+    expect(requireCursor(editor.getContext()).offset).toBe(2)
+  })
+
+  test('replaces a range via at after blur', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'Hello')
+    const cursor = requireCursor(editor.getContext())
+    const at = createRange(
+      { blockId: cursor.blockId, nodeId: cursor.nodeId, offset: 1 },
+      { blockId: cursor.blockId, nodeId: cursor.nodeId, offset: 4 },
+    )
+    editor.selection.commands.blur()
+
+    expect(editor.nodes.commands.insertTextAt({ at, text: 'y' })).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual(['Hyo'])
+    expect(requireCursor(editor.getContext()).offset).toBe(2)
+  })
+
+  test('inserts a new text node at the end of a link', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const blockId = editor.blocks.commands.insert({
+      spec: {
+        content: [
+          {
+            text: 'docs',
+            type: 'link',
+            url: { href: 'https://example.com', title: '' },
+          },
+        ],
+        type: 'paragraph',
+      },
+    })
+    if (!blockId) {
+      throw new Error('Expected an inserted link paragraph')
+    }
+
+    expect(editor.nodes.commands.insertTextAt({ text: '!' })).toBe(true)
+
+    const after = nthInlineBlock(editor.getContext(), 1).content
+    const link = after.find(isLinkNode)
+    const text = after.find(isTextNode)
+    if (!link || !text) {
+      throw new Error('Expected a link followed by a text node')
+    }
+    expect(link.text).toBe('docs')
+    expect(text.text).toBe('!')
+    expect(after).toHaveLength(2)
+  })
+
+  test('returns false when there is no selection or text is empty', () => {
+    const editor = makeTypingEditor()
+    const unfocused = snapshot(editor.getContext())
+
+    expect(editor.nodes.commands.insertTextAt({ text: 'x' })).toBe(false)
+    expect(editor.nodes.commands.insertTextAt({ at: null, text: 'x' })).toBe(
+      false,
+    )
+    expect(snapshot(editor.getContext())).toEqual(unfocused)
+
+    editor.selection.commands.focus()
+    const focused = snapshot(editor.getContext())
+    expect(editor.nodes.commands.insertTextAt({ text: '' })).toBe(false)
+    expect(snapshot(editor.getContext())).toEqual(focused)
+  })
+
+  test('leaves markdown and URLs as plain text', () => {
+    const editor = makeEditor({
+      autolink: { enabled: true },
+      markdown: { enabled: true },
+    })
+    editor.selection.commands.focus()
+
+    expect(
+      editor.nodes.commands.insertTextAt({
+        text: '**hi** https://example.com ',
+      }),
+    ).toBe(true)
+
+    const after = firstInlineBlock(editor.getContext())
+    expect(after.content.every((item) => isTextNode(item))).toBe(true)
+    expect(
+      after.content.every(
+        (item) =>
+          !isInlineNodeWithEditableText(item) ||
+          !isMarkEnabled(item.marks, 'bold'),
+      ),
+    ).toBe(true)
+    expect(blockTexts(editor.getContext())).toEqual([
+      '**hi** https://example.com ',
+    ])
+  })
+
+  test('undo/redo round-trip', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const before = snapshot(editor.getContext())
+
+    expect(editor.nodes.commands.insertTextAt({ text: 'Hello' })).toBe(true)
+
+    const after = snapshot(editor.getContext())
+    editor.history.commands.undo()
+    expect(snapshot(editor.getContext())).toEqual(before)
+    editor.history.commands.redo()
+    expect(snapshot(editor.getContext())).toEqual(after)
+  })
+
+  test('applies with an ai-agent source', () => {
+    const editor = makeTypingEditor()
+    editor.selection.commands.focus()
+    const applied: Transaction[] = []
+    editor.events.transactionDidApply.subscribe((transaction) => {
+      applied.push(transaction)
+    })
+
+    expect(editor.nodes.commands.insertTextAt({ text: 'Hi' }, 'ai-agent')).toBe(
+      true,
+    )
+    expect(applied.at(-1)?.policy?.source).toBe('ai-agent')
+    expect(blockTexts(editor.getContext())).toEqual(['Hi'])
+  })
+})
+
 describe('Dactylo read-only mode', () => {
   test('setEditable(false) clears selection and emits editable events', () => {
     const editor = makeTypingEditor()
@@ -3492,6 +3626,7 @@ describe('Dactylo read-only mode', () => {
         text: 'x',
       }),
     ).toBe(false)
+    expect(editor.nodes.commands.insertTextAt({ text: 'x' })).toBe(false)
 
     expect(snapshot(editor.getContext())).toEqual(before)
     expect(editor.history.tools.canUndo()).toBe(false)

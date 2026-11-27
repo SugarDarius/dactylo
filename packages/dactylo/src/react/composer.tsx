@@ -1299,10 +1299,13 @@ export function useIsBlockWithInlineContentEmpty(blockId: BlockId): boolean {
  *
  * @example
  * ```tsx
- * const { insertText } = useInlineNodes()
+ * const { insertText, insertTextAt } = useInlineNodes()
  *
  * insertText({ blockId, nodeId, offset: 0, text: 'Hello' })
  * insertText({ blockId, nodeId, offset: 5, text: ' world' }, 'ai-agent')
+ *
+ * insertTextAt({ text: 'Hello' })
+ * insertTextAt({ text: '🎉', at: selection })
  * ```
  */
 export function useInlineNodes() {
@@ -1315,7 +1318,14 @@ export function useInlineNodes() {
     ) => editor.nodes.commands.insertText(opts, source),
   )
 
-  return { insertText } as const
+  const insertTextAt = useStableCallback(
+    (
+      opts: { text: string; at?: Selection | null },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.nodes.commands.insertTextAt(opts, source),
+  )
+
+  return { insertText, insertTextAt } as const
 }
 /**
  * Returns whether a mention is currently being buffered.

@@ -1137,6 +1137,24 @@ describe('TransactionPipeline insertText', () => {
   })
 })
 
+describe('TransactionPipeline insertTextAt', () => {
+  test('inserts at a snapshot selection after the caret is cleared', () => {
+    const pipeline = makePipeline({ markdown: false })
+    focus(pipeline)
+    typeText(pipeline, 'Hello')
+    selectOffsetsInCurrentNode(pipeline, 1, 4)
+    const at = pipeline.context.selection
+    const before = snapshot(pipeline.context)
+    pipeline.clearSelection('user')
+
+    expect(pipeline.insertTextAt({ at, text: 'y' }, 'user')).toBe(true)
+
+    expect(blockTexts(pipeline.context)).toEqual(['Hyo'])
+    expect(requireCursor(pipeline.context).offset).toBe(2)
+    assertUndoRedo(pipeline, before)
+  })
+})
+
 describe('TransactionPipeline selection', () => {
   test('clearSelection drops the caret without a history entry', () => {
     const pipeline = makePipeline({ markdown: false })

@@ -26,6 +26,7 @@ import {
   createEditorContext,
   findInlineBufferPointerAtCursor,
   readInlineBufferQueryAtPointer,
+  withSelection,
 } from './editor-context'
 import type { EditorContext } from './editor-context'
 import { DactyloError } from './errors'
@@ -2489,6 +2490,41 @@ export class TransactionPipeline {
       this.#context,
       opts,
     )
+
+    if (intent === null) {
+      return false
+    }
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('nodes', label),
+      pushToHistory: true,
+      source,
+    })
+
+    return true
+  }
+
+  /**
+   * Inserts text at the current selection, or at the given {@link Selection} when provided.
+   * Uses the same typing rules as `insertText` input type when composing from keystrokes.
+   */
+  insertTextAt(
+    opts: {
+      text: string
+      at?: Selection | null
+    },
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): boolean {
+    const { text, at } = opts
+
+    if (text.length === 0) {
+      return false
+    }
+
+    const context =
+      at === undefined ? this.#context : withSelection(this.#context, at)
+    const intent = this.#operationsEngine.buildInsertTextOps(context, text)
 
     if (intent === null) {
       return false

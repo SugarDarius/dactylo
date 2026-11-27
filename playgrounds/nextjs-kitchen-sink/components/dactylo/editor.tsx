@@ -1,6 +1,6 @@
 'use client'
 
-import type { BlockId, MarkKey } from '@sugardarius/dactylo'
+import type { BlockId, MarkKey, Selection } from '@sugardarius/dactylo'
 import type {
   ComposerBulletListItemBlockMarkerDotProps,
   ComposerBulletListItemBlockProps,
@@ -82,7 +82,7 @@ import {
   Undo2,
   UserRoundPlus,
 } from 'lucide-react'
-import { Fragment, useCallback, useRef, useState } from 'react'
+import { Fragment, useCallback, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { Avatar, AvatarBadge, AvatarFallback } from '~/components/ui/avatar'
@@ -320,15 +320,15 @@ function EmojiPickerEmoji({ emoji, ...props }: EmojiPickerListEmojiProps) {
 export function EmojiPickerButton() {
   const canEdit = useCanEdit()
   const selection = useSelection()
-  const { insertText } = useInlineNodes()
+  const { insertTextAt } = useInlineNodes()
   const [open, setOpen] = useState(false)
-  const selectionRef = useRef(selection)
+  const [insertAt, setInsertAt] = useState<Selection | null>(null)
 
   return (
     <Popover
       onOpenChange={(nextOpen) => {
         if (nextOpen) {
-          selectionRef.current = selection
+          setInsertAt(selection)
         }
         setOpen(nextOpen)
       }}
@@ -360,15 +360,7 @@ export function EmojiPickerButton() {
         <EmojiPicker.Root
           className='isolate flex h-92 w-fit flex-col bg-transparent'
           onEmojiSelect={({ emoji }) => {
-            const at = selectionRef.current
-            if (at !== null) {
-              insertText({
-                blockId: at.anchor.blockId,
-                nodeId: at.anchor.nodeId,
-                offset: at.anchor.offset,
-                text: emoji,
-              })
-            }
+            insertTextAt({ at: insertAt, text: emoji })
             setOpen(false)
           }}
         >

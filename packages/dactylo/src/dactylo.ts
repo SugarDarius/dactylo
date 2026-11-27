@@ -351,6 +351,7 @@ export type DactyloCommand =
 
   /** Inline nodes commands. */
   | 'nodes/insert-text'
+  | 'nodes/insert-text-at-selection'
 
   /** Mentions commands. */
   | 'mentions/confirm-buffer'
@@ -1119,6 +1120,35 @@ export interface DactyloInlineNodesCommands {
       nodeId: NodeId
       offset: number
       text: string
+    },
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => boolean
+
+  /**
+   * Inserts text at the current selection, or at the given {@link Selection} when provided..
+   * Uses the same typing rules as `insertText` input type when composing from keystrokes.
+   * Pass `at` when the live selection is gone (popovers, dialogs, …).
+   *
+   * ⚠️ Does not run markdown shortcuts or autolink detection. ⚠️
+   *
+   * Returns a boolean indicating whether the insert command was successful.
+   *
+   * @example
+   * ```ts
+   * const inserted = editor.nodes.commands.insertTextAt({
+   *   text: 'Hello',
+   * })
+   *
+   * const inserted = editor.nodes.commands.insertTextAt(
+   *   { text: '🎉', at: selection },
+   *   'user',
+   * )
+   * ```
+   */
+  readonly insertTextAt: (
+    opts: {
+      text: string
+      at?: Selection | null
     },
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => boolean
@@ -2601,6 +2631,29 @@ export class Dactylo {
           this.#safeExecuteCommand(
             'nodes/insert-text',
             () => this.#pipeline.insertText(opts, source),
+            negate,
+            { payload: { opts, source } },
+          ),
+
+        /**
+         * Inserts text at the current selection, or at the given {@link Selection} when provided..
+         * Uses the same typing rules as `insertText` input type when composing from keystrokes.
+         * Pass `at` when the live selection is gone (popovers, dialogs, …).
+         *
+         * ⚠️ Does not run markdown shortcuts or autolink detection. ⚠️
+         *
+         * Returns a boolean indicating whether the insert command was successful.
+         */
+        insertTextAt: (
+          opts: {
+            text: string
+            at?: Selection | null
+          },
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'nodes/insert-text-at-selection',
+            () => this.#pipeline.insertTextAt(opts, source),
             negate,
             { payload: { opts, source } },
           ),

@@ -69,6 +69,9 @@ describe('metadata aliases', () => {
     expectTypeOf(
       editor.nodes.commands.insertText,
     ).returns.toEqualTypeOf<boolean>()
+    expectTypeOf(
+      editor.nodes.commands.insertTextAt,
+    ).returns.toEqualTypeOf<boolean>()
 
     expectTypeOf<Extract<InsertBlockSpec, { type: 'heading' }>>().toExtend<{
       type: 'heading'
