@@ -132,7 +132,7 @@ export interface DactyloStaticConfig {
   readonly commandTrigger: {
     /**
      * Whether to enable command trigger.
-     * Defaults to `true`
+     * Defaults to `false`
      */
     readonly enabled: boolean
 
@@ -267,7 +267,7 @@ export interface DactyloStaticConfig {
   readonly mentions: {
     /**
      * Whether to enable mentions.
-     * Defaults to `true`
+     * Defaults to `false`
      */
     readonly enabled: boolean
 
@@ -1475,7 +1475,7 @@ export interface DactyloBaseOptions {
   readonly commandTrigger?: {
     /**
      * Whether to enable command trigger.
-     * Defaults to `true`
+     * Defaults to `false`
      */
     readonly enabled?: boolean
 
@@ -1616,7 +1616,7 @@ export type DactyloOptions = DactyloBaseOptions &
     {
       /**
        * Whether to enable mentions.
-       * Defaults to `true`
+       * Defaults to `false`
        */
       readonly enabled?: boolean
 

@@ -209,9 +209,9 @@ export function Editor() {
 | Strings security                                 | ✅ **Done**        | Prevents scripting and injections when inserting text                                   |
 | DOM sync                                         | ✅ **Done**        | Sync DOM selection with Dactylo Selection                                               |
 | Dactylo owned errors                             | ✅ **Done**        | Exposes errors defined by Dactylo                                                       |
-| Collaboration                                    | 📆 **Planned**     | Enables collaboration through external providers as adapters                            |
-| Emojis inline trigger (`:…`)                     | 📆 **Planned**     | Enables inline composition for inserting emojis (configurable)                          |
+| Emojis inline trigger (`:…`)                     | 🚧 **In Progress** | Enables inline composition for inserting emojis (configurable)                          |
 | Hashtags (`#…`)                                  | 📆 **Planned**     | Enables built-in support for hashtags                                                   |
+| Collaboration                                    | 📆 **Planned**     | Enables collaboration through external providers as adapters                            |
 
 ### Blocks (🚧 **In Progress**)
 
@@ -237,14 +237,14 @@ export function Editor() {
 
 ### Inline Nodes (🚧 **In Progress**)
 
-| Feature       | Status         | Notes                                                                               |
-| ------------- | -------------- | ----------------------------------------------------------------------------------- |
-| TextNode      | ✅ **Done**    | Inline text with marks                                                              |
-| LineBreakNode | ✅ **Done**    | Soft break using `shift+enter` keys                                                 |
-| LinkNode      | ✅ **Done**    | Inline links with marks                                                             |
-| MentionNode   | ✅ **Done**    | Inline mention containing artefact data                                             |
-| HashtagNode   | 📆 **Planned** | Inline hashtag containing artefact data                                             |
-| Isolation     | 📆 **Planned** | Apply node isolation for specific use case like UI rendering (background colors, …) |
+| Feature        | Status         | Notes                                                                                             |
+| -------------- | -------------- | ------------------------------------------------------------------------------------------------- |
+| TextNode       | ✅ **Done**    | Inline text with marks                                                                            |
+| LineBreakNode  | ✅ **Done**    | Soft break using `shift+enter` keys                                                               |
+| LinkNode       | ✅ **Done**    | Inline links with marks                                                                           |
+| MentionNode    | ✅ **Done**    | Inline mention containing artefact data                                                           |
+| HashtagNode    | 📆 **Planned** | Inline hashtag containing artefact data                                                           |
+| Isolation mode | 📆 **Planned** | Apply isolation mode for specific use case like UI rendering (background colors, front colors, …) |
 
 ### API (🚧 **In Progress**)
 
