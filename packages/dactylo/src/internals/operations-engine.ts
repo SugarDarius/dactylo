@@ -563,10 +563,10 @@ export class OperationsEngine {
   }
 
   /**
-   * Builds operations to delete an emojis trigger buffer opener character and query span.
+   * Builds operations to insert an emoji after the emojis trigger buffer is confirmed.
    * Returns `null` when the opener and query no longer match the document.
    */
-  buildDeleteEmojisTriggerInlineBufferSpanOps(
+  buildInsertEmojisAfterBufferConfirmOps(
     context: EditorContext,
     spec: {
       /** Block ID where the emojis trigger buffer was opened. */
@@ -579,6 +579,8 @@ export class OperationsEngine {
       bufferedText: string
       /** Character that opened the emojis trigger buffer. */
       character: string
+      /** Emoji to insert in place of the opener and query. */
+      emoji: string
     },
   ): BuilderOpsIntent | null {
     if (!isCursorSelection(context.selection)) {
@@ -586,7 +588,8 @@ export class OperationsEngine {
     }
 
     const { state } = context
-    const { blockId, nodeId, triggerOffset, character, bufferedText } = spec
+    const { blockId, nodeId, triggerOffset, character, bufferedText, emoji } =
+      spec
 
     const block = getBlockWithInlineContent(state, blockId)
     const found = findNodeInBlockWithInlineContent(block, nodeId)
@@ -622,6 +625,13 @@ export class OperationsEngine {
         offset: triggerOffset,
         snapshot: { text: query },
       },
+      {
+        __type: 'insert_text',
+        blockId: block.id,
+        nodeId: node.id,
+        offset: triggerOffset,
+        text: emoji,
+      },
     ]
 
     ops = withTrailingSelectionOp(
@@ -629,12 +639,12 @@ export class OperationsEngine {
       createCursor({
         blockId: block.id,
         nodeId: node.id,
-        offset: triggerOffset,
+        offset: triggerOffset + emoji.length,
       }),
       context.selection,
     )
 
-    return { label: 'delete-emojis-trigger-inline-buffer-span', ops }
+    return { label: 'confirm-emojis-trigger-inline-buffer', ops }
   }
 
   /** Builds operations to insert a text (char or emoji). */

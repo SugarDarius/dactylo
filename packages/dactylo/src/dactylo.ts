@@ -1441,18 +1441,21 @@ export interface DactyloEmojisTriggerTools {
 /** Commands to mutate emojis trigger in the editor. */
 export interface DactyloEmojisTriggerCommands {
   /**
-   * Confirms the current emojis trigger buffer. Does not mutate the document.
+   * Confirms the current emojis trigger buffer by inserting the emoji into the document.
+   * Replaces the opener character and the query text with the given emoji.
+   *
    * Returns a boolean indicating whether the confirm command was successful.
    *
    * Client only.
    *
    * @example
    * ```ts
-   * editor.emojisTrigger.commands.confirm()
-   * editor.emojisTrigger.commands.confirm('ai-agent')
+   * editor.emojisTrigger.commands.confirm('🎉')
+   * editor.emojisTrigger.commands.confirm('🎉', 'ai-agent')
    * ```
    */
   readonly confirm: (
+    emoji: string,
     source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ) => boolean
 
@@ -3069,19 +3072,23 @@ export class Dactylo {
     return {
       commands: {
         /**
-         * Confirms the current emojis trigger buffer. Does not mutate the document.
+         * Confirms the current emojis trigger buffer by inserting the emoji into the document.
+         * Replaces the opener character and the query text with the given emoji.
+         *
          * Returns a boolean indicating whether the confirm command was successful.
          *
          * Client only.
          */
         confirm: (
+          emoji: string,
           source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
         ) =>
           this.#safeExecuteCommand(
             'emojis-trigger/confirm',
-            () => this.#pipeline.confirmBufferedInlineEmojisTrigger(source),
+            () =>
+              this.#pipeline.confirmBufferedInlineEmojisTrigger(emoji, source),
             negate,
-            { clientOnly: true, payload: { source } },
+            { clientOnly: true, payload: { emoji, source } },
           ),
 
         /**

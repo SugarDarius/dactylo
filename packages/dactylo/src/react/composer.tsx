@@ -1576,6 +1576,9 @@ export function useEmojisTriggerPointer() {
  * ```tsx
  * const { isBuffering, bufferedText, confirm, dismiss, anchor } = useEmojisTrigger()
  * console.log(isBuffering, bufferedText)
+ *
+ * confirm('🎉')
+ * dismiss()
  * ```
  */
 export function useEmojisTrigger() {
@@ -1586,8 +1589,8 @@ export function useEmojisTrigger() {
   const bufferedText = useEmojisTriggerBufferedText()
 
   const confirm = useStableCallback(
-    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
-      editor.emojisTrigger.commands.confirm(source),
+    (emoji: string, source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.emojisTrigger.commands.confirm(emoji, source),
   )
 
   const dismiss = useStableCallback(

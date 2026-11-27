@@ -1521,18 +1521,10 @@ export function CommandTriggerSuggestions() {
 }
 
 export function EmojisTriggerSuggestions() {
-  const { insertTextAt } = useInlineNodes()
   const { anchor, bufferedText, confirm, dismiss, isBuffering } =
     useEmojisTrigger()
 
   const open = isBuffering && anchor !== null
-
-  const insertEmoji = (emoji: string) => {
-    if (!confirm()) {
-      return
-    }
-    insertTextAt({ text: emoji })
-  }
 
   return (
     <Popover
@@ -1557,7 +1549,7 @@ export function EmojisTriggerSuggestions() {
         sideOffset={6}
       >
         <EditorEmojiPicker
-          onEmojiSelect={insertEmoji}
+          onEmojiSelect={confirm}
           search={bufferedText ?? ''}
         />
       </PopoverContent>

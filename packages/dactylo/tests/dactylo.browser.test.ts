@@ -2794,6 +2794,8 @@ describe('Dactylo command trigger', () => {
 })
 
 describe('Dactylo emojis trigger', () => {
+  const emoji = '🎉'
+
   test('tools report no buffer before an emoji trigger is typed', () => {
     const editor = makeEmojisTriggerEditor()
     editor.selection.commands.focus()
@@ -2989,50 +2991,62 @@ describe('Dactylo emojis trigger', () => {
     expect(requireCursor(editor.getContext()).offset).toBe(6)
   })
 
-  test('confirm deletes the query and releases the buffer', () => {
+  test('confirm replaces the query with the emoji and releases the buffer', () => {
     const editor = makeEmojisTriggerEditor()
     editor.selection.commands.focus()
     typeEmojisQuery(editor, 'smile')
 
-    expect(editor.emojisTrigger.commands.confirm()).toBe(true)
+    expect(editor.emojisTrigger.commands.confirm(emoji)).toBe(true)
 
     expect(editor.emojisTrigger.tools.isBuffering()).toBe(false)
     expect(editor.emojisTrigger.tools.getBufferedText()).toBeNull()
-    expect(blockTexts(editor.getContext())).toEqual([''])
-    expect(requireCursor(editor.getContext()).offset).toBe(0)
+    expect(blockTexts(editor.getContext())).toEqual([emoji])
+    expect(requireCursor(editor.getContext()).offset).toBe(emoji.length)
   })
 
-  test('confirm deletes only the opener and query after a prefix', () => {
+  test('confirm replaces only the opener and query after a prefix', () => {
     const editor = makeEmojisTriggerEditor()
     editor.selection.commands.focus()
     typeText(editor, 'hello ')
     typeEmojisQuery(editor, 'smile')
 
-    expect(editor.emojisTrigger.commands.confirm()).toBe(true)
+    expect(editor.emojisTrigger.commands.confirm(emoji)).toBe(true)
 
-    expect(blockTexts(editor.getContext())).toEqual(['hello '])
-    expect(requireCursor(editor.getContext()).offset).toBe(6)
+    expect(blockTexts(editor.getContext())).toEqual([`hello ${emoji}`])
+    expect(requireCursor(editor.getContext()).offset).toBe(6 + emoji.length)
   })
 
-  test('confirm deletes a bare opener', () => {
+  test('confirm replaces a bare opener with the emoji', () => {
     const editor = makeEmojisTriggerEditor()
     editor.selection.commands.focus()
     typeEmojisQuery(editor)
 
-    expect(editor.emojisTrigger.commands.confirm()).toBe(true)
+    expect(editor.emojisTrigger.commands.confirm(emoji)).toBe(true)
 
-    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(blockTexts(editor.getContext())).toEqual([emoji])
     expect(editor.emojisTrigger.tools.isBuffering()).toBe(false)
-    expect(requireCursor(editor.getContext()).offset).toBe(0)
+    expect(requireCursor(editor.getContext()).offset).toBe(emoji.length)
   })
 
   test('confirm and dismiss return false when no buffer is active', () => {
     const editor = makeEmojisTriggerEditor()
     editor.selection.commands.focus()
 
-    expect(editor.emojisTrigger.commands.confirm()).toBe(false)
+    expect(editor.emojisTrigger.commands.confirm(emoji)).toBe(false)
     expect(editor.emojisTrigger.commands.dismiss()).toBe(false)
     expect(blockTexts(editor.getContext())).toEqual([''])
+  })
+
+  test('confirm with an empty emoji returns false and keeps the buffer', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+
+    expect(editor.emojisTrigger.commands.confirm('')).toBe(false)
+
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(true)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBe('smile')
+    expect(blockTexts(editor.getContext())).toEqual([':smile'])
   })
 
   test('dismiss aborts the buffer and leaves the query as text', () => {
@@ -3052,7 +3066,7 @@ describe('Dactylo emojis trigger', () => {
     const editor = makeEmojisTriggerEditor()
     editor.selection.commands.focus()
     typeEmojisQuery(editor, 'smile')
-    editor.emojisTrigger.commands.confirm()
+    editor.emojisTrigger.commands.confirm(emoji)
 
     editor.history.commands.undo()
 
@@ -3068,7 +3082,7 @@ describe('Dactylo emojis trigger', () => {
     })
     editor.selection.commands.focus()
     typeEmojisQuery(editor, 'smile')
-    editor.emojisTrigger.commands.confirm()
+    editor.emojisTrigger.commands.confirm(emoji)
 
     expect(events).toEqual(['started:', 'buffering:smile', 'released:'])
   })
@@ -3082,7 +3096,7 @@ describe('Dactylo emojis trigger', () => {
 
     editor.selection.commands.focus()
     typeEmojisQuery(editor, 'smile')
-    editor.emojisTrigger.commands.confirm('ai-agent')
+    editor.emojisTrigger.commands.confirm(emoji, 'ai-agent')
 
     expect(applied.at(-1)?.policy).toEqual(
       expect.objectContaining({
@@ -3099,7 +3113,7 @@ describe('Dactylo emojis trigger', () => {
 
     expect(editor.emojisTrigger.tools.isBuffering()).toBe(false)
     expect(editor.emojisTrigger.tools.getBufferedText()).toBeNull()
-    expect(editor.emojisTrigger.commands.confirm()).toBe(false)
+    expect(editor.emojisTrigger.commands.confirm(emoji)).toBe(false)
     expect(blockTexts(editor.getContext())).toEqual([':smile'])
 
     editor.setEditable(true)
@@ -3122,7 +3136,7 @@ describe('Dactylo emojis trigger', () => {
     typeEmojisQuery(editor, 'smile')
     editor.emojisTrigger.tools.isBuffering()
     editor.emojisTrigger.tools.getBufferedText()
-    editor.emojisTrigger.commands.confirm('ai-agent')
+    editor.emojisTrigger.commands.confirm(emoji, 'ai-agent')
 
     expect(tools).toEqual(
       expect.arrayContaining([
@@ -3142,7 +3156,7 @@ describe('Dactylo emojis trigger', () => {
       expect.arrayContaining([
         expect.objectContaining({
           command: 'emojis-trigger/confirm',
-          payload: { source: 'ai-agent' },
+          payload: { emoji, source: 'ai-agent' },
           result: true,
           status: 'success',
         }),

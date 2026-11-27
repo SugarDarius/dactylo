@@ -1674,23 +1674,30 @@ export class TransactionPipeline {
   }
 
   /**
-   * Confirms an emojis trigger buffer by removing the opener character and the query text
-   * from the current {@link TextNode}.
+   * Confirms an emojis trigger buffer by replacing the opener character and the query text
+   * with the given emoji in the current {@link TextNode}.
    *
    * Enforces core constraints invariants:
    *  - A emojis trigger is currently being buffered.
+   *  - The emoji to insert is a non-empty string.
    *  - The emojis trigger buffer is confirmed by a user action.
-   *  - When the emojis trigger buffer is confirmed, the opened character and the query text are removed
-   *    from the current {@link TextNode} and the buffer is released and we notify that the emojis trigger
-   *    buffer is confirmed.
+   *  - When the emojis trigger buffer is confirmed, the opened character and the query text are replaced
+   *    with the emoji in the current {@link TextNode} and the buffer is released and we notify that the
+   *    emojis trigger buffer is confirmed.
    *  - Otherwise, the buffer is aborted and we notify that the emojis trigger buffer is aborted,
-   *  - The deletion is pushed to the {@link HistoryStack}.
+   *  - The replacement is pushed to the {@link HistoryStack}.
    *
    * Returns a boolean indicating whether the emojis trigger buffer was confirmed or not.
    */
   confirmBufferedInlineEmojisTrigger(
+    emoji: string,
     source: Extract<TransactionSource, 'user' | 'ai-agent'>,
   ): boolean {
+    if (emoji.length === 0) {
+      warn(`Cannot confirm emojis trigger with an empty emoji.`)
+      return false
+    }
+
     if (!this.#emojisTriggerBuffer.isBuffering) {
       warn(
         `Cannot confirm emojis trigger as there is no emojis trigger buffer active.`,
@@ -1712,12 +1719,13 @@ export class TransactionPipeline {
     }
 
     const intent =
-      this.#operationsEngine.buildDeleteEmojisTriggerInlineBufferSpanOps(
+      this.#operationsEngine.buildInsertEmojisAfterBufferConfirmOps(
         this.#context,
         {
           ...pointer,
           bufferedText,
           character: this.#emojisTrigger.character,
+          emoji,
         },
       )
 
