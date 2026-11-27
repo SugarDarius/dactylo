@@ -647,7 +647,7 @@ export function useDomActiveRange(): Range | null {
 // --- Blocks ------─────────────────────────────────────────--------
 
 /**
- * Returns blocks shared commands.
+ * Returns {@link Block}s shared commands.
  *
  * @example
  * ```tsx
@@ -710,34 +710,6 @@ export function useBlocks() {
     mutate,
     remove,
   } as const
-}
-
-/**
- * Returns a command to insert text into an existing editable-text inline node.
- *
- * @example
- * ```tsx
- * const { insertText } = useInsertText()
- * insertText({ blockId, nodeId, offset: 0, text: 'Hello' })
- * insertText({ blockId, nodeId, offset: 5, text: ' world' }, 'ai-agent')
- * ```
- */
-export function useInsertText() {
-  const { editor } = useComposer()
-
-  const insertText = useStableCallback(
-    (
-      opts: {
-        blockId: BlockId
-        nodeId: NodeId
-        offset: number
-        text: string
-      },
-      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
-    ) => editor.nodes.commands.insertText(opts, source),
-  )
-
-  return { insertText } as const
 }
 
 /**
@@ -1322,6 +1294,29 @@ export function useIsBlockWithInlineContentEmpty(blockId: BlockId): boolean {
 
 // --- Inline nodes ─────────────────────────────────────────--------
 
+/**
+ * Returns {@link InlineNode}s shared commands.
+ *
+ * @example
+ * ```tsx
+ * const { insertText } = useInlineNodes()
+ *
+ * insertText({ blockId, nodeId, offset: 0, text: 'Hello' })
+ * insertText({ blockId, nodeId, offset: 5, text: ' world' }, 'ai-agent')
+ * ```
+ */
+export function useInlineNodes() {
+  const { editor } = useComposer()
+
+  const insertText = useStableCallback(
+    (
+      opts: { blockId: BlockId; nodeId: NodeId; offset: number; text: string },
+      source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+    ) => editor.nodes.commands.insertText(opts, source),
+  )
+
+  return { insertText } as const
+}
 /**
  * Returns whether a mention is currently being buffered.
  *

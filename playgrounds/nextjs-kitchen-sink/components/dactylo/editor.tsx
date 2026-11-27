@@ -31,7 +31,7 @@ import {
   useEditorConfig,
   useHeadings,
   useHistory,
-  useInsertText,
+  useInlineNodes,
   useMark,
   useMarks,
   useMention,
@@ -320,7 +320,7 @@ function EmojiPickerEmoji({ emoji, ...props }: EmojiPickerListEmojiProps) {
 export function EmojiPickerButton() {
   const canEdit = useCanEdit()
   const selection = useSelection()
-  const { insertText } = useInsertText()
+  const { insertText } = useInlineNodes()
   const [open, setOpen] = useState(false)
   const selectionRef = useRef(selection)
 
