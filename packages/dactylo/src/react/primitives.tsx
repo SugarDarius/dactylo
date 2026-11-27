@@ -33,6 +33,7 @@ import {
   HEADING_BLOCK_LEVEL_DATA_NAME,
   HEADING_LEVEL_REPLACER,
   INLINE_QUERY_NODE_ATTR_NAME,
+  INLINE_QUERY_NODE_EMPTY_DATA_NAME,
   LINE_BREAK_NODE_ATTR_NAME,
   LINK_NODE_ATTR_NAME,
   LINK_NODE_CLICKABLE_ATTR_NAME,
@@ -264,6 +265,8 @@ const ComposerInlineQueryNode = memo<
     const from = mentionPointer.triggerOffset
     const to = from + mentions.character.length + mentionBufferedText.length
 
+    const isEmpty = mentionBufferedText.length <= 0
+
     return (
       <>
         {from > 0 ? paintTextForDOM(text.slice(0, from)) : null}
@@ -271,6 +274,7 @@ const ComposerInlineQueryNode = memo<
           ref={imqaes.setElement}
           {...{
             [INLINE_QUERY_NODE_ATTR_NAME]: '',
+            [INLINE_QUERY_NODE_EMPTY_DATA_NAME]: isEmpty ? 'true' : 'false',
             [MENTION_QUERY_DATA_NAME]: mentionBufferedText,
           }}
           aria-roledescription='inline-query-node'
@@ -287,6 +291,8 @@ const ComposerInlineQueryNode = memo<
     const to =
       from + commandTrigger.character.length + commandTriggerBufferedText.length
 
+    const isEmpty = commandTriggerBufferedText.length <= 0
+
     return (
       <>
         {from > 0 ? paintTextForDOM(text.slice(0, from)) : null}
@@ -294,6 +300,7 @@ const ComposerInlineQueryNode = memo<
           ref={ictqaes.setElement}
           {...{
             [COMMAND_TRIGGER_QUERY_DATA_NAME]: commandTriggerBufferedText,
+            [INLINE_QUERY_NODE_EMPTY_DATA_NAME]: isEmpty ? 'true' : 'false',
             [INLINE_QUERY_NODE_ATTR_NAME]: '',
           }}
           aria-roledescription='inline-query-node'

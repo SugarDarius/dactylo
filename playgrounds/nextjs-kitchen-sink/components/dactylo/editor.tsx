@@ -843,7 +843,7 @@ export function Toolbar() {
               />
               <TooltipContent>Insert</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent className='w-48' align='start'>
+            <DropdownMenuContent className='w-96' align='start'>
               <CommandMenuItems
                 commands={commands}
                 onSelect={(command) => command.run?.()}
@@ -1153,6 +1153,9 @@ export function TextNode(props: ComposerTextNodeProps) {
         '**:[[dactylo-inline-query-node]]:bg-muted/90',
         '**:[[dactylo-inline-query-node]]:rounded-sm',
         '**:[[dactylo-inline-query-node]]:p-1',
+        "**:[[dactylo-inline-query-node][data-empty=true]]:after:content-['type_to_search']",
+        '**:[[dactylo-inline-query-node][data-empty=true]]:after:pointer-events-none',
+        '**:[[dactylo-inline-query-node][data-empty=true]]:after:text-muted-foreground',
       )}
     />
   )
@@ -1192,6 +1195,9 @@ export function MentionNode(props: ComposerMentionNodeProps) {
           'data-[selected=true]:after:-right-1',
           'data-[selected=true]:after:-bottom-1',
           'data-[selected=true]:after:bg-cyan-500/70',
+          "**:[[dactylo-inline-query-node][data-empty=true]]:after:content-['type_to_search']",
+          '**:[[dactylo-inline-query-node][data-empty=true]]:after:pointer-events-none',
+          '**:[[dactylo-inline-query-node][data-empty=true]]:after:text-muted-foreground',
         )}
       >
         <HoverCardTrigger>
@@ -1312,7 +1318,7 @@ export function MentionSuggestions() {
       <DropdownMenuContent
         align='start'
         anchor={anchor}
-        className='w-72'
+        className='bg-background w-72'
         finalFocus={false}
         initialFocus={false}
         side='bottom'
