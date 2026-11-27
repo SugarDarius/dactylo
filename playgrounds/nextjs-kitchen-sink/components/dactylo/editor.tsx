@@ -1524,7 +1524,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
               content: [
                 {
                   type: 'text',
-                  text: '"dactylo (dactylographie 🇫🇷)" - is the action of typing text onto a keyboard.',
+                  text: '"🇫🇷 dactylo (dactylographie)" - is the action of typing text onto a keyboard.',
                 },
               ],
             },
