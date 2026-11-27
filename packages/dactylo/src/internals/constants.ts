@@ -29,6 +29,12 @@ export const DEFAULT_MENTIONS_ENABLED = false as const
 /** Default mention character. */
 export const DEFAULT_MENTION_CHARACTER = '@' as const
 
+/** Default emojis trigger enabled. */
+export const DEFAULT_EMOJIS_TRIGGER_ENABLED = false as const
+
+/** Default emojis trigger character. */
+export const DEFAULT_EMOJIS_TRIGGER_CHARACTER = ':' as const
+
 /** Default command trigger enabled. */
 export const DEFAULT_COMMAND_TRIGGER_ENABLED = false as const
 
@@ -228,9 +234,14 @@ export const INLINE_QUERY_NODE_EMPTY_DATA_NAME = 'data-empty' as const
 
 /** Mention query data name. */
 export const MENTION_QUERY_DATA_NAME = 'data-dactylo-mention-query' as const
+
 /** Command trigger query data name. */
 export const COMMAND_TRIGGER_QUERY_DATA_NAME =
   'data-dactylo-command-trigger-query' as const
+
+/** Emojis trigger query data name. */
+export const EMOJIS_TRIGGER_QUERY_DATA_NAME =
+  'data-dactylo-emojis-trigger-query' as const
 
 /** DOM paint space character. */
 export const DOM_SPACE_UNICODE_CODEPOINT = '\u00A0' as const

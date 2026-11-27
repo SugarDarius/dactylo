@@ -24,6 +24,8 @@ import {
   DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
   DEFAULT_COMMAND_TRIGGER_CHARACTER,
   DEFAULT_COMMAND_TRIGGER_ENABLED,
+  DEFAULT_EMOJIS_TRIGGER_CHARACTER,
+  DEFAULT_EMOJIS_TRIGGER_ENABLED,
   DEFAULT_HEADING_PLACEHOLDER,
   DEFAULT_LINK_OPEN_ON_CLICK_ENABLED,
   DEFAULT_LOCALES,
@@ -149,6 +151,25 @@ function makeCommandTriggerEditor(options: DactyloOptions = {}) {
   })
 }
 
+function typeEmojisQuery(
+  editor: ReturnType<typeof makeTypingEditor>,
+  query = '',
+  character = ':',
+): void {
+  typeText(editor, character)
+  if (query.length > 0) {
+    typeText(editor, query)
+  }
+}
+
+/** Editor with emojis trigger opted in — it is off by default. */
+function makeEmojisTriggerEditor(options: DactyloOptions = {}) {
+  return makeTypingEditor({
+    ...options,
+    emojisTrigger: { enabled: true, ...options.emojisTrigger },
+  })
+}
+
 function withUnavailableDOM(run: () => void): void {
   Object.defineProperty(document, 'createElement', {
     configurable: true,
@@ -196,6 +217,12 @@ describe('Dactylo construction', () => {
         enabled: DEFAULT_COMMAND_TRIGGER_ENABLED,
       },
       divider: { initialMetadata: {} },
+      emojisTrigger: {
+        abortOnConsecutiveSpaces:
+          DEFAULT_ABORT_INLINE_BUFFER_ON_CONSECUTIVE_SPACES,
+        character: DEFAULT_EMOJIS_TRIGGER_CHARACTER,
+        enabled: DEFAULT_EMOJIS_TRIGGER_ENABLED,
+      },
       heading: {
         initialMetadata: {},
         placeholder: DEFAULT_HEADING_PLACEHOLDER,
@@ -232,6 +259,7 @@ describe('Dactylo construction', () => {
       autolink: { enabled: false },
       bulletedList: { placeholder: 'Item' },
       commandTrigger: { character: '!', enabled: false },
+      emojisTrigger: { character: ';', enabled: true },
       heading: { placeholder: 'Title' },
       link: { openOnClick: false },
       locales: 'fr-FR',
@@ -256,6 +284,12 @@ describe('Dactylo construction', () => {
         enabled: false,
       },
       divider: { initialMetadata: {} },
+      emojisTrigger: {
+        abortOnConsecutiveSpaces:
+          DEFAULT_ABORT_INLINE_BUFFER_ON_CONSECUTIVE_SPACES,
+        character: ';',
+        enabled: true,
+      },
       heading: { initialMetadata: {}, placeholder: 'Title' },
       lineBreak: { initialMetadata: {} },
       link: { initialMetadata: {}, openOnClick: false },
@@ -2756,6 +2790,364 @@ describe('Dactylo command trigger', () => {
     editor.setEditable(true)
     expect(editor.commandTrigger.tools.isBuffering()).toBe(true)
     expect(editor.commandTrigger.tools.getBufferedText()).toBe('foo')
+  })
+})
+
+describe('Dactylo emojis trigger', () => {
+  test('tools report no buffer before an emoji trigger is typed', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(false)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBeNull()
+    expect(editor.emojisTrigger.tools.getPointer()).toBeNull()
+  })
+
+  test('typing the emoji trigger character starts a buffer with empty query text', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor)
+
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(true)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBe('')
+    expect(blockTexts(editor.getContext())).toEqual([':'])
+  })
+
+  test('typed characters after the opener are readable via getBufferedText', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(true)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBe('smile')
+    expect(blockTexts(editor.getContext())).toEqual([':smile'])
+  })
+
+  test('getPointer locates the opener while buffering', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+
+    const block = firstInlineBlock(editor.getContext())
+    const [node] = block.content
+    if (!node || !isTextNode(node)) {
+      throw new Error('Expected a text node')
+    }
+
+    expect(editor.emojisTrigger.tools.getPointer()).toEqual({
+      blockId: block.id,
+      nodeId: node.id,
+      triggerOffset: 0,
+    })
+  })
+
+  test('starts a buffer at the start of a node or after whitespace, not mid-word', () => {
+    const midWord = makeEmojisTriggerEditor()
+    midWord.selection.commands.focus()
+    typeText(midWord, 'hello')
+    typeEmojisQuery(midWord)
+
+    expect(midWord.emojisTrigger.tools.isBuffering()).toBe(false)
+    expect(midWord.emojisTrigger.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(midWord.getContext())).toEqual(['hello:'])
+
+    const afterSpace = makeEmojisTriggerEditor()
+    afterSpace.selection.commands.focus()
+    typeText(afterSpace, 'hello ')
+    typeEmojisQuery(afterSpace, 'smile')
+
+    expect(afterSpace.emojisTrigger.tools.isBuffering()).toBe(true)
+    expect(afterSpace.emojisTrigger.tools.getBufferedText()).toBe('smile')
+    expect(blockTexts(afterSpace.getContext())).toEqual(['hello :smile'])
+  })
+
+  test('does not start a buffer by default', () => {
+    const editor = makeEditor()
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(false)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(editor.getContext())).toEqual([':smile'])
+  })
+
+  test('does not start a buffer when emojis trigger is disabled', () => {
+    const editor = makeEmojisTriggerEditor({
+      emojisTrigger: { enabled: false },
+    })
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(false)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(editor.getContext())).toEqual([':smile'])
+  })
+
+  test('uses the configured emoji trigger character', () => {
+    const editor = makeEmojisTriggerEditor({
+      emojisTrigger: { character: ';' },
+    })
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile', ';')
+
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(true)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBe('smile')
+    expect(blockTexts(editor.getContext())).toEqual([';smile'])
+  })
+
+  test('undo while buffering keeps the buffer when the opener remains', () => {
+    const editor = makeEmojisTriggerEditor()
+    const events: { bufferedText: string | null; state: string }[] = []
+    editor.events.emojisTriggerBuffer.subscribe((event) => {
+      events.push({ bufferedText: event.bufferedText, state: event.state })
+    })
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+
+    editor.history.commands.undo()
+
+    expect(blockTexts(editor.getContext())).toEqual([':'])
+    expect(events.at(-1)).toEqual({ bufferedText: '', state: 'buffering' })
+  })
+
+  test('undo while buffering aborts when the opener is removed', () => {
+    const editor = makeEmojisTriggerEditor()
+    const states: string[] = []
+    editor.events.emojisTriggerBuffer.subscribe((event) => {
+      states.push(event.state)
+    })
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+
+    editor.history.commands.undo()
+    editor.history.commands.undo()
+
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(states.at(-1)).toBe('aborted')
+  })
+
+  test('Backspace trims the emoji trigger query', () => {
+    const editor = makeEmojisTriggerEditor()
+    const events: { bufferedText: string | null; state: string }[] = []
+    editor.events.emojisTriggerBuffer.subscribe((event) => {
+      events.push({ bufferedText: event.bufferedText, state: event.state })
+    })
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+
+    deleteBackward(editor)
+
+    expect(blockTexts(editor.getContext())).toEqual([':smil'])
+    expect(events.at(-1)).toEqual({ bufferedText: 'smil', state: 'buffering' })
+  })
+
+  test('two consecutive spaces keep the emoji trigger buffer by default', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+    typeText(editor, ' ')
+    typeText(editor, ' ')
+
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(true)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBe('smile  ')
+    expect(blockTexts(editor.getContext())).toEqual([':smile  '])
+  })
+
+  test('two consecutive trailing spaces abort the emoji trigger buffer when opted in', () => {
+    const editor = makeEmojisTriggerEditor({
+      emojisTrigger: { abortOnConsecutiveSpaces: true },
+    })
+    const states: string[] = []
+    editor.events.emojisTriggerBuffer.subscribe((event) => {
+      states.push(event.state)
+    })
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+    typeText(editor, ' ')
+    typeText(editor, ' ')
+
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(false)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(editor.getContext())).toEqual([':smile  '])
+    expect(states.at(-1)).toBe('aborted')
+  })
+
+  test('Escape while buffering aborts and pins the caret at the query end', () => {
+    const editor = makeEmojisTriggerEditor()
+    const states: string[] = []
+    editor.events.emojisTriggerBuffer.subscribe((event) => {
+      states.push(event.state)
+    })
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+
+    expect(pressShortcut(editor, 'Escape')).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual([':smile'])
+    expect(states.at(-1)).toBe('aborted')
+    expect(editor.getContext().selection).not.toBeNull()
+    expect(requireCursor(editor.getContext()).offset).toBe(6)
+  })
+
+  test('confirm deletes the query and releases the buffer', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+
+    expect(editor.emojisTrigger.commands.confirm()).toBe(true)
+
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(false)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(requireCursor(editor.getContext()).offset).toBe(0)
+  })
+
+  test('confirm deletes only the opener and query after a prefix', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+    typeText(editor, 'hello ')
+    typeEmojisQuery(editor, 'smile')
+
+    expect(editor.emojisTrigger.commands.confirm()).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual(['hello '])
+    expect(requireCursor(editor.getContext()).offset).toBe(6)
+  })
+
+  test('confirm deletes a bare opener', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor)
+
+    expect(editor.emojisTrigger.commands.confirm()).toBe(true)
+
+    expect(blockTexts(editor.getContext())).toEqual([''])
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(false)
+    expect(requireCursor(editor.getContext()).offset).toBe(0)
+  })
+
+  test('confirm and dismiss return false when no buffer is active', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+
+    expect(editor.emojisTrigger.commands.confirm()).toBe(false)
+    expect(editor.emojisTrigger.commands.dismiss()).toBe(false)
+    expect(blockTexts(editor.getContext())).toEqual([''])
+  })
+
+  test('dismiss aborts the buffer and leaves the query as text', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+
+    expect(editor.emojisTrigger.commands.dismiss()).toBe(true)
+
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(false)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(editor.getContext())).toEqual([':smile'])
+    expect(requireCursor(editor.getContext()).offset).toBe(6)
+  })
+
+  test('undo after confirm restores the query without restarting the buffer', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+    editor.emojisTrigger.commands.confirm()
+
+    editor.history.commands.undo()
+
+    expect(blockTexts(editor.getContext())).toEqual([':smile'])
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(false)
+  })
+
+  test('events.emojisTriggerBuffer fires released after confirm', () => {
+    const editor = makeEmojisTriggerEditor()
+    const events: string[] = []
+    editor.events.emojisTriggerBuffer.subscribe((event) => {
+      events.push(`${event.state}:${event.bufferedText ?? ''}`)
+    })
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+    editor.emojisTrigger.commands.confirm()
+
+    expect(events).toEqual(['started:', 'buffering:smile', 'released:'])
+  })
+
+  test('confirm records the transaction source', () => {
+    const editor = makeEmojisTriggerEditor()
+    const applied: Transaction[] = []
+    editor.events.transactionDidApply.subscribe((transaction) => {
+      applied.push(transaction)
+    })
+
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+    editor.emojisTrigger.commands.confirm('ai-agent')
+
+    expect(applied.at(-1)?.policy).toEqual(
+      expect.objectContaining({
+        source: 'ai-agent',
+      }),
+    )
+  })
+
+  test('confirm is a no-op while read-only', () => {
+    const editor = makeEmojisTriggerEditor()
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+    editor.setEditable(false)
+
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(false)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBeNull()
+    expect(editor.emojisTrigger.commands.confirm()).toBe(false)
+    expect(blockTexts(editor.getContext())).toEqual([':smile'])
+
+    editor.setEditable(true)
+    expect(editor.emojisTrigger.tools.isBuffering()).toBe(true)
+    expect(editor.emojisTrigger.tools.getBufferedText()).toBe('smile')
+  })
+
+  test('commands and tools emit events', () => {
+    const editor = makeEmojisTriggerEditor()
+    const commands: DactyloCommandEvent[] = []
+    const tools: DactyloToolEvent[] = []
+    editor.events.commands.subscribe((event) => {
+      commands.push(event)
+    })
+    editor.events.tools.subscribe((event) => {
+      tools.push(event)
+    })
+
+    editor.selection.commands.focus()
+    typeEmojisQuery(editor, 'smile')
+    editor.emojisTrigger.tools.isBuffering()
+    editor.emojisTrigger.tools.getBufferedText()
+    editor.emojisTrigger.commands.confirm('ai-agent')
+
+    expect(tools).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          result: true,
+          status: 'success',
+          tool: 'emojis-trigger/is-buffering',
+        }),
+        expect.objectContaining({
+          result: 'smile',
+          status: 'success',
+          tool: 'emojis-trigger/get-buffered-text',
+        }),
+      ]),
+    )
+    expect(commands).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          command: 'emojis-trigger/confirm',
+          payload: { source: 'ai-agent' },
+          result: true,
+          status: 'success',
+        }),
+      ]),
+    )
   })
 })
 

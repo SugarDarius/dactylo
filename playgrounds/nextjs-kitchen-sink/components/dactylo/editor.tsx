@@ -29,6 +29,7 @@ import {
   useDividers,
   useEditableListener,
   useEditorConfig,
+  useEmojisTrigger,
   useHeadings,
   useHistory,
   useInlineNodes,
@@ -317,6 +318,46 @@ function EmojiPickerEmoji({ emoji, ...props }: EmojiPickerListEmojiProps) {
   )
 }
 
+function EditorEmojiPicker({
+  onEmojiSelect,
+  search,
+}: {
+  onEmojiSelect: (emoji: string) => void
+  search?: string
+}) {
+  return (
+    <EmojiPicker.Root
+      className='isolate flex h-92 w-fit flex-col bg-transparent'
+      onEmojiSelect={({ emoji }) => {
+        onEmojiSelect(emoji)
+      }}
+    >
+      <EmojiPicker.Search
+        className='bg-muted z-10 mx-2 mt-2 appearance-none rounded-md px-2.5 py-2 text-sm outline-hidden'
+        {...(search === undefined
+          ? {}
+          : { readOnly: true, tabIndex: -1, value: search })}
+      />
+      <EmojiPicker.Viewport className='relative flex-1 outline-hidden'>
+        <EmojiPicker.Loading className='text-muted-foreground absolute inset-0 flex items-center justify-center text-sm'>
+          Loading…
+        </EmojiPicker.Loading>
+        <EmojiPicker.Empty className='text-muted-foreground absolute inset-0 flex items-center justify-center text-sm'>
+          No emoji found.
+        </EmojiPicker.Empty>
+        <EmojiPicker.List
+          className='pb-1.5 select-none'
+          components={{
+            CategoryHeader: EmojiPickerCategoryHeader,
+            Emoji: EmojiPickerEmoji,
+            Row: EmojiPickerRow,
+          }}
+        />
+      </EmojiPicker.Viewport>
+    </EmojiPicker.Root>
+  )
+}
+
 export function EmojiPickerButton() {
   const canEdit = useCanEdit()
   const selection = useSelection()
@@ -357,31 +398,12 @@ export function EmojiPickerButton() {
         <TooltipContent>Insert emoji</TooltipContent>
       </Tooltip>
       <PopoverContent align='start' className='w-fit overflow-hidden p-0'>
-        <EmojiPicker.Root
-          className='isolate flex h-92 w-fit flex-col bg-transparent'
-          onEmojiSelect={({ emoji }) => {
+        <EditorEmojiPicker
+          onEmojiSelect={(emoji) => {
             insertTextAt({ at: insertAt, text: emoji })
             setOpen(false)
           }}
-        >
-          <EmojiPicker.Search className='bg-muted z-10 mx-2 mt-2 appearance-none rounded-md px-2.5 py-2 text-sm outline-hidden' />
-          <EmojiPicker.Viewport className='relative flex-1 outline-hidden'>
-            <EmojiPicker.Loading className='text-muted-foreground absolute inset-0 flex items-center justify-center text-sm'>
-              Loading…
-            </EmojiPicker.Loading>
-            <EmojiPicker.Empty className='text-muted-foreground absolute inset-0 flex items-center justify-center text-sm'>
-              No emoji found.
-            </EmojiPicker.Empty>
-            <EmojiPicker.List
-              className='pb-1.5 select-none'
-              components={{
-                CategoryHeader: EmojiPickerCategoryHeader,
-                Emoji: EmojiPickerEmoji,
-                Row: EmojiPickerRow,
-              }}
-            />
-          </EmojiPicker.Viewport>
-        </EmojiPicker.Root>
+        />
       </PopoverContent>
     </Popover>
   )
@@ -1498,6 +1520,51 @@ export function CommandTriggerSuggestions() {
   )
 }
 
+export function EmojisTriggerSuggestions() {
+  const { insertTextAt } = useInlineNodes()
+  const { anchor, bufferedText, confirm, dismiss, isBuffering } =
+    useEmojisTrigger()
+
+  const open = isBuffering && anchor !== null
+
+  const insertEmoji = (emoji: string) => {
+    if (!confirm()) {
+      return
+    }
+    insertTextAt({ text: emoji })
+  }
+
+  return (
+    <Popover
+      modal={false}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && isBuffering) {
+          dismiss()
+        }
+      }}
+      open={open}
+    >
+      <PopoverContent
+        align='start'
+        anchor={anchor}
+        className='w-fit overflow-hidden p-0'
+        finalFocus={false}
+        initialFocus={false}
+        onMouseDown={(event) => {
+          event.preventDefault()
+        }}
+        side='bottom'
+        sideOffset={6}
+      >
+        <EditorEmojiPicker
+          onEmojiSelect={insertEmoji}
+          search={bufferedText ?? ''}
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -1512,6 +1579,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         paragraph={{ initialMetadata: { fontSize: '16px' } }}
         mentions={{ enabled: true }}
         commandTrigger={{ enabled: true, abortOnConsecutiveSpaces: true }}
+        emojisTrigger={{ enabled: true, abortOnConsecutiveSpaces: true }}
         initialContent={{
           blocks: [
             {
@@ -1571,6 +1639,11 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
               content: [{ type: 'text', text: 'Mention someone' }],
             },
             {
+              type: 'checkbox_list_item',
+              checked: false,
+              content: [{ type: 'text', text: 'Type : to insert an emoji' }],
+            },
+            {
               type: 'divider',
             },
             {
@@ -1614,6 +1687,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         >
           <MentionSuggestions />
           <CommandTriggerSuggestions />
+          <EmojisTriggerSuggestions />
         </Composer.Editable>
       </Composer.Root>
     </div>

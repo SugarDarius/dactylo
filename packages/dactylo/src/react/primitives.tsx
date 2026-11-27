@@ -29,6 +29,7 @@ import {
   DIVIDER_BLOCK_ATTR_NAME,
   DIVIDER_SEPARATOR_ATTR_NAME,
   EDITABLE_ATTR_NAME,
+  EMOJIS_TRIGGER_QUERY_DATA_NAME,
   HEADING_BLOCK_ATTR_NAME,
   HEADING_BLOCK_LEVEL_DATA_NAME,
   HEADING_LEVEL_REPLACER,
@@ -72,6 +73,8 @@ import {
   useEditableBlock,
   useEditableNode,
   useEditorConfig,
+  useEmojisTriggerBufferedText,
+  useEmojisTriggerPointer,
   useFocus,
   useInlineNodeSelectionCoverageTopology,
   useMentionBufferedText,
@@ -167,6 +170,7 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
       commandTrigger,
       debug = false,
       editable = true,
+      emojisTrigger,
       heading,
       initialContent,
       link,
@@ -191,6 +195,7 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
         commandTrigger,
         debug,
         editable,
+        emojisTrigger,
         heading,
         initialContent,
         link,
@@ -202,10 +207,8 @@ const ComposerRoot = forwardRef<HTMLDivElement, ComposerRootProps>(
         placeholder,
         quote,
       }),
-      /** Inline mention query anchor element store. */
-      ictqaes: createAnchorElementStore<HTMLSpanElement>(),
-      /** Inline command trigger query anchor element store. */
-      imqaes: createAnchorElementStore<HTMLSpanElement>(),
+      /** Inline query anchor element store. */
+      iqaes: createAnchorElementStore<HTMLSpanElement>(),
     })
 
     useDebugValue(ctx)
@@ -241,13 +244,14 @@ ComposerRoot.displayName = COMPOSER_ROOT_NAME
  * It can be customized though through attributes names:
  *  - `[dactylo-inline-query-node=""]`
  *  - `[data-dactylo-command-trigger-query="…"]`
+ *  - `[data-dactylo-emojis-trigger-query="…"]`
  *  - `[data-dactylo-mention-query="…"]`
  */
 const ComposerInlineQueryNode = memo<
   React.PropsWithChildren<ComposerInlineQueryNodeProps>
 >(({ nodeId, text, children }) => {
-  const { commandTrigger, mentions } = useEditorConfig()
-  const { ictqaes, imqaes } = useComposer()
+  const { commandTrigger, mentions, emojisTrigger } = useEditorConfig()
+  const { iqaes } = useComposer()
 
   const mentionPointer = useMentionPointer()
   const mentionBufferedText = useMentionBufferedText()
@@ -255,11 +259,17 @@ const ComposerInlineQueryNode = memo<
   const commandTriggerPointer = useCommandTriggerPointer()
   const commandTriggerBufferedText = useCommandTriggerBufferedText()
 
+  const emojisTriggerPointer = useEmojisTriggerPointer()
+  const emojisTriggerBufferedText = useEmojisTriggerBufferedText()
+
   const isMentionBufferActive =
     mentionPointer !== null && mentionBufferedText !== null
 
   const isCommandTriggerBufferActive =
     commandTriggerPointer !== null && commandTriggerBufferedText !== null
+
+  const isEmojisTriggerBufferActive =
+    emojisTriggerPointer !== null && emojisTriggerBufferedText !== null
 
   if (isMentionBufferActive && nodeId === mentionPointer.nodeId) {
     const from = mentionPointer.triggerOffset
@@ -271,7 +281,7 @@ const ComposerInlineQueryNode = memo<
       <>
         {from > 0 ? paintTextForDOM(text.slice(0, from)) : null}
         <span
-          ref={imqaes.setElement}
+          ref={iqaes.setElement}
           {...{
             [INLINE_QUERY_NODE_ATTR_NAME]: '',
             [INLINE_QUERY_NODE_EMPTY_DATA_NAME]: isEmpty ? 'true' : 'false',
@@ -297,9 +307,35 @@ const ComposerInlineQueryNode = memo<
       <>
         {from > 0 ? paintTextForDOM(text.slice(0, from)) : null}
         <span
-          ref={ictqaes.setElement}
+          ref={iqaes.setElement}
           {...{
             [COMMAND_TRIGGER_QUERY_DATA_NAME]: commandTriggerBufferedText,
+            [INLINE_QUERY_NODE_EMPTY_DATA_NAME]: isEmpty ? 'true' : 'false',
+            [INLINE_QUERY_NODE_ATTR_NAME]: '',
+          }}
+          aria-roledescription='inline-query-node'
+        >
+          {paintTextForDOM(text.slice(from, to))}
+        </span>
+        {to < text.length ? paintTextForDOM(text.slice(to)) : null}
+      </>
+    )
+  }
+
+  if (isEmojisTriggerBufferActive && nodeId === emojisTriggerPointer.nodeId) {
+    const from = emojisTriggerPointer.triggerOffset
+    const to =
+      from + emojisTrigger.character.length + emojisTriggerBufferedText.length
+
+    const isEmpty = emojisTriggerBufferedText.length <= 0
+
+    return (
+      <>
+        {from > 0 ? paintTextForDOM(text.slice(0, from)) : null}
+        <span
+          ref={iqaes.setElement}
+          {...{
+            [EMOJIS_TRIGGER_QUERY_DATA_NAME]: emojisTriggerBufferedText,
             [INLINE_QUERY_NODE_EMPTY_DATA_NAME]: isEmpty ? 'true' : 'false',
             [INLINE_QUERY_NODE_ATTR_NAME]: '',
           }}

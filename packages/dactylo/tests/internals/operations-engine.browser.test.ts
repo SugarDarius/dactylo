@@ -287,6 +287,11 @@ describe('TransactionPipeline JSON initialContent', () => {
         abortOnConsecutiveSpaces: false,
       },
       debug: false,
+      emojisTrigger: {
+        abortOnConsecutiveSpaces: false,
+        character: ':',
+        enabled: false,
+      },
       engine: { locales: 'en-US' },
       initialContent: coveringDocument(),
       markdown: { enabled: false },
@@ -322,6 +327,11 @@ describe('TransactionPipeline JSON initialContent', () => {
         abortOnConsecutiveSpaces: false,
       },
       debug: false,
+      emojisTrigger: {
+        abortOnConsecutiveSpaces: false,
+        character: ':',
+        enabled: false,
+      },
       engine: { locales: 'en-US' },
       initialContent: {
         blocks: [

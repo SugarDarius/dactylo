@@ -24,6 +24,8 @@ import {
   DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
   DEFAULT_COMMAND_TRIGGER_CHARACTER,
   DEFAULT_COMMAND_TRIGGER_ENABLED,
+  DEFAULT_EMOJIS_TRIGGER_CHARACTER,
+  DEFAULT_EMOJIS_TRIGGER_ENABLED,
   DEFAULT_HEADING_PLACEHOLDER,
   DEFAULT_LINK_OPEN_ON_CLICK_ENABLED,
   DEFAULT_LOCALES,
@@ -81,6 +83,7 @@ import type {
   CommandTriggerBufferEvent,
   DocumentErrorEvent,
   DocumentReadyEvent,
+  EmojisTriggerBufferEvent,
   MentionBufferEvent,
   MentionDidCreatedEvent,
   Transaction,
@@ -144,6 +147,27 @@ export interface DactyloStaticConfig {
 
     /**
      * Whether to abort the command trigger inline buffer if user types two (2) consecutive spaces.
+     * Defaults to `false`
+     */
+    readonly abortOnConsecutiveSpaces: boolean
+  }
+
+  /** Configuration for emojis trigger. */
+  readonly emojisTrigger: {
+    /**
+     * Whether to enable emojis trigger.
+     * Defaults to `false`
+     */
+    readonly enabled: boolean
+
+    /**
+     * The character to trigger a emoji.
+     * Defaults to `:`
+     */
+    readonly character: string
+
+    /**
+     * Whether to abort the emojis trigger inline buffer if user types two (2) consecutive spaces.
      * Defaults to `false`
      */
     readonly abortOnConsecutiveSpaces: boolean
@@ -326,6 +350,11 @@ export type DactyloTool =
   | 'command-trigger/get-buffered-text'
   | 'command-trigger/get-pointer'
 
+  /** Emojis trigger tools. */
+  | 'emojis-trigger/is-buffering'
+  | 'emojis-trigger/get-buffered-text'
+  | 'emojis-trigger/get-pointer'
+
 /** Discriminated union of commands that can be executed by the user/ai-agent. */
 export type DactyloCommand =
   /** History commands. */
@@ -373,6 +402,10 @@ export type DactyloCommand =
   /** Command trigger commands. */
   | 'command-trigger/confirm'
   | 'command-trigger/dismiss'
+
+  /** Emojis trigger commands. */
+  | 'emojis-trigger/confirm'
+  | 'emojis-trigger/dismiss'
 
 /** Event emitted when a command is executed. */
 export interface DactyloCommandEvent {
@@ -568,6 +601,18 @@ export interface DactyloEventsApi {
    * ```
    */
   readonly commandTriggerBuffer: Observable<CommandTriggerBufferEvent>
+
+  /**
+   * Subscribes to the emojis trigger buffer changes.
+   *
+   * @example
+   * ```ts
+   * const unsub = editor.events.emojisTriggerBuffer.subscribe((event) => {
+   *  console.log(event.bufferedText)
+   * })
+   * ```
+   */
+  readonly emojisTriggerBuffer: Observable<EmojisTriggerBufferEvent>
 
   /**
    * Subscribes to applied transactions.
@@ -1358,6 +1403,82 @@ export type DactyloCommandTriggerApi = DactyloAspectApi<
   DactyloCommandTriggerCommands
 >
 
+/** Tools to query emojis trigger in the editor. */
+export interface DactyloEmojisTriggerTools {
+  /**
+   * Returns a boolean indicating whether an emojis trigger buffer is currently being buffered.
+   *
+   * @example
+   * ```ts
+   * const isBuffering = editor.emojisTrigger.tools.isBuffering()
+   * ```
+   */
+  readonly isBuffering: () => boolean
+
+  /**
+   * Returns the current emojis trigger buffer buffered text.
+   * Returns `null` when no emojis trigger buffer is active.
+   *
+   * @example
+   * ```ts
+   * const bufferedText = editor.emojisTrigger.tools.getBufferedText()
+   * ```
+   */
+  readonly getBufferedText: () => string | null
+
+  /**
+   * Returns the current emojis trigger buffer pointer.
+   * Returns `null` when no emojis trigger buffer is active.
+   *
+   * @example
+   * ```ts
+   * const pointer = editor.emojisTrigger.tools.getPointer()
+   * ```
+   */
+  readonly getPointer: () => InlineBufferPointer | null
+}
+
+/** Commands to mutate emojis trigger in the editor. */
+export interface DactyloEmojisTriggerCommands {
+  /**
+   * Confirms the current emojis trigger buffer. Does not mutate the document.
+   * Returns a boolean indicating whether the confirm command was successful.
+   *
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * editor.emojisTrigger.commands.confirm()
+   * editor.emojisTrigger.commands.confirm('ai-agent')
+   * ```
+   */
+  readonly confirm: (
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => boolean
+
+  /**
+   * Dismisses the current emojis trigger buffer by cancelling the inline buffer
+   * Returns a boolean indicating whether the dismiss command was successful.
+   *
+   * Client only.
+   *
+   * @example
+   * ```ts
+   * editor.emojisTrigger.commands.dismiss()
+   * editor.emojisTrigger.commands.dismiss('ai-agent')
+   * ```
+   */
+  readonly dismiss: (
+    source?: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ) => boolean
+}
+
+/** Api to interact with the emojis trigger {@link InlineBuffer} of the editor. */
+export type DactyloEmojisTriggerApi = DactyloAspectApi<
+  DactyloEmojisTriggerTools,
+  DactyloEmojisTriggerCommands
+>
+
 /** Api to run actions around editor's commands. */
 export interface DactyloCommandsApi {
   /**
@@ -1487,6 +1608,27 @@ export interface DactyloBaseOptions {
 
     /**
      * Whether to abort the command trigger inline buffer if user types two (2) consecutive spaces.
+     * Defaults to `false`
+     */
+    readonly abortOnConsecutiveSpaces?: boolean
+  }
+
+  /** Configuration for emojis trigger. */
+  readonly emojisTrigger?: {
+    /**
+     * Whether to enable emojis trigger.
+     * Defaults to `false`
+     */
+    readonly enabled?: boolean
+
+    /**
+     * The character to trigger a emoji.
+     * Defaults to `:`
+     */
+    readonly character?: string
+
+    /**
+     * Whether to abort the emojis trigger inline buffer if user types two (2) consecutive spaces.
      * Defaults to `false`
      */
     readonly abortOnConsecutiveSpaces?: boolean
@@ -1766,6 +1908,15 @@ export class Dactylo {
       divider: {
         initialMetadata: options.divider?.initialMetadata ?? ({} as DBM),
       },
+      emojisTrigger: {
+        abortOnConsecutiveSpaces:
+          options.emojisTrigger?.abortOnConsecutiveSpaces ??
+          DEFAULT_ABORT_INLINE_BUFFER_ON_CONSECUTIVE_SPACES,
+        character:
+          options.emojisTrigger?.character ?? DEFAULT_EMOJIS_TRIGGER_CHARACTER,
+        enabled:
+          options.emojisTrigger?.enabled ?? DEFAULT_EMOJIS_TRIGGER_ENABLED,
+      },
       heading: {
         initialMetadata: options.heading?.initialMetadata ?? ({} as HBM),
         placeholder:
@@ -1828,6 +1979,12 @@ export class Dactylo {
         enabled: this.#config.commandTrigger.enabled,
       },
       debug: this.#debug,
+      emojisTrigger: {
+        abortOnConsecutiveSpaces:
+          this.#config.emojisTrigger.abortOnConsecutiveSpaces,
+        character: this.#config.emojisTrigger.character,
+        enabled: this.#config.emojisTrigger.enabled,
+      },
       engine: {
         locales,
       },
@@ -2061,6 +2218,12 @@ export class Dactylo {
 
       /** Subscribes to the commands executed by the user/ai-agent. */
       commands: this.#eventSources.commands.observable,
+
+      /**
+       * Subscribes to the emojis trigger buffer changes.
+       * 👉🏻 Fires anytime the inline buffer is updated.
+       */
+      emojisTriggerBuffer: this.#pipeline.events.emojisTriggerBuffer,
 
       /** Subscribes to when the {@link DocumentStatus} is set to `error`. */
       documentError: this.#pipeline.events.documentError,
@@ -2894,6 +3057,82 @@ export class Dactylo {
           this.#safeExecuteTool(
             'command-trigger/is-buffering',
             () => this.#pipeline.commandTriggerInlineBuffer.isBuffering,
+            negate,
+            { clientOnly: true },
+          ),
+      },
+    }
+  }
+
+  /** Returns the api to interact with the emojis trigger {@link InlineBuffer} of the editor. */
+  get emojisTrigger(): DactyloEmojisTriggerApi {
+    return {
+      commands: {
+        /**
+         * Confirms the current emojis trigger buffer. Does not mutate the document.
+         * Returns a boolean indicating whether the confirm command was successful.
+         *
+         * Client only.
+         */
+        confirm: (
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'emojis-trigger/confirm',
+            () => this.#pipeline.confirmBufferedInlineEmojisTrigger(source),
+            negate,
+            { clientOnly: true, payload: { source } },
+          ),
+
+        /**
+         * Dismisses the current emojis trigger buffer by cancelling the inline buffer
+         * Returns a boolean indicating whether the dismiss command was successful.
+         *
+         * Client only.
+         */
+        dismiss: (
+          source: Extract<TransactionSource, 'user' | 'ai-agent'> = 'user',
+        ) =>
+          this.#safeExecuteCommand(
+            'emojis-trigger/dismiss',
+            () => this.#pipeline.dismissBufferedInlineEmojisTrigger(source),
+            negate,
+            { clientOnly: true, payload: { source } },
+          ),
+      },
+      tools: {
+        /**
+         * Returns the text that's being typed into the current emojis trigger buffer.
+         * Client only.
+         */
+        getBufferedText: () =>
+          this.#safeExecuteTool(
+            'emojis-trigger/get-buffered-text',
+            () => this.#pipeline.emojisTriggerInlineBuffer.bufferedText,
+            nullish,
+            { clientOnly: true },
+          ),
+
+        /**
+         * Returns the current pointer related to the emojis trigger buffer.
+         * Client only.
+         */
+        getPointer: () =>
+          this.#safeExecuteTool(
+            'emojis-trigger/get-pointer',
+            () => this.#pipeline.emojisTriggerInlineBuffer.pointer,
+            nullish,
+            { clientOnly: true },
+          ),
+
+        /**
+         * Whether a emojis trigger is currently being buffered.
+         * Client only.
+         */
+        isBuffering: () =>
+          this.#safeExecuteTool(
+            'emojis-trigger/is-buffering',
+            () => this.#pipeline.emojisTriggerInlineBuffer.isBuffering,
             negate,
             { clientOnly: true },
           ),

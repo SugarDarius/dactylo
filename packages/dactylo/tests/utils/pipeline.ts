@@ -97,6 +97,11 @@ export function makePipeline(
       abortOnConsecutiveSpaces: false,
     },
     debug: false,
+    emojisTrigger: {
+      abortOnConsecutiveSpaces: false,
+      character: ':',
+      enabled: false,
+    },
     engine: { locales: 'en-US' },
     initialContent: opts.initialContent,
     markdown: { enabled: opts.markdown ?? true },

@@ -57,6 +57,7 @@ import type {
   CommandTriggerBufferEvent,
   DocumentErrorEvent,
   DocumentReadyEvent,
+  EmojisTriggerBufferEvent,
   MentionBufferEvent,
   MentionDidCreatedEvent,
   Transaction,
@@ -119,44 +120,23 @@ export const { Provider: ComposerProvider, useContext: useComposer } =
   })
 
 /**
- * Returns the inline mention query anchor element.
+ * Returns the inline query anchor element.
  *
  * @example
  * ```tsx
- * const anchor = useInlineMentionQueryAnchorElement()
+ * const anchor = useInlineQueryAnchorElement()
  * console.log(anchor)
  * ```
  *
  * @private
  */
-export function useInlineMentionQueryAnchorElement(): HTMLSpanElement | null {
-  const { imqaes } = useComposer()
+export function useInlineQueryAnchorElement(): HTMLSpanElement | null {
+  const { iqaes } = useComposer()
 
   return useSyncExternalStore(
-    imqaes.subscribe,
-    imqaes.getSnapshot,
-    imqaes.getSnapshot,
-  )
-}
-
-/**
- * Returns the inline command trigger query anchor element.
- *
- * @example
- * ```tsx
- * const anchor = useInlineCommandTriggerQueryAnchorElement()
- * console.log(anchor)
- * ```
- *
- * @private
- */
-export function useInlineCommandTriggerQueryAnchorElement(): HTMLSpanElement | null {
-  const { ictqaes } = useComposer()
-
-  return useSyncExternalStore(
-    ictqaes.subscribe,
-    ictqaes.getSnapshot,
-    ictqaes.getSnapshot,
+    iqaes.subscribe,
+    iqaes.getSnapshot,
+    iqaes.getSnapshot,
   )
 }
 
@@ -1401,7 +1381,7 @@ export function useMentionPointer() {
  */
 export function useMention() {
   const { editor } = useComposer()
-  const anchor = useInlineMentionQueryAnchorElement()
+  const anchor = useInlineQueryAnchorElement()
 
   const isBuffering = useIsMentionBuffering()
   const bufferedText = useMentionBufferedText()
@@ -1504,7 +1484,7 @@ export function useCommandTriggerPointer() {
  */
 export function useCommandTrigger() {
   const { editor } = useComposer()
-  const anchor = useInlineCommandTriggerQueryAnchorElement()
+  const anchor = useInlineQueryAnchorElement()
 
   const isBuffering = useIsCommandTriggerBuffering()
   const bufferedText = useCommandTriggerBufferedText()
@@ -1517,6 +1497,102 @@ export function useCommandTrigger() {
   const dismiss = useStableCallback(
     (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
       editor.commandTrigger.commands.dismiss(source),
+  )
+
+  return {
+    anchor,
+    bufferedText,
+    confirm,
+    dismiss,
+    isBuffering,
+  } as const
+}
+
+/**
+ * Returns whether an emojis trigger is currently being buffered.
+ *
+ * @example
+ * ```tsx
+ * const isBuffering = useIsEmojisTriggerBuffering()
+ * console.log(isBuffering)
+ * ```
+ */
+export function useIsEmojisTriggerBuffering() {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.emojisTrigger.tools.isBuffering(),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns the buffered text for the emojis trigger currently being buffered.
+ *
+ * @example
+ * ```tsx
+ * const bufferedText = useEmojisTriggerBufferedText()
+ * console.log(bufferedText)
+ * ```
+ */
+
+export function useEmojisTriggerBufferedText() {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.emojisTrigger.tools.getBufferedText(),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns the pointer for the emojis trigger currently being buffered.
+ *
+ * @example
+ * ```tsx
+ * const pointer = useEmojisTriggerPointer()
+ * console.log(pointer)
+ * ```
+ */
+export function useEmojisTriggerPointer() {
+  const { editor } = useComposer()
+
+  const subscribe = useStableCallback(editor.subscribe.bind(editor))
+  const getSnapshot = useStableCallback(() =>
+    editor.emojisTrigger.tools.getPointer(),
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Returns whether an emojis trigger is currently being buffered.
+ *
+ * @example
+ * ```tsx
+ * const { isBuffering, bufferedText, confirm, dismiss, anchor } = useEmojisTrigger()
+ * console.log(isBuffering, bufferedText)
+ * ```
+ */
+export function useEmojisTrigger() {
+  const { editor } = useComposer()
+  const anchor = useInlineQueryAnchorElement()
+
+  const isBuffering = useIsEmojisTriggerBuffering()
+  const bufferedText = useEmojisTriggerBufferedText()
+
+  const confirm = useStableCallback(
+    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.emojisTrigger.commands.confirm(source),
+  )
+
+  const dismiss = useStableCallback(
+    (source?: Extract<TransactionSource, 'user' | 'ai-agent'>) =>
+      editor.emojisTrigger.commands.dismiss(source),
   )
 
   return {
@@ -2044,6 +2120,28 @@ export function useCommandTriggerBufferListener(
 
   useEffect(
     () => editor.events.commandTriggerBuffer.subscribe(stableListener),
+    [editor, stableListener],
+  )
+}
+
+/**
+ * Get informed when the emojis trigger buffer is changing.
+ *
+ * @example
+ * ```tsx
+ * useEmojisTriggerBufferListener((event) => {
+ *   console.log(event)
+ * })
+ * ```
+ */
+export function useEmojisTriggerBufferListener(
+  listener: (event: EmojisTriggerBufferEvent) => void,
+): void {
+  const { editor } = useComposer()
+  const stableListener = useStableCallback(listener)
+
+  useEffect(
+    () => editor.events.emojisTriggerBuffer.subscribe(stableListener),
     [editor, stableListener],
   )
 }

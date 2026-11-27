@@ -522,6 +522,9 @@ export type MentionBufferEvent = InlineBufferEvent<'mention'>
 /** Alias for the emitted command trigger buffer event. */
 export type CommandTriggerBufferEvent = InlineBufferEvent<'command-trigger'>
 
+/** Alias for the emitted emojis trigger buffer event. */
+export type EmojisTriggerBufferEvent = InlineBufferEvent<'emojis-trigger'>
+
 /** Event emitted when a mention that was created after a mention buffer was confirmed. */
 export interface MentionDidCreatedEvent {
   /** {@link BlockId} where the mention was created. */
@@ -605,6 +608,12 @@ export interface TransactionPipelineEvents {
    * 👉🏻 Fires anytime the inline buffer is updated.
    */
   readonly commandTriggerBuffer: Observable<CommandTriggerBufferEvent>
+
+  /**
+   * Subscribes to the emojis trigger buffer changes.
+   * 👉🏻 Fires anytime the inline buffer is updated.
+   */
+  readonly emojisTriggerBuffer: Observable<EmojisTriggerBufferEvent>
 
   /**
    * Subscribes to applied transactions.
@@ -698,6 +707,18 @@ export interface TransactionPipelineOptions {
     readonly abortOnConsecutiveSpaces: boolean
   }
 
+  /** Configuration for emojis trigger. */
+  readonly emojisTrigger: {
+    /** Whether to enable emojis trigger. */
+    readonly enabled: boolean
+
+    /** Character to trigger a emoji. */
+    readonly character: string
+
+    /** Whether to abort the emojis trigger inline buffer if user types two (2) consecutive spaces. */
+    readonly abortOnConsecutiveSpaces: boolean
+  }
+
   /** Configuration for autolink detection. */
   readonly autolink: {
     /** Whether to enable autolink detection. */
@@ -738,6 +759,18 @@ export interface TransactionPipelineCommandTriggerConfig {
   readonly character: string
 
   /** Whether to abort the command trigger inline buffer if user types two (2) consecutive spaces. */
+  readonly abortOnConsecutiveSpaces: boolean
+}
+
+/** Configuration for emojis trigger. */
+export interface TransactionPipelineEmojisTriggerConfig {
+  /** Whether to enable emojis trigger. */
+  readonly enabled: boolean
+
+  /** Character to trigger a emoji. */
+  readonly character: string
+
+  /** Whether to abort the emojis trigger inline buffer if user types two (2) consecutive spaces. */
   readonly abortOnConsecutiveSpaces: boolean
 }
 
@@ -839,6 +872,12 @@ export class TransactionPipeline {
   /** Command trigger buffer instance. */
   readonly #commandTriggerBuffer: InlineBuffer<'command-trigger'>
 
+  /** Emojis trigger configuration. */
+  readonly #emojisTrigger: TransactionPipelineEmojisTriggerConfig
+
+  /** Emojis trigger buffer instance. */
+  readonly #emojisTriggerBuffer: InlineBuffer<'emojis-trigger'>
+
   /** Autolink configuration. */
   readonly #autolink: TransactionPipelineAutolinkConfig
 
@@ -885,6 +924,14 @@ export class TransactionPipeline {
       enabled: this.#commandTrigger.enabled,
       eventKind: 'command-trigger',
       name: 'CommandTriggerBuffer',
+    })
+
+    this.#emojisTrigger = options.emojisTrigger
+    this.#emojisTriggerBuffer = new InlineBuffer({
+      debug: this.#debug,
+      enabled: this.#emojisTrigger.enabled,
+      eventKind: 'emojis-trigger',
+      name: 'EmojisTriggerBuffer',
     })
 
     this.#batch = new TransactionBatch({
@@ -946,6 +993,11 @@ export class TransactionPipeline {
     return this.#commandTriggerBuffer
   }
 
+  /** Returns the inline buffer for emojis trigger. */
+  get emojisTriggerInlineBuffer(): InlineBuffer<'emojis-trigger'> {
+    return this.#emojisTriggerBuffer
+  }
+
   /** Waits until the document is ready to work with. */
   waitUntilDocumentReady(): Promise<void> {
     /** No to need to subscribe if at the time of the call the document is already ready. */
@@ -991,6 +1043,16 @@ export class TransactionPipeline {
     }
 
     return text === this.#commandTrigger.character
+  }
+
+  /** Whether a emojis trigger is being typed. */
+  #isEmojisTriggerIntent(text: string): boolean {
+    if (!this.#emojisTrigger.enabled) {
+      logOnceIf(this.#debug, 'Emojis trigger is not enabled.')
+      return false
+    }
+
+    return text === this.#emojisTrigger.character
   }
 
   /** Notifies the history stack changes. */
@@ -1044,6 +1106,11 @@ export class TransactionPipeline {
       this.#commandTriggerBuffer,
       this.#commandTrigger.character,
       this.#commandTrigger.abortOnConsecutiveSpaces,
+    )
+    this.#syncInlineBuffer(
+      this.#emojisTriggerBuffer,
+      this.#emojisTrigger.character,
+      this.#emojisTrigger.abortOnConsecutiveSpaces,
     )
   }
 
@@ -1274,6 +1341,7 @@ export class TransactionPipeline {
       documentError: this.#eventSources.documentError.observable,
       documentReady: this.#eventSources.documentReady.observable,
       documentStatus: this.#eventSources.documentStatus.observable,
+      emojisTriggerBuffer: this.#emojisTriggerBuffer.observable,
       history: this.#eventSources.history.observable,
       mentionBuffer: this.#mentionBuffer.observable,
       mentionDidCreated: this.#eventSources.mentionDidCreated.observable,
@@ -1606,6 +1674,75 @@ export class TransactionPipeline {
   }
 
   /**
+   * Confirms an emojis trigger buffer by removing the opener character and the query text
+   * from the current {@link TextNode}.
+   *
+   * Enforces core constraints invariants:
+   *  - A emojis trigger is currently being buffered.
+   *  - The emojis trigger buffer is confirmed by a user action.
+   *  - When the emojis trigger buffer is confirmed, the opened character and the query text are removed
+   *    from the current {@link TextNode} and the buffer is released and we notify that the emojis trigger
+   *    buffer is confirmed.
+   *  - Otherwise, the buffer is aborted and we notify that the emojis trigger buffer is aborted,
+   *  - The deletion is pushed to the {@link HistoryStack}.
+   *
+   * Returns a boolean indicating whether the emojis trigger buffer was confirmed or not.
+   */
+  confirmBufferedInlineEmojisTrigger(
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): boolean {
+    if (!this.#emojisTriggerBuffer.isBuffering) {
+      warn(
+        `Cannot confirm emojis trigger as there is no emojis trigger buffer active.`,
+      )
+      return false
+    }
+
+    const [pointer, bufferedText] = this.#emojisTriggerBuffer.get()
+
+    /**
+     * Should not happen as we check if the buffer is being buffered before calling this method.
+     * But we return `null` for UI libraries to let render what they need based on this state
+     * and not break the UI with an error.
+     */
+    if (pointer === null || bufferedText === null) {
+      /** When no pointer or buffered text, we need to abort the buffer to clear up the state and notify the UI. */
+      this.#emojisTriggerBuffer.abort()
+      return false
+    }
+
+    const intent =
+      this.#operationsEngine.buildDeleteEmojisTriggerInlineBufferSpanOps(
+        this.#context,
+        {
+          ...pointer,
+          bufferedText,
+          character: this.#emojisTrigger.character,
+        },
+      )
+
+    if (intent === null) {
+      /** When no intent we need to abort the buffer to clear up the state and notify the UI. */
+      this.#emojisTriggerBuffer.abort()
+      return false
+    }
+
+    /** When the emojis trigger is confirmed, we release the buffer to clear up the state and notify the UI. */
+    this.#emojisTriggerBuffer.release()
+
+    const { ops, label } = intent
+    this.#commit(ops, {
+      label: transactionPolicyLabel('emojis-trigger', 'confirm', label),
+      pushToHistory: true,
+      source,
+      /** When the emojis trigger is confirmed, we don't need to sync the inline buffers as the buffer is released. */
+      syncInlineBuffers: false,
+    })
+
+    return true
+  }
+
+  /**
    * Dismisses an inline buffer by aborting it and pinning the caret at the
    * end of the opener + query span. Does not mutate the document.
    */
@@ -1684,6 +1821,23 @@ export class TransactionPipeline {
       this.#commandTrigger.character,
       source,
       'command-trigger',
+    )
+  }
+
+  /**
+   * Dismisses an emojis trigger buffer by aborting it and pinning the caret at the
+   * end of the query. Leaves the opener and query as ordinary text.
+   *
+   * Returns a boolean indicating whether the emojis trigger buffer was dismissed.
+   */
+  dismissBufferedInlineEmojisTrigger(
+    source: Extract<TransactionSource, 'user' | 'ai-agent'>,
+  ): boolean {
+    return this.#dismissInlineBuffer(
+      this.#emojisTriggerBuffer,
+      this.#emojisTrigger.character,
+      source,
+      'emojis-trigger',
     )
   }
 
@@ -1780,7 +1934,8 @@ export class TransactionPipeline {
         if (
           inputType === 'insertFromPaste' &&
           (this.#mentionBuffer.isBuffering ||
-            this.#commandTriggerBuffer.isBuffering)
+            this.#commandTriggerBuffer.isBuffering ||
+            this.#emojisTriggerBuffer.isBuffering)
         ) {
           return false
         }
@@ -1917,7 +2072,7 @@ export class TransactionPipeline {
         return true
       }
 
-      /** Typing any character. */
+      /** Inserting text. */
       case 'insertText': {
         /** In any case we prevent native browser behavior as we want full control over text input. */
         prevent()
@@ -1946,7 +2101,8 @@ export class TransactionPipeline {
            */
           const canStartInlineBuffer =
             !this.#mentionBuffer.isBuffering &&
-            !this.#commandTriggerBuffer.isBuffering
+            !this.#commandTriggerBuffer.isBuffering &&
+            !this.#emojisTriggerBuffer.isBuffering
 
           const isMentionIntent =
             canStartInlineBuffer && this.#isMentionIntent(text)
@@ -1956,11 +2112,21 @@ export class TransactionPipeline {
             !isMentionIntent &&
             this.#isCommandTriggerIntent(text)
 
+          const isEmojisTriggerIntent =
+            canStartInlineBuffer &&
+            !isMentionIntent &&
+            !isCommandTriggerIntent &&
+            this.#isEmojisTriggerIntent(text)
+
           const mentionPointer = isMentionIntent
             ? findInlineBufferPointerAtCursor(this.#context)
             : null
 
           const commandTriggerPointer = isCommandTriggerIntent
+            ? findInlineBufferPointerAtCursor(this.#context)
+            : null
+
+          const emojisTriggerPointer = isEmojisTriggerIntent
             ? findInlineBufferPointerAtCursor(this.#context)
             : null
 
@@ -1975,7 +2141,8 @@ export class TransactionPipeline {
           if (
             !canStartInlineBuffer ||
             this.#mentionBuffer.isBuffering ||
-            this.#commandTriggerBuffer.isBuffering
+            this.#commandTriggerBuffer.isBuffering ||
+            this.#emojisTriggerBuffer.isBuffering
           ) {
             return true
           }
@@ -1998,6 +2165,16 @@ export class TransactionPipeline {
              */
             if (commandTriggerPointer !== null) {
               this.#commandTriggerBuffer.start(commandTriggerPointer)
+              return true
+            }
+          } else if (isEmojisTriggerIntent) {
+            /**
+             * Invariant UX:
+             * A emojis trigger buffer is only started when the cursor is at the start of
+             * a {@link TextNode} or immediately after a whitespace character.
+             */
+            if (emojisTriggerPointer !== null) {
+              this.#emojisTriggerBuffer.start(emojisTriggerPointer)
               return true
             }
           } else {
@@ -2171,6 +2348,10 @@ export class TransactionPipeline {
 
           if (this.#commandTriggerBuffer.isBuffering) {
             return this.dismissBufferedInlineCommandTrigger('user')
+          }
+
+          if (this.#emojisTriggerBuffer.isBuffering) {
+            return this.dismissBufferedInlineEmojisTrigger('user')
           }
 
           const intent = this.#operationsEngine.buildClearSelectionOps(

@@ -43,16 +43,10 @@ export interface ComposerContext {
   editor: Dactylo
 
   /**
-   * Inline mention query anchor element store.
+   * Inline query anchor element store.
    * @internal
    */
-  imqaes: AnchorElementStore<HTMLSpanElement>
-
-  /**
-   * Inline command trigger query anchor element store.
-   * @internal
-   */
-  ictqaes: AnchorElementStore<HTMLSpanElement>
+  iqaes: AnchorElementStore<HTMLSpanElement>
 }
 
 // --- Composer.Root ─────────────────────────────────────────-------

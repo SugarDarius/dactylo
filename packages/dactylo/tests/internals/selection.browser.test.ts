@@ -60,6 +60,11 @@ function makeMentionsPipeline() {
       abortOnConsecutiveSpaces: false,
     },
     debug: false,
+    emojisTrigger: {
+      abortOnConsecutiveSpaces: false,
+      character: ':',
+      enabled: false,
+    },
     engine: { locales: 'en-US' },
     markdown: { enabled: false },
     mentions: {

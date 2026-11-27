@@ -562,6 +562,81 @@ export class OperationsEngine {
     return { label: 'delete-command-trigger-inline-buffer-span', ops }
   }
 
+  /**
+   * Builds operations to delete an emojis trigger buffer opener character and query span.
+   * Returns `null` when the opener and query no longer match the document.
+   */
+  buildDeleteEmojisTriggerInlineBufferSpanOps(
+    context: EditorContext,
+    spec: {
+      /** Block ID where the emojis trigger buffer was opened. */
+      blockId: BlockId
+      /** Node ID where the emojis trigger buffer was opened. */
+      nodeId: NodeId
+      /** Trigger offset where the emojis trigger buffer was opened. */
+      triggerOffset: number
+      /** Buffered query text after the opener. */
+      bufferedText: string
+      /** Character that opened the emojis trigger buffer. */
+      character: string
+    },
+  ): BuilderOpsIntent | null {
+    if (!isCursorSelection(context.selection)) {
+      return null
+    }
+
+    const { state } = context
+    const { blockId, nodeId, triggerOffset, character, bufferedText } = spec
+
+    const block = getBlockWithInlineContent(state, blockId)
+    const found = findNodeInBlockWithInlineContent(block, nodeId)
+
+    if (!found || !isTextNode(found.node)) {
+      return null
+    }
+
+    const { node } = found
+
+    const opener = node.text.slice(
+      triggerOffset,
+      triggerOffset + character.length,
+    )
+
+    if (opener !== character) {
+      return null
+    }
+
+    const qLen = character.length + bufferedText.length
+    const query = node.text.slice(triggerOffset, triggerOffset + qLen)
+
+    if (query !== character + bufferedText) {
+      return null
+    }
+
+    let ops: Operation[] = [
+      {
+        __type: 'delete_text',
+        blockId: block.id,
+        length: qLen,
+        nodeId: node.id,
+        offset: triggerOffset,
+        snapshot: { text: query },
+      },
+    ]
+
+    ops = withTrailingSelectionOp(
+      ops,
+      createCursor({
+        blockId: block.id,
+        nodeId: node.id,
+        offset: triggerOffset,
+      }),
+      context.selection,
+    )
+
+    return { label: 'delete-emojis-trigger-inline-buffer-span', ops }
+  }
+
   /** Builds operations to insert a text (char or emoji). */
   buildInsertTextOps(
     context: EditorContext,
