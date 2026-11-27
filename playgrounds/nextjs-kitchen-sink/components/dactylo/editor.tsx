@@ -83,7 +83,7 @@ import {
   Undo2,
   UserRoundPlus,
 } from 'lucide-react'
-import { Fragment, useCallback, useState } from 'react'
+import { Fragment, useCallback, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import { Avatar, AvatarBadge, AvatarFallback } from '~/components/ui/avatar'
@@ -321,9 +321,11 @@ function EmojiPickerEmoji({ emoji, ...props }: EmojiPickerListEmojiProps) {
 function EditorEmojiPicker({
   onEmojiSelect,
   search,
+  noSearch = false,
 }: {
   onEmojiSelect: (emoji: string) => void
   search?: string
+  noSearch?: boolean
 }) {
   return (
     <EmojiPicker.Root
@@ -333,7 +335,12 @@ function EditorEmojiPicker({
       }}
     >
       <EmojiPicker.Search
-        className='bg-muted z-10 mx-2 mt-2 appearance-none rounded-md px-2.5 py-2 text-sm outline-hidden'
+        className={cn(
+          'bg-muted z-10 mx-2 mt-2 appearance-none rounded-md px-2.5 py-2 text-sm outline-hidden',
+          {
+            hidden: noSearch,
+          },
+        )}
         {...(search === undefined
           ? {}
           : { readOnly: true, tabIndex: -1, value: search })}
@@ -1523,8 +1530,30 @@ export function CommandTriggerSuggestions() {
 export function EmojisTriggerSuggestions() {
   const { anchor, bufferedText, confirm, dismiss, isBuffering } =
     useEmojisTrigger()
+  const pickerRef = useRef<HTMLDivElement>(null)
 
   const open = isBuffering && anchor !== null
+
+  // @todo: finds a better DX for this.
+  useHotkeys(
+    'enter',
+    (event) => {
+      event.preventDefault()
+      const emoji = pickerRef.current
+        ?.querySelector('[role="gridcell"]')
+        ?.textContent?.trim()
+      if (!emoji) {
+        return
+      }
+      confirm(emoji)
+    },
+    {
+      enableOnContentEditable: true,
+      enabled: isBuffering,
+      preventDefault: true,
+    },
+    [confirm],
+  )
 
   return (
     <Popover
@@ -1548,10 +1577,13 @@ export function EmojisTriggerSuggestions() {
         side='bottom'
         sideOffset={6}
       >
-        <EditorEmojiPicker
-          onEmojiSelect={confirm}
-          search={bufferedText ?? ''}
-        />
+        <div ref={pickerRef}>
+          <EditorEmojiPicker
+            noSearch={true}
+            onEmojiSelect={confirm}
+            search={bufferedText ?? ''}
+          />
+        </div>
       </PopoverContent>
     </Popover>
   )
