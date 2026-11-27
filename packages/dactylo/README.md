@@ -209,7 +209,7 @@ export function Editor() {
 | Strings security                                 | ✅ **Done**        | Prevents scripting and injections when inserting text                                   |
 | DOM sync                                         | ✅ **Done**        | Sync DOM selection with Dactylo Selection                                               |
 | Dactylo owned errors                             | ✅ **Done**        | Exposes errors defined by Dactylo                                                       |
-| Emojis inline trigger (`:…`)                     | 🚧 **In Progress** | Enables inline composition for inserting emojis (configurable)                          |
+| Emojis inline trigger (`:…`)                     | ✅ **Done**        | Enables inline composition for inserting emojis (configurable)                          |
 | Hashtags (`#…`)                                  | 📆 **Planned**     | Enables built-in support for hashtags                                                   |
 | Collaboration                                    | 📆 **Planned**     | Enables collaboration through external providers as adapters                            |
 
