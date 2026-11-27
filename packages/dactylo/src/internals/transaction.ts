@@ -681,6 +681,9 @@ export interface TransactionPipelineOptions {
 
     /** Character to trigger a mention. */
     readonly character: string
+
+    /** Whether to abort the mention inline buffer if user types two (2) consecutive spaces. */
+    readonly abortOnConsecutiveSpaces: boolean
   }
 
   /** Configuration for command trigger. */
@@ -690,6 +693,9 @@ export interface TransactionPipelineOptions {
 
     /** Character to trigger a command. */
     readonly character: string
+
+    /** Whether to abort the command trigger inline buffer if user types two (2) consecutive spaces. */
+    readonly abortOnConsecutiveSpaces: boolean
   }
 
   /** Configuration for autolink detection. */
@@ -718,6 +724,9 @@ export interface TransactionPipelineMentionsConfig {
 
   /** Character to use for mentions. */
   readonly character: string
+
+  /** Whether to abort the mention inline buffer if user types two (2) consecutive spaces. */
+  readonly abortOnConsecutiveSpaces: boolean
 }
 
 /** Configuration for command trigger. */
@@ -727,6 +736,9 @@ export interface TransactionPipelineCommandTriggerConfig {
 
   /** Character to use for command trigger. */
   readonly character: string
+
+  /** Whether to abort the command trigger inline buffer if user types two (2) consecutive spaces. */
+  readonly abortOnConsecutiveSpaces: boolean
 }
 
 /** Configuration for autolink detection. */
@@ -996,6 +1008,7 @@ export class TransactionPipeline {
   #syncInlineBuffer<K extends string>(
     buffer: InlineBuffer<K>,
     character: string,
+    abortOnConsecutiveSpaces: boolean,
   ): void {
     if (!buffer.isBuffering || buffer.pointer === null) {
       return
@@ -1008,7 +1021,11 @@ export class TransactionPipeline {
       character,
     )
 
-    if (query === null) {
+    /**
+     * Abort the inline buffer if the query is `null`
+     * or if the user types two (2) consecutive spaces.
+     */
+    if (query === null || (abortOnConsecutiveSpaces && query.endsWith('  '))) {
       buffer.abort()
       return
     }
@@ -1018,10 +1035,15 @@ export class TransactionPipeline {
 
   /** Syncs mention and command-trigger buffers with the current document. */
   #syncInlineBuffers(): void {
-    this.#syncInlineBuffer(this.#mentionBuffer, this.#mentions.character)
+    this.#syncInlineBuffer(
+      this.#mentionBuffer,
+      this.#mentions.character,
+      this.#mentions.abortOnConsecutiveSpaces,
+    )
     this.#syncInlineBuffer(
       this.#commandTriggerBuffer,
       this.#commandTrigger.character,
+      this.#commandTrigger.abortOnConsecutiveSpaces,
     )
   }
 
@@ -1951,6 +1973,7 @@ export class TransactionPipeline {
           })
 
           if (
+            !canStartInlineBuffer ||
             this.#mentionBuffer.isBuffering ||
             this.#commandTriggerBuffer.isBuffering
           ) {

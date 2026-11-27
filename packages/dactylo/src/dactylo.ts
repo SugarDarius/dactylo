@@ -18,6 +18,7 @@ import type {
 } from './internals/blocks'
 import { error, warnOnceIf } from './internals/console'
 import {
+  DEFAULT_ABORT_INLINE_BUFFER_ON_CONSECUTIVE_SPACES,
   DEFAULT_AUTOLINK_ENABLED,
   DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
   DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
@@ -140,6 +141,12 @@ export interface DactyloStaticConfig {
      * Defaults to `/`
      */
     readonly character: string
+
+    /**
+     * Whether to abort the command trigger inline buffer if user types two (2) consecutive spaces.
+     * Defaults to `false`
+     */
+    readonly abortOnConsecutiveSpaces: boolean
   }
 
   /** Configuration for headings. */
@@ -269,6 +276,12 @@ export interface DactyloStaticConfig {
      * Defaults to `@`
      */
     readonly character: string
+
+    /**
+     * Whether to abort the mention inline buffer if user types two (2) consecutive spaces.
+     * Defaults to `false`
+     */
+    readonly abortOnConsecutiveSpaces: boolean
 
     /**
      * Initial metadata applied.
@@ -1471,6 +1484,12 @@ export interface DactyloBaseOptions {
      * Defaults to `/`
      */
     readonly character?: string
+
+    /**
+     * Whether to abort the command trigger inline buffer if user types two (2) consecutive spaces.
+     * Defaults to `false`
+     */
+    readonly abortOnConsecutiveSpaces?: boolean
   }
 
   /** Configuration for the transaction pipeline */
@@ -1606,6 +1625,12 @@ export type DactyloOptions = DactyloBaseOptions &
        * Defaults to `@`
        */
       readonly character?: string
+
+      /**
+       * Whether to abort the mention inline buffer if user types two (2) consecutive spaces.
+       * Defaults to `false`
+       */
+      readonly abortOnConsecutiveSpaces?: boolean
     },
     'initialMetadata',
     MNM
@@ -1729,6 +1754,9 @@ export class Dactylo {
           DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
       },
       commandTrigger: {
+        abortOnConsecutiveSpaces:
+          options.commandTrigger?.abortOnConsecutiveSpaces ??
+          DEFAULT_ABORT_INLINE_BUFFER_ON_CONSECUTIVE_SPACES,
         character:
           options.commandTrigger?.character ??
           DEFAULT_COMMAND_TRIGGER_CHARACTER,
@@ -1757,6 +1785,9 @@ export class Dactylo {
           options.markdown?.enabled ?? DEFAULT_MARKDOWN_SHORTCUTS_ENABLED,
       },
       mentions: {
+        abortOnConsecutiveSpaces:
+          options.mentions?.abortOnConsecutiveSpaces ??
+          DEFAULT_ABORT_INLINE_BUFFER_ON_CONSECUTIVE_SPACES,
         character: options.mentions?.character ?? DEFAULT_MENTION_CHARACTER,
         enabled: options.mentions?.enabled ?? DEFAULT_MENTIONS_ENABLED,
         initialMetadata: options.mentions?.initialMetadata ?? ({} as MNM),
@@ -1791,6 +1822,8 @@ export class Dactylo {
         maxDepth: options.pipeline?.batch?.maxDepth,
       },
       commandTrigger: {
+        abortOnConsecutiveSpaces:
+          this.#config.commandTrigger.abortOnConsecutiveSpaces,
         character: this.#config.commandTrigger.character,
         enabled: this.#config.commandTrigger.enabled,
       },
@@ -1817,6 +1850,8 @@ export class Dactylo {
         enabled: this.#config.markdown.enabled,
       },
       mentions: {
+        abortOnConsecutiveSpaces:
+          this.#config.mentions.abortOnConsecutiveSpaces,
         character: this.#config.mentions.character,
         enabled: this.#config.mentions.enabled,
       },

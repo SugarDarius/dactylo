@@ -1505,7 +1505,7 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
         className='dark:shadow-accent relative flex w-full flex-col gap-2 rounded-md shadow-xs'
         paragraph={{ initialMetadata: { fontSize: '16px' } }}
         mentions={{ enabled: true }}
-        commandTrigger={{ enabled: true }}
+        commandTrigger={{ enabled: true, abortOnConsecutiveSpaces: true }}
         initialContent={{
           blocks: [
             {

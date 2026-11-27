@@ -54,11 +54,19 @@ function textNodeId(block: ReturnType<typeof firstInlineBlock>, index = 0) {
 function makeMentionsPipeline() {
   return new TransactionPipeline({
     autolink: { enabled: false },
-    commandTrigger: { character: '/', enabled: false },
+    commandTrigger: {
+      character: '/',
+      enabled: false,
+      abortOnConsecutiveSpaces: false,
+    },
     debug: false,
     engine: { locales: 'en-US' },
     markdown: { enabled: false },
-    mentions: { character: '@', enabled: true },
+    mentions: {
+      character: '@',
+      enabled: true,
+      abortOnConsecutiveSpaces: false,
+    },
   })
 }
 

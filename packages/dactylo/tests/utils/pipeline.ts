@@ -91,12 +91,20 @@ export function makePipeline(
 ): TransactionPipeline {
   return new TransactionPipeline({
     autolink: { enabled: opts.autolink ?? false },
-    commandTrigger: { character: '/', enabled: false },
+    commandTrigger: {
+      character: '/',
+      enabled: false,
+      abortOnConsecutiveSpaces: false,
+    },
     debug: false,
     engine: { locales: 'en-US' },
     initialContent: opts.initialContent,
     markdown: { enabled: opts.markdown ?? true },
-    mentions: { character: '@', enabled: false },
+    mentions: {
+      character: '@',
+      enabled: false,
+      abortOnConsecutiveSpaces: false,
+    },
   })
 }
 

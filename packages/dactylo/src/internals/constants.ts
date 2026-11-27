@@ -35,6 +35,9 @@ export const DEFAULT_COMMAND_TRIGGER_ENABLED = false as const
 /** Default command trigger character. */
 export const DEFAULT_COMMAND_TRIGGER_CHARACTER = '/' as const
 
+/** Default whether to abort inline buffer on two consecutive spaces. */
+export const DEFAULT_ABORT_INLINE_BUFFER_ON_CONSECUTIVE_SPACES = false as const
+
 /** Character class (`space`) for “safe” text before opening a typed mention buffer.. */
 export const INLINE_BUFFER_BEFORE_CHAR_OPENER = /\s/u
 

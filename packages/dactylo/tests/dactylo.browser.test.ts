@@ -18,6 +18,7 @@ import {
   isQuoteBlock,
 } from '../src/internals/blocks'
 import {
+  DEFAULT_ABORT_INLINE_BUFFER_ON_CONSECUTIVE_SPACES,
   DEFAULT_AUTOLINK_ENABLED,
   DEFAULT_BULLET_LIST_ITEM_PLACEHOLDER,
   DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
@@ -189,6 +190,8 @@ describe('Dactylo construction', () => {
         placeholder: DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
       },
       commandTrigger: {
+        abortOnConsecutiveSpaces:
+          DEFAULT_ABORT_INLINE_BUFFER_ON_CONSECUTIVE_SPACES,
         character: DEFAULT_COMMAND_TRIGGER_CHARACTER,
         enabled: DEFAULT_COMMAND_TRIGGER_ENABLED,
       },
@@ -205,6 +208,8 @@ describe('Dactylo construction', () => {
       locales: DEFAULT_LOCALES,
       markdown: { enabled: DEFAULT_MARKDOWN_SHORTCUTS_ENABLED },
       mentions: {
+        abortOnConsecutiveSpaces:
+          DEFAULT_ABORT_INLINE_BUFFER_ON_CONSECUTIVE_SPACES,
         character: DEFAULT_MENTION_CHARACTER,
         enabled: DEFAULT_MENTIONS_ENABLED,
         initialMetadata: {},
@@ -244,7 +249,12 @@ describe('Dactylo construction', () => {
         initialMetadata: {},
         placeholder: DEFAULT_CHECKBOX_LIST_ITEM_PLACEHOLDER,
       },
-      commandTrigger: { character: '!', enabled: false },
+      commandTrigger: {
+        abortOnConsecutiveSpaces:
+          DEFAULT_ABORT_INLINE_BUFFER_ON_CONSECUTIVE_SPACES,
+        character: '!',
+        enabled: false,
+      },
       divider: { initialMetadata: {} },
       heading: { initialMetadata: {}, placeholder: 'Title' },
       lineBreak: { initialMetadata: {} },
@@ -252,6 +262,8 @@ describe('Dactylo construction', () => {
       locales: 'fr-FR',
       markdown: { enabled: false },
       mentions: {
+        abortOnConsecutiveSpaces:
+          DEFAULT_ABORT_INLINE_BUFFER_ON_CONSECUTIVE_SPACES,
         character: '#',
         enabled: false,
         initialMetadata: {},
@@ -1643,6 +1655,37 @@ describe('Dactylo mentions', () => {
     expect(blockTexts(editor.getContext())).toEqual(['@john'])
   })
 
+  test('two consecutive spaces keep the mention buffer by default', () => {
+    const editor = makeMentionsEditor()
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+    typeText(editor, ' ')
+    typeText(editor, ' ')
+
+    expect(editor.mentions.tools.isBuffering()).toBe(true)
+    expect(editor.mentions.tools.getBufferedText()).toBe('john  ')
+    expect(blockTexts(editor.getContext())).toEqual(['@john  '])
+  })
+
+  test('two consecutive spaces abort the mention buffer when opted in', () => {
+    const editor = makeMentionsEditor({
+      mentions: { abortOnConsecutiveSpaces: true },
+    })
+    const states: string[] = []
+    editor.events.mentionBuffer.subscribe((event) => {
+      states.push(event.state)
+    })
+    editor.selection.commands.focus()
+    typeMentionQuery(editor, 'john')
+    typeText(editor, ' ')
+    typeText(editor, ' ')
+
+    expect(editor.mentions.tools.isBuffering()).toBe(false)
+    expect(editor.mentions.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(editor.getContext())).toEqual(['@john  '])
+    expect(states.at(-1)).toBe('aborted')
+  })
+
   test('starts a buffer at the start of a node or after whitespace, not mid-word', () => {
     const midWord = makeMentionsEditor()
     midWord.selection.commands.focus()
@@ -2492,6 +2535,105 @@ describe('Dactylo command trigger', () => {
 
     expect(blockTexts(editor.getContext())).toEqual(['/fo'])
     expect(events.at(-1)).toEqual({ bufferedText: 'fo', state: 'buffering' })
+  })
+
+  test('two consecutive spaces keep the command trigger buffer by default', () => {
+    const editor = makeCommandTriggerEditor()
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+    typeText(editor, ' ')
+    typeText(editor, ' ')
+
+    expect(editor.commandTrigger.tools.isBuffering()).toBe(true)
+    expect(editor.commandTrigger.tools.getBufferedText()).toBe('foo  ')
+    expect(blockTexts(editor.getContext())).toEqual(['/foo  '])
+  })
+
+  test('a single trailing space keeps the command trigger buffer when abort is opted in', () => {
+    const editor = makeCommandTriggerEditor({
+      commandTrigger: { abortOnConsecutiveSpaces: true },
+    })
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+    typeText(editor, ' ')
+
+    expect(editor.commandTrigger.tools.isBuffering()).toBe(true)
+    expect(editor.commandTrigger.tools.getBufferedText()).toBe('foo ')
+    expect(blockTexts(editor.getContext())).toEqual(['/foo '])
+  })
+
+  test('a single space between words keeps the command trigger buffer when abort is opted in', () => {
+    const editor = makeCommandTriggerEditor({
+      commandTrigger: { abortOnConsecutiveSpaces: true },
+    })
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+    typeText(editor, ' ')
+    typeText(editor, 'bar')
+
+    expect(editor.commandTrigger.tools.isBuffering()).toBe(true)
+    expect(editor.commandTrigger.tools.getBufferedText()).toBe('foo bar')
+    expect(blockTexts(editor.getContext())).toEqual(['/foo bar'])
+  })
+
+  test('two consecutive trailing spaces abort the command trigger buffer when opted in', () => {
+    const editor = makeCommandTriggerEditor({
+      commandTrigger: { abortOnConsecutiveSpaces: true },
+    })
+    const states: string[] = []
+    editor.events.commandTriggerBuffer.subscribe((event) => {
+      states.push(event.state)
+    })
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo')
+    typeText(editor, ' ')
+    typeText(editor, ' ')
+
+    expect(editor.commandTrigger.tools.isBuffering()).toBe(false)
+    expect(editor.commandTrigger.tools.getBufferedText()).toBeNull()
+    expect(blockTexts(editor.getContext())).toEqual(['/foo  '])
+    expect(states.at(-1)).toBe('aborted')
+  })
+
+  test('two consecutive spaces after a bare opener abort the command trigger buffer when opted in', () => {
+    const editor = makeCommandTriggerEditor({
+      commandTrigger: { abortOnConsecutiveSpaces: true },
+    })
+    editor.selection.commands.focus()
+    typeCommandQuery(editor)
+    typeText(editor, ' ')
+    typeText(editor, ' ')
+
+    expect(editor.commandTrigger.tools.isBuffering()).toBe(false)
+    expect(blockTexts(editor.getContext())).toEqual(['/  '])
+  })
+
+  test('interior consecutive spaces keep the command trigger buffer when abort is opted in', () => {
+    const editor = makeCommandTriggerEditor({
+      commandTrigger: { abortOnConsecutiveSpaces: true },
+    })
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'foo  bar')
+
+    expect(editor.commandTrigger.tools.isBuffering()).toBe(true)
+    expect(editor.commandTrigger.tools.getBufferedText()).toBe('foo  bar')
+    expect(blockTexts(editor.getContext())).toEqual(['/foo  bar'])
+  })
+
+  test('aborting on two trailing spaces does not autolink a URL in the leftover query', () => {
+    const editor = makeCommandTriggerEditor({
+      commandTrigger: { abortOnConsecutiveSpaces: true },
+    })
+    editor.selection.commands.focus()
+    typeCommandQuery(editor, 'https://example.com')
+    typeText(editor, ' ')
+    typeText(editor, ' ')
+
+    expect(editor.commandTrigger.tools.isBuffering()).toBe(false)
+    expect(firstInlineBlock(editor.getContext()).content.some(isLinkNode)).toBe(
+      false,
+    )
+    expect(blockTexts(editor.getContext())).toEqual(['/https://example.com  '])
   })
 
   test('Escape while buffering aborts and pins the caret at the query end', () => {

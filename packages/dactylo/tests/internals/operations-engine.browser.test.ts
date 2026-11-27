@@ -281,12 +281,20 @@ describe('TransactionPipeline JSON initialContent', () => {
   test('applies JSON init ops onto document state', () => {
     const pipeline = new TransactionPipeline({
       autolink: { enabled: false },
-      commandTrigger: { character: '/', enabled: false },
+      commandTrigger: {
+        character: '/',
+        enabled: false,
+        abortOnConsecutiveSpaces: false,
+      },
       debug: false,
       engine: { locales: 'en-US' },
       initialContent: coveringDocument(),
       markdown: { enabled: false },
-      mentions: { character: '@', enabled: false },
+      mentions: {
+        character: '@',
+        enabled: false,
+        abortOnConsecutiveSpaces: false,
+      },
     })
 
     const { state } = pipeline.context
@@ -308,7 +316,11 @@ describe('TransactionPipeline JSON initialContent', () => {
   test('reindexes gapped numbered-list markers after JSON init', () => {
     const pipeline = new TransactionPipeline({
       autolink: { enabled: false },
-      commandTrigger: { character: '/', enabled: false },
+      commandTrigger: {
+        character: '/',
+        enabled: false,
+        abortOnConsecutiveSpaces: false,
+      },
       debug: false,
       engine: { locales: 'en-US' },
       initialContent: {
@@ -349,7 +361,11 @@ describe('TransactionPipeline JSON initialContent', () => {
         ],
       },
       markdown: { enabled: false },
-      mentions: { character: '@', enabled: false },
+      mentions: {
+        character: '@',
+        enabled: false,
+        abortOnConsecutiveSpaces: false,
+      },
     })
 
     const markers = pipeline.context.state.blockOrderById.map((id) => {
