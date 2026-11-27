@@ -1518,6 +1518,16 @@ export function Editor({ className, ...props }: React.ComponentProps<'div'>) {
               level: 1,
               type: 'heading',
             },
+
+            {
+              type: 'quote',
+              content: [
+                {
+                  type: 'text',
+                  text: '"dactylo (dactylographie 🇫🇷)" - is the action of typing text onto a keyboard.',
+                },
+              ],
+            },
             {
               type: 'divider',
             },
